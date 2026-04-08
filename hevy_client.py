@@ -2,6 +2,7 @@ import os
 import requests
 from dotenv import load_dotenv
 
+# Load the API key from the .env file
 load_dotenv()
 
 class HevyClient:
@@ -10,20 +11,20 @@ class HevyClient:
         self.base_url = "https://api.hevyapp.com/v1"
         self.headers = {"api-key": self.api_key}
 
-    def get_latest_workouts(self, page=1):
-        """Fetches the most recent workouts from Hevy."""
-        url = f"{self.base_url}/workouts?page={page}"
+    def test_connection(self):
+        """Simple check to see if the API key is valid."""
+        url = f"{self.base_url}/workouts?page=1"
         response = requests.get(url, headers=self.headers)
         
         if response.status_code == 200:
-            return response.json()['workouts']
+            workouts = response.json().get('workouts', [])
+            print(f"✅ Success! Connected to Hevy. Found {len(workouts)} recent workouts.")
+            return workouts
         else:
-            print(f"Error: {response.status_code}")
+            print(f"❌ Connection Failed. Status Code: {response.status_code}")
+            print(f"Response: {response.text}")
             return None
 
-# Test the connection (Run this to see if your API key works)
 if __name__ == "__main__":
     client = HevyClient()
-    workouts = client.get_latest_workouts()
-    if workouts:
-        print(f"Successfully fetched {len(workouts)} workouts.")
+    client.test_connection()
