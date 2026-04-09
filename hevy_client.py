@@ -14,16 +14,17 @@ class HevyClient:
     def test_connection(self):
         """Simple check to see if the API key is valid."""
         url = f"{self.base_url}/workouts?page=1"
-        response = requests.get(url, headers=self.headers)
-        
-        if response.status_code == 200:
-            workouts = response.json().get('workouts', [])
-            print(f"✅ Success! Connected to Hevy. Found {len(workouts)} recent workouts.")
-            return workouts
-        else:
-            print(f"❌ Connection Failed. Status Code: {response.status_code}")
-            print(f"Response: {response.text}")
-            return None
+        try:
+            response = requests.get(url, headers=self.headers, timeout=10)
+            if response.status_code == 200:
+                print("✅ Connected to Hevy successfully")
+                return True
+            else:
+                print (f"❌ Connection failed. Status: {response.status_code}")
+                return False
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Network error: {e}")
+            return False
 
 if __name__ == "__main__":
     client = HevyClient()
