@@ -1,8 +1,6 @@
-import os
-from sqlalchemy import create_engine, Column, Integer, Float, String, Date, Boolean
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from datetime import datetime
+from datetime import date as date_type
+from sqlalchemy import create_engine, Column, Integer, Float, String, Date, Boolean, UniqueConstraint
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 # Path to your local database file
 DB_URL = "sqlite:///./hevy_fatigue.db"
@@ -10,15 +8,16 @@ DB_URL = "sqlite:///./hevy_fatigue.db"
 # Setup the Engine and Session
 engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 # --- TABLE 1: Daily Questionnaire (TRAC-style) ---
 class DailyReadiness(Base):
     __tablename__ = "daily_readiness"
-    date = Column(Date, primary_key=True, default=datetime.utcnow().date)
-    weight_lbs = Column(Float)
-    sleep_quality = Column(Integer)  # Scale 0-4
-    sleep_hours = Column(Float)
+    date = Column(Date, primary_key=True, default=date_type.today)
+    weight_lbs = Column(Float, nullable=True)
+    sleep_quality = Column(Integer, nullable=False)  # Scale 0-4
+    sleep_hours = Column(Float, nullable=False)
     cns_prep = Column(Integer)       # Scale 0-4
     # Soreness (0-4)
     sore_quads = Column(Integer)
@@ -33,19 +32,34 @@ class DailyReadiness(Base):
     joint_lowback = Column(Integer)
     total_kcal = Column(Integer)
 
+    def __repr__(self):
+        return f"<DailyReadiness date={self.date} weight={self.weight_lbs}>"
+
 # --- TABLE 2: Workout Data (Imported from Hevy) ---
 class WorkoutLog(Base):
     __tablename__ = "workout_logs"
+    __table_args__=(
+        UniqueConstraint('workout_id', 'exercise_id', 'set_number', name='uq_workout_set'),
+    )
     id = Column(Integer, primary_key=True, index=True)
-    date = Column(Date)
-    exercise_title = Column(String)
+    date = Column(Date, nullable=False)
+    exercise_title = Column(String, nullable=False)
+    set_number = Column(Integer)
+    workout_id = Column(String, nullable=False)
+    exercise_id = Column(String)
+    notes = Column(String, nullable=True)
     weight_lbs = Column(Float)
     reps = Column(Integer)
     rpe = Column(Float)
     estimated_1rm = Column(Float)
     is_conditioning = Column(Boolean, default=False)
 
+    def __repr__(self):
+        return f"<WorkoutLog date={self.date} exercise={self.exercise_title} set={self.set_number}>"
+
 # This part actually creates the file and tables when you run the script
-if __name__ == "__main__":
+def init_db():
     Base.metadata.create_all(bind=engine)
+if __name__ == "__main__":
+    init_db()
     print("✅ Database and tables initialized successfully.")
