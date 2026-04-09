@@ -38,6 +38,7 @@ class DailyReadiness(Base):
 # --- TABLE 2: Workout Data (Imported from Hevy) ---
 class WorkoutLog(Base):
     __tablename__ = "workout_logs"
+    
     __table_args__=(
         UniqueConstraint('workout_id', 'exercise_id', 'set_number', name='uq_workout_set'),
     )
