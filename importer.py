@@ -1,5 +1,4 @@
 import math
-from urllib import response
 from database import SessionLocal, WorkoutLog
 from hevy_client import HevyClient
 from datetime import datetime
@@ -11,6 +10,9 @@ def calculate_e1rm(weight, reps, rpe):
     """
     if not rpe:
         rpe = 10  # Assume max effort if not logged
+
+    if not weight or not reps or reps <=0:
+        return None
     
     # Adjusted reps = actual reps + reps in reserve
     rir = 10 - rpe
