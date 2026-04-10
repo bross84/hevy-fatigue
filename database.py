@@ -11,26 +11,25 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 class Base(DeclarativeBase):
     pass
 
-# --- TABLE 1: Daily Questionnaire (TRAC-style) ---
+# --- TABLE 1: Daily Readiness Check-in ---
 class DailyReadiness(Base):
     __tablename__ = "daily_readiness"
     date = Column(Date, primary_key=True, default=date_type.today)
     weight_lbs = Column(Float, nullable=True)
-    sleep_quality = Column(Integer, nullable=False)  # Scale 0-4
-    sleep_hours = Column(Float, nullable=False)
-    cns_prep = Column(Integer)       # Scale 0-4
-    # Soreness (0-4)
-    sore_quads = Column(Integer)
-    sore_hams = Column(Integer)
-    sore_push = Column(Integer)
-    sore_pull = Column(Integer)
-    # Joints (0-4)
-    joint_shldr = Column(Integer)
-    joint_elbow = Column(Integer)
-    joint_hip = Column(Integer)
-    joint_knee = Column(Integer)
-    joint_lowback = Column(Integer)
-    total_kcal = Column(Integer)
+    # Soreness (0=none, 4=severe pain/limited ROM)
+    sore_quad_dom = Column(Integer)       # Squat patterns, quads
+    sore_posterior = Column(Integer)      # Deadlift patterns, hamstrings, glutes, erectors
+    sore_upper_push = Column(Integer)     # Bench variations, triceps
+    sore_upper_pull = Column(Integer)     # Rows, pulldowns, rear delts
+    # Joint Health (0=no issues, 4=significant pain)
+    joint_upper = Column(Integer)         # Shoulders, elbows, wrists
+    joint_lower = Column(Integer)         # Low back, hips, knees
+    # Readiness (0=fresh, 4=super fatigued/tired)
+    tiredness = Column(Integer)
+    perceived_recovery = Column(Integer)
+    # Training Load - system calculated from previous day's Hevy data
+    # 0=no training, 1=below normal, 3=normal, 5=well above normal
+    perceived_training_load = Column(Float, nullable=True)
 
     def __repr__(self):
         return f"<DailyReadiness date={self.date} weight={self.weight_lbs}>"
