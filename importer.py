@@ -50,6 +50,9 @@ def import_hevy_data():
                 exercise_id = exercise.get('exercise_template_id')
 
                 for set_data in exercise.get('sets', []):
+                    if set_data.get('type') == 'warmup':
+                        continue  # Skip warmup sets — working sets only
+
                     set_number = set_data.get('index')
                     weight_kg = set_data.get('weight_kg') or 0.0
                     reps = set_data.get('reps') or 0
