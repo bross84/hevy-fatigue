@@ -230,6 +230,53 @@ def get_readiness_history(days: int = 30, db: Session = Depends(get_db)):
     ).order_by(DailyReadiness.date).all()
     return entries
 
+@app.get("/api/workouts/recent")
+def get_recent_workouts(count: int = 12, db: Session = Depends(get_db)):
+    """Return the N most recent workouts with per-workout stress calculations."""
+    workout_groups = (
+        db.query(
+            WorkoutLog.date,
+            WorkoutLog.workout_id,
+            WorkoutLog.workout_title,
+            func.count(WorkoutLog.id).label('set_count'),
+            func.sum(WorkoutLog.weight_lbs * WorkoutLog.reps).label('volume'),
+            func.avg(WorkoutLog.rpe).label('avg_rpe'),
+        )
+        .group_by(WorkoutLog.workout_id, WorkoutLog.date, WorkoutLog.workout_title)
+        .order_by(WorkoutLog.date.desc(), WorkoutLog.workout_id.desc())
+        .limit(count)
+        .all()
+    )
+
+    result = []
+    for row in workout_groups:
+        # Stress calculated from this workout's sets only (not the whole day)
+        workout_sets = db.query(WorkoutLog).filter(
+            WorkoutLog.workout_id == row.workout_id
+        ).all()
+
+        central = sum(
+            get_set_central_stress(s.weight_lbs, s.reps, s.rpe, s.exercise_title, db)
+            for s in workout_sets
+        )
+        peripheral = sum(
+            get_set_peripheral_stress(s.weight_lbs, s.reps, s.rpe, s.exercise_title, db)
+            for s in workout_sets
+        )
+
+        result.append({
+            "date":              str(row.date),
+            "workout_title":     row.workout_title,
+            "set_count":         row.set_count,
+            "volume":            round(float(row.volume or 0), 0),
+            "avg_rpe":           round(row.avg_rpe, 1) if row.avg_rpe else None,
+            "central_stress":    round(central, 3),
+            "peripheral_stress": round(peripheral, 3),
+        })
+
+    return result
+
+
 @app.get("/api/workouts/summary")
 def get_workout_summary(days: int = 30, db: Session = Depends(get_db)):
     """Return daily training volume, set count, and avg RPE for the past N days."""
