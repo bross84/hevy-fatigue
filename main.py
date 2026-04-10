@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date as date_type, timedelta
 
-from database import SessionLocal, DailyReadiness, WorkoutLog, init_db
+from database import SessionLocal, DailyReadiness, WorkoutLog, ExerciseMapping, init_db
 from rpe_table import get_set_central_stress, get_set_peripheral_stress, seed_rpe_table
 
 app = FastAPI(title="Hevy Fatigue Monitor")
@@ -133,6 +133,66 @@ def get_readiness_history(days: int = 30, db: Session = Depends(get_db)):
         DailyReadiness.date >= since
     ).order_by(DailyReadiness.date).all()
     return entries
+
+@app.get("/api/stress/patterns/{target_date}")
+def get_pattern_stress(target_date: date_type, db: Session = Depends(get_db)):
+    """
+    Return central and peripheral stress broken down by movement pattern for a given date.
+    Uses ExerciseMapping percentage splits to distribute each set's stress across patterns.
+    Conditioning exercises are excluded from pattern totals.
+    """
+    sets = db.query(WorkoutLog).filter(WorkoutLog.date == target_date).all()
+
+    patterns = {
+        "quad_dom":    {"central": 0.0, "peripheral": 0.0},
+        "posterior":   {"central": 0.0, "peripheral": 0.0},
+        "upper_push":  {"central": 0.0, "peripheral": 0.0},
+        "upper_pull":  {"central": 0.0, "peripheral": 0.0},
+        "unassigned":  {"central": 0.0, "peripheral": 0.0},
+        "conditioning":{"central": 0.0, "peripheral": 0.0},
+    }
+
+    for s in sets:
+        central = get_set_central_stress(s.weight_lbs, s.reps, s.rpe, s.exercise_title, db)
+        peripheral = get_set_peripheral_stress(s.weight_lbs, s.reps, s.rpe, s.exercise_title, db)
+
+        mapping = db.query(ExerciseMapping).filter(
+            ExerciseMapping.exercise_title == s.exercise_title
+        ).first()
+
+        if mapping and mapping.is_conditioning:
+            patterns["conditioning"]["central"]   += central
+            patterns["conditioning"]["peripheral"] += peripheral
+            continue
+
+        if mapping:
+            total_pct = (mapping.pct_quad_dom + mapping.pct_posterior +
+                         mapping.pct_upper_push + mapping.pct_upper_pull)
+
+            if total_pct > 0:
+                patterns["quad_dom"]["central"]     += central   * mapping.pct_quad_dom
+                patterns["quad_dom"]["peripheral"]  += peripheral * mapping.pct_quad_dom
+                patterns["posterior"]["central"]    += central   * mapping.pct_posterior
+                patterns["posterior"]["peripheral"] += peripheral * mapping.pct_posterior
+                patterns["upper_push"]["central"]   += central   * mapping.pct_upper_push
+                patterns["upper_push"]["peripheral"]+= peripheral * mapping.pct_upper_push
+                patterns["upper_pull"]["central"]   += central   * mapping.pct_upper_pull
+                patterns["upper_pull"]["peripheral"]+= peripheral * mapping.pct_upper_pull
+            else:
+                # All-zero split = unclassified
+                patterns["unassigned"]["central"]   += central
+                patterns["unassigned"]["peripheral"]+= peripheral
+        else:
+            patterns["unassigned"]["central"]   += central
+            patterns["unassigned"]["peripheral"]+= peripheral
+
+    # Round all values
+    for p in patterns.values():
+        p["central"]    = round(p["central"], 3)
+        p["peripheral"] = round(p["peripheral"], 3)
+
+    return {"date": target_date, "patterns": patterns}
+
 
 @app.get("/api/workouts/summary")
 def get_workout_summary(days: int = 30, db: Session = Depends(get_db)):

@@ -76,6 +76,27 @@ class RPEChart(Base):
     def __repr__(self):
         return f"<RPEChart pattern={self.movement_pattern} rpe={self.rpe} reps={self.reps} pct={self.percentage}>"
 
+# --- TABLE 4: Exercise Movement Pattern Mapping ---
+class ExerciseMapping(Base):
+    __tablename__ = "exercise_mappings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    exercise_title = Column(String, nullable=False, unique=True)
+    # Movement pattern percentages — must sum to 1.0
+    # Default auto-classifications are 100% one pattern
+    # Users can set custom splits (e.g. box squat = 35% quad, 65% posterior)
+    pct_quad_dom = Column(Float, default=0.0)
+    pct_posterior = Column(Float, default=0.0)
+    pct_upper_push = Column(Float, default=0.0)
+    pct_upper_pull = Column(Float, default=0.0)
+    # Classification metadata
+    source = Column(String, default='auto')        # 'auto' or 'user'
+    is_reviewed = Column(Boolean, default=False)   # has user confirmed this?
+    is_conditioning = Column(Boolean, default=False)  # METCON/conditioning — excluded from pattern stress
+
+    def __repr__(self):
+        return f"<ExerciseMapping {self.exercise_title} source={self.source} reviewed={self.is_reviewed}>"
+
 # This part actually creates the file and tables when you run the script
 def init_db():
     Base.metadata.create_all(bind=engine)

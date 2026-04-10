@@ -1,6 +1,7 @@
 from database import SessionLocal, WorkoutLog, init_db
 from hevy_client import HevyClient
 from rpe_table import calculate_e1rm, seed_rpe_table
+from exercise_classifier import ensure_exercise_mapped
 from datetime import datetime
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
@@ -34,6 +35,9 @@ def import_hevy_data():
                 title = exercise.get('title')
                 exercise_id = exercise.get('exercise_template_id')
 
+                # Auto-classify exercise if not already in the mapping table
+                ensure_exercise_mapped(title, db)
+
                 for set_data in exercise.get('sets', []):
                     if set_data.get('type') == 'warmup':
                         continue  # Skip warmup sets — working sets only
@@ -46,7 +50,7 @@ def import_hevy_data():
                     weight_lbs = round(weight_kg * 2.20462, 2) if weight_kg else None
 
                     # Calculate e1RM using full fallback hierarchy:
-                    # RPE table → history inference → Brzycki
+                    # RPE table → history inference → Wendler
                     e1rm = calculate_e1rm(
                         weight=weight_lbs,
                         reps=reps,
