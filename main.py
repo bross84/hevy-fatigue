@@ -7,6 +7,7 @@ from typing import Optional
 from datetime import date as date_type, timedelta
 
 from database import SessionLocal, DailyReadiness, WorkoutLog, init_db
+from rpe_table import get_set_central_stress, get_set_peripheral_stress, seed_rpe_table
 
 app = FastAPI(title="Hevy Fatigue Monitor")
 
@@ -39,72 +40,47 @@ class ReadinessInput(BaseModel):
     tiredness: Optional[int] = Field(None, ge=0, le=4)
     perceived_recovery: Optional[int] = Field(None, ge=0, le=4)
 
-# --- Training Load Calculator ---
-def calculate_training_load(target_date: date_type, db: Session) -> float:
+# --- Stress Calculators ---
+def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
     """
-    Compares a day's total training volume to a 28-day rolling average.
-    Volume = sum of (weight_lbs * reps) across all sets for that day.
+    Calculate central and peripheral stress for a given day.
 
-    Score:
-        0 = no training
-        1 = below 60% of average (well below normal)
-        2 = 60-80% of average (below normal)
-        3 = 80-120% of average (normal)
-        4 = 120-150% of average (above normal)
-        5 = above 150% of average (well above normal)
+    central_stress    = sum of (pct² × reps) — driven by intensity, reflects CNS fatigue
+    peripheral_stress = sum of (pct  × reps) — driven by volume, reflects muscular fatigue
+
+    Both use the RPE table → history → Wendler fallback hierarchy.
+    Returns {"central": float, "peripheral": float}
     """
-    daily_volume = db.query(
-        func.sum(WorkoutLog.weight_lbs * WorkoutLog.reps)
-    ).filter(WorkoutLog.date == target_date).scalar() or 0
+    sets = db.query(WorkoutLog).filter(WorkoutLog.date == target_date).all()
 
-    if daily_volume == 0:
-        return 0.0
+    central = sum(
+        get_set_central_stress(s.weight_lbs, s.reps, s.rpe, s.exercise_title, db)
+        for s in sets
+    )
+    peripheral = sum(
+        get_set_peripheral_stress(s.weight_lbs, s.reps, s.rpe, s.exercise_title, db)
+        for s in sets
+    )
 
-    # Rolling average: training days only, over the past 28 days
-    window_start = target_date - timedelta(days=28)
-    daily_volumes = db.query(
-        func.sum(WorkoutLog.weight_lbs * WorkoutLog.reps).label('volume')
-    ).filter(
-        WorkoutLog.date >= window_start,
-        WorkoutLog.date < target_date
-    ).group_by(WorkoutLog.date).all()
-
-    # Only count days with actual weighted volume — excludes conditioning/bodyweight days
-    weighted_days = [d.volume for d in daily_volumes if d.volume and d.volume > 0]
-
-    if not weighted_days:
-        return 3.0  # No history yet — assume normal
-
-    avg_volume = sum(weighted_days) / len(weighted_days)
-
-    if avg_volume == 0:
-        return 3.0
-
-    ratio = daily_volume / avg_volume
-
-    if ratio < 0.6:
-        return 1.0
-    elif ratio < 0.8:
-        return 2.0
-    elif ratio <= 1.2:
-        return 3.0
-    elif ratio <= 1.5:
-        return 4.0
-    else:
-        return 5.0
+    return {"central": round(central, 3), "peripheral": round(peripheral, 3)}
 
 # --- Startup ---
 @app.on_event("startup")
 def startup():
     init_db()
+    db = SessionLocal()
+    try:
+        seed_rpe_table(db)
+    finally:
+        db.close()
 
 # --- Routes ---
 
-@app.get("/api/training-load/{target_date}")
-def get_training_load(target_date: date_type, db: Session = Depends(get_db)):
-    """Return the calculated training load score for a given date."""
-    load = calculate_training_load(target_date, db)
-    return {"date": target_date, "perceived_training_load": load}
+@app.get("/api/stress/{target_date}")
+def get_stress(target_date: date_type, db: Session = Depends(get_db)):
+    """Return central and peripheral stress scores for a given date."""
+    scores = calculate_stress_scores(target_date, db)
+    return {"date": target_date, **scores}
 
 @app.post("/api/readiness")
 def submit_readiness(data: ReadinessInput, db: Session = Depends(get_db)):
@@ -113,9 +89,9 @@ def submit_readiness(data: ReadinessInput, db: Session = Depends(get_db)):
     if existing:
         raise HTTPException(status_code=409, detail=f"Readiness entry for {data.date} already exists.")
 
-    # Auto-calculate training load from yesterday's Hevy data
+    # Auto-calculate stress scores from yesterday's Hevy data
     yesterday = data.date - timedelta(days=1)
-    training_load = calculate_training_load(yesterday, db)
+    stress = calculate_stress_scores(yesterday, db)
 
     entry = DailyReadiness(
         date=data.date,
@@ -128,7 +104,8 @@ def submit_readiness(data: ReadinessInput, db: Session = Depends(get_db)):
         joint_lower=data.joint_lower,
         tiredness=data.tiredness,
         perceived_recovery=data.perceived_recovery,
-        perceived_training_load=training_load
+        central_stress=stress["central"],
+        peripheral_stress=stress["peripheral"]
     )
     db.add(entry)
     db.commit()
@@ -136,7 +113,8 @@ def submit_readiness(data: ReadinessInput, db: Session = Depends(get_db)):
     return {
         "message": "Readiness logged successfully",
         "date": entry.date,
-        "perceived_training_load": training_load
+        "central_stress": stress["central"],
+        "peripheral_stress": stress["peripheral"]
     }
 
 @app.get("/api/readiness/today")

@@ -27,9 +27,11 @@ class DailyReadiness(Base):
     # Readiness (0=fresh, 4=super fatigued/tired)
     tiredness = Column(Integer)
     perceived_recovery = Column(Integer)
-    # Training Load - system calculated from previous day's Hevy data
-    # 0=no training, 1=below normal, 3=normal, 5=well above normal
-    perceived_training_load = Column(Float, nullable=True)
+    # Stress scores - system calculated from previous day's Hevy data
+    # central_stress:    driven by intensity (RPE/% of 1RM) — CNS fatigue
+    # peripheral_stress: driven by volume (sets x reps) — muscular fatigue
+    central_stress = Column(Float, nullable=True)
+    peripheral_stress = Column(Float, nullable=True)
 
     def __repr__(self):
         return f"<DailyReadiness date={self.date} weight={self.weight_lbs}>"
@@ -43,6 +45,7 @@ class WorkoutLog(Base):
     )
     id = Column(Integer, primary_key=True, index=True)
     date = Column(Date, nullable=False)
+    workout_title = Column(String, nullable=True)
     exercise_title = Column(String, nullable=False)
     set_number = Column(Integer)
     workout_id = Column(String, nullable=False)
@@ -56,6 +59,22 @@ class WorkoutLog(Base):
 
     def __repr__(self):
         return f"<WorkoutLog date={self.date} exercise={self.exercise_title} set={self.set_number}>"
+
+# --- TABLE 3: RPE Chart (intensity % lookup by RPE and reps) ---
+class RPEChart(Base):
+    __tablename__ = "rpe_chart"
+
+    __table_args__ = (
+        UniqueConstraint('movement_pattern', 'rpe', 'reps', name='uq_rpe_entry'),
+    )
+    id = Column(Integer, primary_key=True, index=True)
+    movement_pattern = Column(String, nullable=False, default='general')  # general, quad_dom, posterior, upper_push, upper_pull
+    rpe = Column(Float, nullable=False)
+    reps = Column(Integer, nullable=False)
+    percentage = Column(Float, nullable=False)  # stored as decimal e.g. 0.93 = 93%
+
+    def __repr__(self):
+        return f"<RPEChart pattern={self.movement_pattern} rpe={self.rpe} reps={self.reps} pct={self.percentage}>"
 
 # This part actually creates the file and tables when you run the script
 def init_db():

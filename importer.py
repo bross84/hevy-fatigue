@@ -1,31 +1,15 @@
 from database import SessionLocal, WorkoutLog, init_db
 from hevy_client import HevyClient
+from rpe_table import calculate_e1rm, seed_rpe_table
 from datetime import datetime
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-
-def calculate_e1rm(weight, reps, rpe):
-    """
-    Calculates e1RM using Brzycki formula, adjusted for RPE.
-    RIR (reps in reserve) is added to actual reps to get effective reps.
-    """
-    if not rpe:
-        rpe = 10  # Assume max effort if RPE not logged
-
-    if not weight or not reps or reps <= 0:
-        return None
-
-    rir = 10 - rpe
-    effective_reps = reps + rir
-
-    if effective_reps == 1:
-        return weight
-
-    return weight / (1.0278 - (0.0278 * effective_reps))
 
 def import_hevy_data():
     init_db()  # Ensure tables exist before we try to use them
     client = HevyClient()
     db = SessionLocal()
+
+    seed_rpe_table(db)  # Seed RPE chart if not already done
 
     if not client.test_connection():
         print("❌ Could not connect to Hevy API. Check your API key.")
@@ -42,6 +26,7 @@ def import_hevy_data():
 
         for workout in workouts:
             workout_id = workout.get('id')
+            workout_title = workout.get('title')
             raw_date = workout.get('start_time')
             workout_date = datetime.fromisoformat(raw_date).date() if raw_date else None
 
@@ -60,16 +45,21 @@ def import_hevy_data():
 
                     weight_lbs = round(weight_kg * 2.20462, 2) if weight_kg else None
 
-                    e1rm = None
-                    if weight_lbs and reps:
-                        result = calculate_e1rm(weight_lbs, reps, rpe)
-                        if result:
-                            e1rm = round(result, 2)
+                    # Calculate e1RM using full fallback hierarchy:
+                    # RPE table → history inference → Brzycki
+                    e1rm = calculate_e1rm(
+                        weight=weight_lbs,
+                        reps=reps,
+                        rpe=rpe,
+                        exercise_title=title,
+                        db=db
+                    )
 
                     # Insert and silently skip if this set already exists
                     stmt = sqlite_insert(WorkoutLog).values(
                         date=workout_date,
                         workout_id=workout_id,
+                        workout_title=workout_title,
                         exercise_id=exercise_id,
                         exercise_title=title,
                         set_number=set_number,
