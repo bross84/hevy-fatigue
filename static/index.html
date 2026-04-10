@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hevy Fatigue Monitor</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0d1117;
+  --card:      #161b22;
+  --border:    #21262d;
+  --text:      #e6edf3;
+  --muted:     #7d8590;
+  --accent:    #4f86f7;
+  --quad:      #4A90D9;
+  --posterior: #e8892b;
+  --push:      #3fb950;
+  --pull:      #a371f7;
+  --danger:    #f85149;
+  --success:   #3fb950;
+  --warn:      #d29922;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+}
+
+/* ── Nav ─────────────────────────────────────────── */
+nav {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  height: 54px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo {
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.nav-tabs { display: flex; gap: 2px; }
+
+.nav-tab {
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 7px 14px;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all .15s;
+}
+.nav-tab:hover { color: var(--text); background: var(--border); }
+.nav-tab.active { color: var(--accent); background: rgba(79,134,247,.12); }
+
+/* ── Layout ──────────────────────────────────────── */
+main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 800px) {
+  .grid-2 { grid-template-columns: 1fr; }
+}
+
+/* ── Cards ───────────────────────────────────────── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+.card-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 14px;
+  color: var(--text);
+}
+
+/* ── Form elements ────────────────────────────────── */
+.form-row { margin-bottom: 13px; }
+
+.form-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+.val-badge {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+  min-width: 18px;
+  text-align: right;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+  height: 4px;
+}
+
+input[type="number"], input[type="date"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  width: 100%;
+}
+input[type="number"]:focus, input[type="date"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.section-sep {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 12px 0;
+}
+
+.section-label {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  margin-bottom: 10px;
+}
+
+/* colour dot */
+.dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 5px;
+  flex-shrink: 0;
+}
+.dot-quad      { background: var(--quad); }
+.dot-posterior { background: var(--posterior); }
+.dot-push      { background: var(--push); }
+.dot-pull      { background: var(--pull); }
+
+/* ── Buttons ─────────────────────────────────────── */
+.btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all .15s;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px;
+}
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+
+.btn-secondary {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+
+/* ── Alerts ──────────────────────────────────────── */
+.alert {
+  padding: 9px 13px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.alert-success { background: rgba(63,185,80,.12); color: var(--success); border: 1px solid rgba(63,185,80,.25); }
+.alert-error   { background: rgba(248,81,73,.12);  color: var(--danger);  border: 1px solid rgba(248,81,73,.25); }
+.alert-info    { background: rgba(79,134,247,.12); color: var(--accent);  border: 1px solid rgba(79,134,247,.25); }
+
+/* ── Chart controls ──────────────────────────────── */
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btn-group {
+  display: flex;
+  gap: 2px;
+  background: var(--bg);
+  border-radius: 7px;
+  padding: 3px;
+}
+
+.btn-group button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 4px 11px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn-group button:hover { color: var(--text); }
+.btn-group button.active {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+
+#pattern-filter button[data-pattern="quad_dom"].active      { color: var(--quad); }
+#pattern-filter button[data-pattern="posterior"].active     { color: var(--posterior); }
+#pattern-filter button[data-pattern="upper_push"].active    { color: var(--push); }
+#pattern-filter button[data-pattern="upper_pull"].active    { color: var(--pull); }
+
+/* ── Table ───────────────────────────────────────── */
+.table-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 7px 11px;
+  border-radius: 6px;
+  font-size: 13px;
+  width: 260px;
+}
+.search-input:focus { outline: none; border-color: var(--accent); }
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+  user-select: none;
+}
+
+table { width: 100%; border-collapse: collapse; }
+
+th {
+  text-align: left;
+  padding: 7px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+
+td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: rgba(255,255,255,.02); }
+
+/* chips */
+.chip {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  margin-right: 3px;
+  white-space: nowrap;
+}
+.chip-quad        { background: rgba(74,144,217,.2);  color: var(--quad); }
+.chip-posterior   { background: rgba(232,137,43,.2);  color: var(--posterior); }
+.chip-push        { background: rgba(63,185,80,.18);  color: var(--push); }
+.chip-pull        { background: rgba(163,113,247,.2); color: var(--pull); }
+.chip-cond        { background: rgba(125,133,144,.15);color: var(--muted); }
+.chip-unassigned  { background: rgba(248,81,73,.12);  color: var(--danger); }
+
+.badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  font-weight: 600;
+}
+.badge-auto       { background: rgba(79,134,247,.15); color: var(--accent); }
+.badge-user       { background: rgba(63,185,80,.15);  color: var(--success); }
+.badge-reviewed   { background: rgba(63,185,80,.1);   color: var(--success); }
+.badge-unreviewed { background: rgba(248,81,73,.1);   color: var(--danger); }
+
+/* ── Modal ───────────────────────────────────────── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.72);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px;
+  width: 400px;
+  max-width: 95vw;
+}
+
+.modal-title {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 18px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.pct-feedback { font-size: 12px; margin-top: 8px; min-height: 18px; }
+.pct-ok   { color: var(--success); }
+.pct-warn { color: var(--warn); }
+.pct-err  { color: var(--danger); }
+
+/* ── Spinner ─────────────────────────────────────── */
+.spinner {
+  display: inline-block;
+  width: 18px; height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-wrap { text-align: center; padding: 24px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">⚡ HEVY FATIGUE</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
+    <button class="nav-tab" data-tab="exercises">Exercises</button>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ══════════════ DASHBOARD TAB ══════════════ -->
+  <section id="tab-dashboard" class="tab-content active">
+    <div class="grid-2">
+
+      <!-- Left column: check-in -->
+      <div>
+        <div class="card">
+          <div class="card-title">Morning Check-in</div>
+          <div id="checkin-status"></div>
+          <form id="checkin-form">
+
+            <div class="form-row">
+              <div class="form-label">Date</div>
+              <input type="date" id="ci-date">
+            </div>
+            <div class="form-row">
+              <div class="form-label">Bodyweight (lbs) <span style="font-size:11px;color:var(--muted);text-transform:none;">optional</span></div>
+              <input type="number" id="ci-weight" placeholder="e.g. 215" step="0.1" min="0">
+            </div>
+
+            <hr class="section-sep">
+            <div class="section-label">Soreness — 0 None → 4 Severe / Limited ROM</div>
+
+            <div class="form-row">
+              <div class="form-label">
+                <span><span class="dot dot-quad"></span>Quad / Knee</span>
+                <span class="val-badge" id="v-sq">0</span>
+              </div>
+              <input type="range" min="0" max="4" value="0" id="ci-sq"
+                     oninput="document.getElementById('v-sq').textContent=this.value">
+            </div>
+            <div class="form-row">
+              <div class="form-label">
+                <span><span class="dot dot-posterior"></span>Hip / Posterior</span>
+                <span class="val-badge" id="v-sp">0</span>
+              </div>
+              <input type="range" min="0" max="4" value="0" id="ci-sp"
+                     oninput="document.getElementById('v-sp').textContent=this.value">
+            </div>
+            <div class="form-row">
+              <div class="form-label">
+                <span><span class="dot dot-push"></span>Upper Push</span>
+                <span class="val-badge" id="v-spu">0</span>
+              </div>
+              <input type="range" min="0" max="4" value="0" id="ci-spu"
+                     oninput="document.getElementById('v-spu').textContent=this.value">
+            </div>
+            <div class="form-row">
+              <div class="form-label">
+                <span><span class="dot dot-pull"></span>Upper Pull</span>
+                <span class="val-badge" id="v-spl">0</span>
+              </div>
+              <input type="range" min="0" max="4" value="0" id="ci-spl"
+                     oninput="document.getElementById('v-spl').textContent=this.value">
+            </div>
+
+            <hr class="section-sep">
+            <div class="section-label">Joint Health — 0 No Issues → 4 Significant Pain</div>
+
+            <div class="form-row">
+              <div class="form-label">
+                Upper (Shoulder / Elbow / Wrist)
+                <span class="val-badge" id="v-ju">0</span>
+              </div>
+              <input type="range" min="0" max="4" value="0" id="ci-ju"
+                     oninput="document.getElementById('v-ju').textContent=this.value">
+            </div>
+            <div class="form-row">
+              <div class="form-label">
+                Lower (Low Back / Hip / Knee)
+                <span class="val-badge" id="v-jl">0</span>
+              </div>
+              <input type="range" min="0" max="4" value="0" id="ci-jl"
+                     oninput="document.getElementById('v-jl').textContent=this.value">
+            </div>
+
+            <hr class="section-sep">
+            <div class="section-label">Readiness</div>
+
+            <div class="form-row">
+              <div class="form-label">
+                Tiredness (0 Fresh → 4 Exhausted)
+                <span class="val-badge" id="v-t">0</span>
+              </div>
+              <input type="range" min="0" max="4" value="0" id="ci-t"
+                     oninput="document.getElementById('v-t').textContent=this.value">
+            </div>
+            <div class="form-row">
+              <div class="form-label">
+                Recovery (0 Fully Recovered → 4 Beat Up)
+                <span class="val-badge" id="v-r">0</span>
+              </div>
+              <input type="range" min="0" max="4" value="0" id="ci-r"
+                     oninput="document.getElementById('v-r').textContent=this.value">
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="ci-submit">Submit Check-in</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Right column: chart + summary -->
+      <div>
+        <div class="card">
+          <div class="chart-header">
+            <div class="card-title" style="margin-bottom:0;">Training Stress</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <div class="btn-group" id="pattern-filter">
+                <button class="active" data-pattern="total">Total</button>
+                <button data-pattern="quad_dom">Quad</button>
+                <button data-pattern="posterior">Hip</button>
+                <button data-pattern="upper_push">Push</button>
+                <button data-pattern="upper_pull">Pull</button>
+              </div>
+              <div class="btn-group" id="baseline-toggle">
+                <button data-days="3">3d</button>
+                <button class="active" data-days="6">6d</button>
+                <button data-days="12">12d</button>
+              </div>
+            </div>
+          </div>
+          <div style="position:relative;height:260px;">
+            <canvas id="stressChart"></canvas>
+          </div>
+          <div id="chart-loading" class="loading-wrap" style="display:none;">
+            <span class="spinner"></span> Loading pattern data…
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Recent Workouts (14 days)</div>
+          <div id="workout-table-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════════ EXERCISES TAB ══════════════ -->
+  <section id="tab-exercises" class="tab-content">
+    <div class="card">
+      <div class="card-title">Exercise Movement Mappings</div>
+      <div class="table-controls">
+        <input class="search-input" type="text" id="ex-search" placeholder="Search exercises…">
+        <label class="checkbox-label">
+          <input type="checkbox" id="ex-unreviewed"> Unreviewed only
+        </label>
+        <span id="ex-count" style="color:var(--muted);font-size:12px;margin-left:auto;"></span>
+      </div>
+      <div id="ex-table-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ══════════ EDIT MODAL ══════════ -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Edit Mapping</div>
+
+    <div class="form-row">
+      <div class="form-label">Quad Dominant % <span class="val-badge" id="mv-quad-v">0</span></div>
+      <input type="range" min="0" max="100" value="0" id="mv-quad" oninput="syncModal()">
+    </div>
+    <div class="form-row">
+      <div class="form-label">Hip / Posterior % <span class="val-badge" id="mv-post-v">0</span></div>
+      <input type="range" min="0" max="100" value="0" id="mv-post" oninput="syncModal()">
+    </div>
+    <div class="form-row">
+      <div class="form-label">Upper Push % <span class="val-badge" id="mv-push-v">0</span></div>
+      <input type="range" min="0" max="100" value="0" id="mv-push" oninput="syncModal()">
+    </div>
+    <div class="form-row">
+      <div class="form-label">Upper Pull % <span class="val-badge" id="mv-pull-v">0</span></div>
+      <input type="range" min="0" max="100" value="0" id="mv-pull" oninput="syncModal()">
+    </div>
+
+    <label class="checkbox-label" style="margin-top:14px;">
+      <input type="checkbox" id="mv-cond" onchange="syncModal()">
+      Conditioning / METCON — exclude from pattern stress
+    </label>
+
+    <div class="pct-feedback" id="pct-feedback"></div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" style="width:auto;" id="modal-save" onclick="saveMapping()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  State
+// ═══════════════════════════════════════════════════════
+let stressHistory   = [];     // [{date, central, peripheral}]
+let patternCache    = {};     // {pattern: [{date, central, peripheral}]}
+let activePattern   = 'total';
+let baselineDays    = 6;
+let stressChart     = null;
+let exercises       = [];
+let editingTitle    = null;
+
+// ═══════════════════════════════════════════════════════
+//  Tab switching
+// ═══════════════════════════════════════════════════════
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    if (tab.dataset.tab === 'exercises' && exercises.length === 0) loadExercises();
+  });
+});
+
+// ═══════════════════════════════════════════════════════
+//  Init
+// ═══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('ci-date').value = todayStr();
+  checkTodayReadiness();
+  await loadStressHistory();
+  renderChart();
+  loadWorkoutSummary();
+});
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+// ═══════════════════════════════════════════════════════
+//  Check-in
+// ═══════════════════════════════════════════════════════
+async function checkTodayReadiness() {
+  try {
+    const r = await fetch('/api/readiness/today');
+    if (r.ok) {
+      const d = await r.json();
+      setCheckinStatus('success',
+        `✓ Already logged today — Central: ${d.central_stress ?? '—'} | Peripheral: ${d.peripheral_stress ?? '—'}`);
+      const btn = document.getElementById('ci-submit');
+      btn.disabled = true;
+      btn.textContent = 'Already logged today';
+    }
+  } catch {}
+}
+
+function setCheckinStatus(type, msg) {
+  document.getElementById('checkin-status').innerHTML =
+    `<div class="alert alert-${type}">${msg}</div>`;
+}
+
+document.getElementById('checkin-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('ci-submit');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+
+  const wt = parseFloat(document.getElementById('ci-weight').value);
+  const payload = {
+    date:               document.getElementById('ci-date').value,
+    weight_lbs:         isNaN(wt) ? null : wt,
+    sore_quad_dom:      +document.getElementById('ci-sq').value,
+    sore_posterior:     +document.getElementById('ci-sp').value,
+    sore_upper_push:    +document.getElementById('ci-spu').value,
+    sore_upper_pull:    +document.getElementById('ci-spl').value,
+    joint_upper:        +document.getElementById('ci-ju').value,
+    joint_lower:        +document.getElementById('ci-jl').value,
+    tiredness:          +document.getElementById('ci-t').value,
+    perceived_recovery: +document.getElementById('ci-r').value,
+  };
+
+  try {
+    const r = await fetch('/api/readiness', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (r.ok) {
+      setCheckinStatus('success',
+        `✓ Logged! Central: ${d.central_stress} | Peripheral: ${d.peripheral_stress}`);
+      btn.textContent = 'Already logged today';
+    } else {
+      setCheckinStatus('error', `Error: ${d.detail || 'Unknown error'}`);
+      btn.disabled = false;
+      btn.textContent = 'Submit Check-in';
+    }
+  } catch {
+    setCheckinStatus('error', 'Network error — is the server running?');
+    btn.disabled = false;
+    btn.textContent = 'Submit Check-in';
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  Stress history
+// ═══════════════════════════════════════════════════════
+async function loadStressHistory() {
+  try {
+    const r = await fetch('/api/stress/history?days=60');
+    stressHistory = await r.json();
+  } catch {
+    stressHistory = [];
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  Rolling baseline
+// ═══════════════════════════════════════════════════════
+function rollingAvg(vals, win) {
+  return vals.map((_, i) => {
+    const sl = vals.slice(Math.max(0, i - win + 1), i + 1);
+    return +(sl.reduce((a, b) => a + b, 0) / sl.length).toFixed(3);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  Chart
+// ═══════════════════════════════════════════════════════
+const CHART_OPTS = (extraDatasets) => ({
+  type: 'line',
+  data: extraDatasets,
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 250 },
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: {
+        labels: { color: '#7d8590', font: { size: 11 }, boxWidth: 16, usePointStyle: true }
+      },
+      tooltip: {
+        backgroundColor: '#161b22',
+        borderColor: '#21262d',
+        borderWidth: 1,
+        titleColor: '#e6edf3',
+        bodyColor: '#8d96a0',
+        padding: 10,
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color: '#7d8590', font: { size: 10 }, maxTicksLimit: 10 },
+        grid:  { color: '#1c2128' },
+      },
+      y: {
+        ticks: { color: '#7d8590', font: { size: 10 } },
+        grid:  { color: '#1c2128' },
+        beginAtZero: true,
+      }
+    }
+  }
+});
+
+function makeDatasets(labels, centralVals, peripheralVals, centralColor, peripheralColor) {
+  return {
+    labels,
+    datasets: [
+      {
+        label: 'Central Stress',
+        data: centralVals,
+        borderColor: centralColor,
+        backgroundColor: centralColor + '14',
+        borderWidth: 2,
+        tension: 0.35,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+      },
+      {
+        label: 'Peripheral Stress',
+        data: peripheralVals,
+        borderColor: peripheralColor,
+        backgroundColor: peripheralColor + '14',
+        borderWidth: 2,
+        tension: 0.35,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+      },
+      {
+        label: `${baselineDays}d Central Avg`,
+        data: rollingAvg(centralVals, baselineDays),
+        borderColor: centralColor,
+        borderWidth: 1.5,
+        borderDash: [5, 4],
+        pointRadius: 0,
+        tension: 0.35,
+      },
+      {
+        label: `${baselineDays}d Peripheral Avg`,
+        data: rollingAvg(peripheralVals, baselineDays),
+        borderColor: peripheralColor,
+        borderWidth: 1.5,
+        borderDash: [5, 4],
+        pointRadius: 0,
+        tension: 0.35,
+      },
+    ]
+  };
+}
+
+function renderChart() {
+  const ctx = document.getElementById('stressChart').getContext('2d');
+  const labels = stressHistory.map(d => d.date);
+  const data = makeDatasets(
+    labels,
+    stressHistory.map(d => d.central),
+    stressHistory.map(d => d.peripheral),
+    '#4f86f7', '#e8892b'
+  );
+  if (stressChart) stressChart.destroy();
+  stressChart = new Chart(ctx, CHART_OPTS(data));
+}
+
+function renderPatternChart(patternKey) {
+  const colorMap = {
+    quad_dom:    ['#4A90D9', '#4A90D9bb'],
+    posterior:   ['#e8892b', '#e8892bbb'],
+    upper_push:  ['#3fb950', '#3fb950bb'],
+    upper_pull:  ['#a371f7', '#a371f7bb'],
+  };
+  const [c1, c2] = colorMap[patternKey] || ['#4f86f7', '#e8892b'];
+  const pd = patternCache[patternKey];
+  const labels = pd.map(d => d.date);
+  const data = makeDatasets(labels, pd.map(d => d.central), pd.map(d => d.peripheral), c1, c2);
+  const ctx = document.getElementById('stressChart').getContext('2d');
+  if (stressChart) stressChart.destroy();
+  stressChart = new Chart(ctx, CHART_OPTS(data));
+}
+
+// ═══════════════════════════════════════════════════════
+//  Pattern filter
+// ═══════════════════════════════════════════════════════
+document.getElementById('pattern-filter').addEventListener('click', async e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  document.querySelectorAll('#pattern-filter button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activePattern = btn.dataset.pattern;
+
+  if (activePattern === 'total') {
+    renderChart();
+    return;
+  }
+
+  if (!patternCache[activePattern]) {
+    // Fetch pattern data for all dates we have in history
+    document.getElementById('chart-loading').style.display = 'block';
+    document.getElementById('stressChart').style.opacity = '0.3';
+
+    const dates = stressHistory.map(d => d.date);
+    const results = await Promise.all(
+      dates.map(d => fetch(`/api/stress/patterns/${d}`).then(r => r.json()).catch(() => null))
+    );
+
+    patternCache[activePattern] = results
+      .filter(Boolean)
+      .map(r => ({
+        date:       r.date,
+        central:    r.patterns[activePattern]?.central    ?? 0,
+        peripheral: r.patterns[activePattern]?.peripheral ?? 0,
+      }));
+
+    document.getElementById('chart-loading').style.display = 'none';
+    document.getElementById('stressChart').style.opacity   = '1';
+  }
+
+  renderPatternChart(activePattern);
+});
+
+// ═══════════════════════════════════════════════════════
+//  Baseline toggle
+// ═══════════════════════════════════════════════════════
+document.getElementById('baseline-toggle').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  document.querySelectorAll('#baseline-toggle button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  baselineDays = +btn.dataset.days;
+  patternCache = {};  // bust cache so baselines recalculate
+  if (activePattern === 'total') renderChart();
+  else renderPatternChart(activePattern);
+});
+
+// ═══════════════════════════════════════════════════════
+//  Workout summary table
+// ═══════════════════════════════════════════════════════
+async function loadWorkoutSummary() {
+  const wrap = document.getElementById('workout-table-wrap');
+  try {
+    const r = await fetch('/api/workouts/summary?days=14');
+    const rows = await r.json();
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="loading-wrap" style="color:var(--muted)">No workout data — run the importer.</div>';
+      return;
+    }
+    wrap.innerHTML = `<table>
+      <thead><tr>
+        <th>Date</th><th>Volume (lbs)</th><th>Sets</th><th>Avg RPE</th>
+      </tr></thead>
+      <tbody>
+      ${[...rows].reverse().map(r => `<tr>
+        <td>${r.date}</td>
+        <td>${Number(r.total_volume).toLocaleString()}</td>
+        <td>${r.total_sets}</td>
+        <td>${r.avg_rpe ?? '—'}</td>
+      </tr>`).join('')}
+      </tbody>
+    </table>`;
+  } catch {
+    wrap.innerHTML = '<div style="color:var(--danger)">Failed to load workout data.</div>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  Exercises tab
+// ═══════════════════════════════════════════════════════
+async function loadExercises() {
+  try {
+    const r = await fetch('/api/exercises/mappings');
+    exercises = await r.json();
+    renderExTable();
+  } catch {
+    document.getElementById('ex-table-wrap').innerHTML =
+      '<div style="color:var(--danger)">Failed to load exercise mappings.</div>';
+  }
+}
+
+function patternChips(ex) {
+  if (ex.is_conditioning) return '<span class="chip chip-cond">Conditioning</span>';
+  const chips = [];
+  if (ex.pct_quad_dom   > 0) chips.push(`<span class="chip chip-quad">Quad ${pct(ex.pct_quad_dom)}</span>`);
+  if (ex.pct_posterior  > 0) chips.push(`<span class="chip chip-posterior">Hip ${pct(ex.pct_posterior)}</span>`);
+  if (ex.pct_upper_push > 0) chips.push(`<span class="chip chip-push">Push ${pct(ex.pct_upper_push)}</span>`);
+  if (ex.pct_upper_pull > 0) chips.push(`<span class="chip chip-pull">Pull ${pct(ex.pct_upper_pull)}</span>`);
+  if (!chips.length) chips.push('<span class="chip chip-unassigned">Unassigned</span>');
+  return chips.join('');
+}
+function pct(v) { return Math.round(v * 100) + '%'; }
+
+function renderExTable() {
+  const search  = document.getElementById('ex-search').value.toLowerCase();
+  const unrevOnly = document.getElementById('ex-unreviewed').checked;
+
+  const filtered = exercises.filter(ex => {
+    if (search && !ex.exercise_title.toLowerCase().includes(search)) return false;
+    if (unrevOnly && ex.is_reviewed) return false;
+    return true;
+  });
+
+  document.getElementById('ex-count').textContent = `${filtered.length} of ${exercises.length}`;
+
+  if (!filtered.length) {
+    document.getElementById('ex-table-wrap').innerHTML =
+      '<div class="loading-wrap" style="color:var(--muted)">No exercises match.</div>';
+    return;
+  }
+
+  document.getElementById('ex-table-wrap').innerHTML = `<table>
+    <thead><tr>
+      <th>Exercise</th><th>Pattern</th><th>Source</th><th>Status</th><th></th>
+    </tr></thead>
+    <tbody>
+    ${filtered.map(ex => `<tr>
+      <td style="font-weight:500;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+          title="${ex.exercise_title}">${ex.exercise_title}</td>
+      <td>${patternChips(ex)}</td>
+      <td><span class="badge badge-${ex.source}">${ex.source}</span></td>
+      <td><span class="badge ${ex.is_reviewed ? 'badge-reviewed' : 'badge-unreviewed'}">
+        ${ex.is_reviewed ? 'reviewed' : 'unreviewed'}</span></td>
+      <td><button class="btn btn-sm btn-secondary"
+            onclick="openModal(${JSON.stringify(ex.exercise_title)})">Edit</button></td>
+    </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+document.getElementById('ex-search').addEventListener('input', renderExTable);
+document.getElementById('ex-unreviewed').addEventListener('change', renderExTable);
+
+// ═══════════════════════════════════════════════════════
+//  Modal
+// ═══════════════════════════════════════════════════════
+function openModal(title) {
+  const ex = exercises.find(e => e.exercise_title === title);
+  if (!ex) return;
+  editingTitle = title;
+
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('mv-quad').value = Math.round(ex.pct_quad_dom   * 100);
+  document.getElementById('mv-post').value = Math.round(ex.pct_posterior  * 100);
+  document.getElementById('mv-push').value = Math.round(ex.pct_upper_push * 100);
+  document.getElementById('mv-pull').value = Math.round(ex.pct_upper_pull * 100);
+  document.getElementById('mv-cond').checked = ex.is_conditioning;
+
+  syncModal();
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+  editingTitle = null;
+}
+
+document.getElementById('edit-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('edit-modal')) closeModal();
+});
+
+function syncModal() {
+  const q  = +document.getElementById('mv-quad').value;
+  const po = +document.getElementById('mv-post').value;
+  const pu = +document.getElementById('mv-push').value;
+  const pl = +document.getElementById('mv-pull').value;
+  const total = q + po + pu + pl;
+  const cond = document.getElementById('mv-cond').checked;
+
+  document.getElementById('mv-quad-v').textContent = q  + '%';
+  document.getElementById('mv-post-v').textContent = po + '%';
+  document.getElementById('mv-push-v').textContent = pu + '%';
+  document.getElementById('mv-pull-v').textContent = pl + '%';
+
+  const fb  = document.getElementById('pct-feedback');
+  const btn = document.getElementById('modal-save');
+
+  if (cond) {
+    fb.innerHTML = '<span class="pct-ok">Conditioning — pattern splits not used for stress</span>';
+    btn.disabled = false;
+  } else if (total === 100) {
+    fb.innerHTML = '<span class="pct-ok">✓ Splits sum to 100%</span>';
+    btn.disabled = false;
+  } else if (total === 0) {
+    fb.innerHTML = '<span class="pct-warn">All zeros — will show as Unassigned</span>';
+    btn.disabled = false;
+  } else {
+    fb.innerHTML = `<span class="pct-err">Splits sum to ${total}% — must equal 0% or 100%</span>`;
+    btn.disabled = true;
+  }
+}
+
+async function saveMapping() {
+  if (!editingTitle) return;
+  const btn = document.getElementById('modal-save');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  const payload = {
+    pct_quad_dom:   +document.getElementById('mv-quad').value / 100,
+    pct_posterior:  +document.getElementById('mv-post').value / 100,
+    pct_upper_push: +document.getElementById('mv-push').value / 100,
+    pct_upper_pull: +document.getElementById('mv-pull').value / 100,
+    is_conditioning: document.getElementById('mv-cond').checked,
+    is_reviewed: true,
+  };
+
+  try {
+    const r = await fetch(`/api/exercises/mappings/${encodeURIComponent(editingTitle)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (r.ok) {
+      const updated = await r.json();
+      const idx = exercises.findIndex(e => e.exercise_title === editingTitle);
+      if (idx >= 0) exercises[idx] = updated;
+      patternCache = {};  // invalidate chart cache
+      closeModal();
+      renderExTable();
+    } else {
+      alert('Save failed — check the server logs.');
+    }
+  } catch {
+    alert('Network error.');
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Save';
+}
+</script>
+</body>
+</html>
