@@ -1,6 +1,7 @@
 from database import SessionLocal, WorkoutLog, init_db
 from hevy_client import HevyClient
 from datetime import datetime
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 def calculate_e1rm(weight, reps, rpe):
     """
@@ -62,26 +63,20 @@ def import_hevy_data():
                         if result:
                             e1rm = round(result, 2)
 
-                    # Use the unique constraint fields to check for duplicates
-                    exists = db.query(WorkoutLog).filter(
-                        WorkoutLog.workout_id == workout_id,
-                        WorkoutLog.exercise_id == exercise_id,
-                        WorkoutLog.set_number == set_number
-                    ).first()
-
-                    if not exists:
-                        log_entry = WorkoutLog(
-                            date=workout_date,
-                            workout_id=workout_id,
-                            exercise_id=exercise_id,
-                            exercise_title=title,
-                            set_number=set_number,
-                            weight_lbs=weight_lbs,
-                            reps=reps,
-                            rpe=rpe,
-                            estimated_1rm=e1rm
-                        )
-                        db.add(log_entry)
+                    # Insert and silently skip if this set already exists
+                    stmt = sqlite_insert(WorkoutLog).values(
+                        date=workout_date,
+                        workout_id=workout_id,
+                        exercise_id=exercise_id,
+                        exercise_title=title,
+                        set_number=set_number,
+                        weight_lbs=weight_lbs,
+                        reps=reps,
+                        rpe=rpe,
+                        estimated_1rm=e1rm
+                    ).on_conflict_do_nothing()
+                    result = db.execute(stmt)
+                    if result.rowcount:
                         total_added += 1
 
         db.commit()
