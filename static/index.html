@@ -372,6 +372,44 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
 .split-push { background: var(--push); }
 .split-pull { background: var(--pull); }
 
+/* slider + number input row */
+.slider-num-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.slider-num-row input[type="range"] { flex: 1; }
+.pct-num-input {
+  width: 52px !important;
+  text-align: center;
+  padding: 4px 6px !important;
+  font-size: 13px !important;
+  -moz-appearance: textfield;
+}
+.pct-num-input::-webkit-inner-spin-button,
+.pct-num-input::-webkit-outer-spin-button { opacity: 1; }
+.pct-sym { color: var(--muted); font-size: 12px; }
+
+/* pattern examples */
+.pattern-examples {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.ex-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+}
+.ex-row strong { min-width: 40px; }
+.ex-list { color: var(--muted); }
+
 /* ── Workouts tab ─────────────────────── */
 .workout-stress-val {
   font-weight: 700;
@@ -563,12 +601,13 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
 <section id="tab-exercises" class="tab-content">
   <div class="card">
     <div class="card-title">Exercise Movement Mappings</div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6;">
-      Exercises are pulled from your Hevy workout history during import and auto-classified by keyword rules.
-      <strong style="color:var(--text);">Source: auto</strong> = classified by keyword rules.
-      <strong style="color:var(--text);">Source: user</strong> = you've reviewed and confirmed it.<br>
-      Exercises can be split across multiple patterns — e.g. a conventional deadlift might be 20% Quad / 80% Hip.
-    </p>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:12px 14px;">
+      Exercises are pulled from your Hevy workout history and auto-classified by keyword rules.
+      Their pattern split determines how each set's fatigue is distributed across Quad / Hip / Push / Pull buckets on the stress chart.<br>
+      <strong style="color:var(--text);">To review:</strong> click <strong style="color:var(--text);">Edit</strong>, confirm or adjust the split, and click <strong style="color:var(--text);">Save &amp; Mark Reviewed</strong>.
+      Auto-classified exercises will show <span class="badge badge-unreviewed">unreviewed</span> until you confirm them.
+      Use the <strong style="color:var(--text);">Unreviewed only</strong> filter to work through the list efficiently.
+    </div>
     <div class="table-controls">
       <input class="search-input" type="text" id="ex-search" placeholder="Search exercises…">
       <label class="checkbox-label">
@@ -586,9 +625,14 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
 <div class="modal-overlay" id="edit-modal">
   <div class="modal">
     <div class="modal-title" id="modal-title">Edit Mapping</div>
-    <div class="modal-subtitle">
-      Splits must sum to 100% for strength exercises, or set all to 0% if unclassified.
-      Multi-pattern splits are supported — e.g. 20% Quad + 80% Hip.
+    <div class="modal-subtitle" id="modal-auto-note"></div>
+
+    <!-- Pattern examples reference -->
+    <div class="pattern-examples">
+      <div class="ex-row"><span class="dot dot-quad"></span><strong style="color:var(--quad)">Quad</strong><span class="ex-list">squat, leg press, hack squat, lunge</span></div>
+      <div class="ex-row"><span class="dot dot-posterior"></span><strong style="color:var(--posterior)">Hip</strong><span class="ex-list">deadlift, RDL, good morning, hip thrust, leg curl</span></div>
+      <div class="ex-row"><span class="dot dot-push"></span><strong style="color:var(--push)">Push</strong><span class="ex-list">bench press, overhead press, dip, tricep pushdown</span></div>
+      <div class="ex-row"><span class="dot dot-pull"></span><strong style="color:var(--pull)">Pull</strong><span class="ex-list">row, lat pulldown, pull-up, face pull, bicep curl</span></div>
     </div>
 
     <!-- Quick presets -->
@@ -599,25 +643,43 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
       <button class="preset-btn" onclick="setPreset(0,0,100,0)">100% Push</button>
       <button class="preset-btn" onclick="setPreset(0,0,0,100)">100% Pull</button>
       <button class="preset-btn" onclick="setPreset(20,80,0,0)">20/80 Quad/Hip</button>
+      <button class="preset-btn" onclick="setPreset(30,70,0,0)">30/70 Quad/Hip</button>
       <button class="preset-btn" onclick="setPreset(50,50,0,0)">50/50 Quad/Hip</button>
       <button class="preset-btn" onclick="setPreset(0,0,0,0)">Clear (0%)</button>
     </div>
 
+    <!-- Sliders + number inputs side by side -->
     <div class="form-row">
-      <div class="form-label"><span><span class="dot dot-quad"></span>Quad Dominant %</span> <span class="val-badge" id="mv-quad-v">0</span></div>
-      <input type="range" min="0" max="100" value="0" id="mv-quad" oninput="syncModal()">
+      <div class="form-label"><span><span class="dot dot-quad"></span>Quad Dominant</span></div>
+      <div class="slider-num-row">
+        <input type="range"  min="0" max="100" value="0" id="mv-quad"     oninput="onSlider('quad')">
+        <input type="number" min="0" max="100" value="0" id="mv-quad-num" oninput="onNum('quad')" class="pct-num-input">
+        <span class="pct-sym">%</span>
+      </div>
     </div>
     <div class="form-row">
-      <div class="form-label"><span><span class="dot dot-posterior"></span>Hip / Posterior %</span> <span class="val-badge" id="mv-post-v">0</span></div>
-      <input type="range" min="0" max="100" value="0" id="mv-post" oninput="syncModal()">
+      <div class="form-label"><span><span class="dot dot-posterior"></span>Hip / Posterior</span></div>
+      <div class="slider-num-row">
+        <input type="range"  min="0" max="100" value="0" id="mv-post"     oninput="onSlider('post')">
+        <input type="number" min="0" max="100" value="0" id="mv-post-num" oninput="onNum('post')" class="pct-num-input">
+        <span class="pct-sym">%</span>
+      </div>
     </div>
     <div class="form-row">
-      <div class="form-label"><span><span class="dot dot-push"></span>Upper Push %</span> <span class="val-badge" id="mv-push-v">0</span></div>
-      <input type="range" min="0" max="100" value="0" id="mv-push" oninput="syncModal()">
+      <div class="form-label"><span><span class="dot dot-push"></span>Upper Push</span></div>
+      <div class="slider-num-row">
+        <input type="range"  min="0" max="100" value="0" id="mv-push"     oninput="onSlider('push')">
+        <input type="number" min="0" max="100" value="0" id="mv-push-num" oninput="onNum('push')" class="pct-num-input">
+        <span class="pct-sym">%</span>
+      </div>
     </div>
     <div class="form-row">
-      <div class="form-label"><span><span class="dot dot-pull"></span>Upper Pull %</span> <span class="val-badge" id="mv-pull-v">0</span></div>
-      <input type="range" min="0" max="100" value="0" id="mv-pull" oninput="syncModal()">
+      <div class="form-label"><span><span class="dot dot-pull"></span>Upper Pull</span></div>
+      <div class="slider-num-row">
+        <input type="range"  min="0" max="100" value="0" id="mv-pull"     oninput="onSlider('pull')">
+        <input type="number" min="0" max="100" value="0" id="mv-pull-num" oninput="onNum('pull')" class="pct-num-input">
+        <span class="pct-sym">%</span>
+      </div>
     </div>
 
     <!-- Visual split bar -->
@@ -637,7 +699,7 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
 
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" style="width:auto;" id="modal-save" onclick="saveMapping()">Save</button>
+      <button class="btn btn-primary" style="width:auto;" id="modal-save" onclick="saveMapping()">Save &amp; Mark Reviewed</button>
     </div>
   </div>
 </div>
@@ -986,10 +1048,27 @@ function openModal(ex) {
   if (!ex) return;
   editingTitle = ex.exercise_title;
   document.getElementById('modal-title').textContent = ex.exercise_title;
-  document.getElementById('mv-quad').value = Math.round(ex.pct_quad_dom   * 100);
-  document.getElementById('mv-post').value = Math.round(ex.pct_posterior  * 100);
-  document.getElementById('mv-push').value = Math.round(ex.pct_upper_push * 100);
-  document.getElementById('mv-pull').value = Math.round(ex.pct_upper_pull * 100);
+
+  // Show note if auto-classified and unreviewed
+  const note = document.getElementById('modal-auto-note');
+  if (!ex.is_reviewed) {
+    note.innerHTML = '<span style="color:var(--warn);">⚠ Auto-classified — please review this split before saving.</span>';
+  } else {
+    note.innerHTML = '<span style="color:var(--muted);">Previously reviewed. Update the split if needed.</span>';
+  }
+  note.style.marginBottom = '12px';
+  note.style.fontSize = '12px';
+
+  const vals = {
+    quad: Math.round(ex.pct_quad_dom   * 100),
+    post: Math.round(ex.pct_posterior  * 100),
+    push: Math.round(ex.pct_upper_push * 100),
+    pull: Math.round(ex.pct_upper_pull * 100),
+  };
+  for (const [key, val] of Object.entries(vals)) {
+    document.getElementById(`mv-${key}`).value     = val;
+    document.getElementById(`mv-${key}-num`).value = val;
+  }
   document.getElementById('mv-cond').checked = ex.is_conditioning;
   syncModal();
   document.getElementById('edit-modal').classList.add('open');
@@ -1004,11 +1083,27 @@ document.getElementById('edit-modal').addEventListener('click', e => {
   if (e.target === document.getElementById('edit-modal')) closeModal();
 });
 
+// Called when slider moves — update number input
+function onSlider(key) {
+  const v = +document.getElementById(`mv-${key}`).value;
+  document.getElementById(`mv-${key}-num`).value = v;
+  syncModal();
+}
+
+// Called when number input changes — update slider
+function onNum(key) {
+  let v = +document.getElementById(`mv-${key}-num`).value;
+  v = Math.max(0, Math.min(100, isNaN(v) ? 0 : v));
+  document.getElementById(`mv-${key}-num`).value = v;
+  document.getElementById(`mv-${key}`).value     = v;
+  syncModal();
+}
+
 function setPreset(q, po, pu, pl) {
-  document.getElementById('mv-quad').value = q;
-  document.getElementById('mv-post').value = po;
-  document.getElementById('mv-push').value = pu;
-  document.getElementById('mv-pull').value = pl;
+  for (const [key, val] of [['quad',q],['post',po],['push',pu],['pull',pl]]) {
+    document.getElementById(`mv-${key}`).value     = val;
+    document.getElementById(`mv-${key}-num`).value = val;
+  }
   document.getElementById('mv-cond').checked = false;
   syncModal();
 }
@@ -1019,16 +1114,11 @@ function syncModal() {
   const pu = +document.getElementById('mv-push').value;
   const pl = +document.getElementById('mv-pull').value;
   const total = q + po + pu + pl;
-  const cond = document.getElementById('mv-cond').checked;
-
-  document.getElementById('mv-quad-v').textContent = q  + '%';
-  document.getElementById('mv-post-v').textContent = po + '%';
-  document.getElementById('mv-push-v').textContent = pu + '%';
-  document.getElementById('mv-pull-v').textContent = pl + '%';
+  const cond  = document.getElementById('mv-cond').checked;
 
   // Update split bar
   const t = total || 1;
-  document.getElementById('bar-quad').style.width = (q/t*100)  + '%';
+  document.getElementById('bar-quad').style.width = (q /t*100) + '%';
   document.getElementById('bar-post').style.width = (po/t*100) + '%';
   document.getElementById('bar-push').style.width = (pu/t*100) + '%';
   document.getElementById('bar-pull').style.width = (pl/t*100) + '%';
@@ -1037,17 +1127,17 @@ function syncModal() {
   const btn = document.getElementById('modal-save');
 
   if (cond) {
-    fb.innerHTML = '<span class="pct-ok">Conditioning — excluded from pattern stress</span>';
-    btn.disabled = false;
+    fb.innerHTML  = '<span class="pct-ok">Conditioning — excluded from all pattern stress</span>';
+    btn.disabled  = false;
   } else if (total === 100) {
-    fb.innerHTML = '<span class="pct-ok">✓ Splits sum to 100%</span>';
-    btn.disabled = false;
+    fb.innerHTML  = '<span class="pct-ok">✓ Splits sum to 100%</span>';
+    btn.disabled  = false;
   } else if (total === 0) {
-    fb.innerHTML = '<span class="pct-warn">All zeros — will show as Unassigned</span>';
-    btn.disabled = false;
+    fb.innerHTML  = '<span class="pct-warn">All zeros — will show as Unassigned until corrected</span>';
+    btn.disabled  = false;
   } else {
-    fb.innerHTML = `<span class="pct-err">Splits sum to ${total}% — must equal 0% or 100%</span>`;
-    btn.disabled = true;
+    fb.innerHTML  = `<span class="pct-err">Splits sum to ${total}% — must equal 0% or 100%</span>`;
+    btn.disabled  = true;
   }
 }
 
