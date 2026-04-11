@@ -743,8 +743,20 @@ tbody tr:hover td { background: var(--row-hover); }
     <div class="pattern-examples">
       <div class="ex-row"><span class="dot dot-quad"></span><strong style="color:var(--quad)">Quad</strong><span class="ex-list">squat, leg press, hack squat, lunge</span></div>
       <div class="ex-row"><span class="dot dot-posterior"></span><strong style="color:var(--posterior)">Hip</strong><span class="ex-list">deadlift, RDL, good morning, hip thrust, leg curl</span></div>
-      <div class="ex-row"><span class="dot dot-push"></span><strong style="color:var(--push)">Push</strong><span class="ex-list">bench press, overhead press, dip, tricep pushdown</span></div>
-      <div class="ex-row"><span class="dot dot-pull"></span><strong style="color:var(--pull)">Pull</strong><span class="ex-list">row, lat pulldown, pull-up, face pull, bicep curl</span></div>
+      <div class="ex-row" style="flex-direction:column;align-items:flex-start;gap:2px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="dot dot-push"></span><strong style="color:var(--push)">Push</strong>
+          <span style="color:var(--muted);font-size:12px;">Chest · Shoulders · Triceps</span>
+        </div>
+        <span class="ex-list" style="padding-left:20px;">bench press, overhead press, dip, tricep pushdown</span>
+      </div>
+      <div class="ex-row" style="flex-direction:column;align-items:flex-start;gap:2px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="dot dot-pull"></span><strong style="color:var(--pull)">Pull</strong>
+          <span style="color:var(--muted);font-size:12px;">Lats · Traps · Biceps · Rear Delts</span>
+        </div>
+        <span class="ex-list" style="padding-left:20px;">row, lat pulldown, pull-up, face pull, bicep curl</span>
+      </div>
     </div>
 
     <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Quick Set</div>
