@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,38 +8,73 @@
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-:root {
-  --bg:        #0d1117;
-  --card:      #161b22;
-  --border:    #21262d;
-  --text:      #e6edf3;
-  --muted:     #7d8590;
-  --accent:    #4f86f7;
-  --quad:      #4A90D9;
-  --posterior: #e8892b;
-  --push:      #3fb950;
-  --pull:      #a371f7;
-  --danger:    #f85149;
-  --success:   #3fb950;
-  --warn:      #d29922;
+/* ══════════════════════════════════════════════════════
+   THEME TOKENS
+   Dark palette:  5da9e9 eca72c 2e282a f3f8f2 ef3e36
+   Light palette: 058ed9 ffd166 e1dee3 40476d b9314f
+   Push/Pull are derived to complement each palette.
+══════════════════════════════════════════════════════ */
+
+/* Dark (default) */
+:root, [data-theme="dark"] {
+  --bg:           #2e282a;
+  --card:         #3d3638;
+  --border:       #524c4e;
+  --text:         #f3f8f2;
+  --muted:        #a09498;
+  --accent:       #5da9e9;
+  --quad:         #5da9e9;
+  --posterior:    #eca72c;
+  --push:         #4db870;
+  --pull:         #9b7fd4;
+  --danger:       #ef3e36;
+  --success:      #4db870;
+  --warn:         #eca72c;
+  --accent-sub:   rgba(93,169,233,.13);
+  --row-hover:    rgba(255,255,255,.03);
+  --btn-shadow:   rgba(0,0,0,.45);
+  --modal-scrim:  rgba(0,0,0,.72);
 }
 
+/* Light */
+[data-theme="light"] {
+  --bg:           #e1dee3;
+  --card:         #f5f3f6;
+  --border:       #c5c0c8;
+  --text:         #40476d;
+  --muted:        #6e6e85;
+  --accent:       #058ed9;
+  --quad:         #058ed9;
+  --posterior:    #b9314f;
+  --push:         #1a7a3c;
+  --pull:         #6b3fa0;
+  --danger:       #b9314f;
+  --success:      #1a7a3c;
+  --warn:         #9a6e00;
+  --accent-sub:   rgba(5,142,217,.13);
+  --row-hover:    rgba(0,0,0,.04);
+  --btn-shadow:   rgba(0,0,0,.15);
+  --modal-scrim:  rgba(0,0,0,.55);
+}
+
+/* ── Base ─────────────────────────────── */
 body {
   background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 14px;
   min-height: 100vh;
+  transition: background .2s, color .2s;
 }
 
 /* ── Nav ─────────────────────────────── */
 nav {
   background: var(--card);
   border-bottom: 1px solid var(--border);
-  padding: 0 24px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 20px;
   height: 54px;
   position: sticky;
   top: 0;
@@ -64,8 +99,20 @@ nav {
   font-weight: 500;
   transition: all .15s;
 }
-.nav-tab:hover { color: var(--text); background: var(--border); }
-.nav-tab.active { color: var(--accent); background: rgba(79,134,247,.12); }
+.nav-tab:hover  { color: var(--text); background: var(--border); }
+.nav-tab.active { color: var(--accent); background: var(--accent-sub); }
+
+/* Theme toggle — pushed to far right */
+.nav-right { margin-left: auto; }
+.theme-group button {
+  font-size: 13px;
+  padding: 4px 10px;
+}
+.theme-group button.active {
+  background: var(--card);
+  color: var(--accent);
+  box-shadow: 0 1px 3px var(--btn-shadow);
+}
 
 /* ── Layout ──────────────────────────── */
 main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
@@ -86,14 +133,11 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
   border-radius: 10px;
   padding: 18px;
   margin-bottom: 18px;
+  transition: background .2s, border-color .2s;
 }
-.card-title {
-  font-weight: 600;
-  font-size: 14px;
-  margin-bottom: 14px;
-}
+.card-title { font-weight: 600; font-size: 14px; margin-bottom: 14px; }
 
-/* ── Form ────────────────────────────── */
+/* ── Forms ───────────────────────────── */
 .form-row { margin-bottom: 13px; }
 .form-label {
   display: flex;
@@ -123,6 +167,7 @@ input[type="number"], input[type="date"] {
   border-radius: 6px;
   font-size: 14px;
   width: 100%;
+  transition: background .2s, border-color .2s;
 }
 input[type="number"]:focus, input[type="date"]:focus {
   outline: none; border-color: var(--accent);
@@ -176,9 +221,9 @@ input[type="number"]:focus, input[type="date"]:focus {
 
 /* ── Alerts ──────────────────────────── */
 .alert { padding: 9px 13px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; }
-.alert-success { background: rgba(63,185,80,.12);  color: var(--success); border: 1px solid rgba(63,185,80,.25); }
-.alert-error   { background: rgba(248,81,73,.12);  color: var(--danger);  border: 1px solid rgba(248,81,73,.25); }
-.alert-info    { background: rgba(79,134,247,.12); color: var(--accent);  border: 1px solid rgba(79,134,247,.25); }
+.alert-success { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); border: 1px solid color-mix(in srgb, var(--success) 28%, transparent); }
+.alert-error   { background: color-mix(in srgb, var(--danger)  14%, transparent); color: var(--danger);  border: 1px solid color-mix(in srgb, var(--danger)  28%, transparent); }
+.alert-info    { background: var(--accent-sub); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent); }
 
 /* ── Chart controls ──────────────────── */
 .chart-header {
@@ -212,7 +257,7 @@ input[type="number"]:focus, input[type="date"]:focus {
 .btn-group button.active {
   background: var(--card);
   color: var(--text);
-  box-shadow: 0 1px 3px rgba(0,0,0,.4);
+  box-shadow: 0 1px 3px var(--btn-shadow);
 }
 #pattern-filter button[data-pattern="quad_dom"].active   { color: var(--quad); }
 #pattern-filter button[data-pattern="posterior"].active  { color: var(--posterior); }
@@ -259,7 +304,7 @@ th {
 }
 td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 tr:last-child td { border-bottom: none; }
-tbody tr:hover td { background: rgba(255,255,255,.02); }
+tbody tr:hover td { background: var(--row-hover); }
 
 /* chips */
 .chip {
@@ -271,12 +316,12 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
   margin-right: 3px;
   white-space: nowrap;
 }
-.chip-quad       { background: rgba(74,144,217,.2);   color: var(--quad); }
-.chip-posterior  { background: rgba(232,137,43,.2);   color: var(--posterior); }
-.chip-push       { background: rgba(63,185,80,.18);   color: var(--push); }
-.chip-pull       { background: rgba(163,113,247,.2);  color: var(--pull); }
-.chip-cond       { background: rgba(125,133,144,.15); color: var(--muted); }
-.chip-unassigned { background: rgba(248,81,73,.12);   color: var(--danger); }
+.chip-quad       { background: color-mix(in srgb, var(--quad)      22%, transparent); color: var(--quad); }
+.chip-posterior  { background: color-mix(in srgb, var(--posterior)  22%, transparent); color: var(--posterior); }
+.chip-push       { background: color-mix(in srgb, var(--push)       20%, transparent); color: var(--push); }
+.chip-pull       { background: color-mix(in srgb, var(--pull)       22%, transparent); color: var(--pull); }
+.chip-cond       { background: color-mix(in srgb, var(--muted)      18%, transparent); color: var(--muted); }
+.chip-unassigned { background: color-mix(in srgb, var(--danger)     14%, transparent); color: var(--danger); }
 
 .badge {
   display: inline-block;
@@ -287,17 +332,17 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
   letter-spacing: .4px;
   font-weight: 600;
 }
-.badge-auto       { background: rgba(79,134,247,.15); color: var(--accent); }
-.badge-user       { background: rgba(63,185,80,.15);  color: var(--success); }
-.badge-reviewed   { background: rgba(63,185,80,.1);   color: var(--success); }
-.badge-unreviewed { background: rgba(248,81,73,.1);   color: var(--danger); }
+.badge-auto       { background: color-mix(in srgb, var(--accent)  16%, transparent); color: var(--accent); }
+.badge-user       { background: color-mix(in srgb, var(--success) 16%, transparent); color: var(--success); }
+.badge-reviewed   { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
+.badge-unreviewed { background: color-mix(in srgb, var(--danger)  12%, transparent); color: var(--danger); }
 
 /* ── Modal ───────────────────────────── */
 .modal-overlay {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,.72);
+  background: var(--modal-scrim);
   z-index: 200;
   align-items: center;
   justify-content: center;
@@ -312,38 +357,18 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
   max-width: 95vw;
   max-height: 90vh;
   overflow-y: auto;
+  transition: background .2s;
 }
-.modal-title {
-  font-weight: 600;
-  font-size: 15px;
-  margin-bottom: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.modal-subtitle {
-  font-size: 12px;
-  color: var(--muted);
-  margin-bottom: 16px;
-}
-.modal-footer {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  margin-top: 18px;
-}
+.modal-title { font-weight: 600; font-size: 15px; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.modal-subtitle { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+.modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
 .pct-feedback { font-size: 12px; margin-top: 8px; min-height: 18px; }
 .pct-ok   { color: var(--success); }
 .pct-warn { color: var(--warn); }
 .pct-err  { color: var(--danger); }
 
 /* preset buttons */
-.presets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 16px;
-}
+.presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
 .preset-btn {
   background: var(--bg);
   border: 1px solid var(--border);
@@ -357,7 +382,7 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
 }
 .preset-btn:hover { border-color: var(--accent); color: var(--text); }
 
-/* split visual bar */
+/* split bar */
 .split-bar {
   display: flex;
   height: 6px;
@@ -366,33 +391,25 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
   margin-top: 10px;
   background: var(--border);
 }
-.split-seg { transition: width .2s; }
+.split-seg  { transition: width .2s; }
 .split-quad { background: var(--quad); }
 .split-post { background: var(--posterior); }
 .split-push { background: var(--push); }
 .split-pull { background: var(--pull); }
 
-/* slider + number input row */
-.slider-num-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+/* slider + number input */
+.slider-num-row { display: flex; align-items: center; gap: 8px; }
 .slider-num-row input[type="range"] { flex: 1; }
 .pct-num-input {
   width: 58px !important;
   text-align: center;
   padding: 4px 8px !important;
   font-size: 13px !important;
-  /* hide spin buttons — the slider handles incrementing */
   -moz-appearance: textfield;
   appearance: textfield;
 }
 .pct-num-input::-webkit-inner-spin-button,
-.pct-num-input::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
+.pct-num-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .pct-sym { color: var(--muted); font-size: 12px; }
 
 /* pattern examples */
@@ -406,26 +423,13 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
   flex-direction: column;
   gap: 5px;
 }
-.ex-row {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  font-size: 12px;
-}
+.ex-row { display: flex; align-items: baseline; gap: 6px; font-size: 12px; }
 .ex-row strong { min-width: 40px; }
 .ex-list { color: var(--muted); }
 
 /* ── Workouts tab ─────────────────────── */
-.workout-stress-val {
-  font-weight: 700;
-  font-size: 15px;
-}
-.stress-note {
-  font-size: 11px;
-  color: var(--muted);
-  margin-top: 14px;
-  line-height: 1.6;
-}
+.workout-stress-val { font-weight: 700; font-size: 15px; }
+.stress-note { font-size: 11px; color: var(--muted); margin-top: 14px; line-height: 1.6; }
 
 /* ── Spinner ─────────────────────────── */
 .spinner {
@@ -443,12 +447,30 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
 </head>
 <body>
 
+<!-- Apply theme before first paint to avoid flash -->
+<script>
+(function() {
+  const saved = localStorage.getItem('theme') || 'auto';
+  const resolved = saved === 'auto'
+    ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+    : saved;
+  document.documentElement.setAttribute('data-theme', resolved);
+})();
+</script>
+
 <nav>
   <div class="logo">⚡ HEVY FATIGUE</div>
   <div class="nav-tabs">
     <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
     <button class="nav-tab" data-tab="workouts">Workouts</button>
     <button class="nav-tab" data-tab="exercises">Exercises</button>
+  </div>
+  <div class="nav-right">
+    <div class="btn-group theme-group" id="theme-toggle">
+      <button data-theme-btn="light" title="Light mode">☀ Light</button>
+      <button data-theme-btn="dark"  title="Dark mode">☾ Dark</button>
+      <button data-theme-btn="auto"  title="Follow system">⊙ Auto</button>
+    </div>
   </div>
 </nav>
 
@@ -464,7 +486,6 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
         <div class="card-title">Morning Check-in</div>
         <div id="checkin-status"></div>
         <form id="checkin-form">
-
           <div class="form-row">
             <div class="form-label">Date</div>
             <input type="date" id="ci-date">
@@ -610,7 +631,7 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
       Exercises are pulled from your Hevy workout history and auto-classified by keyword rules.
       Their pattern split determines how each set's fatigue is distributed across Quad / Hip / Push / Pull buckets on the stress chart.<br>
       <strong style="color:var(--text);">To review:</strong> click <strong style="color:var(--text);">Edit</strong>, confirm or adjust the split, and click <strong style="color:var(--text);">Save &amp; Mark Reviewed</strong>.
-      Auto-classified exercises will show <span class="badge badge-unreviewed">unreviewed</span> until you confirm them.
+      Auto-classified exercises show <span class="badge badge-unreviewed">unreviewed</span> until confirmed.
       Use the <strong style="color:var(--text);">Unreviewed only</strong> filter to work through the list efficiently.
     </div>
     <div class="table-controls">
@@ -632,7 +653,6 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
     <div class="modal-title" id="modal-title">Edit Mapping</div>
     <div class="modal-subtitle" id="modal-auto-note"></div>
 
-    <!-- Pattern examples reference -->
     <div class="pattern-examples">
       <div class="ex-row"><span class="dot dot-quad"></span><strong style="color:var(--quad)">Quad</strong><span class="ex-list">squat, leg press, hack squat, lunge</span></div>
       <div class="ex-row"><span class="dot dot-posterior"></span><strong style="color:var(--posterior)">Hip</strong><span class="ex-list">deadlift, RDL, good morning, hip thrust, leg curl</span></div>
@@ -640,7 +660,6 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
       <div class="ex-row"><span class="dot dot-pull"></span><strong style="color:var(--pull)">Pull</strong><span class="ex-list">row, lat pulldown, pull-up, face pull, bicep curl</span></div>
     </div>
 
-    <!-- Quick presets -->
     <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Quick Set</div>
     <div class="presets">
       <button class="preset-btn" onclick="setPreset(100,0,0,0)">100% Quad</button>
@@ -653,7 +672,6 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
       <button class="preset-btn" onclick="setPreset(0,0,0,0)">Clear (0%)</button>
     </div>
 
-    <!-- Sliders + number inputs side by side -->
     <div class="form-row">
       <div class="form-label"><span><span class="dot dot-quad"></span>Quad Dominant</span></div>
       <div class="slider-num-row">
@@ -687,7 +705,6 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
       </div>
     </div>
 
-    <!-- Visual split bar -->
     <div class="split-bar" id="split-bar">
       <div class="split-seg split-quad" id="bar-quad" style="width:0%"></div>
       <div class="split-seg split-post" id="bar-post" style="width:0%"></div>
@@ -710,7 +727,57 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
 </div>
 
 <script>
-// ═══ State ═══════════════════════════════════════════
+// ═══ Theme ════════════════════════════════════════════
+function getCSSVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function themeColors() {
+  return {
+    text:      getCSSVar('--text'),
+    muted:     getCSSVar('--muted'),
+    card:      getCSSVar('--card'),
+    border:    getCSSVar('--border'),
+    accent:    getCSSVar('--accent'),
+    quad:      getCSSVar('--quad'),
+    posterior: getCSSVar('--posterior'),
+    push:      getCSSVar('--push'),
+    pull:      getCSSVar('--pull'),
+  };
+}
+
+function applyTheme(pref) {
+  localStorage.setItem('theme', pref);
+  const resolved = pref === 'auto'
+    ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+    : pref;
+  document.documentElement.setAttribute('data-theme', resolved);
+
+  document.querySelectorAll('[data-theme-btn]').forEach(b =>
+    b.classList.toggle('active', b.dataset.themeBtn === pref)
+  );
+
+  // Rebuild chart with new colors after CSS vars settle
+  requestAnimationFrame(() => {
+    patternCache = {};
+    if (stressChart) {
+      if (activePattern === 'total') renderChart();
+      else renderChart(); // reset to total on theme change; pattern cache is busted
+      // reset pattern filter to total
+      document.querySelectorAll('#pattern-filter button').forEach(b =>
+        b.classList.toggle('active', b.dataset.pattern === 'total')
+      );
+      activePattern = 'total';
+    }
+  });
+}
+
+// Listen for system preference changes when in auto mode
+window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+  if ((localStorage.getItem('theme') || 'auto') === 'auto') applyTheme('auto');
+});
+
+// ═══ State ════════════════════════════════════════════
 let stressHistory  = [];
 let patternCache   = {};
 let activePattern  = 'total';
@@ -728,12 +795,24 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     tab.classList.add('active');
     document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
     if (tab.dataset.tab === 'exercises' && exercises.length === 0) loadExercises();
-    if (tab.dataset.tab === 'workouts'  && !workoutsLoaded)       loadWorkouts();
+    if (tab.dataset.tab === 'workouts'  && !workoutsLoaded)        loadWorkouts();
   });
+});
+
+// Theme toggle clicks
+document.getElementById('theme-toggle').addEventListener('click', e => {
+  const btn = e.target.closest('[data-theme-btn]');
+  if (btn) applyTheme(btn.dataset.themeBtn);
 });
 
 // ═══ Init ════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async () => {
+  // Sync theme button active state
+  const saved = localStorage.getItem('theme') || 'auto';
+  document.querySelectorAll('[data-theme-btn]').forEach(b =>
+    b.classList.toggle('active', b.dataset.themeBtn === saved)
+  );
+
   document.getElementById('ci-date').value = todayStr();
   checkTodayReadiness();
   await loadStressHistory();
@@ -815,21 +894,26 @@ function rollingAvg(vals, win) {
 
 // ═══ Chart ════════════════════════════════════════════
 function chartOpts() {
+  const c = themeColors();
   return {
     responsive: true,
     maintainAspectRatio: false,
     animation: { duration: 250 },
     interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: { labels: { color: '#7d8590', font: { size: 11 }, boxWidth: 16, usePointStyle: true } },
+      legend: { labels: { color: c.muted, font: { size: 11 }, boxWidth: 16, usePointStyle: true } },
       tooltip: {
-        backgroundColor: '#161b22', borderColor: '#21262d', borderWidth: 1,
-        titleColor: '#e6edf3', bodyColor: '#8d96a0', padding: 10,
+        backgroundColor: c.card,
+        borderColor: c.border,
+        borderWidth: 1,
+        titleColor: c.text,
+        bodyColor: c.muted,
+        padding: 10,
       }
     },
     scales: {
-      x: { ticks: { color: '#7d8590', font: { size: 10 }, maxTicksLimit: 10 }, grid: { color: '#1c2128' } },
-      y: { ticks: { color: '#7d8590', font: { size: 10 } }, grid: { color: '#1c2128' }, beginAtZero: true }
+      x: { ticks: { color: c.muted, font: { size: 10 }, maxTicksLimit: 10 }, grid: { color: c.border } },
+      y: { ticks: { color: c.muted, font: { size: 10 } }, grid: { color: c.border }, beginAtZero: true }
     }
   };
 }
@@ -838,8 +922,8 @@ function buildDatasets(labels, cVals, pVals, cColor, pColor) {
   return {
     labels,
     datasets: [
-      { label: 'Central Stress',    data: cVals, borderColor: cColor, backgroundColor: cColor+'14', borderWidth: 2, tension: 0.35, pointRadius: 3, pointHoverRadius: 6 },
-      { label: 'Peripheral Stress', data: pVals, borderColor: pColor, backgroundColor: pColor+'14', borderWidth: 2, tension: 0.35, pointRadius: 3, pointHoverRadius: 6 },
+      { label: 'Central Stress',    data: cVals, borderColor: cColor, backgroundColor: cColor+'22', borderWidth: 2, tension: 0.35, pointRadius: 3, pointHoverRadius: 6 },
+      { label: 'Peripheral Stress', data: pVals, borderColor: pColor, backgroundColor: pColor+'22', borderWidth: 2, tension: 0.35, pointRadius: 3, pointHoverRadius: 6 },
       { label: `${baselineDays}d Central Avg`,    data: rollingAvg(cVals, baselineDays), borderColor: cColor, borderWidth: 1.5, borderDash: [5,4], pointRadius: 0, tension: 0.35 },
       { label: `${baselineDays}d Peripheral Avg`, data: rollingAvg(pVals, baselineDays), borderColor: pColor, borderWidth: 1.5, borderDash: [5,4], pointRadius: 0, tension: 0.35 },
     ]
@@ -847,22 +931,24 @@ function buildDatasets(labels, cVals, pVals, cColor, pColor) {
 }
 
 function renderChart() {
+  const c = themeColors();
   const ctx = document.getElementById('stressChart').getContext('2d');
   const data = buildDatasets(
     stressHistory.map(d => d.date),
     stressHistory.map(d => d.central),
     stressHistory.map(d => d.peripheral),
-    '#4f86f7', '#e8892b'
+    c.accent, c.posterior
   );
   if (stressChart) stressChart.destroy();
   stressChart = new Chart(ctx, { type: 'line', data, options: chartOpts() });
 }
 
 function renderPatternChart(key) {
-  const colors = { quad_dom: '#4A90D9', posterior: '#e8892b', upper_push: '#3fb950', upper_pull: '#a371f7' };
-  const c = colors[key] || '#4f86f7';
-  const pd = patternCache[key];
-  const data = buildDatasets(pd.map(d => d.date), pd.map(d => d.central), pd.map(d => d.peripheral), c, c+'aa');
+  const c = themeColors();
+  const colors = { quad_dom: c.quad, posterior: c.posterior, upper_push: c.push, upper_pull: c.pull };
+  const col = colors[key] || c.accent;
+  const pd  = patternCache[key];
+  const data = buildDatasets(pd.map(d => d.date), pd.map(d => d.central), pd.map(d => d.peripheral), col, col+'bb');
   const ctx = document.getElementById('stressChart').getContext('2d');
   if (stressChart) stressChart.destroy();
   stressChart = new Chart(ctx, { type: 'line', data, options: chartOpts() });
@@ -884,7 +970,7 @@ document.getElementById('pattern-filter').addEventListener('click', async e => {
       stressHistory.map(d => fetch(`/api/stress/patterns/${d.date}`).then(r => r.json()).catch(() => null))
     );
     patternCache[activePattern] = results.filter(Boolean).map(r => ({
-      date: r.date,
+      date:       r.date,
       central:    r.patterns[activePattern]?.central    ?? 0,
       peripheral: r.patterns[activePattern]?.peripheral ?? 0,
     }));
@@ -936,20 +1022,14 @@ async function loadWorkouts() {
     const r = await fetch('/api/workouts/recent?count=12');
     const workouts = await r.json();
     workoutsLoaded = true;
-
     if (!workouts.length) {
       wrap.innerHTML = '<div class="loading-wrap" style="color:var(--muted)">No workouts found. Run the importer.</div>';
       return;
     }
-
     wrap.innerHTML = `
       <table>
         <thead><tr>
-          <th>Date</th>
-          <th>Workout</th>
-          <th>Sets</th>
-          <th>Volume (lbs)</th>
-          <th>Avg RPE</th>
+          <th>Date</th><th>Workout</th><th>Sets</th><th>Volume (lbs)</th><th>Avg RPE</th>
           <th style="color:var(--accent);">Central ↑</th>
           <th style="color:var(--posterior);">Peripheral ↑</th>
         </tr></thead>
@@ -1001,16 +1081,14 @@ function patternChips(ex) {
   return chips.join('');
 }
 
-// Safely escape a string for use in an HTML attribute value
 function escHtml(s) {
   return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function renderExTable() {
-  const search   = document.getElementById('ex-search').value.toLowerCase();
+  const search    = document.getElementById('ex-search').value.toLowerCase();
   const unrevOnly = document.getElementById('ex-unreviewed').checked;
-
-  const filtered = exercises.filter(ex => {
+  const filtered  = exercises.filter(ex => {
     if (search && !ex.exercise_title.toLowerCase().includes(search)) return false;
     if (unrevOnly && ex.is_reviewed) return false;
     return true;
@@ -1024,13 +1102,10 @@ function renderExTable() {
     return;
   }
 
-  // Store filtered list so edit buttons can look up by index (avoids quote-escaping issues)
   window._exFiltered = filtered;
 
   document.getElementById('ex-table-wrap').innerHTML = `<table>
-    <thead><tr>
-      <th>Exercise</th><th>Pattern</th><th>Source</th><th>Status</th><th></th>
-    </tr></thead>
+    <thead><tr><th>Exercise</th><th>Pattern</th><th>Source</th><th>Status</th><th></th></tr></thead>
     <tbody>
     ${filtered.map((ex, i) => `<tr>
       <td style="font-weight:500;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
@@ -1053,24 +1128,19 @@ function openModal(ex) {
   if (!ex) return;
   editingTitle = ex.exercise_title;
   document.getElementById('modal-title').textContent = ex.exercise_title;
-
-  // Show note if auto-classified and unreviewed
   const note = document.getElementById('modal-auto-note');
-  if (!ex.is_reviewed) {
-    note.innerHTML = '<span style="color:var(--warn);">⚠ Auto-classified — please review this split before saving.</span>';
-  } else {
-    note.innerHTML = '<span style="color:var(--muted);">Previously reviewed. Update the split if needed.</span>';
-  }
   note.style.marginBottom = '12px';
   note.style.fontSize = '12px';
+  note.innerHTML = ex.is_reviewed
+    ? '<span style="color:var(--muted);">Previously reviewed. Update the split if needed.</span>'
+    : '<span style="color:var(--warn);">⚠ Auto-classified — please review this split before saving.</span>';
 
-  const vals = {
-    quad: Math.round(ex.pct_quad_dom   * 100),
-    post: Math.round(ex.pct_posterior  * 100),
-    push: Math.round(ex.pct_upper_push * 100),
-    pull: Math.round(ex.pct_upper_pull * 100),
-  };
-  for (const [key, val] of Object.entries(vals)) {
+  for (const [key, val] of [
+    ['quad', Math.round(ex.pct_quad_dom   * 100)],
+    ['post', Math.round(ex.pct_posterior  * 100)],
+    ['push', Math.round(ex.pct_upper_push * 100)],
+    ['pull', Math.round(ex.pct_upper_pull * 100)],
+  ]) {
     document.getElementById(`mv-${key}`).value     = val;
     document.getElementById(`mv-${key}-num`).value = val;
   }
@@ -1088,26 +1158,23 @@ document.getElementById('edit-modal').addEventListener('click', e => {
   if (e.target === document.getElementById('edit-modal')) closeModal();
 });
 
-// Called when slider moves — update number input
 function onSlider(key) {
-  const v = +document.getElementById(`mv-${key}`).value;
-  document.getElementById(`mv-${key}-num`).value = v;
+  document.getElementById(`mv-${key}-num`).value = +document.getElementById(`mv-${key}`).value;
   syncModal();
 }
 
-// Called when number input changes — update slider
 function onNum(key) {
   let v = +document.getElementById(`mv-${key}-num`).value;
   v = Math.max(0, Math.min(100, isNaN(v) ? 0 : v));
   document.getElementById(`mv-${key}-num`).value = v;
-  document.getElementById(`mv-${key}`).value     = v;
+  document.getElementById(`mv-${key}`).value = v;
   syncModal();
 }
 
 function setPreset(q, po, pu, pl) {
-  for (const [key, val] of [['quad',q],['post',po],['push',pu],['pull',pl]]) {
-    document.getElementById(`mv-${key}`).value     = val;
-    document.getElementById(`mv-${key}-num`).value = val;
+  for (const [k, v] of [['quad',q],['post',po],['push',pu],['pull',pl]]) {
+    document.getElementById(`mv-${k}`).value     = v;
+    document.getElementById(`mv-${k}-num`).value = v;
   }
   document.getElementById('mv-cond').checked = false;
   syncModal();
@@ -1121,7 +1188,6 @@ function syncModal() {
   const total = q + po + pu + pl;
   const cond  = document.getElementById('mv-cond').checked;
 
-  // Update split bar
   const t = total || 1;
   document.getElementById('bar-quad').style.width = (q /t*100) + '%';
   document.getElementById('bar-post').style.width = (po/t*100) + '%';
@@ -1132,17 +1198,17 @@ function syncModal() {
   const btn = document.getElementById('modal-save');
 
   if (cond) {
-    fb.innerHTML  = '<span class="pct-ok">Conditioning — excluded from all pattern stress</span>';
-    btn.disabled  = false;
+    fb.innerHTML = '<span class="pct-ok">Conditioning — excluded from all pattern stress</span>';
+    btn.disabled = false;
   } else if (total === 100) {
-    fb.innerHTML  = '<span class="pct-ok">✓ Splits sum to 100%</span>';
-    btn.disabled  = false;
+    fb.innerHTML = '<span class="pct-ok">✓ Splits sum to 100%</span>';
+    btn.disabled = false;
   } else if (total === 0) {
-    fb.innerHTML  = '<span class="pct-warn">All zeros — will show as Unassigned until corrected</span>';
-    btn.disabled  = false;
+    fb.innerHTML = '<span class="pct-warn">All zeros — will show as Unassigned until corrected</span>';
+    btn.disabled = false;
   } else {
-    fb.innerHTML  = `<span class="pct-err">Splits sum to ${total}% — must equal 0% or 100%</span>`;
-    btn.disabled  = true;
+    fb.innerHTML = `<span class="pct-err">Splits sum to ${total}% — must equal 0% or 100%</span>`;
+    btn.disabled = true;
   }
 }
 
@@ -1178,7 +1244,7 @@ async function saveMapping() {
     }
   } catch { alert('Network error.'); }
 
-  btn.disabled = false; btn.textContent = 'Save';
+  btn.disabled = false; btn.textContent = 'Save & Mark Reviewed';
 }
 </script>
 </body>
