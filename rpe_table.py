@@ -54,6 +54,25 @@ def seed_rpe_table(db):
     print("✅ RPE table seeded.")
 
 # ---------------------------------------------------------------------------
+# RPE / RIR resolution
+# RPE and RIR are inverses: RPE = 10 - RIR
+# If both are somehow logged, RPE takes priority.
+# Hevy floors RPE entry at 6, so RIR entries max out at 4 in practice.
+# ---------------------------------------------------------------------------
+def resolve_rpe(rpe, rir=None):
+    """
+    Return the effective RPE to use in calculations.
+      - If RPE is logged, use it directly.
+      - If only RIR is logged, convert: effective_rpe = 10 - RIR
+      - If neither, return None (Wendler fallback will be used).
+    """
+    if rpe is not None:
+        return rpe
+    if rir is not None:
+        return max(0.0, min(10.0, 10.0 - float(rir)))
+    return None
+
+# ---------------------------------------------------------------------------
 # Lookup
 # ---------------------------------------------------------------------------
 def lookup_percentage(rpe, reps):
@@ -102,19 +121,21 @@ def get_best_e1rm(exercise_title, db, weeks=12):
 # ---------------------------------------------------------------------------
 # Primary e1RM calculation — full fallback hierarchy
 # ---------------------------------------------------------------------------
-def calculate_e1rm(weight, reps, rpe=None, exercise_title=None, db=None):
+def calculate_e1rm(weight, reps, rpe=None, rir=None, exercise_title=None, db=None):
     """
     Calculate e1RM using the fallback hierarchy:
-      1. RPE table lookup  (most accurate — requires RPE)
-      2. History inference (uses best known e1RM from last 12 weeks)
-      3. Wendler formula   (always available)
+      1. RPE/RIR table lookup  (most accurate — requires RPE or RIR)
+      2. History inference     (uses best known e1RM from last 12 weeks)
+      3. Wendler formula       (always available)
+    RPE takes priority over RIR if both are provided.
     """
     if not weight or not reps or reps <= 0:
         return None
 
-    # Priority 1: RPE table
-    if rpe is not None:
-        pct = lookup_percentage(rpe, reps)
+    # Priority 1: RPE table (resolve RIR → RPE if needed)
+    effective_rpe = resolve_rpe(rpe, rir)
+    if effective_rpe is not None:
+        pct = lookup_percentage(effective_rpe, reps)
         if pct and pct > 0:
             return round(weight / pct, 2)
 
@@ -124,27 +145,29 @@ def calculate_e1rm(weight, reps, rpe=None, exercise_title=None, db=None):
         if known_e1rm:
             return round(known_e1rm, 2)
 
-    # Priority 3: Brzycki
+    # Priority 3: Wendler
     result = wendler_e1rm(weight, reps)
     return round(result, 2) if result else None
 
 # ---------------------------------------------------------------------------
 # Intensity percentage helper — shared by both stress functions
 # ---------------------------------------------------------------------------
-def get_intensity_pct(weight, reps, rpe=None, exercise_title=None, db=None):
+def get_intensity_pct(weight, reps, rpe=None, rir=None, exercise_title=None, db=None):
     """
     Return intensity as a fraction of e1RM (0.0 – 1.0) using fallback hierarchy:
-      1. RPE table lookup  — direct percentage, most accurate
-      2. History inference — weight / best known e1RM from last 12 weeks
-      3. Wendler formula   — always available
+      1. RPE/RIR table lookup — direct percentage, most accurate
+      2. History inference    — weight / best known e1RM from last 12 weeks
+      3. Wendler formula      — always available
+    RPE takes priority over RIR if both are provided.
     Returns None if intensity cannot be determined.
     """
     if not weight or not reps or reps <= 0:
         return None
 
-    # Priority 1: RPE table — returns the pct directly, no e1RM needed
-    if rpe is not None:
-        pct = lookup_percentage(rpe, reps)
+    # Priority 1: RPE table (resolve RIR → RPE if needed)
+    effective_rpe = resolve_rpe(rpe, rir)
+    if effective_rpe is not None:
+        pct = lookup_percentage(effective_rpe, reps)
         if pct and pct > 0:
             return pct
 
@@ -165,18 +188,20 @@ def get_intensity_pct(weight, reps, rpe=None, exercise_title=None, db=None):
 # ---------------------------------------------------------------------------
 # Central and peripheral stress for a single set — used by main.py
 # ---------------------------------------------------------------------------
-def get_set_central_stress(weight, reps, rpe=None, exercise_title=None, db=None):
+def get_set_central_stress(weight, reps, rpe=None, rir=None, exercise_title=None, db=None):
     """
     Central stress (CNS fatigue) for one set: pct² × reps
     Squaring the intensity heavily weights high-RPE, near-max efforts.
+    Accepts RPE or RIR — RPE takes priority if both provided.
     """
-    pct = get_intensity_pct(weight, reps, rpe, exercise_title, db)
+    pct = get_intensity_pct(weight, reps, rpe, rir, exercise_title, db)
     return (pct ** 2) * reps if pct else 0
 
-def get_set_peripheral_stress(weight, reps, rpe=None, exercise_title=None, db=None):
+def get_set_peripheral_stress(weight, reps, rpe=None, rir=None, exercise_title=None, db=None):
     """
     Peripheral stress (muscular fatigue) for one set: pct × reps
     Linear — scales with volume at intensity.
+    Accepts RPE or RIR — RPE takes priority if both provided.
     """
-    pct = get_intensity_pct(weight, reps, rpe, exercise_title, db)
+    pct = get_intensity_pct(weight, reps, rpe, rir, exercise_title, db)
     return pct * reps if pct else 0

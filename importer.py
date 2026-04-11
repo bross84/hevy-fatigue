@@ -46,15 +46,17 @@ def import_hevy_data():
                     weight_kg = set_data.get('weight_kg') or 0.0
                     reps = set_data.get('reps') or 0
                     rpe = set_data.get('rpe')
+                    rir = set_data.get('rir')  # Reps in Reserve — Hevy may expose this field
 
                     weight_lbs = round(weight_kg * 2.20462, 2) if weight_kg else None
 
                     # Calculate e1RM using full fallback hierarchy:
-                    # RPE table → history inference → Wendler
+                    # RPE/RIR table → history inference → Wendler
                     e1rm = calculate_e1rm(
                         weight=weight_lbs,
                         reps=reps,
                         rpe=rpe,
+                        rir=rir,
                         exercise_title=title,
                         db=db
                     )
@@ -70,6 +72,7 @@ def import_hevy_data():
                         weight_lbs=weight_lbs,
                         reps=reps,
                         rpe=rpe,
+                        rir=rir,
                         estimated_1rm=e1rm
                     ).on_conflict_do_nothing()
                     result = db.execute(stmt)

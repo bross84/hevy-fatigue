@@ -53,7 +53,8 @@ class WorkoutLog(Base):
     notes = Column(String, nullable=True)
     weight_lbs = Column(Float)
     reps = Column(Integer)
-    rpe = Column(Float)
+    rpe = Column(Float)           # Rate of Perceived Exertion (0–10), logged in Hevy
+    rir = Column(Float)           # Reps in Reserve — alternative to RPE; converted via RPE = 10 - RIR
     estimated_1rm = Column(Float)
     is_conditioning = Column(Boolean, default=False)
 

@@ -67,11 +67,11 @@ def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
     sets = db.query(WorkoutLog).filter(WorkoutLog.date == target_date).all()
 
     central = sum(
-        get_set_central_stress(s.weight_lbs, s.reps, s.rpe, s.exercise_title, db)
+        get_set_central_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
         for s in sets
     )
     peripheral = sum(
-        get_set_peripheral_stress(s.weight_lbs, s.reps, s.rpe, s.exercise_title, db)
+        get_set_peripheral_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
         for s in sets
     )
 
@@ -140,8 +140,8 @@ def get_pattern_stress(target_date: date_type, db: Session = Depends(get_db)):
     }
 
     for s in sets:
-        central = get_set_central_stress(s.weight_lbs, s.reps, s.rpe, s.exercise_title, db)
-        peripheral = get_set_peripheral_stress(s.weight_lbs, s.reps, s.rpe, s.exercise_title, db)
+        central = get_set_central_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
+        peripheral = get_set_peripheral_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
 
         mapping = db.query(ExerciseMapping).filter(
             ExerciseMapping.exercise_title == s.exercise_title
@@ -256,11 +256,11 @@ def get_recent_workouts(count: int = 12, db: Session = Depends(get_db)):
         ).all()
 
         central = sum(
-            get_set_central_stress(s.weight_lbs, s.reps, s.rpe, s.exercise_title, db)
+            get_set_central_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
             for s in workout_sets
         )
         peripheral = sum(
-            get_set_peripheral_stress(s.weight_lbs, s.reps, s.rpe, s.exercise_title, db)
+            get_set_peripheral_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
             for s in workout_sets
         )
 
