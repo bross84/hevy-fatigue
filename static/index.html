@@ -168,7 +168,11 @@ input[type="number"], input[type="date"] {
   font-size: 14px;
   width: 100%;
   transition: background .2s, border-color .2s;
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 input[type="number"]:focus, input[type="date"]:focus {
   outline: none; border-color: var(--accent);
 }
@@ -431,6 +435,54 @@ tbody tr:hover td { background: var(--row-hover); }
 .workout-stress-val { font-weight: 700; font-size: 15px; }
 .stress-note { font-size: 11px; color: var(--muted); margin-top: 14px; line-height: 1.6; }
 
+/* ── Tooltips ────────────────────────── */
+.tip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--muted);
+  color: var(--muted);
+  font-size: 9px;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1;
+  margin-left: 4px;
+  cursor: help;
+  vertical-align: middle;
+  flex-shrink: 0;
+  position: relative;
+}
+.tip-icon::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 400;
+  font-style: normal;
+  text-transform: none;
+  letter-spacing: 0;
+  line-height: 1.55;
+  padding: 9px 12px;
+  border-radius: 7px;
+  width: max-content;
+  max-width: 260px;
+  white-space: normal;
+  z-index: 500;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .15s;
+  box-shadow: 0 4px 16px rgba(0,0,0,.3);
+}
+.tip-icon:hover::after { opacity: 1; }
+
 /* ── Spinner ─────────────────────────── */
 .spinner {
   display: inline-block;
@@ -605,6 +657,18 @@ tbody tr:hover td { background: var(--row-hover); }
         <div id="chart-loading" style="display:none;" class="loading-wrap">
           <span class="spinner"></span> Fetching pattern data…
         </div>
+        <div style="display:flex;gap:18px;margin-top:10px;font-size:12px;color:var(--muted);">
+          <span style="display:inline-flex;align-items:center;gap:5px;">
+            <span style="width:16px;height:2px;background:var(--accent);display:inline-block;border-radius:1px;"></span>
+            Central
+            <span class="tip-icon" data-tip="Central Stress = Σ(intensity%² × reps). Intensity-driven — high-RPE sets move this number disproportionately. Reflects CNS / neural fatigue from lifting close to your max.">i</span>
+          </span>
+          <span style="display:inline-flex;align-items:center;gap:5px;">
+            <span style="width:16px;height:2px;background:var(--posterior);display:inline-block;border-radius:1px;"></span>
+            Peripheral
+            <span class="tip-icon" data-tip="Peripheral Stress = Σ(intensity% × reps). Volume-driven — accumulates with total workload regardless of RPE. Reflects muscular / metabolic fatigue from overall training volume.">i</span>
+          </span>
+        </div>
       </div>
 
       <div class="card">
@@ -657,7 +721,12 @@ tbody tr:hover td { background: var(--row-hover); }
       <label class="checkbox-label">
         <input type="checkbox" id="ex-unreviewed"> Unreviewed only
       </label>
-      <span id="ex-count" style="color:var(--muted);font-size:12px;margin-left:auto;"></span>
+      <div class="btn-group" id="ex-sort" style="margin-left:auto;">
+        <button class="active" data-sort="alpha">A → Z</button>
+        <button data-sort="recent">Recent</button>
+        <button data-sort="used">Most Used</button>
+      </div>
+      <span id="ex-count" style="color:var(--muted);font-size:12px;"></span>
     </div>
     <div id="ex-table-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
   </div>
@@ -804,6 +873,7 @@ let stressChart    = null;
 let exercises      = [];
 let editingTitle   = null;
 let workoutsLoaded = false;
+let exSort         = 'alpha';
 
 // ═══ Tabs ════════════════════════════════════════════
 document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -1048,8 +1118,8 @@ async function loadWorkouts() {
       <table>
         <thead><tr>
           <th>Date</th><th>Workout</th><th>Sets</th><th>Volume (lbs)</th><th>Avg RPE</th>
-          <th style="color:var(--accent);">Central ↑</th>
-          <th style="color:var(--posterior);">Peripheral ↑</th>
+          <th style="color:var(--accent);">Central <span class="tip-icon" style="border-color:var(--accent);color:var(--accent);" data-tip="Central Stress = Σ(intensity%² × reps). Intensity-driven — high-RPE sets move this number disproportionately. Reflects CNS / neural fatigue.">i</span></th>
+          <th style="color:var(--posterior);">Peripheral <span class="tip-icon" style="border-color:var(--posterior);color:var(--posterior);" data-tip="Peripheral Stress = Σ(intensity% × reps). Volume-driven — accumulates with total workload. Reflects muscular / metabolic fatigue.">i</span></th>
         </tr></thead>
         <tbody>
         ${workouts.map(w => `<tr>
@@ -1112,6 +1182,21 @@ function renderExTable() {
     return true;
   });
 
+  // Sort
+  filtered.sort((a, b) => {
+    if (exSort === 'recent') {
+      if (!a.last_used && !b.last_used) return a.exercise_title.localeCompare(b.exercise_title);
+      if (!a.last_used) return 1;
+      if (!b.last_used) return -1;
+      return b.last_used.localeCompare(a.last_used);
+    }
+    if (exSort === 'used') {
+      const diff = (b.use_count || 0) - (a.use_count || 0);
+      return diff !== 0 ? diff : a.exercise_title.localeCompare(b.exercise_title);
+    }
+    return a.exercise_title.localeCompare(b.exercise_title);
+  });
+
   document.getElementById('ex-count').textContent = `${filtered.length} of ${exercises.length}`;
 
   if (!filtered.length) {
@@ -1140,6 +1225,14 @@ function renderExTable() {
 
 document.getElementById('ex-search').addEventListener('input', renderExTable);
 document.getElementById('ex-unreviewed').addEventListener('change', renderExTable);
+
+document.getElementById('ex-sort').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  exSort = btn.dataset.sort;
+  document.querySelectorAll('#ex-sort button').forEach(b => b.classList.toggle('active', b === btn));
+  renderExTable();
+});
 
 // ═══ Modal ════════════════════════════════════════════
 function openModal(ex) {

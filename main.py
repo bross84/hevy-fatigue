@@ -302,11 +302,21 @@ def get_workout_summary(days: int = 30, db: Session = Depends(get_db)):
 
 @app.get("/api/exercises/mappings")
 def get_exercise_mappings(unreviewed: bool = False, db: Session = Depends(get_db)):
-    """Return all exercise movement pattern mappings, optionally filtered to unreviewed only."""
+    """Return all exercise movement pattern mappings with usage stats from WorkoutLog."""
     q = db.query(ExerciseMapping)
     if unreviewed:
         q = q.filter(ExerciseMapping.is_reviewed == False)
     mappings = q.order_by(ExerciseMapping.exercise_title).all()
+
+    # Pull set count and most-recent date for every exercise in one query
+    usage_rows = db.query(
+        WorkoutLog.exercise_title,
+        func.count(WorkoutLog.id).label("use_count"),
+        func.max(WorkoutLog.date).label("last_used"),
+    ).group_by(WorkoutLog.exercise_title).all()
+
+    usage = {r.exercise_title: {"use_count": r.use_count, "last_used": str(r.last_used)} for r in usage_rows}
+
     return [
         {
             "id": m.id,
@@ -318,6 +328,8 @@ def get_exercise_mappings(unreviewed: bool = False, db: Session = Depends(get_db
             "is_conditioning": m.is_conditioning,
             "source": m.source,
             "is_reviewed": m.is_reviewed,
+            "use_count": usage.get(m.exercise_title, {}).get("use_count", 0),
+            "last_used": usage.get(m.exercise_title, {}).get("last_used", None),
         }
         for m in mappings
     ]
