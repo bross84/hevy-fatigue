@@ -380,14 +380,19 @@ tbody tr:hover td { background: rgba(255,255,255,.02); }
 }
 .slider-num-row input[type="range"] { flex: 1; }
 .pct-num-input {
-  width: 52px !important;
+  width: 58px !important;
   text-align: center;
-  padding: 4px 6px !important;
+  padding: 4px 8px !important;
   font-size: 13px !important;
+  /* hide spin buttons — the slider handles incrementing */
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 .pct-num-input::-webkit-inner-spin-button,
-.pct-num-input::-webkit-outer-spin-button { opacity: 1; }
+.pct-num-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
 .pct-sym { color: var(--muted); font-size: 12px; }
 
 /* pattern examples */
