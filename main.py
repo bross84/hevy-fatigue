@@ -334,16 +334,16 @@ def get_exercise_mappings(unreviewed: bool = False, db: Session = Depends(get_db
         for m in mappings
     ]
 
-@app.put("/api/exercises/mappings/{exercise_title}")
+@app.put("/api/exercises/mappings/{mapping_id}")
 def update_exercise_mapping(
-    exercise_title: str, data: MappingUpdate, db: Session = Depends(get_db)
+    mapping_id: int, data: MappingUpdate, db: Session = Depends(get_db)
 ):
-    """Update a movement pattern mapping. Marks source as 'user' and is_reviewed as True."""
+    """Update a movement pattern mapping by numeric ID. Marks source as 'user' and is_reviewed as True."""
     mapping = db.query(ExerciseMapping).filter(
-        ExerciseMapping.exercise_title == exercise_title
+        ExerciseMapping.id == mapping_id
     ).first()
     if not mapping:
-        raise HTTPException(status_code=404, detail=f"Exercise '{exercise_title}' not found.")
+        raise HTTPException(status_code=404, detail=f"Exercise mapping #{mapping_id} not found.")
 
     mapping.pct_quad_dom    = data.pct_quad_dom
     mapping.pct_posterior   = data.pct_posterior

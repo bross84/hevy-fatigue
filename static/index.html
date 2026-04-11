@@ -661,12 +661,12 @@ tbody tr:hover td { background: var(--row-hover); }
           <span style="display:inline-flex;align-items:center;gap:5px;">
             <span style="width:16px;height:2px;background:var(--accent);display:inline-block;border-radius:1px;"></span>
             Central
-            <span class="tip-icon" data-tip="Central Stress = Σ(intensity%² × reps). Intensity-driven — high-RPE sets move this number disproportionately. Reflects CNS / neural fatigue from lifting close to your max.">i</span>
+            <span class="tip-icon" data-tip="How hard you trained. Heavy sets close to your max drive this number up fast. Think of it as nervous system fatigue — the kind that makes you feel strong but drained.">i</span>
           </span>
           <span style="display:inline-flex;align-items:center;gap:5px;">
             <span style="width:16px;height:2px;background:var(--posterior);display:inline-block;border-radius:1px;"></span>
             Peripheral
-            <span class="tip-icon" data-tip="Peripheral Stress = Σ(intensity% × reps). Volume-driven — accumulates with total workload regardless of RPE. Reflects muscular / metabolic fatigue from overall training volume.">i</span>
+            <span class="tip-icon" data-tip="How much total work you did. Adds up with every set and rep regardless of how heavy. Think of it as muscle fatigue — the kind that makes you sore and tired the next day.">i</span>
           </span>
         </div>
       </div>
@@ -872,6 +872,7 @@ let baselineDays   = 6;
 let stressChart    = null;
 let exercises      = [];
 let editingTitle   = null;
+let editingId      = null;
 let workoutsLoaded = false;
 let exSort         = 'alpha';
 
@@ -1118,8 +1119,8 @@ async function loadWorkouts() {
       <table>
         <thead><tr>
           <th>Date</th><th>Workout</th><th>Sets</th><th>Volume (lbs)</th><th>Avg RPE</th>
-          <th style="color:var(--accent);">Central <span class="tip-icon" style="border-color:var(--accent);color:var(--accent);" data-tip="Central Stress = Σ(intensity%² × reps). Intensity-driven — high-RPE sets move this number disproportionately. Reflects CNS / neural fatigue.">i</span></th>
-          <th style="color:var(--posterior);">Peripheral <span class="tip-icon" style="border-color:var(--posterior);color:var(--posterior);" data-tip="Peripheral Stress = Σ(intensity% × reps). Volume-driven — accumulates with total workload. Reflects muscular / metabolic fatigue.">i</span></th>
+          <th style="color:var(--accent);">Central <span class="tip-icon" style="border-color:var(--accent);color:var(--accent);" data-tip="How hard you trained. Heavy sets close to your max drive this up fast. Nervous system fatigue.">i</span></th>
+          <th style="color:var(--posterior);">Peripheral <span class="tip-icon" style="border-color:var(--posterior);color:var(--posterior);" data-tip="How much total work you did. Adds up with every set and rep. Muscle fatigue.">i</span></th>
         </tr></thead>
         <tbody>
         ${workouts.map(w => `<tr>
@@ -1238,6 +1239,7 @@ document.getElementById('ex-sort').addEventListener('click', e => {
 function openModal(ex) {
   if (!ex) return;
   editingTitle = ex.exercise_title;
+  editingId    = ex.id;
   document.getElementById('modal-title').textContent = ex.exercise_title;
   const note = document.getElementById('modal-auto-note');
   note.style.marginBottom = '12px';
@@ -1263,6 +1265,7 @@ function openModal(ex) {
 function closeModal() {
   document.getElementById('edit-modal').classList.remove('open');
   editingTitle = null;
+  editingId    = null;
 }
 
 document.getElementById('edit-modal').addEventListener('click', e => {
@@ -1324,7 +1327,7 @@ function syncModal() {
 }
 
 async function saveMapping() {
-  if (!editingTitle) return;
+  if (!editingTitle || editingId == null) return;
   const btn = document.getElementById('modal-save');
   btn.disabled = true; btn.textContent = 'Saving…';
 
@@ -1338,7 +1341,7 @@ async function saveMapping() {
   };
 
   try {
-    const r = await fetch(`/api/exercises/mappings/${encodeURIComponent(editingTitle)}`, {
+    const r = await fetch(`/api/exercises/mappings/${editingId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -1346,14 +1349,18 @@ async function saveMapping() {
     if (r.ok) {
       const updated = await r.json();
       const idx = exercises.findIndex(e => e.exercise_title === editingTitle);
-      if (idx >= 0) exercises[idx] = updated;
+      if (idx >= 0) {
+        // Merge updated fields back; preserve use_count / last_used from local state
+        exercises[idx] = { ...exercises[idx], ...updated };
+      }
       patternCache = {};
       closeModal();
       renderExTable();
     } else {
-      alert('Save failed — check the server logs.');
+      const err = await r.json().catch(() => ({}));
+      alert(`Save failed (${r.status}): ${err.detail || r.statusText}`);
     }
-  } catch { alert('Network error.'); }
+  } catch (e) { alert(`Network error: ${e.message}`); }
 
   btn.disabled = false; btn.textContent = 'Save & Mark Reviewed';
 }
