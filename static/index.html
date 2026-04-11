@@ -690,8 +690,13 @@ tbody tr:hover td { background: var(--row-hover); }
 <!-- ══════════════ EXERCISES TAB ══════════════ -->
 <section id="tab-exercises" class="tab-content">
   <div class="card">
-    <div class="card-title">Exercise Movement Mappings</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.8;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:14px 16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div class="card-title" style="margin-bottom:0;">Exercise Movement Mappings</div>
+      <button id="ex-info-toggle" onclick="toggleExInfo()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;display:flex;align-items:center;gap:5px;padding:4px 6px;border-radius:5px;transition:color .15s;" title="Toggle description">
+        <span id="ex-info-chevron" style="display:inline-block;transition:transform .2s;">▾</span> About
+      </button>
+    </div>
+    <div id="ex-info-box" style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.8;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:14px 16px;">
       <p style="margin-bottom:10px;">
         Exercises are pulled from your Hevy workout history and auto-classified by keyword rules into one of four movement patterns:
         <strong style="color:var(--quad);">Quad</strong>,
@@ -913,6 +918,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('[data-theme-btn]').forEach(b =>
     b.classList.toggle('active', b.dataset.themeBtn === saved)
   );
+
+  // Restore collapsible info box state (collapsed by default after first visit)
+  if (localStorage.getItem('ex-info-open') === '0') {
+    document.getElementById('ex-info-box').style.display = 'none';
+    document.getElementById('ex-info-chevron').style.transform = 'rotate(-90deg)';
+  }
 
   document.getElementById('ci-date').value = todayStr();
   checkTodayReadiness();
@@ -1155,6 +1166,16 @@ async function loadWorkouts() {
     wrap.innerHTML = '<div style="color:var(--danger)">Failed to load workouts.</div>';
     workoutsLoaded = false;
   }
+}
+
+// ═══ Exercises info toggle ════════════════════════════
+function toggleExInfo() {
+  const box     = document.getElementById('ex-info-box');
+  const chevron = document.getElementById('ex-info-chevron');
+  const open    = box.style.display !== 'none';
+  box.style.display    = open ? 'none' : 'block';
+  chevron.style.transform = open ? 'rotate(-90deg)' : 'rotate(0deg)';
+  localStorage.setItem('ex-info-open', open ? '0' : '1');
 }
 
 // ═══ Exercises tab ════════════════════════════════════
