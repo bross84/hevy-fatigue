@@ -627,12 +627,30 @@ tbody tr:hover td { background: var(--row-hover); }
 <section id="tab-exercises" class="tab-content">
   <div class="card">
     <div class="card-title">Exercise Movement Mappings</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:12px 14px;">
-      Exercises are pulled from your Hevy workout history and auto-classified by keyword rules.
-      Their pattern split determines how each set's fatigue is distributed across Quad / Hip / Push / Pull buckets on the stress chart.<br>
-      <strong style="color:var(--text);">To review:</strong> click <strong style="color:var(--text);">Edit</strong>, confirm or adjust the split, and click <strong style="color:var(--text);">Save &amp; Mark Reviewed</strong>.
-      Auto-classified exercises show <span class="badge badge-unreviewed">unreviewed</span> until confirmed.
-      Use the <strong style="color:var(--text);">Unreviewed only</strong> filter to work through the list efficiently.
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.8;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:14px 16px;">
+      <p style="margin-bottom:10px;">
+        Exercises are pulled from your Hevy workout history and auto-classified by keyword rules into one of four movement patterns:
+        <strong style="color:var(--quad);">Quad</strong>,
+        <strong style="color:var(--posterior);">Hip</strong>,
+        <strong style="color:var(--push);">Push</strong>, and
+        <strong style="color:var(--pull);">Pull</strong>.
+        Blended movements like a conventional deadlift can be split across multiple patterns (e.g. 20% Quad / 80% Hip).
+      </p>
+      <p style="margin-bottom:10px;">
+        <strong style="color:var(--text);">Important — what the percentages do and don't do:</strong>
+        The pattern split has <em>no effect on the fatigue numbers themselves</em>. Your total central and peripheral stress for a session is calculated entirely from RPE and reps and will be identical regardless of how an exercise is classified.
+        The split only controls <strong style="color:var(--text);">which bucket on the pattern chart receives the credit</strong> — it's a planning lens for tracking volume balance across movement families, not a fatigue predictor.
+      </p>
+      <p style="margin-bottom:10px;">
+        The actual fatigue signal comes from <strong style="color:var(--text);">logging RPE honestly</strong>. A knee-level rack pull and a deficit deadlift logged at the same RPE will produce the same stress score — if the deficit pull felt harder, log it at a higher RPE and the system will reflect that automatically.
+        The morning check-in catches whatever the numbers miss.
+      </p>
+      <p>
+        <strong style="color:var(--text);">To review an exercise:</strong> click <strong style="color:var(--text);">Edit</strong>, confirm or adjust the split, then click <strong style="color:var(--text);">Save &amp; Mark Reviewed</strong>.
+        Auto-classified exercises show <span class="badge badge-unreviewed">unreviewed</span> until confirmed.
+        Use the <strong style="color:var(--text);">Unreviewed only</strong> filter to work through the list efficiently.
+        If you'd rather not classify at all, leaving exercises as Unassigned has no impact on your fatigue scores.
+      </p>
     </div>
     <div class="table-controls">
       <input class="search-input" type="text" id="ex-search" placeholder="Search exercises…">
