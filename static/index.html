@@ -579,8 +579,8 @@ tbody tr:hover td { background: var(--row-hover); }
    MOBILE RESPONSIVENESS
 ══════════════════════════════════════════════════════ */
 
-/* Horizontal scroll wrapper for tables */
-.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/* Horizontal scroll wrapper for tables — only activates on small screens */
+.table-scroll { overflow-x: visible; }
 
 @media (max-width: 640px) {
 
@@ -601,6 +601,9 @@ tbody tr:hover td { background: var(--row-hover); }
   /* ── Layout ── */
   main { padding: 12px 14px; }
   .card { padding: 14px; }
+
+  /* ── Horizontal scroll for tables on small screens ── */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
   /* ── Table cells tighter ── */
   td, th { padding: 7px 6px; font-size: 12px; }
@@ -1720,6 +1723,7 @@ const bandPlugin = {
   beforeDraw(chart, args, options) {
     const { ctx, chartArea, scales } = chart;
     if (!chartArea || !scales.y) return;
+    if (!options || !options.bands || !options.bands.length) return;
     const { top, bottom, left, right } = chartArea;
     const yScale = scales.y;
     options.bands.forEach(band => {

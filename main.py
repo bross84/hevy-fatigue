@@ -163,20 +163,21 @@ def _compute_training_load(days: int, db: Session) -> list[dict]:
     lookback = max(days + 90, 120)
     from_date = date_type.today() - timedelta(days=lookback)
 
-    rows = (
-        db.query(
-            WorkoutLog.date,
-            func.sum(WorkoutLog.central_stress).label("central"),
-            func.sum(WorkoutLog.peripheral_stress).label("peripheral"),
-        )
+    # Get every distinct workout date in the lookback window
+    workout_dates = (
+        db.query(WorkoutLog.date)
         .filter(WorkoutLog.date >= from_date)
-        .group_by(WorkoutLog.date)
+        .distinct()
         .order_by(WorkoutLog.date)
         .all()
     )
 
-    # Build a dict of date → stress so we can fill zeros for rest days
-    stress_by_date = {r.date: (r.central or 0) + (r.peripheral or 0) for r in rows}
+    # Build a dict of date → combined stress using the same RPE-based calculator
+    # used everywhere else (central + peripheral computed from actual sets)
+    stress_by_date = {}
+    for row in workout_dates:
+        scores = calculate_stress_scores(row.date, db)
+        stress_by_date[row.date] = scores["central"] + scores["peripheral"]
 
     # Walk day-by-day applying EWMA
     atl, ctl = 0.0, 0.0
