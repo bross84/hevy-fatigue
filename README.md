@@ -1,6 +1,6 @@
 # ⚡ Hevy Fatigue Monitor
 
-A personal fatigue and readiness tracking web app for powerlifters and strength athletes using the [Hevy](https://hevy.com) workout logger. Automatically pulls your training data from the Hevy PRO API, calculates session stress scores, and pairs them with your daily morning check-in to help you make smarter training decisions.
+A personal fatigue and readiness tracking web app for powerlifters and strength athletes using the [Hevy](https://hevy.com) workout logger. Automatically pulls your training data from the Hevy PRO API, calculates session stress scores, and pairs them with your daily check-in to help you make smarter training decisions.
 
 > **Requires a Hevy PRO subscription** for API access.
 
@@ -23,12 +23,12 @@ Both are calculated from your logged RPE and reps using an RPE percentage table 
 ### Features
 
 - 📊 **Stress chart** — 60-day rolling history of central and peripheral stress with a configurable moving average baseline. Filter by movement pattern (Quad, Hip, Push, Pull).
-- 📝 **Morning check-in** — Log soreness by movement pattern, joint health, tiredness, perceived recovery, and optionally HRV, sleep hours, and sleep quality.
+- 📝 **Daily check-in** — Log soreness by movement pattern, joint health, tiredness, perceived recovery, and optionally HRV, sleep hours, and sleep quality.
 - 💪 **Workouts tab** — Last 12 sessions with per-workout central and peripheral stress scores.
 - 🗂️ **Exercise mappings** — All exercises auto-classified into movement patterns by keyword rules. Reviewable and editable with custom percentage splits for blended movements.
 - 🔄 **Hevy sync** — Manual sync button on the dashboard; auto-syncs on every check-in submission.
 - 🌗 **Light / Dark / Auto theme** — Follows system preference by default.
-- 📱 **Mobile responsive** — Works on phone browsers for morning check-ins.
+- 📱 **Mobile responsive** — Works on phone browsers for daily check-ins.
 
 ---
 
@@ -145,7 +145,7 @@ Open your browser at **http://localhost:8125**
 
 The first time you run the app, click **⟳ Sync Now** on the Dashboard to pull your full Hevy workout history. This may take a minute depending on how many workouts you have.
 
-After the initial import, syncing happens automatically every time you submit a morning check-in. You can also trigger it manually from the Dashboard at any time.
+After the initial import, syncing happens automatically every time you submit a daily check-in. You can also trigger it manually from the Dashboard at any time.
 
 ---
 
@@ -162,7 +162,7 @@ Your data is untouched. The `hevy-data` Docker volume that holds the database is
 
 ## Daily Workflow
 
-1. **Open the app each morning**
+1. **Open the app each day**
 2. **Submit a check-in** — rate soreness by movement pattern, joint health, tiredness, and recovery. Optionally add HRV and sleep data.
    The app auto-syncs your latest Hevy workouts before calculating stress scores.
 3. **Review the dashboard** — the stress chart shows how yesterday's session compares to your rolling baseline.

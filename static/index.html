@@ -702,7 +702,7 @@ tbody tr:hover td { background: var(--row-hover); }
     <!-- left: check-in -->
     <div>
       <div class="card">
-        <div class="card-title">Morning Check-in</div>
+        <div class="card-title">Daily Check-in</div>
         <div id="checkin-status"></div>
         <form id="checkin-form">
           <div class="form-row">
@@ -905,7 +905,7 @@ tbody tr:hover td { background: var(--row-hover); }
         <canvas id="recoveryChart"></canvas>
       </div>
       <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6;">
-        Daily fatigue score from your morning check-in (tiredness + perceived recovery, 0–8).
+        Daily fatigue score from your check-in (tiredness + perceived recovery, 0–8).
         Lower is better. The dotted line is your 7-day average.
       </p>
     </div>
@@ -962,7 +962,7 @@ tbody tr:hover td { background: var(--row-hover); }
       </p>
       <p style="margin-bottom:10px;">
         The actual fatigue signal comes from <strong style="color:var(--text);">logging RPE honestly</strong>. A knee-level rack pull and a deficit deadlift logged at the same RPE will produce the same stress score — if the deficit pull felt harder, log it at a higher RPE and the system will reflect that automatically.
-        The morning check-in catches whatever the numbers miss.
+        The daily check-in catches whatever the numbers miss.
       </p>
       <p>
         <strong style="color:var(--text);">To review an exercise:</strong> click <strong style="color:var(--text);">Edit</strong>, confirm or adjust the split, then click <strong style="color:var(--text);">Save &amp; Mark Reviewed</strong>.
@@ -1573,7 +1573,7 @@ async function loadLog() {
 
     if (!entries.length) {
       count.textContent = '';
-      wrap.innerHTML = '<div class="loading-wrap" style="color:var(--muted)">No check-ins yet — submit your first morning check-in on the Dashboard.</div>';
+      wrap.innerHTML = '<div class="loading-wrap" style="color:var(--muted)">No check-ins yet — submit your first daily check-in on the Dashboard.</div>';
       return;
     }
 
