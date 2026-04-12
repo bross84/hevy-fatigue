@@ -20,11 +20,18 @@ class HevyClient:
                 print("✅ Connected to Hevy successfully")
                 return True
             else:
-                print (f"❌ Connection failed. Status: {response.status_code}")
+                print(f"❌ Connection failed. Status: {response.status_code}")
                 return False
         except requests.exceptions.RequestException as e:
             print(f"❌ Network error: {e}")
             return False
+
+    def get_workouts(self, page=1):
+        """Fetch one page of workouts from the Hevy API."""
+        url = f"{self.base_url}/workouts?page={page}"
+        response = requests.get(url, headers=self.headers, timeout=10)
+        response.raise_for_status()
+        return response.json()
 
 if __name__ == "__main__":
     client = HevyClient()

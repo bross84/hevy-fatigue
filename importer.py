@@ -1,79 +1,93 @@
-import math
-from database import SessionLocal, WorkoutLog
+from database import SessionLocal, WorkoutLog, init_db
 from hevy_client import HevyClient
+from rpe_table import calculate_e1rm, seed_rpe_table
+from exercise_classifier import ensure_exercise_mapped
 from datetime import datetime
-
-def calculate_e1rm(weight, reps, rpe):
-    """
-    Calculates e1RM using Brzycki, adjusted for RPE.
-    If RPE is 8 on a set of 5, it treats it as a set of 7 for the formula.
-    """
-    if not rpe:
-        rpe = 10  # Assume max effort if not logged
-
-    if not weight or not reps or reps <=0:
-        return None
-    
-    # Adjusted reps = actual reps + reps in reserve
-    rir = 10 - rpe
-    effective_reps = reps + rir
-    
-    if effective_reps == 1:
-        return weight
-    
-    return weight / (1.0278 - (0.0278 * effective_reps))
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 def import_hevy_data():
+    init_db()  # Ensure tables exist before we try to use them
     client = HevyClient()
     db = SessionLocal()
-    workouts = client.test_connection()
 
-    if not workouts:
-        print("No workouts found.")
-        return
-    
-    workouts = response.json().get('workouts', [])
+    seed_rpe_table(db)  # Seed RPE chart if not already done
 
-    for workout in workouts:
-        workout_date = workout.get('start_time')
-        
-        for exercise in workout.get('exercises', []):
-            title = exercise.get('title') # Define the 'title' variable
-            
-# Here we can filter for specific lifts (e.g., Squat, Bench, Deadlift)
-for set_data in exercise['sets']:
-    weight_lbs = set_data.get('weight_kg', 0.0) 
-    reps = set_data.get('reps', 0)
-    rpe = set_data.get('rpe')
+    if not client.test_connection():
+        print("❌ Could not connect to Hevy API. Check your API key.")
+        db.close()
+        return {"new_sets": 0, "error": "Could not connect to Hevy API. Check your API key."}
 
-    # 2. Check that we have the necessary data to calculate e1rm
-    if weight_lbs and reps:
-        e1rm = calculate_e1rm(weight_lbs, reps, rpe)
+    page = 1
+    total_added = 0
 
-        # 3. Check for duplicates in the database
-        exists = db.query(WorkoutLog).filter(
-            WorkoutLog.date == workout_date,
-            WorkoutLog.exercise_title == title,
-            # Your use of .between() is a smart way to handle float precision!
-            WorkoutLog.weight_lbs.between(weight_lbs - 0.1, weight_lbs + 0.1),
-            WorkoutLog.reps == reps
-        ).first()
+    while True:
+        data = client.get_workouts(page)
+        workouts = data.get('workouts', [])
+        page_count = data.get('page_count', 1)
 
-        # 4. Only add to session if it doesn't already exist
-        if not exists:
-            log_entry = WorkoutLog(
-                date=workout_date, # Consistency: use workout_date
-                exercise_title=title,
-                weight_lbs=round(float(weight_lbs), 2),
-                reps=reps,
-                rpe=rpe,
-                estimated_1rm=round(e1rm, 2)
-            )
-            db.add(log_entry)
-    
-    db.commit()
+        for workout in workouts:
+            workout_id = workout.get('id')
+            workout_title = workout.get('title')
+            raw_date = workout.get('start_time')
+            workout_date = datetime.fromisoformat(raw_date).date() if raw_date else None
+
+            for exercise in workout.get('exercises', []):
+                title = exercise.get('title')
+                exercise_id = exercise.get('exercise_template_id')
+
+                # Auto-classify exercise if not already in the mapping table
+                ensure_exercise_mapped(title, db)
+
+                for set_data in exercise.get('sets', []):
+                    if set_data.get('type') == 'warmup':
+                        continue  # Skip warmup sets — working sets only
+
+                    set_number = set_data.get('index')
+                    weight_kg = set_data.get('weight_kg') or 0.0
+                    reps = set_data.get('reps') or 0
+                    rpe = set_data.get('rpe')
+                    rir = set_data.get('rir')  # Reps in Reserve — Hevy may expose this field
+
+                    weight_lbs = round(weight_kg * 2.20462, 2) if weight_kg else None
+
+                    # Calculate e1RM using full fallback hierarchy:
+                    # RPE/RIR table → history inference → Wendler
+                    e1rm = calculate_e1rm(
+                        weight=weight_lbs,
+                        reps=reps,
+                        rpe=rpe,
+                        rir=rir,
+                        exercise_title=title,
+                        db=db
+                    )
+
+                    # Insert and silently skip if this set already exists
+                    stmt = sqlite_insert(WorkoutLog).values(
+                        date=workout_date,
+                        workout_id=workout_id,
+                        workout_title=workout_title,
+                        exercise_id=exercise_id,
+                        exercise_title=title,
+                        set_number=set_number,
+                        weight_lbs=weight_lbs,
+                        reps=reps,
+                        rpe=rpe,
+                        rir=rir,
+                        estimated_1rm=e1rm
+                    ).on_conflict_do_nothing()
+                    result = db.execute(stmt)
+                    if result.rowcount:
+                        total_added += 1
+
+        db.commit()
+
+        if page >= page_count:
+            break
+        page += 1
+
     db.close()
-    print("✅ Workouts imported and e1RM calculated.")
+    print(f"✅ Import complete. {total_added} new sets added.")
+    return {"new_sets": total_added}
 
 if __name__ == "__main__":
     import_hevy_data()
