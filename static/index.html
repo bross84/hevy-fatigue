@@ -1311,20 +1311,43 @@ function setStatus(type, msg) {
   document.getElementById('checkin-status').innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
 }
 
+// Re-enable the form when the user picks a different date so they can
+// backfill past entries without today's "already logged" lock getting in the way
+document.getElementById('ci-date').addEventListener('change', function () {
+  const isToday = this.value === todayStr();
+  const btn     = document.getElementById('ci-submit');
+  if (isToday) {
+    btn.textContent = 'Submit Check-in';
+    checkTodayReadiness();          // re-lock if today already has an entry
+  } else {
+    btn.disabled    = false;
+    btn.textContent = 'Add Past Entry';
+    // Clear any "already logged today" banner so the form looks open
+    const st = document.getElementById('checkin-status');
+    if (st.querySelector('.alert-success')) st.innerHTML = '';
+  }
+});
+
 document.getElementById('checkin-form').addEventListener('submit', async e => {
   e.preventDefault();
-  const btn = document.getElementById('ci-submit');
-  btn.disabled = true; btn.textContent = 'Syncing Hevy data…';
+  const btn           = document.getElementById('ci-submit');
+  const submittedDate = document.getElementById('ci-date').value;
+  const isToday       = submittedDate === todayStr();
 
-  // Auto-sync before calculating stress so yesterday's workouts are up to date
-  await runSync({ silent: true });
+  btn.disabled = true;
+
+  if (isToday) {
+    // Auto-sync before calculating stress so yesterday's workouts are up to date
+    btn.textContent = 'Syncing Hevy data…';
+    await runSync({ silent: true });
+  }
 
   btn.textContent = 'Submitting…';
   const wt  = parseFloat(document.getElementById('ci-weight').value);
   const hrv = parseFloat(document.getElementById('ci-hrv').value);
   const slp = parseFloat(document.getElementById('ci-sleep-hrs').value);
   const payload = {
-    date:               document.getElementById('ci-date').value,
+    date:               submittedDate,
     weight_lbs:         isNaN(wt)  ? null : wt,
     sore_quad_dom:      +document.getElementById('ci-sq').value,
     sore_posterior:     +document.getElementById('ci-sp').value,
@@ -1346,22 +1369,39 @@ document.getElementById('checkin-form').addEventListener('submit', async e => {
     });
     const d = await r.json();
     if (r.ok) {
-      setStatus('success', `✓ Logged! Central: ${d.central_stress} | Peripheral: ${d.peripheral_stress}`);
-      btn.textContent = 'Already logged today';
+      if (isToday) {
+        setStatus('success', `✓ Logged! Central: ${d.central_stress} | Peripheral: ${d.peripheral_stress}`);
+        btn.disabled    = true;
+        btn.textContent = 'Already logged today';
+      } else {
+        setStatus('success', `✓ Added entry for ${submittedDate} — Central: ${d.central_stress} | Peripheral: ${d.peripheral_stress}`);
+        // Leave the form open so the user can keep adding past entries back-to-back
+        btn.disabled    = false;
+        btn.textContent = 'Add Past Entry';
+        if (logLoaded)    { logLoaded = false; loadLog(); }
+        if (trendsLoaded) loadTrends();
+      }
+    } else if (r.status === 409) {
+      setStatus('error', `An entry for ${submittedDate} already exists — open the Log tab to edit it.`);
+      btn.disabled    = false;
+      btn.textContent = isToday ? 'Submit Check-in' : 'Add Past Entry';
     } else {
       setStatus('error', `Error: ${d.detail || 'Unknown error'}`);
-      btn.disabled = false; btn.textContent = 'Submit Check-in';
+      btn.disabled    = false;
+      btn.textContent = isToday ? 'Submit Check-in' : 'Add Past Entry';
     }
   } catch {
     setStatus('error', 'Network error — is the server running?');
-    btn.disabled = false; btn.textContent = 'Submit Check-in';
+    btn.disabled    = false;
+    btn.textContent = isToday ? 'Submit Check-in' : 'Add Past Entry';
   }
 });
 
 // ═══ Sleep quality picker ═════════════════════════════
 function setSleepQuality(val) {
   document.getElementById('ci-sq2').value = val;
-  document.querySelectorAll('.sq-btn').forEach(b =>
+  // Scope to #sq-btns so the Log modal buttons aren't accidentally toggled
+  document.querySelectorAll('#sq-btns .sq-btn').forEach(b =>
     b.classList.toggle('active', +b.dataset.val === val)
   );
 }
