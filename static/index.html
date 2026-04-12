@@ -87,7 +87,7 @@ nav {
   color: var(--accent);
   white-space: nowrap;
 }
-.nav-tabs { display: flex; gap: 2px; }
+.nav-tabs { display: flex; gap: 2px; flex: 1; }
 .nav-tab {
   background: none;
   border: none;
@@ -512,6 +512,64 @@ tbody tr:hover td { background: var(--row-hover); }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 .loading-wrap { text-align: center; padding: 24px; color: var(--muted); }
+
+/* ══════════════════════════════════════════════════════
+   MOBILE RESPONSIVENESS
+══════════════════════════════════════════════════════ */
+
+/* Horizontal scroll wrapper for tables */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+@media (max-width: 640px) {
+
+  /* ── Nav: logo + theme on row 1, tabs full-width on row 2 ── */
+  nav {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 10px 14px;
+    gap: 4px;
+    row-gap: 8px;
+  }
+  .logo { font-size: 14px; letter-spacing: 1px; }
+  .nav-right { margin-left: auto; }
+  .theme-group button { font-size: 11px; padding: 3px 7px; }
+  .nav-tabs { order: 3; width: 100%; }
+  .nav-tab { flex: 1; text-align: center; padding: 7px 4px; font-size: 13px; }
+
+  /* ── Layout ── */
+  main { padding: 12px 14px; }
+  .card { padding: 14px; }
+
+  /* ── Table cells tighter ── */
+  td, th { padding: 7px 6px; font-size: 12px; }
+
+  /* ── Hide lower-priority columns on small screens ── */
+  .col-hide { display: none; }
+
+  /* ── Exercise table controls stack vertically ── */
+  .table-controls { flex-direction: column; align-items: stretch; gap: 8px; }
+  .search-input { width: 100%; }
+  #ex-count { margin-left: 0 !important; align-self: flex-end; }
+
+  /* ── Sleep quality buttons wrap to 2 rows of 3 ── */
+  #sq-btns { flex-wrap: wrap; }
+  .sq-btn { flex: 0 0 calc(33.33% - 5px); }
+
+  /* ── Chart shorter on mobile ── */
+  #stressChart { max-height: 200px; }
+
+  /* ── Tooltip: show above with enough room ── */
+  .tip-icon::after { max-width: 200px; }
+
+  /* ── Modal footer stacks ── */
+  .modal-footer { flex-direction: column-reverse; }
+  .modal-footer .btn { width: 100%; text-align: center; }
+}
+
+@media (max-width: 400px) {
+  .theme-group button { font-size: 10px; padding: 3px 5px; }
+  .btn-group button { padding: 4px 7px; font-size: 11px; }
+}
 </style>
 </head>
 <body>
@@ -1229,15 +1287,20 @@ async function loadWorkoutSummary() {
       wrap.innerHTML = '<div class="loading-wrap" style="color:var(--muted)">No workout data — run the importer.</div>';
       return;
     }
-    wrap.innerHTML = `<table>
-      <thead><tr><th>Date</th><th>Volume (lbs)</th><th>Sets</th><th>Avg RPE</th></tr></thead>
+    wrap.innerHTML = `<div class="table-scroll"><table>
+      <thead><tr>
+        <th>Date</th>
+        <th>Volume (lbs)</th>
+        <th class="col-hide">Sets</th>
+        <th class="col-hide">Avg RPE</th>
+      </tr></thead>
       <tbody>${[...rows].reverse().map(r => `<tr>
         <td>${r.date}</td>
         <td>${Number(r.total_volume).toLocaleString()}</td>
-        <td>${r.total_sets}</td>
-        <td>${r.avg_rpe ?? '—'}</td>
+        <td class="col-hide">${r.total_sets}</td>
+        <td class="col-hide">${r.avg_rpe ?? '—'}</td>
       </tr>`).join('')}</tbody>
-    </table>`;
+    </table></div>`;
   } catch {
     wrap.innerHTML = '<div style="color:var(--danger)">Failed to load workout data.</div>';
   }
@@ -1255,25 +1318,29 @@ async function loadWorkouts() {
       return;
     }
     wrap.innerHTML = `
-      <table>
+      <div class="table-scroll"><table>
         <thead><tr>
-          <th>Date</th><th>Workout</th><th>Sets</th><th>Volume (lbs)</th><th>Avg RPE</th>
+          <th>Date</th>
+          <th>Workout</th>
+          <th class="col-hide">Sets</th>
+          <th class="col-hide">Volume (lbs)</th>
+          <th class="col-hide">Avg RPE</th>
           <th style="color:var(--accent);">Central <span class="tip-icon" style="border-color:var(--accent);color:var(--accent);" data-tip="How hard you trained. Heavy sets close to your max drive this up fast. Nervous system fatigue.">i</span></th>
           <th style="color:var(--posterior);">Peripheral <span class="tip-icon" style="border-color:var(--posterior);color:var(--posterior);" data-tip="How much total work you did. Adds up with every set and rep. Muscle fatigue.">i</span></th>
         </tr></thead>
         <tbody>
         ${workouts.map(w => `<tr>
           <td style="white-space:nowrap;">${w.date}</td>
-          <td style="font-weight:500;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+          <td style="font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
               title="${escHtml(w.workout_title || '')}">${w.workout_title || '—'}</td>
-          <td>${w.set_count}</td>
-          <td>${Number(w.volume).toLocaleString()}</td>
-          <td>${w.avg_rpe ?? '—'}</td>
+          <td class="col-hide">${w.set_count}</td>
+          <td class="col-hide">${Number(w.volume).toLocaleString()}</td>
+          <td class="col-hide">${w.avg_rpe ?? '—'}</td>
           <td><span class="workout-stress-val" style="color:var(--accent);">${w.central_stress}</span></td>
           <td><span class="workout-stress-val" style="color:var(--posterior);">${w.peripheral_stress}</span></td>
         </tr>`).join('')}
         </tbody>
-      </table>
+      </table></div>
       <div class="stress-note">
         <strong style="color:var(--text);">Central stress</strong> = Σ(intensity%² × reps) — intensity-driven, reflects CNS / neural fatigue. High RPE sets move this number significantly.<br>
         <strong style="color:var(--text);">Peripheral stress</strong> = Σ(intensity% × reps) — volume-driven, reflects muscular fatigue. Accumulates with total workload regardless of RPE.
@@ -1357,20 +1424,26 @@ function renderExTable() {
 
   window._exFiltered = filtered;
 
-  document.getElementById('ex-table-wrap').innerHTML = `<table>
-    <thead><tr><th>Exercise</th><th>Pattern</th><th>Source</th><th>Status</th><th></th></tr></thead>
+  document.getElementById('ex-table-wrap').innerHTML = `<div class="table-scroll"><table>
+    <thead><tr>
+      <th>Exercise</th>
+      <th>Pattern</th>
+      <th class="col-hide">Source</th>
+      <th>Status</th>
+      <th></th>
+    </tr></thead>
     <tbody>
     ${filtered.map((ex, i) => `<tr>
-      <td style="font-weight:500;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+      <td style="font-weight:500;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
           title="${escHtml(ex.exercise_title)}">${escHtml(ex.exercise_title)}</td>
       <td>${patternChips(ex)}</td>
-      <td><span class="badge badge-${ex.source}">${ex.source}</span></td>
+      <td class="col-hide"><span class="badge badge-${ex.source}">${ex.source}</span></td>
       <td><span class="badge ${ex.is_reviewed ? 'badge-reviewed' : 'badge-unreviewed'}">
-        ${ex.is_reviewed ? 'reviewed' : 'unreviewed'}</span></td>
+        ${ex.is_reviewed ? '✓' : '!'}</span></td>
       <td><button class="btn btn-sm btn-secondary" onclick="openModal(window._exFiltered[${i}])">Edit</button></td>
     </tr>`).join('')}
     </tbody>
-  </table>`;
+  </table></div>`;
 }
 
 document.getElementById('ex-search').addEventListener('input', renderExTable);
