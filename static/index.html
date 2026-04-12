@@ -435,6 +435,23 @@ tbody tr:hover td { background: var(--row-hover); }
 .workout-stress-val { font-weight: 700; font-size: 15px; }
 .stress-note { font-size: 11px; color: var(--muted); margin-top: 14px; line-height: 1.6; }
 
+/* ── Sleep quality buttons ───────────── */
+.sq-btn {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 5px 4px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.sq-btn:hover { border-color: var(--accent); color: var(--text); }
+.sq-btn.active { background: var(--accent-sub); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
 /* ── Tooltips ────────────────────────── */
 .tip-icon {
   display: inline-flex;
@@ -624,6 +641,34 @@ tbody tr:hover td { background: var(--row-hover); }
             </div>
             <input type="range" min="0" max="4" value="0" id="ci-r"
                    oninput="document.getElementById('v-r').textContent=this.value">
+          </div>
+
+          <hr class="section-sep">
+          <div class="section-label">Biometrics <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;">— optional</span></div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px;">
+            <div>
+              <div class="form-label" style="margin-bottom:5px;">HRV <span style="color:var(--muted);font-size:10px;">(ms)</span></div>
+              <input type="number" id="ci-hrv" placeholder="e.g. 55" step="1" min="0"
+                     style="font-size:13px;padding:6px 9px;">
+            </div>
+            <div>
+              <div class="form-label" style="margin-bottom:5px;">Sleep <span style="color:var(--muted);font-size:10px;">(hours)</span></div>
+              <input type="number" id="ci-sleep-hrs" placeholder="e.g. 7.5" step="0.25" min="0" max="24"
+                     style="font-size:13px;padding:6px 9px;">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-label" style="margin-bottom:7px;">Sleep Quality</div>
+            <div style="display:flex;gap:6px;" id="sq-btns">
+              <button type="button" class="sq-btn" data-val="0" onclick="setSleepQuality(0)">0 Terrible</button>
+              <button type="button" class="sq-btn" data-val="1" onclick="setSleepQuality(1)">1 Poor</button>
+              <button type="button" class="sq-btn" data-val="2" onclick="setSleepQuality(2)">2 Ok</button>
+              <button type="button" class="sq-btn" data-val="3" onclick="setSleepQuality(3)">3 Good</button>
+              <button type="button" class="sq-btn" data-val="4" onclick="setSleepQuality(4)">4 Great</button>
+            </div>
+            <input type="hidden" id="ci-sq2" value="">
           </div>
 
           <button type="submit" class="btn btn-primary" id="ci-submit">Submit Check-in</button>
@@ -970,10 +1015,12 @@ document.getElementById('checkin-form').addEventListener('submit', async e => {
   await runSync({ silent: true });
 
   btn.textContent = 'Submitting…';
-  const wt = parseFloat(document.getElementById('ci-weight').value);
+  const wt  = parseFloat(document.getElementById('ci-weight').value);
+  const hrv = parseFloat(document.getElementById('ci-hrv').value);
+  const slp = parseFloat(document.getElementById('ci-sleep-hrs').value);
   const payload = {
     date:               document.getElementById('ci-date').value,
-    weight_lbs:         isNaN(wt) ? null : wt,
+    weight_lbs:         isNaN(wt)  ? null : wt,
     sore_quad_dom:      +document.getElementById('ci-sq').value,
     sore_posterior:     +document.getElementById('ci-sp').value,
     sore_upper_push:    +document.getElementById('ci-spu').value,
@@ -982,6 +1029,9 @@ document.getElementById('checkin-form').addEventListener('submit', async e => {
     joint_lower:        +document.getElementById('ci-jl').value,
     tiredness:          +document.getElementById('ci-t').value,
     perceived_recovery: +document.getElementById('ci-r').value,
+    hrv_ms:             isNaN(hrv) ? null : hrv,
+    sleep_hours:        isNaN(slp) ? null : slp,
+    sleep_quality:      document.getElementById('ci-sq2').value !== '' ? +document.getElementById('ci-sq2').value : null,
   };
   try {
     const r = await fetch('/api/readiness', {
@@ -1002,6 +1052,14 @@ document.getElementById('checkin-form').addEventListener('submit', async e => {
     btn.disabled = false; btn.textContent = 'Submit Check-in';
   }
 });
+
+// ═══ Sleep quality picker ═════════════════════════════
+function setSleepQuality(val) {
+  document.getElementById('ci-sq2').value = val;
+  document.querySelectorAll('.sq-btn').forEach(b =>
+    b.classList.toggle('active', +b.dataset.val === val)
+  );
+}
 
 // ═══ Hevy Sync ════════════════════════════════════════
 async function runSync({ silent = false } = {}) {

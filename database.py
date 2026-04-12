@@ -32,6 +32,10 @@ class DailyReadiness(Base):
     # peripheral_stress: driven by volume (sets x reps) — muscular fatigue
     central_stress = Column(Float, nullable=True)
     peripheral_stress = Column(Float, nullable=True)
+    # Optional biometric inputs (manual entry)
+    hrv_ms = Column(Float, nullable=True)        # Morning HRV in milliseconds
+    sleep_hours = Column(Float, nullable=True)   # Total sleep time
+    sleep_quality = Column(Integer, nullable=True)  # 0=terrible, 4=excellent
 
     def __repr__(self):
         return f"<DailyReadiness date={self.date} weight={self.weight_lbs}>"
@@ -101,6 +105,25 @@ class ExerciseMapping(Base):
 # This part actually creates the file and tables when you run the script
 def init_db():
     Base.metadata.create_all(bind=engine)
+    # Migrate: add new optional columns to existing databases without wiping data
+    _migrate_add_columns(engine, "daily_readiness", [
+        ("hrv_ms",        "REAL"),
+        ("sleep_hours",   "REAL"),
+        ("sleep_quality", "INTEGER"),
+    ])
+
+def _migrate_add_columns(eng, table: str, columns: list):
+    """Safely add columns to an existing table if they don't already exist."""
+    with eng.connect() as conn:
+        existing = {row[1] for row in conn.execute(
+            __import__('sqlalchemy').text(f"PRAGMA table_info({table})")
+        )}
+        for col_name, col_type in columns:
+            if col_name not in existing:
+                conn.execute(__import__('sqlalchemy').text(
+                    f"ALTER TABLE {table} ADD COLUMN {col_name} {col_type}"
+                ))
+        conn.commit()
 if __name__ == "__main__":
     init_db()
     print("✅ Database and tables initialized successfully.")

@@ -46,6 +46,9 @@ class ReadinessInput(BaseModel):
     joint_lower: Optional[int] = Field(None, ge=0, le=4)
     tiredness: Optional[int] = Field(None, ge=0, le=4)
     perceived_recovery: Optional[int] = Field(None, ge=0, le=4)
+    hrv_ms: Optional[float] = Field(None, ge=0)
+    sleep_hours: Optional[float] = Field(None, ge=0, le=24)
+    sleep_quality: Optional[int] = Field(None, ge=0, le=4)
 
 class MappingUpdate(BaseModel):
     pct_quad_dom: float = Field(ge=0.0, le=1.0)
@@ -233,7 +236,10 @@ def submit_readiness(data: ReadinessInput, db: Session = Depends(get_db)):
         tiredness=data.tiredness,
         perceived_recovery=data.perceived_recovery,
         central_stress=stress["central"],
-        peripheral_stress=stress["peripheral"]
+        peripheral_stress=stress["peripheral"],
+        hrv_ms=data.hrv_ms,
+        sleep_hours=data.sleep_hours,
+        sleep_quality=data.sleep_quality,
     )
     db.add(entry)
     db.commit()
