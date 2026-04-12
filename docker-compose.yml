@@ -1,21 +1,24 @@
+name: hevy-fatigue
+
 services:
   hevy-fatigue:
     build: .
     container_name: hevy-fatigue
     restart: unless-stopped
-    ports:
-      - "8000:8000"
     env_file:
       - .env
     environment:
       - DB_PATH=/data/hevy_fatigue.db
+    ports:
+      - mode: ingress
+        target: 8000
+        published: "8080"
+        protocol: tcp
     volumes:
-      # Named volume: database lives here and survives container rebuilds.
       - hevy-data:/data
     networks:
       - hevy-net
     healthcheck:
-      # Uses Python (already in the image) to hit the status endpoint.
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/sync/status')\" || exit 1"]
       interval: 30s
       timeout: 10s
