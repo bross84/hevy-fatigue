@@ -8,9 +8,11 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date as date_type, timedelta
 import os
+import threading
 
 from database import SessionLocal, DailyReadiness, WorkoutLog, ExerciseMapping, init_db
 from rpe_table import get_set_central_stress, get_set_peripheral_stress, seed_rpe_table
+from importer import import_hevy_data
 
 app = FastAPI(title="Hevy Fatigue Monitor")
 
@@ -87,6 +89,10 @@ def startup():
     finally:
         db.close()
 
+# --- Sync state (prevents concurrent imports) ---
+_sync_lock = threading.Lock()
+_sync_status = {"running": False, "last_result": None}
+
 # --- Routes ---
 
 @app.get("/", include_in_schema=False)
@@ -95,6 +101,32 @@ def serve_frontend():
     if os.path.exists(index):
         return FileResponse(index)
     return {"message": "Hevy Fatigue API — place index.html in the static/ folder"}
+
+@app.post("/api/sync")
+def trigger_sync():
+    """
+    Pull latest workouts from the Hevy API into the local database.
+    Returns immediately with a 409 if a sync is already running.
+    """
+    if not _sync_lock.acquire(blocking=False):
+        return {"status": "already_running"}
+
+    try:
+        _sync_status["running"] = True
+        result = import_hevy_data()
+        _sync_status["last_result"] = result
+        return {"status": "ok", "new_sets": result.get("new_sets", 0)}
+    except Exception as e:
+        _sync_status["last_result"] = {"error": str(e)}
+        raise HTTPException(status_code=500, detail=f"Sync failed: {e}")
+    finally:
+        _sync_status["running"] = False
+        _sync_lock.release()
+
+@app.get("/api/sync/status")
+def sync_status():
+    """Check whether a sync is currently running and what the last run returned."""
+    return {"running": _sync_status["running"], "last_result": _sync_status["last_result"]}
 
 # NOTE: /api/stress/history must be defined BEFORE /api/stress/{target_date}
 # so FastAPI matches the literal path first.

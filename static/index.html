@@ -629,6 +629,15 @@ tbody tr:hover td { background: var(--row-hover); }
           <button type="submit" class="btn btn-primary" id="ci-submit">Submit Check-in</button>
         </form>
       </div>
+
+      <div class="card">
+        <div class="card-title">Hevy Sync</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
+          Pull the latest workouts from Hevy into the local database. The check-in form auto-syncs on submit, but you can also trigger it manually here.
+        </p>
+        <div id="sync-status" style="margin-bottom:10px;"></div>
+        <button class="btn btn-secondary" id="sync-btn" onclick="runSync()" style="width:100%;">⟳ Sync Now</button>
+      </div>
     </div>
 
     <!-- right: chart + workout summary -->
@@ -955,7 +964,12 @@ function setStatus(type, msg) {
 document.getElementById('checkin-form').addEventListener('submit', async e => {
   e.preventDefault();
   const btn = document.getElementById('ci-submit');
-  btn.disabled = true; btn.textContent = 'Submitting…';
+  btn.disabled = true; btn.textContent = 'Syncing Hevy data…';
+
+  // Auto-sync before calculating stress so yesterday's workouts are up to date
+  await runSync({ silent: true });
+
+  btn.textContent = 'Submitting…';
   const wt = parseFloat(document.getElementById('ci-weight').value);
   const payload = {
     date:               document.getElementById('ci-date').value,
@@ -988,6 +1002,50 @@ document.getElementById('checkin-form').addEventListener('submit', async e => {
     btn.disabled = false; btn.textContent = 'Submit Check-in';
   }
 });
+
+// ═══ Hevy Sync ════════════════════════════════════════
+async function runSync({ silent = false } = {}) {
+  const btn       = document.getElementById('sync-btn');
+  const statusEl  = document.getElementById('sync-status');
+
+  if (!silent) {
+    btn.disabled = true;
+    btn.textContent = '⟳ Syncing…';
+    statusEl.innerHTML = '';
+  }
+
+  try {
+    const r = await fetch('/api/sync', { method: 'POST' });
+    const d = await r.json();
+
+    if (!silent) {
+      if (d.status === 'already_running') {
+        statusEl.innerHTML = '<div class="alert alert-info">Sync already in progress…</div>';
+      } else if (r.ok) {
+        const msg = d.new_sets > 0
+          ? `✓ Sync complete — ${d.new_sets} new set${d.new_sets !== 1 ? 's' : ''} added.`
+          : '✓ Already up to date — no new sets found.';
+        statusEl.innerHTML = `<div class="alert alert-success">${msg}</div>`;
+        // Refresh stress chart and workout table with new data
+        await loadStressHistory();
+        renderChart();
+        loadWorkoutSummary();
+        if (workoutsLoaded) loadWorkouts();
+      } else {
+        statusEl.innerHTML = `<div class="alert alert-error">Sync failed: ${d.detail || 'Unknown error'}</div>`;
+      }
+    }
+  } catch (err) {
+    if (!silent) {
+      statusEl.innerHTML = `<div class="alert alert-error">Network error — is the server running?</div>`;
+    }
+  } finally {
+    if (!silent) {
+      btn.disabled = false;
+      btn.textContent = '⟳ Sync Now';
+    }
+  }
+}
 
 // ═══ Stress history ═══════════════════════════════════
 async function loadStressHistory() {

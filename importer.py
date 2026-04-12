@@ -15,7 +15,7 @@ def import_hevy_data():
     if not client.test_connection():
         print("❌ Could not connect to Hevy API. Check your API key.")
         db.close()
-        return
+        return {"new_sets": 0, "error": "Could not connect to Hevy API. Check your API key."}
 
     page = 1
     total_added = 0
@@ -87,6 +87,7 @@ def import_hevy_data():
 
     db.close()
     print(f"✅ Import complete. {total_added} new sets added.")
+    return {"new_sets": total_added}
 
 if __name__ == "__main__":
     import_hevy_data()
