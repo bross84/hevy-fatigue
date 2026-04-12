@@ -435,6 +435,68 @@ tbody tr:hover td { background: var(--row-hover); }
 .workout-stress-val { font-weight: 700; font-size: 15px; }
 .stress-note { font-size: 11px; color: var(--muted); margin-top: 14px; line-height: 1.6; }
 
+/* ── Training Load summary card ──────── */
+.tl-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 4px;
+}
+@media (max-width: 640px) { .tl-grid { grid-template-columns: repeat(2, 1fr); } }
+.tl-cell {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  text-align: center;
+}
+.tl-label {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  margin-bottom: 5px;
+}
+.tl-value {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+.tl-sub {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.tsb-positive { color: var(--success); }
+.tsb-negative { color: var(--danger); }
+.tsb-neutral  { color: var(--warn); }
+
+/* Recommendation pill */
+.rec-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 10px;
+}
+.rec-large-increase { background: color-mix(in srgb, var(--accent)    18%, transparent); color: var(--accent);    border: 1px solid color-mix(in srgb, var(--accent)    35%, transparent); }
+.rec-increase       { background: color-mix(in srgb, var(--success)   18%, transparent); color: var(--success);   border: 1px solid color-mix(in srgb, var(--success)   35%, transparent); }
+.rec-continue       { background: color-mix(in srgb, var(--warn)      18%, transparent); color: var(--warn);      border: 1px solid color-mix(in srgb, var(--warn)      35%, transparent); }
+.rec-decrease       { background: color-mix(in srgb, var(--posterior) 18%, transparent); color: var(--posterior); border: 1px solid color-mix(in srgb, var(--posterior) 35%, transparent); }
+.rec-large-decrease { background: color-mix(in srgb, var(--danger)    18%, transparent); color: var(--danger);    border: 1px solid color-mix(in srgb, var(--danger)    35%, transparent); }
+
+/* ── Trends tab ──────────────────────── */
+.trends-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+@media (max-width: 800px) { .trends-grid { grid-template-columns: 1fr; } }
+
 /* ── Sleep quality buttons ───────────── */
 .sq-btn {
   flex: 1;
@@ -590,6 +652,7 @@ tbody tr:hover td { background: var(--row-hover); }
   <div class="nav-tabs">
     <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
     <button class="nav-tab" data-tab="workouts">Workouts</button>
+    <button class="nav-tab" data-tab="trends">Trends</button>
     <button class="nav-tab" data-tab="exercises">Exercises</button>
   </div>
   <div class="nav-right">
@@ -784,6 +847,11 @@ tbody tr:hover td { background: var(--row-hover); }
       </div>
 
       <div class="card">
+        <div class="card-title">Training Load</div>
+        <div id="tl-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
+      </div>
+
+      <div class="card">
         <div class="card-title">Recent Workouts (14 days)</div>
         <div id="workout-table-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
       </div>
@@ -796,6 +864,47 @@ tbody tr:hover td { background: var(--row-hover); }
   <div class="card">
     <div class="card-title">Last 12 Workouts — Stress Detail</div>
     <div id="workouts-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
+  </div>
+</section>
+
+<!-- ══════════════ TRENDS TAB ══════════════ -->
+<section id="tab-trends" class="tab-content">
+  <div class="trends-grid">
+    <div class="card">
+      <div class="card-title">7-Day Recovery</div>
+      <div style="position:relative;height:220px;">
+        <canvas id="recoveryChart"></canvas>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6;">
+        Daily fatigue score from your morning check-in (tiredness + perceived recovery, 0–8).
+        Lower is better. The dotted line is your 7-day average.
+      </p>
+    </div>
+    <div class="card">
+      <div class="card-title">Training Recommendation</div>
+      <div style="position:relative;height:220px;">
+        <canvas id="tsbZoneChart"></canvas>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+        <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--accent);display:inline-block;opacity:.7;"></span>Large Increase</span>
+        <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--success);display:inline-block;opacity:.7;"></span>Increase</span>
+        <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--warn);display:inline-block;opacity:.7;"></span>Continue</span>
+        <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--posterior);display:inline-block;opacity:.7;"></span>Decrease</span>
+        <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--danger);display:inline-block;opacity:.7;"></span>Large Decrease</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">ATL / CTL / TSB History (60 days)</div>
+    <div style="position:relative;height:240px;">
+      <canvas id="loadChart"></canvas>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6;">
+      <strong style="color:var(--text);">ATL</strong> (Acute Training Load) — 7-day average, short-term fatigue. &nbsp;
+      <strong style="color:var(--text);">CTL</strong> (Chronic Training Load) — 28-day average, long-term fitness baseline. &nbsp;
+      <strong style="color:var(--text);">TSB</strong> (Training Stress Balance = CTL − ATL) — positive means fresh, negative means carrying fatigue.
+    </p>
   </div>
 </section>
 
@@ -973,18 +1082,17 @@ function applyTheme(pref) {
     b.classList.toggle('active', b.dataset.themeBtn === pref)
   );
 
-  // Rebuild chart with new colors after CSS vars settle
+  // Rebuild charts with new colors after CSS vars settle
   requestAnimationFrame(() => {
     patternCache = {};
     if (stressChart) {
-      if (activePattern === 'total') renderChart();
-      else renderChart(); // reset to total on theme change; pattern cache is busted
-      // reset pattern filter to total
+      renderChart();
       document.querySelectorAll('#pattern-filter button').forEach(b =>
         b.classList.toggle('active', b.dataset.pattern === 'total')
       );
       activePattern = 'total';
     }
+    if (trendsLoaded) loadTrends();
   });
 }
 
@@ -1003,7 +1111,11 @@ let exercises      = [];
 let editingTitle   = null;
 let editingId      = null;
 let workoutsLoaded = false;
+let trendsLoaded   = false;
 let exSort         = 'alpha';
+let recoveryChart  = null;
+let tsbZoneChart   = null;
+let loadChart      = null;
 
 // ═══ Tabs ════════════════════════════════════════════
 document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -1014,6 +1126,7 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
     if (tab.dataset.tab === 'exercises' && exercises.length === 0) loadExercises();
     if (tab.dataset.tab === 'workouts'  && !workoutsLoaded)        loadWorkouts();
+    if (tab.dataset.tab === 'trends'    && !trendsLoaded)          loadTrends();
   });
 });
 
@@ -1042,6 +1155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadStressHistory();
   renderChart();
   loadWorkoutSummary();
+  loadTrainingLoadCard();
 });
 
 function todayStr() { return new Date().toISOString().split('T')[0]; }
@@ -1146,11 +1260,13 @@ async function runSync({ silent = false } = {}) {
           ? `✓ Sync complete — ${d.new_sets} new set${d.new_sets !== 1 ? 's' : ''} added.`
           : '✓ Already up to date — no new sets found.';
         statusEl.innerHTML = `<div class="alert alert-success">${msg}</div>`;
-        // Refresh stress chart and workout table with new data
+        // Refresh stress chart, workout table, and training load card
         await loadStressHistory();
         renderChart();
         loadWorkoutSummary();
+        loadTrainingLoadCard();
         if (workoutsLoaded) loadWorkouts();
+        if (trendsLoaded)   loadTrends();
       } else {
         statusEl.innerHTML = `<div class="alert alert-error">Sync failed: ${d.detail || 'Unknown error'}</div>`;
       }
@@ -1550,6 +1666,239 @@ function syncModal() {
     fb.innerHTML = `<span class="pct-err">Splits sum to ${total}% — must equal 0% or 100%</span>`;
     btn.disabled = true;
   }
+}
+
+// ═══ Training Load card (Dashboard) ══════════════════
+const REC_META = {
+  large_increase: { label: '↑↑ Large Increase', cls: 'rec-large-increase' },
+  increase:       { label: '↑ Increase',         cls: 'rec-increase' },
+  continue:       { label: '→ Continue',          cls: 'rec-continue' },
+  decrease:       { label: '↓ Decrease',          cls: 'rec-decrease' },
+  large_decrease: { label: '↓↓ Large Decrease',   cls: 'rec-large-decrease' },
+};
+
+async function loadTrainingLoadCard() {
+  const wrap = document.getElementById('tl-wrap');
+  try {
+    const r = await fetch('/api/training-load?days=60');
+    const d = await r.json();
+    const t = d.today;
+    const rec = REC_META[t.recommendation] || REC_META.continue;
+    const tsbCls = t.tsb > 2 ? 'tsb-positive' : t.tsb < -2 ? 'tsb-negative' : 'tsb-neutral';
+    wrap.innerHTML = `
+      <div class="tl-grid">
+        <div class="tl-cell">
+          <div class="tl-label">ATL <span class="tip-icon" data-tip="Acute Training Load — 7-day average of your daily stress. Represents short-term fatigue.">i</span></div>
+          <div class="tl-value" style="color:var(--danger);">${t.atl.toFixed(1)}</div>
+          <div class="tl-sub">Short-term fatigue</div>
+        </div>
+        <div class="tl-cell">
+          <div class="tl-label">CTL <span class="tip-icon" data-tip="Chronic Training Load — 28-day average of your daily stress. Represents your long-term fitness baseline.">i</span></div>
+          <div class="tl-value" style="color:var(--success);">${t.ctl.toFixed(1)}</div>
+          <div class="tl-sub">Long-term baseline</div>
+        </div>
+        <div class="tl-cell">
+          <div class="tl-label">TSB <span class="tip-icon" data-tip="Training Stress Balance = CTL minus ATL. Positive means you're fresher than your baseline. Negative means you're carrying more fatigue than usual.">i</span></div>
+          <div class="tl-value ${tsbCls}">${t.tsb > 0 ? '+' : ''}${t.tsb.toFixed(1)}</div>
+          <div class="tl-sub">${t.tsb >= 0 ? 'Fresh' : 'Fatigued'}</div>
+        </div>
+        <div class="tl-cell" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
+          <div class="tl-label" style="margin-bottom:8px;">Today</div>
+          <span class="rec-pill ${rec.cls}">${rec.label}</span>
+        </div>
+      </div>`;
+  } catch {
+    wrap.innerHTML = '<div style="color:var(--muted);font-size:12px;">Training load unavailable — sync some workouts first.</div>';
+  }
+}
+
+// ═══ Trends tab ═══════════════════════════════════════
+
+// Custom Chart.js plugin — draws colored horizontal bands in the background
+const bandPlugin = {
+  id: 'bandBackground',
+  beforeDraw(chart, args, options) {
+    const { ctx, chartArea, scales } = chart;
+    if (!chartArea || !scales.y) return;
+    const { top, bottom, left, right } = chartArea;
+    const yScale = scales.y;
+    options.bands.forEach(band => {
+      const yTop    = yScale.getPixelForValue(Math.min(band.max, yScale.max));
+      const yBottom = yScale.getPixelForValue(Math.max(band.min, yScale.min));
+      ctx.fillStyle = band.color;
+      ctx.fillRect(left, yTop, right - left, yBottom - yTop);
+    });
+  }
+};
+Chart.register(bandPlugin);
+
+async function loadTrends() {
+  trendsLoaded = true;
+  const [tlRes, rdRes] = await Promise.all([
+    fetch('/api/training-load?days=60').then(r => r.json()).catch(() => null),
+    fetch('/api/readiness/history?days=30').then(r => r.json()).catch(() => []),
+  ]);
+
+  renderRecoveryChart(rdRes);
+  if (tlRes) {
+    renderTsbZoneChart(tlRes.history);
+    renderLoadChart(tlRes.history);
+  }
+}
+
+function renderRecoveryChart(data) {
+  const c   = themeColors();
+  const ctx = document.getElementById('recoveryChart').getContext('2d');
+  const labels = data.map(d => d.date.slice(5));   // MM-DD
+  const scores = data.map(d => d.recovery_score);
+  const avg7   = rollingAvg(scores, 7);
+
+  if (recoveryChart) recoveryChart.destroy();
+  recoveryChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Fatigue Score',
+          data: scores,
+          borderColor: c.posterior,
+          backgroundColor: c.posterior + '33',
+          fill: true,
+          borderWidth: 2,
+          tension: 0.35,
+          pointRadius: 3,
+          pointHoverRadius: 6,
+        },
+        {
+          label: '7d Avg',
+          data: avg7,
+          borderColor: c.posterior,
+          borderDash: [5, 4],
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.35,
+          fill: false,
+        },
+      ],
+    },
+    options: {
+      ...chartOpts(),
+      scales: {
+        ...chartOpts().scales,
+        y: { ...chartOpts().scales.y, min: 0, max: 8,
+             ticks: { ...chartOpts().scales.y.ticks, stepSize: 2 } },
+      },
+    },
+  });
+}
+
+function renderTsbZoneChart(history) {
+  const c   = themeColors();
+  const ctx = document.getElementById('tsbZoneChart').getContext('2d');
+  const labels = history.map(d => d.date.slice(5));
+
+  // Map TSB to a 0-20 readiness index across 5 equal zones of 4 units
+  // TSB < -15 → zone 1 (0-4):  Large Decrease
+  // TSB -15–-5 → zone 2 (4-8): Decrease
+  // TSB -5–5  → zone 3 (8-12): Continue
+  // TSB 5–15  → zone 4 (12-16): Increase
+  // TSB > 15  → zone 5 (16-20): Large Increase
+  function tsbToIndex(tsb) {
+    if (tsb >  15) return Math.min(20, 16 + (tsb - 15) * 0.2);
+    if (tsb >   5) return 12 + (tsb - 5);
+    if (tsb >  -5) return 8  + (tsb + 5) * 0.4;
+    if (tsb > -15) return 4  + (tsb + 15) * 0.4;
+    return Math.max(0, 4 + (tsb + 15) * 0.2);
+  }
+
+  const line = history.map(d => +tsbToIndex(d.tsb).toFixed(2));
+
+  const bands = [
+    { min: 16, max: 20, color: getCSSVar('--danger')    + '55' },
+    { min: 12, max: 16, color: getCSSVar('--posterior') + '55' },
+    { min:  8, max: 12, color: getCSSVar('--warn')      + '55' },
+    { min:  4, max:  8, color: getCSSVar('--success')   + '55' },
+    { min:  0, max:  4, color: getCSSVar('--accent')    + '55' },
+  ];
+
+  if (tsbZoneChart) tsbZoneChart.destroy();
+  tsbZoneChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Readiness',
+        data: line,
+        borderColor: c.text,
+        borderWidth: 2.5,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        tension: 0.35,
+        fill: false,
+      }],
+    },
+    options: {
+      ...chartOpts(),
+      plugins: {
+        ...chartOpts().plugins,
+        bandBackground: { bands },
+      },
+      scales: {
+        x: chartOpts().scales.x,
+        y: {
+          min: 0, max: 20,
+          ticks: { display: false },
+          grid:  { display: false },
+        },
+      },
+    },
+  });
+}
+
+function renderLoadChart(history) {
+  const c   = themeColors();
+  const ctx = document.getElementById('loadChart').getContext('2d');
+  const labels = history.map(d => d.date.slice(5));
+
+  if (loadChart) loadChart.destroy();
+  loadChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'ATL (Fatigue)',
+          data: history.map(d => d.atl),
+          borderColor: c.danger,
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.35,
+        },
+        {
+          label: 'CTL (Fitness)',
+          data: history.map(d => d.ctl),
+          borderColor: c.success,
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.35,
+        },
+        {
+          label: 'TSB (Form)',
+          data: history.map(d => d.tsb),
+          borderColor: c.accent,
+          backgroundColor: c.accent + '22',
+          fill: 'origin',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0.35,
+        },
+      ],
+    },
+    options: chartOpts(),
+  });
 }
 
 async function saveMapping() {
