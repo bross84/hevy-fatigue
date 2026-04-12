@@ -145,6 +145,125 @@ def sync_status():
     """Check whether a sync is currently running and what the last run returned."""
     return {"running": _sync_status["running"], "last_result": _sync_status["last_result"]}
 
+# ── Training Load (ATL / CTL / TSB) ──────────────────────────────────────────
+
+def _compute_training_load(days: int, db: Session) -> list[dict]:
+    """
+    Calculate ATL, CTL, and TSB for each day using exponentially weighted
+    moving averages of the combined daily stress score (central + peripheral).
+
+    ATL (Acute Training Load)   — 7-day EWMA  — short-term fatigue
+    CTL (Chronic Training Load) — 28-day EWMA — long-term fitness baseline
+    TSB (Training Stress Balance) = CTL - ATL  — positive = fresh, negative = fatigued
+    """
+    k_atl = 2 / (7  + 1)   # ≈ 0.250
+    k_ctl = 2 / (28 + 1)   # ≈ 0.069
+
+    # Pull enough history for CTL to converge (at least 90 days behind)
+    lookback = max(days + 90, 120)
+    from_date = date_type.today() - timedelta(days=lookback)
+
+    rows = (
+        db.query(
+            WorkoutLog.date,
+            func.sum(WorkoutLog.central_stress).label("central"),
+            func.sum(WorkoutLog.peripheral_stress).label("peripheral"),
+        )
+        .filter(WorkoutLog.date >= from_date)
+        .group_by(WorkoutLog.date)
+        .order_by(WorkoutLog.date)
+        .all()
+    )
+
+    # Build a dict of date → stress so we can fill zeros for rest days
+    stress_by_date = {r.date: (r.central or 0) + (r.peripheral or 0) for r in rows}
+
+    # Walk day-by-day applying EWMA
+    atl, ctl = 0.0, 0.0
+    results = []
+    start = from_date
+    end   = date_type.today()
+    current = start
+    cutoff  = date_type.today() - timedelta(days=days - 1)
+
+    while current <= end:
+        stress = stress_by_date.get(current, 0.0)
+        atl = stress * k_atl + atl * (1 - k_atl)
+        ctl = stress * k_ctl + ctl * (1 - k_ctl)
+        tsb = ctl - atl
+
+        if current >= cutoff:
+            results.append({
+                "date":       str(current),
+                "atl":        round(atl, 2),
+                "ctl":        round(ctl, 2),
+                "tsb":        round(tsb, 2),
+                "stress":     round(stress, 2),
+            })
+        current += timedelta(days=1)
+
+    return results
+
+
+def _tsb_recommendation(tsb: float) -> str:
+    if   tsb >  15: return "large_increase"
+    elif tsb >   5: return "increase"
+    elif tsb >  -5: return "continue"
+    elif tsb > -15: return "decrease"
+    else:           return "large_decrease"
+
+
+@app.get("/api/training-load")
+def get_training_load(days: int = 60, db: Session = Depends(get_db)):
+    """
+    Return ATL/CTL/TSB history for the chart and today's summary values.
+    """
+    history = _compute_training_load(days, db)
+    today   = history[-1] if history else {"atl": 0, "ctl": 0, "tsb": 0, "stress": 0}
+
+    return {
+        "today": {
+            "date":           today["date"],
+            "atl":            today["atl"],
+            "ctl":            today["ctl"],
+            "tsb":            today["tsb"],
+            "recommendation": _tsb_recommendation(today["tsb"]),
+        },
+        "history": history,
+    }
+
+
+# ── Readiness history ─────────────────────────────────────────────────────────
+
+@app.get("/api/readiness/history")
+def get_readiness_history(days: int = 30, db: Session = Depends(get_db)):
+    """
+    Return daily check-in scores for the recovery trend chart.
+    recovery_score = tiredness + perceived_recovery (0–8, lower = more recovered)
+    """
+    from_date = date_type.today() - timedelta(days=days - 1)
+    rows = (
+        db.query(DailyReadiness)
+        .filter(DailyReadiness.date >= from_date)
+        .order_by(DailyReadiness.date)
+        .all()
+    )
+    return [
+        {
+            "date":             str(r.date),
+            "recovery_score":   (r.tiredness or 0) + (r.perceived_recovery or 0),
+            "tiredness":        r.tiredness,
+            "perceived_recovery": r.perceived_recovery,
+            "soreness":         (r.sore_quad_dom or 0) + (r.sore_posterior or 0)
+                                + (r.sore_upper_push or 0) + (r.sore_upper_pull or 0),
+            "joint":            (r.joint_upper or 0) + (r.joint_lower or 0),
+            "hrv_ms":           r.hrv_ms,
+            "sleep_hours":      r.sleep_hours,
+        }
+        for r in rows
+    ]
+
+
 # NOTE: /api/stress/history must be defined BEFORE /api/stress/{target_date}
 # so FastAPI matches the literal path first.
 
