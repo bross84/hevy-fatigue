@@ -139,7 +139,7 @@ HEVY_API_KEY=your_api_key_here
 docker compose up -d
 ```
 
-Open your browser at **http://localhost:8080**
+Open your browser at **http://localhost:8125**
 
 ### 4. Import your Hevy data
 
