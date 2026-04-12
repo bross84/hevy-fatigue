@@ -1,0 +1,18 @@
+services:
+  hevy-fatigue:
+    build: .
+    container_name: hevy-fatigue
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DB_PATH=/data/hevy_fatigue.db
+    volumes:
+      # Named volume — your database lives here permanently.
+      # Rebuilding or updating the container never touches this data.
+      - hevy-data:/data
+
+volumes:
+  hevy-data:

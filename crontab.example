@@ -1,0 +1,13 @@
+# ─────────────────────────────────────────────────────────
+#  Hevy Fatigue Monitor — Nightly Sync Cron Job
+#
+#  Install on the Ubuntu host (not inside Docker):
+#    crontab -e
+#  Then paste the line below.
+#
+#  This calls the /api/sync endpoint on the running container
+#  every night at 3:00 AM local time.
+#  Output is logged to /var/log/hevy-sync.log.
+# ─────────────────────────────────────────────────────────
+
+0 3 * * * curl -s -X POST http://localhost:8000/api/sync >> /var/log/hevy-sync.log 2>&1

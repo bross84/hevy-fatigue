@@ -2,8 +2,12 @@ from datetime import date as date_type
 from sqlalchemy import create_engine, Column, Integer, Float, String, Date, Boolean, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-# Path to your local database file
-DB_URL = "sqlite:///./hevy_fatigue.db"
+# Path to the database file.
+# In Docker this is overridden via DB_PATH env var pointing to the named volume.
+# Locally it defaults to ./hevy_fatigue.db in the project directory.
+import os as _os
+_db_path = _os.environ.get("DB_PATH", "./hevy_fatigue.db")
+DB_URL = f"sqlite:///{_db_path}"
 
 # Setup the Engine and Session
 engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
