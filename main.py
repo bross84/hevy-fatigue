@@ -54,6 +54,20 @@ class ReadinessInput(BaseModel):
     sleep_hours: Optional[float] = Field(None, ge=0, le=24)
     sleep_quality: Optional[int] = Field(None, ge=0, le=4)
 
+class ReadinessUpdate(BaseModel):
+    weight_lbs: Optional[float] = None
+    sore_quad_dom: Optional[int] = Field(None, ge=0, le=4)
+    sore_posterior: Optional[int] = Field(None, ge=0, le=4)
+    sore_upper_push: Optional[int] = Field(None, ge=0, le=4)
+    sore_upper_pull: Optional[int] = Field(None, ge=0, le=4)
+    joint_upper: Optional[int] = Field(None, ge=0, le=4)
+    joint_lower: Optional[int] = Field(None, ge=0, le=4)
+    tiredness: Optional[int] = Field(None, ge=0, le=4)
+    perceived_recovery: Optional[int] = Field(None, ge=0, le=4)
+    hrv_ms: Optional[float] = Field(None, ge=0)
+    sleep_hours: Optional[float] = Field(None, ge=0, le=24)
+    sleep_quality: Optional[int] = Field(None, ge=0, le=4)
+
 class MappingUpdate(BaseModel):
     pct_quad_dom: float = Field(ge=0.0, le=1.0)
     pct_posterior: float = Field(ge=0.0, le=1.0)
@@ -401,6 +415,66 @@ def get_readiness_history(days: int = 30, db: Session = Depends(get_db)):
         DailyReadiness.date >= since
     ).order_by(DailyReadiness.date).all()
     return entries
+
+@app.get("/api/readiness/log")
+def get_readiness_log(db: Session = Depends(get_db)):
+    """Return all readiness entries with full fields, newest first."""
+    entries = (
+        db.query(DailyReadiness)
+        .order_by(DailyReadiness.date.desc())
+        .all()
+    )
+    return [
+        {
+            "date":               str(e.date),
+            "weight_lbs":         e.weight_lbs,
+            "sore_quad_dom":      e.sore_quad_dom  or 0,
+            "sore_posterior":     e.sore_posterior  or 0,
+            "sore_upper_push":    e.sore_upper_push or 0,
+            "sore_upper_pull":    e.sore_upper_pull or 0,
+            "joint_upper":        e.joint_upper     or 0,
+            "joint_lower":        e.joint_lower     or 0,
+            "tiredness":          e.tiredness       or 0,
+            "perceived_recovery": e.perceived_recovery or 0,
+            "central_stress":     e.central_stress,
+            "peripheral_stress":  e.peripheral_stress,
+            "hrv_ms":             e.hrv_ms,
+            "sleep_hours":        e.sleep_hours,
+            "sleep_quality":      e.sleep_quality,
+        }
+        for e in entries
+    ]
+
+@app.put("/api/readiness/{entry_date}")
+def update_readiness(entry_date: date_type, data: ReadinessUpdate, db: Session = Depends(get_db)):
+    """Update the subjective fields of an existing readiness entry."""
+    entry = db.query(DailyReadiness).filter(DailyReadiness.date == entry_date).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail=f"No readiness entry for {entry_date}")
+    entry.weight_lbs         = data.weight_lbs
+    entry.sore_quad_dom      = data.sore_quad_dom
+    entry.sore_posterior     = data.sore_posterior
+    entry.sore_upper_push    = data.sore_upper_push
+    entry.sore_upper_pull    = data.sore_upper_pull
+    entry.joint_upper        = data.joint_upper
+    entry.joint_lower        = data.joint_lower
+    entry.tiredness          = data.tiredness
+    entry.perceived_recovery = data.perceived_recovery
+    entry.hrv_ms             = data.hrv_ms
+    entry.sleep_hours        = data.sleep_hours
+    entry.sleep_quality      = data.sleep_quality
+    db.commit()
+    return {"message": "Entry updated", "date": str(entry_date)}
+
+@app.delete("/api/readiness/{entry_date}")
+def delete_readiness(entry_date: date_type, db: Session = Depends(get_db)):
+    """Delete a readiness entry by date."""
+    entry = db.query(DailyReadiness).filter(DailyReadiness.date == entry_date).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail=f"No readiness entry for {entry_date}")
+    db.delete(entry)
+    db.commit()
+    return {"message": "Entry deleted", "date": str(entry_date)}
 
 @app.get("/api/workouts/recent")
 def get_recent_workouts(count: int = 12, db: Session = Depends(get_db)):

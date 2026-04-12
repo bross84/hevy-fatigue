@@ -582,6 +582,31 @@ tbody tr:hover td { background: var(--row-hover); }
 /* Horizontal scroll wrapper for tables — only activates on small screens */
 .table-scroll { overflow-x: visible; }
 
+/* ── Severity badges (0 = green, 4 = red) ── */
+.sev-badge {
+  display: inline-block;
+  min-width: 22px;
+  text-align: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.sev-0 { background: rgba(77,184,112,.15);  color: var(--success); }
+.sev-1 { background: rgba(160,148,152,.12); color: var(--muted); }
+.sev-2 { background: rgba(236,167,44,.18);  color: var(--warn); }
+.sev-3 { background: rgba(220,100,30,.18);  color: #e07030; }
+.sev-4 { background: rgba(239,62,54,.15);   color: var(--danger); }
+
+/* ── Log tab: soreness pattern cell ── */
+.sore-cell { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
+.sore-cell span { font-size: 12px; }
+
+/* ── Log edit modal: section separators reuse check-in styles ── */
+#log-modal .section-sep  { border: none; border-top: 1px solid var(--border); margin: 14px 0 10px; }
+#log-modal .section-label { font-size: 11px; font-weight: 600; text-transform: uppercase;
+                             letter-spacing: .8px; color: var(--muted); margin-bottom: 10px; }
+
 @media (max-width: 640px) {
 
   /* ── Nav: logo + theme on row 1, tabs full-width on row 2 ── */
@@ -657,6 +682,7 @@ tbody tr:hover td { background: var(--row-hover); }
     <button class="nav-tab" data-tab="workouts">Workouts</button>
     <button class="nav-tab" data-tab="trends">Trends</button>
     <button class="nav-tab" data-tab="exercises">Exercises</button>
+    <button class="nav-tab" data-tab="log">Log</button>
   </div>
   <div class="nav-right">
     <div class="btn-group theme-group" id="theme-toggle">
@@ -961,6 +987,17 @@ tbody tr:hover td { background: var(--row-hover); }
   </div>
 </section>
 
+<!-- ══════════════ LOG TAB ══════════════ -->
+<section id="tab-log" class="tab-content">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div class="card-title" style="margin-bottom:0;">Check-in Log</div>
+      <span id="log-count" style="font-size:12px;color:var(--muted);"></span>
+    </div>
+    <div id="log-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
+  </div>
+</section>
+
 </main>
 
 <!-- ══════════ EDIT MODAL ══════════ -->
@@ -1054,6 +1091,96 @@ tbody tr:hover td { background: var(--row-hover); }
   </div>
 </div>
 
+<!-- ══════════ LOG ENTRY EDIT MODAL ══════════ -->
+<div class="modal-overlay" id="log-modal">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-title" id="log-modal-title">Edit Check-in</div>
+    <div class="modal-subtitle" id="log-modal-subtitle">System-calculated stress scores are preserved.</div>
+
+    <div class="form-row">
+      <div class="form-label">Bodyweight (lbs) <span style="font-size:11px;color:var(--muted);text-transform:none;">optional</span></div>
+      <input type="number" id="le-weight" placeholder="e.g. 215" step="0.1" min="0">
+    </div>
+
+    <hr class="section-sep">
+    <div class="section-label">Soreness — 0 None → 4 Severe / Limited ROM</div>
+
+    <div class="form-row">
+      <div class="form-label"><span><span class="dot dot-quad"></span>Quad / Knee</span><span class="val-badge" id="lv-sq">0</span></div>
+      <input type="range" min="0" max="4" value="0" id="le-sq" oninput="document.getElementById('lv-sq').textContent=this.value">
+    </div>
+    <div class="form-row">
+      <div class="form-label"><span><span class="dot dot-posterior"></span>Hip / Posterior</span><span class="val-badge" id="lv-sp">0</span></div>
+      <input type="range" min="0" max="4" value="0" id="le-sp" oninput="document.getElementById('lv-sp').textContent=this.value">
+    </div>
+    <div class="form-row">
+      <div class="form-label"><span><span class="dot dot-push"></span>Upper Push</span><span class="val-badge" id="lv-spu">0</span></div>
+      <input type="range" min="0" max="4" value="0" id="le-spu" oninput="document.getElementById('lv-spu').textContent=this.value">
+    </div>
+    <div class="form-row">
+      <div class="form-label"><span><span class="dot dot-pull"></span>Upper Pull</span><span class="val-badge" id="lv-spl">0</span></div>
+      <input type="range" min="0" max="4" value="0" id="le-spl" oninput="document.getElementById('lv-spl').textContent=this.value">
+    </div>
+
+    <hr class="section-sep">
+    <div class="section-label">Joint Health — 0 No Issues → 4 Significant Pain</div>
+
+    <div class="form-row">
+      <div class="form-label">Upper (Shoulder / Elbow / Wrist)<span class="val-badge" id="lv-ju">0</span></div>
+      <input type="range" min="0" max="4" value="0" id="le-ju" oninput="document.getElementById('lv-ju').textContent=this.value">
+    </div>
+    <div class="form-row">
+      <div class="form-label">Lower (Low Back / Hip / Knee)<span class="val-badge" id="lv-jl">0</span></div>
+      <input type="range" min="0" max="4" value="0" id="le-jl" oninput="document.getElementById('lv-jl').textContent=this.value">
+    </div>
+
+    <hr class="section-sep">
+    <div class="section-label">Readiness</div>
+
+    <div class="form-row">
+      <div class="form-label">Tiredness (0 Fresh → 4 Exhausted)<span class="val-badge" id="lv-t">0</span></div>
+      <input type="range" min="0" max="4" value="0" id="le-t" oninput="document.getElementById('lv-t').textContent=this.value">
+    </div>
+    <div class="form-row">
+      <div class="form-label">Recovery (0 Fully Recovered → 4 Beat Up)<span class="val-badge" id="lv-r">0</span></div>
+      <input type="range" min="0" max="4" value="0" id="le-r" oninput="document.getElementById('lv-r').textContent=this.value">
+    </div>
+
+    <hr class="section-sep">
+    <div class="section-label">Biometrics <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;">— optional</span></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px;">
+      <div>
+        <div class="form-label" style="margin-bottom:5px;">HRV <span style="color:var(--muted);font-size:10px;">(ms)</span></div>
+        <input type="number" id="le-hrv" placeholder="e.g. 55" step="1" min="0" style="font-size:13px;padding:6px 9px;">
+      </div>
+      <div>
+        <div class="form-label" style="margin-bottom:5px;">Sleep <span style="color:var(--muted);font-size:10px;">(hours)</span></div>
+        <input type="number" id="le-sleep-hrs" placeholder="e.g. 7.5" step="0.25" min="0" max="24" style="font-size:13px;padding:6px 9px;">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-label" style="margin-bottom:7px;">Sleep Quality</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;" id="le-sq-btns">
+        <button type="button" class="sq-btn" data-val="0" onclick="setLogSleepQuality(0)">0 Terrible</button>
+        <button type="button" class="sq-btn" data-val="1" onclick="setLogSleepQuality(1)">1 Poor</button>
+        <button type="button" class="sq-btn" data-val="2" onclick="setLogSleepQuality(2)">2 Ok</button>
+        <button type="button" class="sq-btn" data-val="3" onclick="setLogSleepQuality(3)">3 Good</button>
+        <button type="button" class="sq-btn" data-val="4" onclick="setLogSleepQuality(4)">4 Great</button>
+      </div>
+      <input type="hidden" id="le-sq2" value="">
+    </div>
+
+    <div id="log-modal-status" style="min-height:18px;font-size:13px;margin-top:10px;"></div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" style="color:var(--danger);border-color:var(--danger);" onclick="deleteLogEntry()">Delete</button>
+      <button class="btn btn-secondary" onclick="closeLogModal()">Cancel</button>
+      <button class="btn btn-primary" style="width:auto;" onclick="saveLogEntry()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══ Theme ════════════════════════════════════════════
 function getCSSVar(name) {
@@ -1115,6 +1242,8 @@ let editingTitle   = null;
 let editingId      = null;
 let workoutsLoaded = false;
 let trendsLoaded   = false;
+let logLoaded      = false;
+let logEditDate    = null;
 let exSort         = 'alpha';
 let recoveryChart  = null;
 let tsbZoneChart   = null;
@@ -1130,6 +1259,7 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     if (tab.dataset.tab === 'exercises' && exercises.length === 0) loadExercises();
     if (tab.dataset.tab === 'workouts'  && !workoutsLoaded)        loadWorkouts();
     if (tab.dataset.tab === 'trends'    && !trendsLoaded)          loadTrends();
+    if (tab.dataset.tab === 'log'       && !logLoaded)             loadLog();
   });
 });
 
@@ -1429,6 +1559,181 @@ async function loadWorkoutSummary() {
   }
 }
 
+// ═══ Log tab ══════════════════════════════════════════
+
+const SQ_LABEL = ['Terrible','Poor','Ok','Good','Great'];
+
+async function loadLog() {
+  logLoaded = true;
+  const wrap  = document.getElementById('log-wrap');
+  const count = document.getElementById('log-count');
+  try {
+    const res     = await fetch('/api/readiness/log');
+    const entries = await res.json();
+
+    if (!entries.length) {
+      count.textContent = '';
+      wrap.innerHTML = '<div class="loading-wrap" style="color:var(--muted)">No check-ins yet — submit your first morning check-in on the Dashboard.</div>';
+      return;
+    }
+
+    count.textContent = `${entries.length} entr${entries.length === 1 ? 'y' : 'ies'}`;
+
+    wrap.innerHTML = `<div class="table-scroll"><table>
+      <thead><tr>
+        <th>Date</th>
+        <th>Tired</th>
+        <th>Recovery</th>
+        <th>Soreness</th>
+        <th class="col-hide">Joints</th>
+        <th class="col-hide">HRV</th>
+        <th class="col-hide">Sleep</th>
+        <th></th>
+      </tr></thead>
+      <tbody>
+      ${entries.map((e, i) => `<tr>
+        <td style="white-space:nowrap;">${e.date}</td>
+        <td><span class="sev-badge sev-${e.tiredness}">${e.tiredness}</span></td>
+        <td><span class="sev-badge sev-${e.perceived_recovery}">${e.perceived_recovery}</span></td>
+        <td>
+          <div class="sore-cell">
+            <span title="Quad/Knee"><span class="dot dot-quad"></span>${e.sore_quad_dom}</span>
+            <span title="Hip/Posterior"><span class="dot dot-posterior"></span>${e.sore_posterior}</span>
+            <span title="Upper Push"><span class="dot dot-push"></span>${e.sore_upper_push}</span>
+            <span title="Upper Pull"><span class="dot dot-pull"></span>${e.sore_upper_pull}</span>
+          </div>
+        </td>
+        <td class="col-hide" style="font-size:12px;">U:${e.joint_upper} L:${e.joint_lower}</td>
+        <td class="col-hide" style="font-size:12px;">${e.hrv_ms != null ? e.hrv_ms + ' ms' : '—'}</td>
+        <td class="col-hide" style="font-size:12px;">${e.sleep_hours != null ? e.sleep_hours + 'h' : '—'}${e.sleep_quality != null ? ' · ' + SQ_LABEL[e.sleep_quality] : ''}</td>
+        <td><button class="btn btn-sm btn-secondary" onclick='openLogEdit(${JSON.stringify(e)})'>Edit</button></td>
+      </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+  } catch {
+    wrap.innerHTML = '<div style="color:var(--danger)">Failed to load log.</div>';
+    logLoaded = false;
+  }
+}
+
+function openLogEdit(entry) {
+  logEditDate = entry.date;
+
+  document.getElementById('log-modal-title').textContent    = `Edit Check-in — ${entry.date}`;
+  document.getElementById('log-modal-subtitle').textContent = 'System-calculated stress scores are preserved.';
+  document.getElementById('log-modal-status').textContent   = '';
+
+  // Bodyweight
+  const wEl = document.getElementById('le-weight');
+  wEl.value = entry.weight_lbs != null ? entry.weight_lbs : '';
+
+  // Soreness sliders
+  const sliders = [
+    ['le-sq',  'lv-sq',  entry.sore_quad_dom],
+    ['le-sp',  'lv-sp',  entry.sore_posterior],
+    ['le-spu', 'lv-spu', entry.sore_upper_push],
+    ['le-spl', 'lv-spl', entry.sore_upper_pull],
+    ['le-ju',  'lv-ju',  entry.joint_upper],
+    ['le-jl',  'lv-jl',  entry.joint_lower],
+    ['le-t',   'lv-t',   entry.tiredness],
+    ['le-r',   'lv-r',   entry.perceived_recovery],
+  ];
+  sliders.forEach(([inputId, badgeId, val]) => {
+    const v = val ?? 0;
+    document.getElementById(inputId).value          = v;
+    document.getElementById(badgeId).textContent    = v;
+  });
+
+  // Biometrics
+  document.getElementById('le-hrv').value       = entry.hrv_ms      != null ? entry.hrv_ms      : '';
+  document.getElementById('le-sleep-hrs').value = entry.sleep_hours != null ? entry.sleep_hours : '';
+
+  // Sleep quality buttons
+  setLogSleepQuality(entry.sleep_quality);
+
+  document.getElementById('log-modal').classList.add('open');
+}
+
+function closeLogModal() {
+  document.getElementById('log-modal').classList.remove('open');
+  logEditDate = null;
+}
+
+function setLogSleepQuality(val) {
+  document.getElementById('le-sq2').value = (val != null) ? val : '';
+  document.querySelectorAll('#le-sq-btns .sq-btn').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.val) === val);
+  });
+}
+
+async function saveLogEntry() {
+  if (!logEditDate) return;
+  const statusEl = document.getElementById('log-modal-status');
+
+  const sq2Raw = document.getElementById('le-sq2').value;
+  const payload = {
+    weight_lbs:         parseFloat(document.getElementById('le-weight').value)    || null,
+    sore_quad_dom:      parseInt(document.getElementById('le-sq').value),
+    sore_posterior:     parseInt(document.getElementById('le-sp').value),
+    sore_upper_push:    parseInt(document.getElementById('le-spu').value),
+    sore_upper_pull:    parseInt(document.getElementById('le-spl').value),
+    joint_upper:        parseInt(document.getElementById('le-ju').value),
+    joint_lower:        parseInt(document.getElementById('le-jl').value),
+    tiredness:          parseInt(document.getElementById('le-t').value),
+    perceived_recovery: parseInt(document.getElementById('le-r').value),
+    hrv_ms:             parseFloat(document.getElementById('le-hrv').value)        || null,
+    sleep_hours:        parseFloat(document.getElementById('le-sleep-hrs').value)  || null,
+    sleep_quality:      sq2Raw !== '' ? parseInt(sq2Raw) : null,
+  };
+
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = 'Saving…';
+
+  try {
+    const res = await fetch(`/api/readiness/${logEditDate}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || res.statusText);
+    }
+    closeLogModal();
+    // Reload the log table and invalidate related tabs
+    logLoaded = false;
+    loadLog();
+    if (trendsLoaded) loadTrends();
+  } catch (err) {
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = `Save failed: ${err.message}`;
+  }
+}
+
+async function deleteLogEntry() {
+  if (!logEditDate) return;
+  if (!confirm(`Delete the check-in for ${logEditDate}? This cannot be undone.`)) return;
+
+  const statusEl = document.getElementById('log-modal-status');
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = 'Deleting…';
+
+  try {
+    const res = await fetch(`/api/readiness/${logEditDate}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || res.statusText);
+    }
+    closeLogModal();
+    logLoaded = false;
+    loadLog();
+    if (trendsLoaded) loadTrends();
+  } catch (err) {
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = `Delete failed: ${err.message}`;
+  }
+}
+
 // ═══ Workouts tab ═════════════════════════════════════
 async function loadWorkouts() {
   const wrap = document.getElementById('workouts-wrap');
@@ -1615,6 +1920,10 @@ function closeModal() {
 
 document.getElementById('edit-modal').addEventListener('click', e => {
   if (e.target === document.getElementById('edit-modal')) closeModal();
+});
+
+document.getElementById('log-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('log-modal')) closeLogModal();
 });
 
 function onSlider(key) {
