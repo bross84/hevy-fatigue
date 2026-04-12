@@ -1131,12 +1131,16 @@ async function runSync({ silent = false } = {}) {
   }
 
   try {
-    const r = await fetch('/api/sync', { method: 'POST' });
+    const url = silent ? '/api/sync?force=true' : '/api/sync';
+    const r = await fetch(url, { method: 'POST' });
     const d = await r.json();
 
     if (!silent) {
       if (d.status === 'already_running') {
         statusEl.innerHTML = '<div class="alert alert-info">Sync already in progress…</div>';
+      } else if (d.status === 'cooldown') {
+        const mins = Math.ceil(d.retry_after_seconds / 60);
+        statusEl.innerHTML = `<div class="alert alert-info">Already synced recently — try again in ${mins} min.</div>`;
       } else if (r.ok) {
         const msg = d.new_sets > 0
           ? `✓ Sync complete — ${d.new_sets} new set${d.new_sets !== 1 ? 's' : ''} added.`

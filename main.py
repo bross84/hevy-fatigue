@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from pydantic import BaseModel, Field
 from typing import Optional
-from datetime import date as date_type, timedelta
+from datetime import date as date_type, timedelta, datetime
 import os
 import threading
 
@@ -16,10 +16,14 @@ from importer import import_hevy_data
 
 app = FastAPI(title="Hevy Fatigue Monitor")
 
-# Allow the frontend to talk to the backend
+# CORS — restrict to your Cloudflare tunnel domain in production.
+# Set ALLOWED_ORIGIN in your .env file, e.g.:
+#   ALLOWED_ORIGIN=https://your-tunnel-domain.com
+# Falls back to localhost only if not set.
+_allowed_origin = os.environ.get("ALLOWED_ORIGIN", "http://localhost:8000")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[_allowed_origin],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -92,9 +96,10 @@ def startup():
     finally:
         db.close()
 
-# --- Sync state (prevents concurrent imports) ---
+# --- Sync state (prevents concurrent imports and rate-limits manual triggers) ---
 _sync_lock = threading.Lock()
-_sync_status = {"running": False, "last_result": None}
+_sync_status = {"running": False, "last_result": None, "last_run": None}
+_SYNC_COOLDOWN_SECONDS = 600  # 10 minutes between manual syncs
 
 # --- Routes ---
 
@@ -106,18 +111,27 @@ def serve_frontend():
     return {"message": "Hevy Fatigue API — place index.html in the static/ folder"}
 
 @app.post("/api/sync")
-def trigger_sync():
+def trigger_sync(force: bool = False):
     """
     Pull latest workouts from the Hevy API into the local database.
-    Returns immediately with a 409 if a sync is already running.
+    Rejects if a sync is already running or ran within the cooldown window.
+    Pass ?force=true to bypass the cooldown (e.g. from the auto-sync on check-in).
     """
     if not _sync_lock.acquire(blocking=False):
         return {"status": "already_running"}
 
     try:
+        # Enforce cooldown on manual triggers to prevent API hammering
+        if not force and _sync_status["last_run"] is not None:
+            elapsed = (datetime.utcnow() - _sync_status["last_run"]).total_seconds()
+            if elapsed < _SYNC_COOLDOWN_SECONDS:
+                remaining = int(_SYNC_COOLDOWN_SECONDS - elapsed)
+                return {"status": "cooldown", "retry_after_seconds": remaining}
+
         _sync_status["running"] = True
         result = import_hevy_data()
         _sync_status["last_result"] = result
+        _sync_status["last_run"] = datetime.utcnow()
         return {"status": "ok", "new_sets": result.get("new_sets", 0)}
     except Exception as e:
         _sync_status["last_result"] = {"error": str(e)}
