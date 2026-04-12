@@ -10,9 +10,22 @@ services:
     environment:
       - DB_PATH=/data/hevy_fatigue.db
     volumes:
-      # Named volume — your database lives here permanently.
-      # Rebuilding or updating the container never touches this data.
+      # Named volume: database lives here and survives container rebuilds.
       - hevy-data:/data
+    networks:
+      - hevy-net
+    healthcheck:
+      # Uses Python (already in the image) to hit the status endpoint.
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/sync/status')\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
 volumes:
   hevy-data:
+    driver: local
+
+networks:
+  hevy-net:
+    driver: bridge
