@@ -12,7 +12,7 @@ services:
     ports:
       - mode: ingress
         target: 8000
-        published: "8125"
+        published: "8125" # change as needed
         protocol: tcp
     volumes:
       - hevy-data:/data
