@@ -582,6 +582,24 @@ tbody tr:hover td { background: var(--row-hover); }
 /* Horizontal scroll wrapper for tables — only activates on small screens */
 .table-scroll { overflow-x: visible; }
 
+/* ── Editable value input beside each slider ── */
+.val-input {
+  width: 42px;
+  text-align: center;
+  padding: 2px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: text;
+  -moz-appearance: textfield;
+}
+.val-input::-webkit-outer-spin-button,
+.val-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.val-input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+
 /* ── Severity badges (0 = green, 4 = red) ── */
 .sev-badge {
   display: inline-block;
@@ -723,34 +741,30 @@ tbody tr:hover td { background: var(--row-hover); }
           <div class="form-row">
             <div class="form-label">
               <span><span class="dot dot-quad"></span>Quad / Knee</span>
-              <span class="val-badge" id="v-sq">0</span>
+              <input type="number" class="val-input" id="v-sq" min="0" max="4" value="0" oninput="syncRange('v-sq','ci-sq')">
             </div>
-            <input type="range" min="0" max="4" value="0" id="ci-sq"
-                   oninput="document.getElementById('v-sq').textContent=this.value">
+            <input type="range" min="0" max="4" value="0" id="ci-sq" oninput="syncNum('ci-sq','v-sq')">
           </div>
           <div class="form-row">
             <div class="form-label">
               <span><span class="dot dot-posterior"></span>Hip / Posterior</span>
-              <span class="val-badge" id="v-sp">0</span>
+              <input type="number" class="val-input" id="v-sp" min="0" max="4" value="0" oninput="syncRange('v-sp','ci-sp')">
             </div>
-            <input type="range" min="0" max="4" value="0" id="ci-sp"
-                   oninput="document.getElementById('v-sp').textContent=this.value">
+            <input type="range" min="0" max="4" value="0" id="ci-sp" oninput="syncNum('ci-sp','v-sp')">
           </div>
           <div class="form-row">
             <div class="form-label">
               <span><span class="dot dot-push"></span>Upper Push</span>
-              <span class="val-badge" id="v-spu">0</span>
+              <input type="number" class="val-input" id="v-spu" min="0" max="4" value="0" oninput="syncRange('v-spu','ci-spu')">
             </div>
-            <input type="range" min="0" max="4" value="0" id="ci-spu"
-                   oninput="document.getElementById('v-spu').textContent=this.value">
+            <input type="range" min="0" max="4" value="0" id="ci-spu" oninput="syncNum('ci-spu','v-spu')">
           </div>
           <div class="form-row">
             <div class="form-label">
               <span><span class="dot dot-pull"></span>Upper Pull</span>
-              <span class="val-badge" id="v-spl">0</span>
+              <input type="number" class="val-input" id="v-spl" min="0" max="4" value="0" oninput="syncRange('v-spl','ci-spl')">
             </div>
-            <input type="range" min="0" max="4" value="0" id="ci-spl"
-                   oninput="document.getElementById('v-spl').textContent=this.value">
+            <input type="range" min="0" max="4" value="0" id="ci-spl" oninput="syncNum('ci-spl','v-spl')">
           </div>
 
           <hr class="section-sep">
@@ -759,18 +773,16 @@ tbody tr:hover td { background: var(--row-hover); }
           <div class="form-row">
             <div class="form-label">
               Upper (Shoulder / Elbow / Wrist)
-              <span class="val-badge" id="v-ju">0</span>
+              <input type="number" class="val-input" id="v-ju" min="0" max="4" value="0" oninput="syncRange('v-ju','ci-ju')">
             </div>
-            <input type="range" min="0" max="4" value="0" id="ci-ju"
-                   oninput="document.getElementById('v-ju').textContent=this.value">
+            <input type="range" min="0" max="4" value="0" id="ci-ju" oninput="syncNum('ci-ju','v-ju')">
           </div>
           <div class="form-row">
             <div class="form-label">
               Lower (Low Back / Hip / Knee)
-              <span class="val-badge" id="v-jl">0</span>
+              <input type="number" class="val-input" id="v-jl" min="0" max="4" value="0" oninput="syncRange('v-jl','ci-jl')">
             </div>
-            <input type="range" min="0" max="4" value="0" id="ci-jl"
-                   oninput="document.getElementById('v-jl').textContent=this.value">
+            <input type="range" min="0" max="4" value="0" id="ci-jl" oninput="syncNum('ci-jl','v-jl')">
           </div>
 
           <hr class="section-sep">
@@ -779,18 +791,16 @@ tbody tr:hover td { background: var(--row-hover); }
           <div class="form-row">
             <div class="form-label">
               Tiredness (0 Fresh → 4 Exhausted)
-              <span class="val-badge" id="v-t">0</span>
+              <input type="number" class="val-input" id="v-t" min="0" max="4" value="0" oninput="syncRange('v-t','ci-t')">
             </div>
-            <input type="range" min="0" max="4" value="0" id="ci-t"
-                   oninput="document.getElementById('v-t').textContent=this.value">
+            <input type="range" min="0" max="4" value="0" id="ci-t" oninput="syncNum('ci-t','v-t')">
           </div>
           <div class="form-row">
             <div class="form-label">
               Recovery (0 Fully Recovered → 4 Beat Up)
-              <span class="val-badge" id="v-r">0</span>
+              <input type="number" class="val-input" id="v-r" min="0" max="4" value="0" oninput="syncRange('v-r','ci-r')">
             </div>
-            <input type="range" min="0" max="4" value="0" id="ci-r"
-                   oninput="document.getElementById('v-r').textContent=this.value">
+            <input type="range" min="0" max="4" value="0" id="ci-r" oninput="syncNum('ci-r','v-r')">
           </div>
 
           <hr class="section-sep">
@@ -1106,44 +1116,44 @@ tbody tr:hover td { background: var(--row-hover); }
     <div class="section-label">Soreness — 0 None → 4 Severe / Limited ROM</div>
 
     <div class="form-row">
-      <div class="form-label"><span><span class="dot dot-quad"></span>Quad / Knee</span><span class="val-badge" id="lv-sq">0</span></div>
-      <input type="range" min="0" max="4" value="0" id="le-sq" oninput="document.getElementById('lv-sq').textContent=this.value">
+      <div class="form-label"><span><span class="dot dot-quad"></span>Quad / Knee</span><input type="number" class="val-input" id="lv-sq" min="0" max="4" value="0" oninput="syncRange('lv-sq','le-sq')"></div>
+      <input type="range" min="0" max="4" value="0" id="le-sq" oninput="syncNum('le-sq','lv-sq')">
     </div>
     <div class="form-row">
-      <div class="form-label"><span><span class="dot dot-posterior"></span>Hip / Posterior</span><span class="val-badge" id="lv-sp">0</span></div>
-      <input type="range" min="0" max="4" value="0" id="le-sp" oninput="document.getElementById('lv-sp').textContent=this.value">
+      <div class="form-label"><span><span class="dot dot-posterior"></span>Hip / Posterior</span><input type="number" class="val-input" id="lv-sp" min="0" max="4" value="0" oninput="syncRange('lv-sp','le-sp')"></div>
+      <input type="range" min="0" max="4" value="0" id="le-sp" oninput="syncNum('le-sp','lv-sp')">
     </div>
     <div class="form-row">
-      <div class="form-label"><span><span class="dot dot-push"></span>Upper Push</span><span class="val-badge" id="lv-spu">0</span></div>
-      <input type="range" min="0" max="4" value="0" id="le-spu" oninput="document.getElementById('lv-spu').textContent=this.value">
+      <div class="form-label"><span><span class="dot dot-push"></span>Upper Push</span><input type="number" class="val-input" id="lv-spu" min="0" max="4" value="0" oninput="syncRange('lv-spu','le-spu')"></div>
+      <input type="range" min="0" max="4" value="0" id="le-spu" oninput="syncNum('le-spu','lv-spu')">
     </div>
     <div class="form-row">
-      <div class="form-label"><span><span class="dot dot-pull"></span>Upper Pull</span><span class="val-badge" id="lv-spl">0</span></div>
-      <input type="range" min="0" max="4" value="0" id="le-spl" oninput="document.getElementById('lv-spl').textContent=this.value">
+      <div class="form-label"><span><span class="dot dot-pull"></span>Upper Pull</span><input type="number" class="val-input" id="lv-spl" min="0" max="4" value="0" oninput="syncRange('lv-spl','le-spl')"></div>
+      <input type="range" min="0" max="4" value="0" id="le-spl" oninput="syncNum('le-spl','lv-spl')">
     </div>
 
     <hr class="section-sep">
     <div class="section-label">Joint Health — 0 No Issues → 4 Significant Pain</div>
 
     <div class="form-row">
-      <div class="form-label">Upper (Shoulder / Elbow / Wrist)<span class="val-badge" id="lv-ju">0</span></div>
-      <input type="range" min="0" max="4" value="0" id="le-ju" oninput="document.getElementById('lv-ju').textContent=this.value">
+      <div class="form-label">Upper (Shoulder / Elbow / Wrist)<input type="number" class="val-input" id="lv-ju" min="0" max="4" value="0" oninput="syncRange('lv-ju','le-ju')"></div>
+      <input type="range" min="0" max="4" value="0" id="le-ju" oninput="syncNum('le-ju','lv-ju')">
     </div>
     <div class="form-row">
-      <div class="form-label">Lower (Low Back / Hip / Knee)<span class="val-badge" id="lv-jl">0</span></div>
-      <input type="range" min="0" max="4" value="0" id="le-jl" oninput="document.getElementById('lv-jl').textContent=this.value">
+      <div class="form-label">Lower (Low Back / Hip / Knee)<input type="number" class="val-input" id="lv-jl" min="0" max="4" value="0" oninput="syncRange('lv-jl','le-jl')"></div>
+      <input type="range" min="0" max="4" value="0" id="le-jl" oninput="syncNum('le-jl','lv-jl')">
     </div>
 
     <hr class="section-sep">
     <div class="section-label">Readiness</div>
 
     <div class="form-row">
-      <div class="form-label">Tiredness (0 Fresh → 4 Exhausted)<span class="val-badge" id="lv-t">0</span></div>
-      <input type="range" min="0" max="4" value="0" id="le-t" oninput="document.getElementById('lv-t').textContent=this.value">
+      <div class="form-label">Tiredness (0 Fresh → 4 Exhausted)<input type="number" class="val-input" id="lv-t" min="0" max="4" value="0" oninput="syncRange('lv-t','le-t')"></div>
+      <input type="range" min="0" max="4" value="0" id="le-t" oninput="syncNum('le-t','lv-t')">
     </div>
     <div class="form-row">
-      <div class="form-label">Recovery (0 Fully Recovered → 4 Beat Up)<span class="val-badge" id="lv-r">0</span></div>
-      <input type="range" min="0" max="4" value="0" id="le-r" oninput="document.getElementById('lv-r').textContent=this.value">
+      <div class="form-label">Recovery (0 Fully Recovered → 4 Beat Up)<input type="number" class="val-input" id="lv-r" min="0" max="4" value="0" oninput="syncRange('lv-r','le-r')"></div>
+      <input type="range" min="0" max="4" value="0" id="le-r" oninput="syncNum('le-r','lv-r')">
     </div>
 
     <hr class="section-sep">
@@ -1292,6 +1302,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function todayStr() { return new Date().toISOString().split('T')[0]; }
+
+// ═══ Slider ↔ number input sync helpers ═══════════════
+// Called by the range slider moving → updates the number box
+function syncNum(sliderId, numId) {
+  document.getElementById(numId).value = document.getElementById(sliderId).value;
+}
+// Called by the number box changing → clamps 0–4 and updates the slider
+function syncRange(numId, sliderId) {
+  const v = Math.min(4, Math.max(0, parseInt(document.getElementById(numId).value) || 0));
+  document.getElementById(numId).value  = v;
+  document.getElementById(sliderId).value = v;
+}
 
 // ═══ Check-in ════════════════════════════════════════
 async function checkTodayReadiness() {
@@ -1681,7 +1703,7 @@ function openLogEdit(entry) {
   sliders.forEach(([inputId, badgeId, val]) => {
     const v = val ?? 0;
     document.getElementById(inputId).value          = v;
-    document.getElementById(badgeId).textContent    = v;
+    document.getElementById(badgeId).value          = v;
   });
 
   // Biometrics
