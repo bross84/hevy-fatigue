@@ -168,7 +168,7 @@ Your data is untouched. The `hevy-data` Docker volume that holds the database is
 3. **Review the dashboard** — the stress chart shows how yesterday's session compares to your rolling baseline.
 4. **Check the Workouts tab** for a session-by-session breakdown.
 
-<!-- SCREENSHOT: Morning check-in form -->
+<!-- SCREENSHOT: Daily check-in form -->
 <!-- Suggested: capture the check-in card filled in with typical values -->
 
 <!-- SCREENSHOT: Stress chart with pattern filter active -->

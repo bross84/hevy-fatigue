@@ -363,7 +363,7 @@ def get_pattern_stress(target_date: date_type, db: Session = Depends(get_db)):
 
 @app.post("/api/readiness")
 def submit_readiness(data: ReadinessInput, db: Session = Depends(get_db)):
-    """Submit the daily morning readiness check-in."""
+    """Submit the daily readiness check-in."""
     existing = db.query(DailyReadiness).filter(DailyReadiness.date == data.date).first()
     if existing:
         raise HTTPException(status_code=409, detail=f"Readiness entry for {data.date} already exists.")
