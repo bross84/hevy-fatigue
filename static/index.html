@@ -1250,18 +1250,20 @@ let stressChart    = null;
 let exercises      = [];
 
 // ── Chart resize handler ──────────────────────────────
-// Chart.js responsive:true detects canvas parent size changes, but does NOT
-// respond to CSS grid column-count changes at breakpoints. This forces all
-// active charts to recalculate their dimensions after any window resize.
+// chart.resize() alone is not reliable when CSS grid changes column count —
+// Chart.js may have stale internal dimensions. Destroy + recreate from the
+// cached API response guarantees correct sizing at the new layout width.
+let _trendsCache = null;  // set in loadTrends(), re-used on resize
 {
   let _resizeTimer;
   window.addEventListener('resize', () => {
     clearTimeout(_resizeTimer);
     _resizeTimer = setTimeout(() => {
-      [stressChart, recoveryChart, tsbZoneChart, loadChart].forEach(ch => {
-        if (ch) ch.resize();
-      });
-    }, 150);
+      // Stress chart (Dashboard) — resize() is fine here (no grid change)
+      if (stressChart) stressChart.resize();
+      // Trends charts — full destroy + recreate from cached data
+      if (trendsLoaded && _trendsCache) _renderTrends(_trendsCache);
+    }, 200);
   });
 }
 let editingTitle   = null;
@@ -2129,11 +2131,15 @@ async function loadTrends() {
     fetch('/api/training-load?days=60').then(r => r.json()).catch(() => null),
     fetch('/api/readiness/history?days=30').then(r => r.json()).catch(() => []),
   ]);
+  _trendsCache = { tl: tlRes, rd: rdRes };
+  _renderTrends(_trendsCache);
+}
 
-  renderRecoveryChart(rdRes);
-  if (tlRes) {
-    renderTsbZoneChart(tlRes.history);
-    renderLoadChart(tlRes.history);
+function _renderTrends({ tl, rd }) {
+  renderRecoveryChart(rd);
+  if (tl) {
+    renderTsbZoneChart(tl.history);
+    renderLoadChart(tl.history);
   }
 }
 
