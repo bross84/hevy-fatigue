@@ -167,14 +167,24 @@ input[type="number"], input[type="date"] {
   border-radius: 6px;
   font-size: 14px;
   width: 100%;
-  min-width: 0;     /* prevent mobile browsers' intrinsic date-picker width from overflowing */
+  min-width: 0;
   max-width: 100%;
   transition: background .2s, border-color .2s;
+}
+/* Number inputs: hide browser spin buttons */
+input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
 }
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+/* Date input: fully strip native iOS/Safari styling so our width rules apply.
+   appearance:textfield is wrong here — it partially removes native styles but
+   leaves iOS's internal minimum-width constraint, causing overflow on real devices. */
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
 input[type="number"]:focus, input[type="date"]:focus {
   outline: none; border-color: var(--accent);
 }
