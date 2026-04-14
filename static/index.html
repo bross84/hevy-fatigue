@@ -2161,41 +2161,45 @@ function renderRecoveryChart(data) {
       ...chartOpts(),
       scales: {
         ...chartOpts().scales,
-        y: { ...chartOpts().scales.y, min: 0, max: 8,
-             ticks: { ...chartOpts().scales.y.ticks, stepSize: 2 } },
+        // suggestedMax lets the chart breathe when scores cluster low,
+        // but won't artificially compress if scores reach near 8
+        y: { ...chartOpts().scales.y, min: 0, suggestedMax: 8,
+             ticks: { ...chartOpts().scales.y.ticks, stepSize: 1 } },
       },
     },
   });
 }
 
 function renderTsbZoneChart(history) {
-  const c   = themeColors();
-  const ctx = document.getElementById('tsbZoneChart').getContext('2d');
+  const c      = themeColors();
+  const ctx    = document.getElementById('tsbZoneChart').getContext('2d');
   const labels = history.map(d => d.date.slice(5));
+  const values = history.map(d => d.tsb);
 
-  // Map TSB to a 0-20 readiness index across 5 equal zones of 4 units
-  // TSB < -15 → zone 1 (0-4):  Large Decrease
-  // TSB -15–-5 → zone 2 (4-8): Decrease
-  // TSB -5–5  → zone 3 (8-12): Continue
-  // TSB 5–15  → zone 4 (12-16): Increase
-  // TSB > 15  → zone 5 (16-20): Large Increase
-  function tsbToIndex(tsb) {
-    if (tsb >  15) return Math.min(20, 16 + (tsb - 15) * 0.2);
-    if (tsb >   5) return 12 + (tsb - 5);
-    if (tsb >  -5) return 8  + (tsb + 5) * 0.4;
-    if (tsb > -15) return 4  + (tsb + 15) * 0.4;
-    return Math.max(0, 4 + (tsb + 15) * 0.2);
-  }
+  // Dynamic y-axis: always include ±20 so all 5 zones are visible,
+  // but expand further if the data goes beyond that range
+  const dataMin = values.length ? Math.min(...values) : -20;
+  const dataMax = values.length ? Math.max(...values) :  20;
+  const yMin = Math.floor(Math.min(dataMin, -20) - 2);
+  const yMax = Math.ceil( Math.max(dataMax,  20) + 2);
 
-  const line = history.map(d => +tsbToIndex(d.tsb).toFixed(2));
-
+  // Colored bands match the legend below the chart:
+  //   fresh (top) → blue → green → yellow → orange → red ← fatigued (bottom)
   const bands = [
-    { min: 16, max: 20, color: getCSSVar('--danger')    + '55' },
-    { min: 12, max: 16, color: getCSSVar('--posterior') + '55' },
-    { min:  8, max: 12, color: getCSSVar('--warn')      + '55' },
-    { min:  4, max:  8, color: getCSSVar('--success')   + '55' },
-    { min:  0, max:  4, color: getCSSVar('--accent')    + '55' },
+    { min:  15, max:  999, color: getCSSVar('--accent')    + '45' },  // Large Increase
+    { min:   5, max:   15, color: getCSSVar('--success')   + '45' },  // Increase
+    { min:  -5, max:    5, color: getCSSVar('--warn')      + '45' },  // Continue
+    { min: -15, max:   -5, color: getCSSVar('--posterior') + '45' },  // Decrease
+    { min: -999, max: -15, color: getCSSVar('--danger')    + '45' },  // Large Decrease
   ];
+
+  function tsbZone(tsb) {
+    if (tsb >  15) return 'Large Increase';
+    if (tsb >   5) return 'Increase';
+    if (tsb >  -5) return 'Continue';
+    if (tsb > -15) return 'Decrease';
+    return 'Large Decrease';
+  }
 
   if (tsbZoneChart) tsbZoneChart.destroy();
   tsbZoneChart = new Chart(ctx, {
@@ -2203,8 +2207,8 @@ function renderTsbZoneChart(history) {
     data: {
       labels,
       datasets: [{
-        label: 'Readiness',
-        data: line,
+        label: 'TSB',
+        data: values,
         borderColor: c.text,
         borderWidth: 2.5,
         pointRadius: 3,
@@ -2218,13 +2222,24 @@ function renderTsbZoneChart(history) {
       plugins: {
         ...chartOpts().plugins,
         bandBackground: { bands },
+        tooltip: {
+          ...chartOpts().plugins.tooltip,
+          callbacks: {
+            label(item) {
+              const tsb = item.raw;
+              const sign = tsb >= 0 ? '+' : '';
+              return `TSB: ${sign}${tsb.toFixed(1)}  →  ${tsbZone(tsb)}`;
+            },
+          },
+        },
       },
       scales: {
         x: chartOpts().scales.x,
         y: {
-          min: 0, max: 20,
-          ticks: { display: false },
-          grid:  { display: false },
+          min: yMin,
+          max: yMax,
+          ticks: { color: c.muted, font: { size: 10 }, stepSize: 5 },
+          grid:  { color: c.border },
         },
       },
     },
