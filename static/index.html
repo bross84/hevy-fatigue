@@ -167,6 +167,8 @@ input[type="number"], input[type="date"] {
   border-radius: 6px;
   font-size: 14px;
   width: 100%;
+  min-width: 0;     /* prevent mobile browsers' intrinsic date-picker width from overflowing */
+  max-width: 100%;
   transition: background .2s, border-color .2s;
   -moz-appearance: textfield;
   appearance: textfield;
