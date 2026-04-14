@@ -1248,6 +1248,22 @@ let activePattern  = 'total';
 let baselineDays   = 6;
 let stressChart    = null;
 let exercises      = [];
+
+// ── Chart resize handler ──────────────────────────────
+// Chart.js responsive:true detects canvas parent size changes, but does NOT
+// respond to CSS grid column-count changes at breakpoints. This forces all
+// active charts to recalculate their dimensions after any window resize.
+{
+  let _resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(() => {
+      [stressChart, recoveryChart, tsbZoneChart, loadChart].forEach(ch => {
+        if (ch) ch.resize();
+      });
+    }, 150);
+  });
+}
 let editingTitle   = null;
 let editingId      = null;
 let workoutsLoaded = false;
