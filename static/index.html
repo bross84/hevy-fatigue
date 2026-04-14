@@ -1249,23 +1249,48 @@ let baselineDays   = 6;
 let stressChart    = null;
 let exercises      = [];
 
-// ── Chart resize handler ──────────────────────────────
-// chart.resize() alone is not reliable when CSS grid changes column count —
-// Chart.js may have stale internal dimensions. Destroy + recreate from the
-// cached API response guarantees correct sizing at the new layout width.
+// ── Chart resize handling ─────────────────────────────
+// window.resize + setTimeout has a race condition: the CSS grid layout may
+// not have settled by the time we measure canvas widths.
+// ResizeObserver fires *after* the browser finishes computing the new layout
+// for each specific container, so we always measure the correct dimensions.
 let _trendsCache = null;  // set in loadTrends(), re-used on resize
+
+// Stress chart lives on the Dashboard (never in a switching grid) — .resize() is fine
 {
-  let _resizeTimer;
+  let _t;
   window.addEventListener('resize', () => {
-    clearTimeout(_resizeTimer);
-    _resizeTimer = setTimeout(() => {
-      // Stress chart (Dashboard) — resize() is fine here (no grid change)
-      if (stressChart) stressChart.resize();
-      // Trends charts — full destroy + recreate from cached data
-      if (trendsLoaded && _trendsCache) _renderTrends(_trendsCache);
-    }, 200);
+    clearTimeout(_t);
+    _t = setTimeout(() => { if (stressChart) stressChart.resize(); }, 150);
   });
 }
+
+// For each Trends chart, watch its own container div with ResizeObserver.
+// Debounce at 60ms to avoid thrashing on every pixel during a drag resize.
+function _watchContainer(canvasId, renderFn) {
+  if (!window.ResizeObserver) return;
+  const el = document.getElementById(canvasId)?.parentElement;
+  if (!el) return;
+  let timer;
+  new ResizeObserver(() => {
+    clearTimeout(timer);
+    timer = setTimeout(renderFn, 60);
+  }).observe(el);
+}
+
+// Observers are registered once at startup; render functions guard with
+// trendsLoaded && _trendsCache so they're no-ops until data has loaded.
+_watchContainer('recoveryChart', () => {
+  if (trendsLoaded && _trendsCache) renderRecoveryChart(_trendsCache.rd);
+});
+_watchContainer('tsbZoneChart', () => {
+  if (trendsLoaded && _trendsCache && _trendsCache.tl)
+    renderTsbZoneChart(_trendsCache.tl.history);
+});
+_watchContainer('loadChart', () => {
+  if (trendsLoaded && _trendsCache && _trendsCache.tl)
+    renderLoadChart(_trendsCache.tl.history);
+});
 let editingTitle   = null;
 let editingId      = null;
 let workoutsLoaded = false;
