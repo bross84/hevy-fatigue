@@ -7,10 +7,46 @@ from sqlalchemy import func
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date as date_type, timedelta, datetime
+from cryptography.fernet import Fernet
 import os
 import threading
 
 from database import SessionLocal, DailyReadiness, WorkoutLog, ExerciseMapping, AppSetting, init_db
+
+# ── Encryption ────────────────────────────────────────────────────────────────
+# A Fernet key is generated once and stored in the Docker volume at /data/app.key.
+# The API key in the DB is encrypted with it, so a DB dump alone can't expose it.
+_FERNET_KEY_PATH = os.getenv("FERNET_KEY_PATH", "/data/app.key")
+_fernet: Fernet | None = None
+
+def _get_fernet() -> Fernet:
+    global _fernet
+    if _fernet is not None:
+        return _fernet
+    if os.path.exists(_FERNET_KEY_PATH):
+        with open(_FERNET_KEY_PATH, "rb") as f:
+            key = f.read().strip()
+    else:
+        key = Fernet.generate_key()
+        os.makedirs(os.path.dirname(_FERNET_KEY_PATH), exist_ok=True)
+        with open(_FERNET_KEY_PATH, "wb") as f:
+            f.write(key)
+        try:
+            os.chmod(_FERNET_KEY_PATH, 0o600)
+        except OSError:
+            pass  # Windows doesn't support chmod — safe to ignore
+    _fernet = Fernet(key)
+    return _fernet
+
+def _encrypt(plaintext: str) -> str:
+    return _get_fernet().encrypt(plaintext.encode()).decode()
+
+def _decrypt(ciphertext: str) -> str:
+    try:
+        return _get_fernet().decrypt(ciphertext.encode()).decode()
+    except Exception:
+        # If decryption fails the value may be a legacy plaintext key — return as-is
+        return ciphertext
 from rpe_table import get_set_central_stress, get_set_peripheral_stress, seed_rpe_table
 from importer import import_hevy_data
 
@@ -120,9 +156,11 @@ _SYNC_COOLDOWN_SECONDS = 600  # 10 minutes between manual syncs
 
 # --- Settings helper ---
 def _get_db_api_key(db: Session) -> str | None:
-    """Read the Hevy API key stored in the app_settings table."""
+    """Read and decrypt the Hevy API key stored in the app_settings table."""
     row = db.query(AppSetting).filter(AppSetting.key == "hevy_api_key").first()
-    return row.value if row else None
+    if not row or not row.value:
+        return None
+    return _decrypt(row.value)
 
 # --- Routes ---
 
@@ -186,15 +224,16 @@ def get_settings(db: Session = Depends(get_db)):
 
 @app.put("/api/settings")
 def save_settings(data: SettingsInput, db: Session = Depends(get_db)):
-    """Save (or update) the Hevy API key in the database."""
+    """Encrypt and save the Hevy API key in the database."""
     key = data.hevy_api_key.strip()
     if not key:
         raise HTTPException(status_code=422, detail="API key cannot be empty.")
+    encrypted = _encrypt(key)
     row = db.query(AppSetting).filter(AppSetting.key == "hevy_api_key").first()
     if row:
-        row.value = key
+        row.value = encrypted
     else:
-        db.add(AppSetting(key="hevy_api_key", value=key))
+        db.add(AppSetting(key="hevy_api_key", value=encrypted))
     db.commit()
     preview = "···" + key[-4:] if len(key) >= 4 else "···"
     return {"message": "API key saved.", "api_key_preview": preview}
