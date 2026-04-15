@@ -10,7 +10,7 @@ from datetime import date as date_type, timedelta, datetime
 import os
 import threading
 
-from database import SessionLocal, DailyReadiness, WorkoutLog, ExerciseMapping, init_db
+from database import SessionLocal, DailyReadiness, WorkoutLog, ExerciseMapping, AppSetting, init_db
 from rpe_table import get_set_central_stress, get_set_peripheral_stress, seed_rpe_table
 from importer import import_hevy_data
 
@@ -68,6 +68,9 @@ class ReadinessUpdate(BaseModel):
     sleep_hours: Optional[float] = Field(None, ge=0, le=24)
     sleep_quality: Optional[int] = Field(None, ge=0, le=4)
 
+class SettingsInput(BaseModel):
+    hevy_api_key: str
+
 class MappingUpdate(BaseModel):
     pct_quad_dom: float = Field(ge=0.0, le=1.0)
     pct_posterior: float = Field(ge=0.0, le=1.0)
@@ -115,6 +118,12 @@ _sync_lock = threading.Lock()
 _sync_status = {"running": False, "last_result": None, "last_run": None}
 _SYNC_COOLDOWN_SECONDS = 600  # 10 minutes between manual syncs
 
+# --- Settings helper ---
+def _get_db_api_key(db: Session) -> str | None:
+    """Read the Hevy API key stored in the app_settings table."""
+    row = db.query(AppSetting).filter(AppSetting.key == "hevy_api_key").first()
+    return row.value if row else None
+
 # --- Routes ---
 
 @app.get("/", include_in_schema=False)
@@ -125,7 +134,7 @@ def serve_frontend():
     return {"message": "Hevy Fatigue API — place index.html in the static/ folder"}
 
 @app.post("/api/sync")
-def trigger_sync(force: bool = False):
+def trigger_sync(force: bool = False, db: Session = Depends(get_db)):
     """
     Pull latest workouts from the Hevy API into the local database.
     Rejects if a sync is already running or ran within the cooldown window.
@@ -143,7 +152,9 @@ def trigger_sync(force: bool = False):
                 return {"status": "cooldown", "retry_after_seconds": remaining}
 
         _sync_status["running"] = True
-        result = import_hevy_data()
+        # Resolve API key: DB setting first, then file/env fallback inside HevyClient
+        api_key = _get_db_api_key(db)
+        result = import_hevy_data(api_key=api_key)
         _sync_status["last_result"] = result
         _sync_status["last_run"] = datetime.utcnow()
         return {"status": "ok", "new_sets": result.get("new_sets", 0)}
@@ -158,6 +169,44 @@ def trigger_sync(force: bool = False):
 def sync_status():
     """Check whether a sync is currently running and what the last run returned."""
     return {"running": _sync_status["running"], "last_result": _sync_status["last_result"]}
+
+# ── Settings ──────────────────────────────────────────────────────────────────
+
+@app.get("/api/settings")
+def get_settings(db: Session = Depends(get_db)):
+    """Return whether the Hevy API key is configured, and a masked preview."""
+    key = _get_db_api_key(db)
+    if key and len(key) >= 4:
+        preview = "···" + key[-4:]
+    elif key:
+        preview = "···"
+    else:
+        preview = None
+    return {"api_key_set": bool(key), "api_key_preview": preview}
+
+@app.put("/api/settings")
+def save_settings(data: SettingsInput, db: Session = Depends(get_db)):
+    """Save (or update) the Hevy API key in the database."""
+    key = data.hevy_api_key.strip()
+    if not key:
+        raise HTTPException(status_code=422, detail="API key cannot be empty.")
+    row = db.query(AppSetting).filter(AppSetting.key == "hevy_api_key").first()
+    if row:
+        row.value = key
+    else:
+        db.add(AppSetting(key="hevy_api_key", value=key))
+    db.commit()
+    preview = "···" + key[-4:] if len(key) >= 4 else "···"
+    return {"message": "API key saved.", "api_key_preview": preview}
+
+@app.get("/api/settings/test")
+def test_api_key(db: Session = Depends(get_db)):
+    """Test whether the stored API key can reach the Hevy API."""
+    from hevy_client import HevyClient
+    key = _get_db_api_key(db)
+    client = HevyClient(api_key=key)
+    ok = client.test_connection()
+    return {"ok": ok}
 
 # ── Training Load (ATL / CTL / TSB) ──────────────────────────────────────────
 

@@ -85,7 +85,16 @@ class RPEChart(Base):
     def __repr__(self):
         return f"<RPEChart pattern={self.movement_pattern} rpe={self.rpe} reps={self.reps} pct={self.percentage}>"
 
-# --- TABLE 4: Exercise Movement Pattern Mapping ---
+# --- TABLE 4: App Settings (key/value store) ---
+class AppSetting(Base):
+    __tablename__ = "app_settings"
+    key   = Column(String, primary_key=True)
+    value = Column(String, nullable=True)
+
+    def __repr__(self):
+        return f"<AppSetting key={self.key}>"
+
+# --- TABLE 5: Exercise Movement Pattern Mapping ---
 class ExerciseMapping(Base):
     __tablename__ = "exercise_mappings"
 
@@ -115,6 +124,7 @@ def init_db():
         ("sleep_hours",   "REAL"),
         ("sleep_quality", "INTEGER"),
     ])
+    # app_settings table is created by create_all above (new installs and existing DBs)
 
 def _migrate_add_columns(eng, table: str, columns: list):
     """Safely add columns to an existing table if they don't already exist."""

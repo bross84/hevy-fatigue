@@ -5,9 +5,9 @@ from exercise_classifier import ensure_exercise_mapped
 from datetime import datetime
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
-def import_hevy_data():
+def import_hevy_data(api_key: str | None = None):
     init_db()  # Ensure tables exist before we try to use them
-    client = HevyClient()
+    client = HevyClient(api_key=api_key)
     db = SessionLocal()
 
     seed_rpe_table(db)  # Seed RPE chart if not already done

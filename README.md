@@ -82,11 +82,13 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Open `.env` and paste your Hevy API key:
+Open `.env` and set your Hevy API key:
 
 ```
 HEVY_API_KEY=your_api_key_here
 ```
+
+> **Note:** The `.env` file is only used when running locally. In Docker the key is read from the volume file (`/data/hevy_api_key`) so it never appears in container environment variables.
 
 ### 4. Import your Hevy data
 
@@ -121,19 +123,26 @@ git clone https://github.com/bross84/hevy-fatigue.git
 cd hevy-fatigue
 ```
 
-### 2. Set up your environment file
+### 2. Store your Hevy API key
+
+The API key is stored in the Docker volume — **not** in an environment variable — so it is never visible in Docker/CasaOS settings UIs.
+
+Create the named volume and write the key file in one step:
 
 ```bash
-cp .env.example .env
+# Create the volume if it doesn't already exist
+docker volume create hevy-fatigue_hevy-data
+
+# Write the key into the volume (replace with your actual key)
+docker run --rm \
+  -v hevy-fatigue_hevy-data:/data \
+  busybox \
+  sh -c 'echo "your_api_key_here" > /data/hevy_api_key && chmod 600 /data/hevy_api_key'
 ```
 
-Open `.env` and paste your Hevy API key:
+> **CasaOS users:** run the two commands above in the CasaOS terminal (or any host shell with Docker access) before starting the app container.
 
-```
-HEVY_API_KEY=your_api_key_here
-```
-
-### 3. Build and start the container
+### 3. Start the container
 
 ```bash
 docker compose up -d
@@ -156,7 +165,7 @@ git pull
 docker compose up -d --build
 ```
 
-Your data is untouched. The `hevy-data` Docker volume that holds the database is completely separate from the application container.
+Your data is untouched. The `hevy-data` Docker volume holds both the database and the API key file — both survive container rebuilds and updates.
 
 ---
 

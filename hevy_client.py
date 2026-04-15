@@ -2,12 +2,31 @@ import os
 import requests
 from dotenv import load_dotenv
 
-# Load the API key from the .env file
+# Load .env for local development (no-op if file doesn't exist)
 load_dotenv()
 
+_KEY_FILE = os.getenv("HEVY_API_KEY_FILE", "/data/hevy_api_key")
+
+def _load_api_key() -> str | None:
+    """
+    Resolution order:
+      1. Key file at HEVY_API_KEY_FILE (default /data/hevy_api_key) — used in Docker
+      2. HEVY_API_KEY environment variable — used for local development
+    """
+    try:
+        with open(_KEY_FILE) as fh:
+            key = fh.read().strip()
+            if key:
+                return key
+    except FileNotFoundError:
+        pass
+    return os.getenv("HEVY_API_KEY")
+
 class HevyClient:
-    def __init__(self):
-        self.api_key = os.getenv("HEVY_API_KEY")
+    def __init__(self, api_key: str | None = None):
+        # Caller can inject the key directly (e.g. read from the settings DB).
+        # Falls back to file → env var for local dev.
+        self.api_key = api_key or _load_api_key()
         self.base_url = "https://api.hevyapp.com/v1"
         self.headers = {"api-key": self.api_key}
 

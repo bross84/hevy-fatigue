@@ -628,6 +628,52 @@ tbody tr:hover td { background: var(--row-hover); }
 .sev-3 { background: rgba(220,100,30,.18);  color: #e07030; }
 .sev-4 { background: rgba(239,62,54,.15);   color: var(--danger); }
 
+/* ── Setup banner (shown when no API key is configured) ── */
+.setup-banner {
+  margin-bottom: 18px;
+  padding: 14px 18px;
+  border-radius: 8px;
+  background: var(--accent-sub);
+  border: 1px solid var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+
+/* ── Settings tab ── */
+.settings-card { max-width: 520px; }
+.settings-key-row { display: flex; gap: 8px; align-items: stretch; }
+.settings-key-row input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  font-family: monospace;
+}
+.settings-key-row input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+.settings-result {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  display: none;
+}
+.settings-result.ok    { background: rgba(77,184,112,.15); color: var(--success); }
+.settings-result.error { background: rgba(239,62,54,.12);  color: var(--danger); }
+.settings-note {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
 /* ── Log tab: soreness pattern cell ── */
 .sore-cell { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
 .sore-cell span { font-size: 12px; }
@@ -713,6 +759,7 @@ tbody tr:hover td { background: var(--row-hover); }
     <button class="nav-tab" data-tab="trends">Trends</button>
     <button class="nav-tab" data-tab="exercises">Exercises</button>
     <button class="nav-tab" data-tab="log">Log</button>
+    <button class="nav-tab" data-tab="settings">⚙ Settings</button>
   </div>
   <div class="nav-right">
     <div class="btn-group theme-group" id="theme-toggle">
@@ -727,6 +774,13 @@ tbody tr:hover td { background: var(--row-hover); }
 
 <!-- ══════════════ DASHBOARD ══════════════ -->
 <section id="tab-dashboard" class="tab-content active">
+
+  <!-- Banner shown until the user saves their API key -->
+  <div class="setup-banner" id="setup-banner" style="display:none;">
+    <span>⚡ <strong>Welcome!</strong> Add your Hevy API key to start syncing workouts.</span>
+    <button class="btn btn-primary" onclick="switchToSettings()">Go to Settings →</button>
+  </div>
+
   <div class="grid-2">
 
     <!-- left: check-in -->
@@ -1017,6 +1071,34 @@ tbody tr:hover td { background: var(--row-hover); }
       <span id="log-count" style="font-size:12px;color:var(--muted);"></span>
     </div>
     <div id="log-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
+  </div>
+</section>
+
+<!-- ══════════════ SETTINGS TAB ══════════════ -->
+<section id="tab-settings" class="tab-content">
+  <div class="card settings-card">
+    <div class="card-title">Settings</div>
+
+    <div style="margin-bottom:6px;font-weight:600;font-size:13px;">Hevy API Key</div>
+    <div id="api-key-current" style="font-size:12px;color:var(--muted);margin-bottom:10px;"></div>
+
+    <div class="settings-key-row">
+      <input type="password" id="api-key-input" placeholder="Paste your Hevy API key…" autocomplete="off">
+      <button class="btn" id="api-key-toggle" onclick="toggleKeyVisibility()" title="Show / hide">👁</button>
+    </div>
+
+    <div class="settings-result" id="api-key-result"></div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+      <button class="btn btn-primary" id="btn-save-key" onclick="saveApiKey()">Save Key</button>
+      <button class="btn" id="btn-test-key" onclick="testApiKey()">Test Connection</button>
+    </div>
+
+    <div class="settings-note">
+      Your API key is stored in the app's local database on your server — it never leaves your
+      machine except to make requests to the official Hevy API.<br><br>
+      Find your key at <strong>hevy.com → Settings → Developer</strong>.
+    </div>
   </div>
 </section>
 
@@ -1325,6 +1407,7 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     if (tab.dataset.tab === 'workouts'  && !workoutsLoaded)        loadWorkouts();
     if (tab.dataset.tab === 'trends'    && !trendsLoaded)          loadTrends();
     if (tab.dataset.tab === 'log'       && !logLoaded)             loadLog();
+    if (tab.dataset.tab === 'settings')                            loadSettingsTab();
   });
 });
 
@@ -1354,9 +1437,109 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderChart();
   loadWorkoutSummary();
   loadTrainingLoadCard();
+  checkSetupBanner();   // show banner if API key not yet configured
 });
 
 function todayStr() { return new Date().toISOString().split('T')[0]; }
+
+// ═══ Settings ════════════════════════════════════════
+function switchToSettings() {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
+  document.querySelector('[data-tab="settings"]').classList.add('active');
+  document.getElementById('tab-settings').classList.add('active');
+  loadSettingsTab();
+}
+
+async function checkSetupBanner() {
+  try {
+    const r = await fetch('/api/settings');
+    const d = await r.json();
+    const banner = document.getElementById('setup-banner');
+    banner.style.display = d.api_key_set ? 'none' : 'flex';
+  } catch { /* silently ignore — non-critical */ }
+}
+
+async function loadSettingsTab() {
+  try {
+    const r = await fetch('/api/settings');
+    const d = await r.json();
+    const el = document.getElementById('api-key-current');
+    if (d.api_key_set) {
+      el.textContent = `Current key: ${d.api_key_preview}`;
+    } else {
+      el.textContent = 'No API key saved yet.';
+    }
+    // Clear result box whenever the tab refreshes
+    _setKeyResult('', null);
+  } catch (e) {
+    document.getElementById('api-key-current').textContent = 'Could not load settings.';
+  }
+}
+
+function toggleKeyVisibility() {
+  const inp = document.getElementById('api-key-input');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function _setKeyResult(msg, ok) {
+  const el = document.getElementById('api-key-result');
+  if (!msg) { el.style.display = 'none'; return; }
+  el.textContent = msg;
+  el.className = 'settings-result ' + (ok ? 'ok' : 'error');
+  el.style.display = 'block';
+}
+
+async function saveApiKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key) { _setKeyResult('Please paste your API key first.', false); return; }
+
+  const btn = document.getElementById('btn-save-key');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  try {
+    const r = await fetch('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hevy_api_key: key }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Save failed.');
+
+    document.getElementById('api-key-current').textContent = `Current key: ${d.api_key_preview}`;
+    document.getElementById('api-key-input').value = '';
+    document.getElementById('api-key-input').type  = 'password';
+    _setKeyResult('✓ API key saved. Click "Test Connection" to verify it works.', true);
+    checkSetupBanner();   // hide the dashboard banner if it was showing
+  } catch (e) {
+    _setKeyResult('✗ ' + e.message, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save Key';
+  }
+}
+
+async function testApiKey() {
+  const btn = document.getElementById('btn-test-key');
+  btn.disabled = true;
+  btn.textContent = 'Testing…';
+
+  try {
+    const r = await fetch('/api/settings/test');
+    const d = await r.json();
+    if (d.ok) {
+      _setKeyResult('✓ Connected to Hevy API successfully.', true);
+    } else {
+      _setKeyResult('✗ Connection failed — check that your API key is correct.', false);
+    }
+  } catch (e) {
+    _setKeyResult('✗ Network error: ' + e.message, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Test Connection';
+  }
+}
 
 // ═══ Slider ↔ number input sync helpers ═══════════════
 // Called by the range slider moving → updates the number box
