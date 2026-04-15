@@ -2,7 +2,8 @@ name: hevy-fatigue
 
 services:
   hevy-fatigue:
-    build: .
+    image: ghcr.io/bross84/hevy-fatigue:latest
+    build: .   # kept for local dev — override with: docker compose up --build
     container_name: hevy-fatigue
     restart: unless-stopped
     env_file:
