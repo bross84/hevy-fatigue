@@ -139,16 +139,6 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
 
 /* ── Forms ───────────────────────────── */
 .form-row { margin-bottom: 13px; }
-.form-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 5px;
-  color: var(--muted);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: .5px;
-}
 .val-badge {
   font-size: 13px;
   font-weight: 700;
@@ -188,12 +178,40 @@ input[type="date"] {
 input[type="number"]:focus, input[type="date"]:focus {
   outline: none; border-color: var(--accent);
 }
-.section-sep { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 32px 10px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  cursor: pointer;
+  transition: border-color .2s;
+}
+select:focus { outline: none; border-color: var(--accent); }
+.form-label {
+  font-size: 12px;
+  color: var(--text);
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.section-sep { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
 .section-label {
-  font-size: 10px;
-  color: var(--muted);
+  font-size: 11px;
+  color: var(--accent);
   text-transform: uppercase;
   letter-spacing: .7px;
+  font-weight: 600;
   margin-bottom: 10px;
 }
 .dot {
@@ -777,7 +795,6 @@ tbody tr:hover td { background: var(--row-hover); }
   <div class="nav-tabs">
     <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
     <button class="nav-tab" data-tab="workouts">Workouts</button>
-    <button class="nav-tab" data-tab="trends">Trends</button>
     <button class="nav-tab" data-tab="exercises">Exercises</button>
     <button class="nav-tab" data-tab="log">Log</button>
     <button class="nav-tab" data-tab="settings">Settings</button>
@@ -960,6 +977,20 @@ tbody tr:hover td { background: var(--row-hover); }
       </div>
 
       <div class="card">
+        <div class="card-title">Training Recommendation (60 days)</div>
+        <div style="position:relative;height:200px;">
+          <canvas id="tsbZoneChart"></canvas>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+          <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--accent);display:inline-block;opacity:.7;"></span>Large Increase</span>
+          <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--success);display:inline-block;opacity:.7;"></span>Increase</span>
+          <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--warn);display:inline-block;opacity:.7;"></span>Continue</span>
+          <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--posterior);display:inline-block;opacity:.7;"></span>Decrease</span>
+          <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--danger);display:inline-block;opacity:.7;"></span>Large Decrease</span>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="card-title">Recent Workouts (14 days)</div>
         <div id="workout-table-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
       </div>
@@ -975,46 +1006,6 @@ tbody tr:hover td { background: var(--row-hover); }
   </div>
 </section>
 
-<!-- ══════════════ TRENDS TAB ══════════════ -->
-<section id="tab-trends" class="tab-content">
-  <div class="trends-grid">
-    <div class="card">
-      <div class="card-title">7-Day Recovery</div>
-      <div style="position:relative;height:220px;">
-        <canvas id="recoveryChart"></canvas>
-      </div>
-      <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6;">
-        Daily fatigue score from your check-in (tiredness + perceived recovery, 0–8).
-        Lower is better. The dotted line is your 7-day average.
-      </p>
-    </div>
-    <div class="card">
-      <div class="card-title">Training Recommendation</div>
-      <div style="position:relative;height:220px;">
-        <canvas id="tsbZoneChart"></canvas>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
-        <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--accent);display:inline-block;opacity:.7;"></span>Large Increase</span>
-        <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--success);display:inline-block;opacity:.7;"></span>Increase</span>
-        <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--warn);display:inline-block;opacity:.7;"></span>Continue</span>
-        <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--posterior);display:inline-block;opacity:.7;"></span>Decrease</span>
-        <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--danger);display:inline-block;opacity:.7;"></span>Large Decrease</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">ATL / CTL / TSB History (60 days)</div>
-    <div style="position:relative;height:240px;">
-      <canvas id="loadChart"></canvas>
-    </div>
-    <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6;">
-      <strong style="color:var(--text);">ATL</strong> (Acute Training Load) — 7-day average, short-term fatigue. &nbsp;
-      <strong style="color:var(--text);">CTL</strong> (Chronic Training Load) — 28-day average, long-term fitness baseline. &nbsp;
-      <strong style="color:var(--text);">TSB</strong> (Training Stress Balance = CTL − ATL) — positive means fresh, negative means carrying fatigue.
-    </p>
-  </div>
-</section>
 
 <!-- ══════════════ EXERCISES TAB ══════════════ -->
 <section id="tab-exercises" class="tab-content">
@@ -1335,7 +1326,6 @@ function applyTheme(pref) {
       );
       activePattern = 'total';
     }
-    if (trendsLoaded) loadTrends();
   });
 }
 
@@ -1357,7 +1347,6 @@ let exercises      = [];
 // not have settled by the time we measure canvas widths.
 // ResizeObserver fires *after* the browser finishes computing the new layout
 // for each specific container, so we always measure the correct dimensions.
-let _trendsCache = null;  // set in loadTrends(), re-used on resize
 
 // Stress chart lives on the Dashboard (never in a switching grid) — .resize() is fine
 {
@@ -1368,42 +1357,25 @@ let _trendsCache = null;  // set in loadTrends(), re-used on resize
   });
 }
 
-// For each Trends chart, watch its own container div with ResizeObserver.
-// Debounce at 60ms to avoid thrashing on every pixel during a drag resize.
-function _watchContainer(canvasId, renderFn) {
-  if (!window.ResizeObserver) return;
-  const el = document.getElementById(canvasId)?.parentElement;
-  if (!el) return;
-  let timer;
-  new ResizeObserver(() => {
-    clearTimeout(timer);
-    timer = setTimeout(renderFn, 60);
-  }).observe(el);
+// Watch the TSB chart container for resize and re-render with cached history
+let _tlHistory = null;
+if (window.ResizeObserver) {
+  const _tsbEl = document.getElementById('tsbZoneChart')?.parentElement;
+  if (_tsbEl) {
+    let _tsbTimer;
+    new ResizeObserver(() => {
+      clearTimeout(_tsbTimer);
+      _tsbTimer = setTimeout(() => { if (_tlHistory) renderTsbZoneChart(_tlHistory); }, 60);
+    }).observe(_tsbEl);
+  }
 }
-
-// Observers are registered once at startup; render functions guard with
-// trendsLoaded && _trendsCache so they're no-ops until data has loaded.
-_watchContainer('recoveryChart', () => {
-  if (trendsLoaded && _trendsCache) renderRecoveryChart(_trendsCache.rd);
-});
-_watchContainer('tsbZoneChart', () => {
-  if (trendsLoaded && _trendsCache && _trendsCache.tl)
-    renderTsbZoneChart(_trendsCache.tl.history);
-});
-_watchContainer('loadChart', () => {
-  if (trendsLoaded && _trendsCache && _trendsCache.tl)
-    renderLoadChart(_trendsCache.tl.history);
-});
 let editingTitle   = null;
 let editingId      = null;
 let workoutsLoaded = false;
-let trendsLoaded   = false;
 let logLoaded      = false;
 let logEditDate    = null;
 let exSort         = 'alpha';
-let recoveryChart  = null;
 let tsbZoneChart   = null;
-let loadChart      = null;
 
 // ═══ Tabs ════════════════════════════════════════════
 document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -1414,7 +1386,6 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
     if (tab.dataset.tab === 'exercises' && exercises.length === 0) loadExercises();
     if (tab.dataset.tab === 'workouts'  && !workoutsLoaded)        loadWorkouts();
-    if (tab.dataset.tab === 'trends'    && !trendsLoaded)          loadTrends();
     if (tab.dataset.tab === 'log'       && !logLoaded)             loadLog();
     if (tab.dataset.tab === 'settings')                            loadSettingsTab();
   });
@@ -1649,7 +1620,6 @@ document.getElementById('checkin-form').addEventListener('submit', async e => {
         btn.disabled    = false;
         btn.textContent = 'Add Past Entry';
         if (logLoaded)    { logLoaded = false; loadLog(); }
-        if (trendsLoaded) loadTrends();
       }
     } else if (r.status === 409) {
       setStatus('error', `An entry for ${submittedDate} already exists — open the Log tab to edit it.`);
@@ -1701,7 +1671,6 @@ async function runSync({ silent = false } = {}) {
         loadWorkoutSummary();
         loadTrainingLoadCard();
         if (workoutsLoaded) loadWorkouts();
-        if (trendsLoaded)   loadTrends();
       } else {
         statusEl.innerHTML = `<div class="alert alert-error">Sync failed: ${d.detail || 'Unknown error'}</div>`;
       }
@@ -1973,7 +1942,6 @@ async function saveLogEntry() {
     // Reload the log table and invalidate related tabs
     logLoaded = false;
     loadLog();
-    if (trendsLoaded) loadTrends();
   } catch (err) {
     statusEl.style.color = 'var(--danger)';
     statusEl.textContent = `Save failed: ${err.message}`;
@@ -1997,7 +1965,6 @@ async function deleteLogEntry() {
     closeLogModal();
     logLoaded = false;
     loadLog();
-    if (trendsLoaded) loadTrends();
   } catch (err) {
     statusEl.style.color = 'var(--danger)';
     statusEl.textContent = `Delete failed: ${err.message}`;
@@ -2285,6 +2252,8 @@ async function loadTrainingLoadCard() {
   try {
     const r = await fetch('/api/training-load?days=60');
     const d = await r.json();
+    _tlHistory = d.history;
+    renderTsbZoneChart(d.history);
     const t   = d.today;
     const rec = REC_META[t.recommendation_adjusted] || REC_META.continue;
     const tsbCls  = t.tsb >  15 ? 'tsb-very-fresh'
@@ -2356,72 +2325,6 @@ const bandPlugin = {
 };
 Chart.register(bandPlugin);
 
-async function loadTrends() {
-  trendsLoaded = true;
-  const [tlRes, rdRes] = await Promise.all([
-    fetch('/api/training-load?days=60').then(r => r.json()).catch(() => null),
-    fetch('/api/readiness/history?days=30').then(r => r.json()).catch(() => []),
-  ]);
-  _trendsCache = { tl: tlRes, rd: rdRes };
-  _renderTrends(_trendsCache);
-}
-
-function _renderTrends({ tl, rd }) {
-  renderRecoveryChart(rd);
-  if (tl) {
-    renderTsbZoneChart(tl.history);
-    renderLoadChart(tl.history);
-  }
-}
-
-function renderRecoveryChart(data) {
-  const c   = themeColors();
-  const ctx = document.getElementById('recoveryChart').getContext('2d');
-  const labels = data.map(d => d.date.slice(5));   // MM-DD
-  const scores = data.map(d => d.recovery_score);
-  const avg7   = rollingAvg(scores, 7);
-
-  if (recoveryChart) recoveryChart.destroy();
-  recoveryChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'Fatigue Score',
-          data: scores,
-          borderColor: c.posterior,
-          backgroundColor: c.posterior + '33',
-          fill: true,
-          borderWidth: 2,
-          tension: 0.35,
-          pointRadius: 3,
-          pointHoverRadius: 6,
-        },
-        {
-          label: '7d Avg',
-          data: avg7,
-          borderColor: c.posterior,
-          borderDash: [5, 4],
-          borderWidth: 1.5,
-          pointRadius: 0,
-          tension: 0.35,
-          fill: false,
-        },
-      ],
-    },
-    options: {
-      ...chartOpts(),
-      scales: {
-        ...chartOpts().scales,
-        // suggestedMax lets the chart breathe when scores cluster low,
-        // but won't artificially compress if scores reach near 8
-        y: { ...chartOpts().scales.y, min: 0, suggestedMax: 8,
-             ticks: { ...chartOpts().scales.y.ticks, stepSize: 1 } },
-      },
-    },
-  });
-}
 
 function renderTsbZoneChart(history) {
   const c      = themeColors();
@@ -2499,50 +2402,6 @@ function renderTsbZoneChart(history) {
   });
 }
 
-function renderLoadChart(history) {
-  const c   = themeColors();
-  const ctx = document.getElementById('loadChart').getContext('2d');
-  const labels = history.map(d => d.date.slice(5));
-
-  if (loadChart) loadChart.destroy();
-  loadChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'ATL (Fatigue)',
-          data: history.map(d => d.atl),
-          borderColor: c.danger,
-          backgroundColor: 'transparent',
-          borderWidth: 2,
-          pointRadius: 0,
-          tension: 0.35,
-        },
-        {
-          label: 'CTL (Fitness)',
-          data: history.map(d => d.ctl),
-          borderColor: c.success,
-          backgroundColor: 'transparent',
-          borderWidth: 2,
-          pointRadius: 0,
-          tension: 0.35,
-        },
-        {
-          label: 'TSB (Form)',
-          data: history.map(d => d.tsb),
-          borderColor: c.accent,
-          backgroundColor: c.accent + '22',
-          fill: 'origin',
-          borderWidth: 1.5,
-          pointRadius: 0,
-          tension: 0.35,
-        },
-      ],
-    },
-    options: chartOpts(),
-  });
-}
 
 async function saveMapping() {
   if (!editingTitle || editingId == null) return;
