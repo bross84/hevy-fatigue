@@ -479,9 +479,11 @@ tbody tr:hover td { background: var(--row-hover); }
   color: var(--muted);
   margin-top: 3px;
 }
-.tsb-positive { color: var(--success); }
-.tsb-negative { color: var(--danger); }
-.tsb-neutral  { color: var(--warn); }
+.tsb-very-fresh  { color: var(--accent); }
+.tsb-positive    { color: var(--success); }
+.tsb-neutral     { color: var(--warn); }
+.tsb-negative    { color: var(--posterior); }
+.tsb-overtrained { color: var(--danger); }
 
 /* Vertical load bar (ATL / CTL) */
 .tl-bar-wrap {
@@ -2357,7 +2359,16 @@ async function loadTrainingLoadCard() {
     const d = await r.json();
     const t   = d.today;
     const rec = REC_META[t.recommendation] || REC_META.continue;
-    const tsbCls = t.tsb > 2 ? 'tsb-positive' : t.tsb < -2 ? 'tsb-negative' : 'tsb-neutral';
+    const tsbCls  = t.tsb >  15 ? 'tsb-very-fresh'
+                 : t.tsb >   5 ? 'tsb-positive'
+                 : t.tsb >  -5 ? 'tsb-neutral'
+                 : t.tsb > -15 ? 'tsb-negative'
+                 :               'tsb-overtrained';
+    const tsbLabel = t.tsb >  15 ? 'Very Fresh'
+                   : t.tsb >   5 ? 'Fresh'
+                   : t.tsb >  -5 ? 'On Track'
+                   : t.tsb > -15 ? 'Fatigued'
+                   :               'Overtrained';
 
     // Scale bars to the highest ATL or CTL over the past 60 days, with headroom
     const histMax  = Math.max(50, ...d.history.map(h => Math.max(h.atl, h.ctl)));
@@ -2379,7 +2390,7 @@ async function loadTrainingLoadCard() {
         </div>
         <div class="tl-cell">
           <div class="tl-label">Training Stress Balance <span class="tip-icon" data-tip="Training Stress Balance = Chronic Load minus Acute Load. Positive means you're fresher than your baseline. Negative means you're carrying more fatigue than usual.">i</span></div>
-          <div class="tl-value ${tsbCls}" style="font-size:22px;margin:16px 0 2px;">${t.tsb >= 0 ? 'Fresh' : 'Fatigued'}</div>
+          <div class="tl-value ${tsbCls}" style="font-size:22px;margin:16px 0 2px;">${tsbLabel}</div>
           <div class="tl-sub ${tsbCls}">${t.tsb > 0 ? '+' : ''}${t.tsb.toFixed(1)}</div>
         </div>
         <div class="tl-cell" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
