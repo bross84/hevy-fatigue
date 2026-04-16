@@ -19,30 +19,23 @@ class Base(DeclarativeBase):
 class DailyReadiness(Base):
     __tablename__ = "daily_readiness"
     date = Column(Date, primary_key=True, default=date_type.today)
-    weight_lbs = Column(Float, nullable=True)
-    # Soreness (0=none, 4=severe pain/limited ROM)
+    # Soreness (0=none, 4=high soreness/injury)
     sore_quad_dom = Column(Integer)       # Squat patterns, quads
     sore_posterior = Column(Integer)      # Deadlift patterns, hamstrings, glutes, erectors
     sore_upper_push = Column(Integer)     # Bench variations, triceps
     sore_upper_pull = Column(Integer)     # Rows, pulldowns, rear delts
-    # Joint Health (0=no issues, 4=significant pain)
+    # Joint Health (0=no pain, 4=high pain/injury)
     joint_upper = Column(Integer)         # Shoulders, elbows, wrists
     joint_lower = Column(Integer)         # Low back, hips, knees
-    # Readiness (0=fresh, 4=super fatigued/tired)
+    # Readiness (0=fresh, 4=exhausted/beat up)
     tiredness = Column(Integer)
     perceived_recovery = Column(Integer)
-    # Stress scores - system calculated from previous day's Hevy data
-    # central_stress:    driven by intensity (RPE/% of 1RM) — CNS fatigue
-    # peripheral_stress: driven by volume (sets x reps) — muscular fatigue
+    # Stress scores — system calculated from previous day's Hevy data
     central_stress = Column(Float, nullable=True)
     peripheral_stress = Column(Float, nullable=True)
-    # Optional biometric inputs (manual entry)
-    hrv_ms = Column(Float, nullable=True)        # Morning HRV in milliseconds
-    sleep_hours = Column(Float, nullable=True)   # Total sleep time
-    sleep_quality = Column(Integer, nullable=True)  # 0=terrible, 4=excellent
 
     def __repr__(self):
-        return f"<DailyReadiness date={self.date} weight={self.weight_lbs}>"
+        return f"<DailyReadiness date={self.date}>"
 
 # --- TABLE 2: Workout Data (Imported from Hevy) ---
 class WorkoutLog(Base):
