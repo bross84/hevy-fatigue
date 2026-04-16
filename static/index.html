@@ -2379,8 +2379,7 @@ async function loadTrainingLoadCard() {
         </div>
         <div class="tl-cell">
           <div class="tl-label">Training Stress Balance <span class="tip-icon" data-tip="Training Stress Balance = Chronic Load minus Acute Load. Positive means you're fresher than your baseline. Negative means you're carrying more fatigue than usual.">i</span></div>
-          ${_tsbBar(t.tsb)}
-          <div class="tl-value ${tsbCls}">${t.tsb > 0 ? '+' : ''}${t.tsb.toFixed(1)}</div>
+          <div class="tl-value ${tsbCls}" style="font-size:22px;margin:16px 0 4px;">${t.tsb > 0 ? '+' : ''}${t.tsb.toFixed(1)}</div>
           <div class="tl-sub">${t.tsb >= 0 ? 'Fresh' : 'Fatigued'}</div>
         </div>
         <div class="tl-cell" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
