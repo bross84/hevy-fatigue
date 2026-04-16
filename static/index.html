@@ -58,7 +58,12 @@
 }
 
 /* ── Base ─────────────────────────────── */
+html {
+  overflow-x: hidden;
+}
 body {
+  overflow-x: hidden;
+  width: 100%;
   background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -69,6 +74,7 @@ body {
 
 /* ── Nav ─────────────────────────────── */
 nav {
+  width: 100%;
   background: var(--card);
   border-bottom: 1px solid var(--border);
   padding: 0 20px;
