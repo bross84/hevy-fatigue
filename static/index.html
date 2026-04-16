@@ -551,23 +551,6 @@ tbody tr:hover td { background: var(--row-hover); }
 }
 @media (max-width: 800px) { .trends-grid { grid-template-columns: 1fr; } }
 
-/* ── Sleep quality buttons ───────────── */
-.sq-btn {
-  flex: 1;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--muted);
-  padding: 5px 4px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 500;
-  transition: all .15s;
-  white-space: nowrap;
-}
-.sq-btn:hover { border-color: var(--accent); color: var(--text); }
-.sq-btn.active { background: var(--accent-sub); border-color: var(--accent); color: var(--accent); font-weight: 700; }
-
 /* ── Tooltips ────────────────────────── */
 .tip-icon {
   display: inline-flex;
@@ -759,10 +742,6 @@ tbody tr:hover td { background: var(--row-hover); }
   .search-input { width: 100%; }
   #ex-count { margin-left: 0 !important; align-self: flex-end; }
 
-  /* ── Sleep quality buttons wrap to 2 rows of 3 ── */
-  #sq-btns { flex-wrap: wrap; }
-  .sq-btn { flex: 0 0 calc(33.33% - 5px); }
-
   /* ── Chart shorter on mobile ── */
   #stressChart { max-height: 200px; }
 
@@ -835,62 +814,72 @@ tbody tr:hover td { background: var(--row-hover); }
             <div class="form-label">Date</div>
             <input type="date" id="ci-date">
           </div>
+          <hr class="section-sep">
+          <div class="section-label">Soreness</div>
+
           <div class="form-row">
-            <div class="form-label">
-              Bodyweight (lbs)
-              <span style="font-size:11px;color:var(--muted);text-transform:none;">optional</span>
-            </div>
-            <input type="number" id="ci-weight" placeholder="e.g. 215" step="0.1" min="0">
+            <div class="form-label"><span class="dot dot-quad"></span>Quad / Knee</div>
+            <select id="ci-sq">
+              <option value="0">0 — No soreness</option>
+              <option value="1">1 — Minor soreness</option>
+              <option value="2">2 — Average soreness</option>
+              <option value="3">3 — Moderate soreness</option>
+              <option value="4">4 — High soreness / injury</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-label"><span class="dot dot-posterior"></span>Hip / Posterior</div>
+            <select id="ci-sp">
+              <option value="0">0 — No soreness</option>
+              <option value="1">1 — Minor soreness</option>
+              <option value="2">2 — Average soreness</option>
+              <option value="3">3 — Moderate soreness</option>
+              <option value="4">4 — High soreness / injury</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-label"><span class="dot dot-push"></span>Upper Push</div>
+            <select id="ci-spu">
+              <option value="0">0 — No soreness</option>
+              <option value="1">1 — Minor soreness</option>
+              <option value="2">2 — Average soreness</option>
+              <option value="3">3 — Moderate soreness</option>
+              <option value="4">4 — High soreness / injury</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-label"><span class="dot dot-pull"></span>Upper Pull</div>
+            <select id="ci-spl">
+              <option value="0">0 — No soreness</option>
+              <option value="1">1 — Minor soreness</option>
+              <option value="2">2 — Average soreness</option>
+              <option value="3">3 — Moderate soreness</option>
+              <option value="4">4 — High soreness / injury</option>
+            </select>
           </div>
 
           <hr class="section-sep">
-          <div class="section-label">Soreness — 0 None → 4 Severe / Limited ROM</div>
+          <div class="section-label">Joint Health</div>
 
           <div class="form-row">
-            <div class="form-label">
-              <span><span class="dot dot-quad"></span>Quad / Knee</span>
-              <input type="number" class="val-input" id="v-sq" min="0" max="4" value="0" oninput="syncRange('v-sq','ci-sq')">
-            </div>
-            <input type="range" min="0" max="4" value="0" id="ci-sq" oninput="syncNum('ci-sq','v-sq')">
+            <div class="form-label">Upper (Shoulder / Elbow / Wrist)</div>
+            <select id="ci-ju">
+              <option value="0">0 — No pain</option>
+              <option value="1">1 — Minor pain</option>
+              <option value="2">2 — Average pain</option>
+              <option value="3">3 — Moderate pain</option>
+              <option value="4">4 — High pain / injury</option>
+            </select>
           </div>
           <div class="form-row">
-            <div class="form-label">
-              <span><span class="dot dot-posterior"></span>Hip / Posterior</span>
-              <input type="number" class="val-input" id="v-sp" min="0" max="4" value="0" oninput="syncRange('v-sp','ci-sp')">
-            </div>
-            <input type="range" min="0" max="4" value="0" id="ci-sp" oninput="syncNum('ci-sp','v-sp')">
-          </div>
-          <div class="form-row">
-            <div class="form-label">
-              <span><span class="dot dot-push"></span>Upper Push</span>
-              <input type="number" class="val-input" id="v-spu" min="0" max="4" value="0" oninput="syncRange('v-spu','ci-spu')">
-            </div>
-            <input type="range" min="0" max="4" value="0" id="ci-spu" oninput="syncNum('ci-spu','v-spu')">
-          </div>
-          <div class="form-row">
-            <div class="form-label">
-              <span><span class="dot dot-pull"></span>Upper Pull</span>
-              <input type="number" class="val-input" id="v-spl" min="0" max="4" value="0" oninput="syncRange('v-spl','ci-spl')">
-            </div>
-            <input type="range" min="0" max="4" value="0" id="ci-spl" oninput="syncNum('ci-spl','v-spl')">
-          </div>
-
-          <hr class="section-sep">
-          <div class="section-label">Joint Health — 0 No Issues → 4 Significant Pain</div>
-
-          <div class="form-row">
-            <div class="form-label">
-              Upper (Shoulder / Elbow / Wrist)
-              <input type="number" class="val-input" id="v-ju" min="0" max="4" value="0" oninput="syncRange('v-ju','ci-ju')">
-            </div>
-            <input type="range" min="0" max="4" value="0" id="ci-ju" oninput="syncNum('ci-ju','v-ju')">
-          </div>
-          <div class="form-row">
-            <div class="form-label">
-              Lower (Low Back / Hip / Knee)
-              <input type="number" class="val-input" id="v-jl" min="0" max="4" value="0" oninput="syncRange('v-jl','ci-jl')">
-            </div>
-            <input type="range" min="0" max="4" value="0" id="ci-jl" oninput="syncNum('ci-jl','v-jl')">
+            <div class="form-label">Lower (Low Back / Hip / Knee)</div>
+            <select id="ci-jl">
+              <option value="0">0 — No pain</option>
+              <option value="1">1 — Minor pain</option>
+              <option value="2">2 — Average pain</option>
+              <option value="3">3 — Moderate pain</option>
+              <option value="4">4 — High pain / injury</option>
+            </select>
           </div>
 
           <hr class="section-sep">
@@ -909,34 +898,6 @@ tbody tr:hover td { background: var(--row-hover); }
               <input type="number" class="val-input" id="v-r" min="0" max="4" value="0" oninput="syncRange('v-r','ci-r')">
             </div>
             <input type="range" min="0" max="4" value="0" id="ci-r" oninput="syncNum('ci-r','v-r')">
-          </div>
-
-          <hr class="section-sep">
-          <div class="section-label">Biometrics <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;">— optional</span></div>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px;">
-            <div>
-              <div class="form-label" style="margin-bottom:5px;">HRV <span style="color:var(--muted);font-size:10px;">(ms)</span></div>
-              <input type="number" id="ci-hrv" placeholder="e.g. 55" step="1" min="0"
-                     style="font-size:13px;padding:6px 9px;">
-            </div>
-            <div>
-              <div class="form-label" style="margin-bottom:5px;">Sleep <span style="color:var(--muted);font-size:10px;">(hours)</span></div>
-              <input type="number" id="ci-sleep-hrs" placeholder="e.g. 7.5" step="0.25" min="0" max="24"
-                     style="font-size:13px;padding:6px 9px;">
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-label" style="margin-bottom:7px;">Sleep Quality</div>
-            <div style="display:flex;gap:6px;" id="sq-btns">
-              <button type="button" class="sq-btn" data-val="0" onclick="setSleepQuality(0)">0 Terrible</button>
-              <button type="button" class="sq-btn" data-val="1" onclick="setSleepQuality(1)">1 Poor</button>
-              <button type="button" class="sq-btn" data-val="2" onclick="setSleepQuality(2)">2 Ok</button>
-              <button type="button" class="sq-btn" data-val="3" onclick="setSleepQuality(3)">3 Good</button>
-              <button type="button" class="sq-btn" data-val="4" onclick="setSleepQuality(4)">4 Great</button>
-            </div>
-            <input type="hidden" id="ci-sq2" value="">
           </div>
 
           <button type="submit" class="btn btn-primary" id="ci-submit">Submit Check-in</button>
@@ -1243,41 +1204,72 @@ tbody tr:hover td { background: var(--row-hover); }
     <div class="modal-title" id="log-modal-title">Edit Check-in</div>
     <div class="modal-subtitle" id="log-modal-subtitle">System-calculated stress scores are preserved.</div>
 
+    <hr class="section-sep">
+    <div class="section-label">Soreness</div>
+
     <div class="form-row">
-      <div class="form-label">Bodyweight (lbs) <span style="font-size:11px;color:var(--muted);text-transform:none;">optional</span></div>
-      <input type="number" id="le-weight" placeholder="e.g. 215" step="0.1" min="0">
+      <div class="form-label"><span class="dot dot-quad"></span>Quad / Knee</div>
+      <select id="le-sq">
+        <option value="0">0 — No soreness</option>
+        <option value="1">1 — Minor soreness</option>
+        <option value="2">2 — Average soreness</option>
+        <option value="3">3 — Moderate soreness</option>
+        <option value="4">4 — High soreness / injury</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-label"><span class="dot dot-posterior"></span>Hip / Posterior</div>
+      <select id="le-sp">
+        <option value="0">0 — No soreness</option>
+        <option value="1">1 — Minor soreness</option>
+        <option value="2">2 — Average soreness</option>
+        <option value="3">3 — Moderate soreness</option>
+        <option value="4">4 — High soreness / injury</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-label"><span class="dot dot-push"></span>Upper Push</div>
+      <select id="le-spu">
+        <option value="0">0 — No soreness</option>
+        <option value="1">1 — Minor soreness</option>
+        <option value="2">2 — Average soreness</option>
+        <option value="3">3 — Moderate soreness</option>
+        <option value="4">4 — High soreness / injury</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-label"><span class="dot dot-pull"></span>Upper Pull</div>
+      <select id="le-spl">
+        <option value="0">0 — No soreness</option>
+        <option value="1">1 — Minor soreness</option>
+        <option value="2">2 — Average soreness</option>
+        <option value="3">3 — Moderate soreness</option>
+        <option value="4">4 — High soreness / injury</option>
+      </select>
     </div>
 
     <hr class="section-sep">
-    <div class="section-label">Soreness — 0 None → 4 Severe / Limited ROM</div>
+    <div class="section-label">Joint Health</div>
 
     <div class="form-row">
-      <div class="form-label"><span><span class="dot dot-quad"></span>Quad / Knee</span><input type="number" class="val-input" id="lv-sq" min="0" max="4" value="0" oninput="syncRange('lv-sq','le-sq')"></div>
-      <input type="range" min="0" max="4" value="0" id="le-sq" oninput="syncNum('le-sq','lv-sq')">
+      <div class="form-label">Upper (Shoulder / Elbow / Wrist)</div>
+      <select id="le-ju">
+        <option value="0">0 — No pain</option>
+        <option value="1">1 — Minor pain</option>
+        <option value="2">2 — Average pain</option>
+        <option value="3">3 — Moderate pain</option>
+        <option value="4">4 — High pain / injury</option>
+      </select>
     </div>
     <div class="form-row">
-      <div class="form-label"><span><span class="dot dot-posterior"></span>Hip / Posterior</span><input type="number" class="val-input" id="lv-sp" min="0" max="4" value="0" oninput="syncRange('lv-sp','le-sp')"></div>
-      <input type="range" min="0" max="4" value="0" id="le-sp" oninput="syncNum('le-sp','lv-sp')">
-    </div>
-    <div class="form-row">
-      <div class="form-label"><span><span class="dot dot-push"></span>Upper Push</span><input type="number" class="val-input" id="lv-spu" min="0" max="4" value="0" oninput="syncRange('lv-spu','le-spu')"></div>
-      <input type="range" min="0" max="4" value="0" id="le-spu" oninput="syncNum('le-spu','lv-spu')">
-    </div>
-    <div class="form-row">
-      <div class="form-label"><span><span class="dot dot-pull"></span>Upper Pull</span><input type="number" class="val-input" id="lv-spl" min="0" max="4" value="0" oninput="syncRange('lv-spl','le-spl')"></div>
-      <input type="range" min="0" max="4" value="0" id="le-spl" oninput="syncNum('le-spl','lv-spl')">
-    </div>
-
-    <hr class="section-sep">
-    <div class="section-label">Joint Health — 0 No Issues → 4 Significant Pain</div>
-
-    <div class="form-row">
-      <div class="form-label">Upper (Shoulder / Elbow / Wrist)<input type="number" class="val-input" id="lv-ju" min="0" max="4" value="0" oninput="syncRange('lv-ju','le-ju')"></div>
-      <input type="range" min="0" max="4" value="0" id="le-ju" oninput="syncNum('le-ju','lv-ju')">
-    </div>
-    <div class="form-row">
-      <div class="form-label">Lower (Low Back / Hip / Knee)<input type="number" class="val-input" id="lv-jl" min="0" max="4" value="0" oninput="syncRange('lv-jl','le-jl')"></div>
-      <input type="range" min="0" max="4" value="0" id="le-jl" oninput="syncNum('le-jl','lv-jl')">
+      <div class="form-label">Lower (Low Back / Hip / Knee)</div>
+      <select id="le-jl">
+        <option value="0">0 — No pain</option>
+        <option value="1">1 — Minor pain</option>
+        <option value="2">2 — Average pain</option>
+        <option value="3">3 — Moderate pain</option>
+        <option value="4">4 — High pain / injury</option>
+      </select>
     </div>
 
     <hr class="section-sep">
@@ -1290,31 +1282,6 @@ tbody tr:hover td { background: var(--row-hover); }
     <div class="form-row">
       <div class="form-label">Recovery (0 Fully Recovered → 4 Beat Up)<input type="number" class="val-input" id="lv-r" min="0" max="4" value="0" oninput="syncRange('lv-r','le-r')"></div>
       <input type="range" min="0" max="4" value="0" id="le-r" oninput="syncNum('le-r','lv-r')">
-    </div>
-
-    <hr class="section-sep">
-    <div class="section-label">Biometrics <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;">— optional</span></div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px;">
-      <div>
-        <div class="form-label" style="margin-bottom:5px;">HRV <span style="color:var(--muted);font-size:10px;">(ms)</span></div>
-        <input type="number" id="le-hrv" placeholder="e.g. 55" step="1" min="0" style="font-size:13px;padding:6px 9px;">
-      </div>
-      <div>
-        <div class="form-label" style="margin-bottom:5px;">Sleep <span style="color:var(--muted);font-size:10px;">(hours)</span></div>
-        <input type="number" id="le-sleep-hrs" placeholder="e.g. 7.5" step="0.25" min="0" max="24" style="font-size:13px;padding:6px 9px;">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-label" style="margin-bottom:7px;">Sleep Quality</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;" id="le-sq-btns">
-        <button type="button" class="sq-btn" data-val="0" onclick="setLogSleepQuality(0)">0 Terrible</button>
-        <button type="button" class="sq-btn" data-val="1" onclick="setLogSleepQuality(1)">1 Poor</button>
-        <button type="button" class="sq-btn" data-val="2" onclick="setLogSleepQuality(2)">2 Ok</button>
-        <button type="button" class="sq-btn" data-val="3" onclick="setLogSleepQuality(3)">3 Good</button>
-        <button type="button" class="sq-btn" data-val="4" onclick="setLogSleepQuality(4)">4 Great</button>
-      </div>
-      <input type="hidden" id="le-sq2" value="">
     </div>
 
     <div id="log-modal-status" style="min-height:18px;font-size:13px;margin-top:10px;"></div>
@@ -1645,12 +1612,8 @@ document.getElementById('checkin-form').addEventListener('submit', async e => {
   }
 
   btn.textContent = 'Submitting…';
-  const wt  = parseFloat(document.getElementById('ci-weight').value);
-  const hrv = parseFloat(document.getElementById('ci-hrv').value);
-  const slp = parseFloat(document.getElementById('ci-sleep-hrs').value);
   const payload = {
     date:               submittedDate,
-    weight_lbs:         isNaN(wt)  ? null : wt,
     sore_quad_dom:      +document.getElementById('ci-sq').value,
     sore_posterior:     +document.getElementById('ci-sp').value,
     sore_upper_push:    +document.getElementById('ci-spu').value,
@@ -1659,9 +1622,6 @@ document.getElementById('checkin-form').addEventListener('submit', async e => {
     joint_lower:        +document.getElementById('ci-jl').value,
     tiredness:          +document.getElementById('ci-t').value,
     perceived_recovery: +document.getElementById('ci-r').value,
-    hrv_ms:             isNaN(hrv) ? null : hrv,
-    sleep_hours:        isNaN(slp) ? null : slp,
-    sleep_quality:      document.getElementById('ci-sq2').value !== '' ? +document.getElementById('ci-sq2').value : null,
   };
   try {
     const r = await fetch('/api/readiness', {
@@ -1671,10 +1631,18 @@ document.getElementById('checkin-form').addEventListener('submit', async e => {
     });
     const d = await r.json();
     if (r.ok) {
+      // Reset all check-in fields after any successful submission
+      ['ci-sq','ci-sp','ci-spu','ci-spl','ci-ju','ci-jl'].forEach(id => {
+        document.getElementById(id).value = '0';
+      });
+      ['ci-t','v-t','ci-r','v-r'].forEach(id => {
+        document.getElementById(id).value = 0;
+      });
       if (isToday) {
         setStatus('success', `✓ Logged! Central: ${d.central_stress} | Peripheral: ${d.peripheral_stress}`);
         btn.disabled    = true;
         btn.textContent = 'Already logged today';
+        loadTrainingLoadCard();
       } else {
         setStatus('success', `✓ Added entry for ${submittedDate} — Central: ${d.central_stress} | Peripheral: ${d.peripheral_stress}`);
         // Leave the form open so the user can keep adding past entries back-to-back
@@ -1699,14 +1667,6 @@ document.getElementById('checkin-form').addEventListener('submit', async e => {
   }
 });
 
-// ═══ Sleep quality picker ═════════════════════════════
-function setSleepQuality(val) {
-  document.getElementById('ci-sq2').value = val;
-  // Scope to #sq-btns so the Log modal buttons aren't accidentally toggled
-  document.querySelectorAll('#sq-btns .sq-btn').forEach(b =>
-    b.classList.toggle('active', +b.dataset.val === val)
-  );
-}
 
 // ═══ Hevy Sync ════════════════════════════════════════
 async function runSync({ silent = false } = {}) {
@@ -1903,8 +1863,6 @@ async function loadWorkoutSummary() {
 
 // ═══ Log tab ══════════════════════════════════════════
 
-const SQ_LABEL = ['Terrible','Poor','Ok','Good','Great'];
-
 async function loadLog() {
   logLoaded = true;
   const wrap  = document.getElementById('log-wrap');
@@ -1928,8 +1886,6 @@ async function loadLog() {
         <th>Recovery</th>
         <th>Soreness</th>
         <th class="col-hide">Joints</th>
-        <th class="col-hide">HRV</th>
-        <th class="col-hide">Sleep</th>
         <th></th>
       </tr></thead>
       <tbody>
@@ -1946,8 +1902,6 @@ async function loadLog() {
           </div>
         </td>
         <td class="col-hide" style="font-size:12px;">U:${e.joint_upper} L:${e.joint_lower}</td>
-        <td class="col-hide" style="font-size:12px;">${e.hrv_ms != null ? e.hrv_ms + ' ms' : '—'}</td>
-        <td class="col-hide" style="font-size:12px;">${e.sleep_hours != null ? e.sleep_hours + 'h' : '—'}${e.sleep_quality != null ? ' · ' + SQ_LABEL[e.sleep_quality] : ''}</td>
         <td><button class="btn btn-sm btn-secondary" onclick='openLogEdit(${JSON.stringify(e)})'>Edit</button></td>
       </tr>`).join('')}
       </tbody>
@@ -1965,33 +1919,19 @@ function openLogEdit(entry) {
   document.getElementById('log-modal-subtitle').textContent = 'System-calculated stress scores are preserved.';
   document.getElementById('log-modal-status').textContent   = '';
 
-  // Bodyweight
-  const wEl = document.getElementById('le-weight');
-  wEl.value = entry.weight_lbs != null ? entry.weight_lbs : '';
-
-  // Soreness sliders
-  const sliders = [
-    ['le-sq',  'lv-sq',  entry.sore_quad_dom],
-    ['le-sp',  'lv-sp',  entry.sore_posterior],
-    ['le-spu', 'lv-spu', entry.sore_upper_push],
-    ['le-spl', 'lv-spl', entry.sore_upper_pull],
-    ['le-ju',  'lv-ju',  entry.joint_upper],
-    ['le-jl',  'lv-jl',  entry.joint_lower],
-    ['le-t',   'lv-t',   entry.tiredness],
-    ['le-r',   'lv-r',   entry.perceived_recovery],
-  ];
-  sliders.forEach(([inputId, badgeId, val]) => {
-    const v = val ?? 0;
-    document.getElementById(inputId).value          = v;
-    document.getElementById(badgeId).value          = v;
-  });
-
-  // Biometrics
-  document.getElementById('le-hrv').value       = entry.hrv_ms      != null ? entry.hrv_ms      : '';
-  document.getElementById('le-sleep-hrs').value = entry.sleep_hours != null ? entry.sleep_hours : '';
-
-  // Sleep quality buttons
-  setLogSleepQuality(entry.sleep_quality);
+  // Soreness dropdowns
+  document.getElementById('le-sq').value  = entry.sore_quad_dom   ?? 0;
+  document.getElementById('le-sp').value  = entry.sore_posterior  ?? 0;
+  document.getElementById('le-spu').value = entry.sore_upper_push ?? 0;
+  document.getElementById('le-spl').value = entry.sore_upper_pull ?? 0;
+  // Joint dropdowns
+  document.getElementById('le-ju').value  = entry.joint_upper     ?? 0;
+  document.getElementById('le-jl').value  = entry.joint_lower     ?? 0;
+  // Tiredness and recovery sliders
+  document.getElementById('le-t').value  = entry.tiredness          ?? 0;
+  document.getElementById('lv-t').value  = entry.tiredness          ?? 0;
+  document.getElementById('le-r').value  = entry.perceived_recovery ?? 0;
+  document.getElementById('lv-r').value  = entry.perceived_recovery ?? 0;
 
   document.getElementById('log-modal').classList.add('open');
 }
@@ -2001,20 +1941,11 @@ function closeLogModal() {
   logEditDate = null;
 }
 
-function setLogSleepQuality(val) {
-  document.getElementById('le-sq2').value = (val != null) ? val : '';
-  document.querySelectorAll('#le-sq-btns .sq-btn').forEach(btn => {
-    btn.classList.toggle('active', parseInt(btn.dataset.val) === val);
-  });
-}
-
 async function saveLogEntry() {
   if (!logEditDate) return;
   const statusEl = document.getElementById('log-modal-status');
 
-  const sq2Raw = document.getElementById('le-sq2').value;
   const payload = {
-    weight_lbs:         parseFloat(document.getElementById('le-weight').value)    || null,
     sore_quad_dom:      parseInt(document.getElementById('le-sq').value),
     sore_posterior:     parseInt(document.getElementById('le-sp').value),
     sore_upper_push:    parseInt(document.getElementById('le-spu').value),
@@ -2023,9 +1954,6 @@ async function saveLogEntry() {
     joint_lower:        parseInt(document.getElementById('le-jl').value),
     tiredness:          parseInt(document.getElementById('le-t').value),
     perceived_recovery: parseInt(document.getElementById('le-r').value),
-    hrv_ms:             parseFloat(document.getElementById('le-hrv').value)        || null,
-    sleep_hours:        parseFloat(document.getElementById('le-sleep-hrs').value)  || null,
-    sleep_quality:      sq2Raw !== '' ? parseInt(sq2Raw) : null,
   };
 
   statusEl.style.color = 'var(--muted)';
@@ -2358,7 +2286,7 @@ async function loadTrainingLoadCard() {
     const r = await fetch('/api/training-load?days=60');
     const d = await r.json();
     const t   = d.today;
-    const rec = REC_META[t.recommendation] || REC_META.continue;
+    const rec = REC_META[t.recommendation_adjusted] || REC_META.continue;
     const tsbCls  = t.tsb >  15 ? 'tsb-very-fresh'
                  : t.tsb >   5 ? 'tsb-positive'
                  : t.tsb >  -5 ? 'tsb-neutral'

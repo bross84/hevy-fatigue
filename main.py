@@ -77,7 +77,6 @@ def get_db():
 # --- Pydantic Models ---
 class ReadinessInput(BaseModel):
     date: date_type = Field(default_factory=date_type.today)
-    weight_lbs: Optional[float] = None
     sore_quad_dom: Optional[int] = Field(None, ge=0, le=4)
     sore_posterior: Optional[int] = Field(None, ge=0, le=4)
     sore_upper_push: Optional[int] = Field(None, ge=0, le=4)
@@ -86,12 +85,8 @@ class ReadinessInput(BaseModel):
     joint_lower: Optional[int] = Field(None, ge=0, le=4)
     tiredness: Optional[int] = Field(None, ge=0, le=4)
     perceived_recovery: Optional[int] = Field(None, ge=0, le=4)
-    hrv_ms: Optional[float] = Field(None, ge=0)
-    sleep_hours: Optional[float] = Field(None, ge=0, le=24)
-    sleep_quality: Optional[int] = Field(None, ge=0, le=4)
 
 class ReadinessUpdate(BaseModel):
-    weight_lbs: Optional[float] = None
     sore_quad_dom: Optional[int] = Field(None, ge=0, le=4)
     sore_posterior: Optional[int] = Field(None, ge=0, le=4)
     sore_upper_push: Optional[int] = Field(None, ge=0, le=4)
@@ -100,9 +95,6 @@ class ReadinessUpdate(BaseModel):
     joint_lower: Optional[int] = Field(None, ge=0, le=4)
     tiredness: Optional[int] = Field(None, ge=0, le=4)
     perceived_recovery: Optional[int] = Field(None, ge=0, le=4)
-    hrv_ms: Optional[float] = Field(None, ge=0)
-    sleep_hours: Optional[float] = Field(None, ge=0, le=24)
-    sleep_quality: Optional[int] = Field(None, ge=0, le=4)
 
 class SettingsInput(BaseModel):
     hevy_api_key: str
@@ -315,12 +307,31 @@ def _compute_training_load(days: int, db: Session) -> list[dict]:
     return results, max(atl_max, 1.0), max(ctl_max, 1.0)
 
 
+_REC_LEVELS = ["large_decrease", "decrease", "continue", "increase", "large_increase"]
+
 def _tsb_recommendation(tsb: float) -> str:
     if   tsb >  15: return "large_increase"
     elif tsb >   5: return "increase"
     elif tsb >  -5: return "continue"
     elif tsb > -15: return "decrease"
     else:           return "large_decrease"
+
+def _subjective_fatigue(entry) -> float:
+    """0.0 (fully fresh) → 1.0 (maximally fatigued) from a DailyReadiness entry."""
+    t = (entry.tiredness          or 0) / 4
+    r = (entry.perceived_recovery or 0) / 4
+    s = ((entry.sore_quad_dom  or 0) + (entry.sore_posterior  or 0) +
+         (entry.sore_upper_push or 0) + (entry.sore_upper_pull or 0)) / 16
+    j = ((entry.joint_upper or 0) + (entry.joint_lower or 0)) / 8
+    return round(0.30 * t + 0.30 * r + 0.25 * s + 0.15 * j, 3)
+
+def _adjusted_recommendation(base_rec: str, subj: float) -> str:
+    level = _REC_LEVELS.index(base_rec)
+    if   subj >= 0.75: adj = -2
+    elif subj >= 0.50: adj = -1
+    elif subj <  0.15: adj = +1
+    else:              adj =  0
+    return _REC_LEVELS[max(0, min(4, level + adj))]
 
 
 @app.get("/api/training-load")
@@ -343,16 +354,31 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
     else:
         ctl_trend = "maintaining"
 
+    base_rec = _tsb_recommendation(today["tsb"])
+
+    # Blend with today's subjective check-in if it exists
+    checkin = db.query(DailyReadiness).filter(
+        DailyReadiness.date == date_type.today()
+    ).first()
+    if checkin:
+        subj    = _subjective_fatigue(checkin)
+        adj_rec = _adjusted_recommendation(base_rec, subj)
+    else:
+        subj    = None
+        adj_rec = base_rec
+
     return {
         "today": {
-            "date":           today["date"],
-            "atl":            today["atl"],
-            "ctl":            today["ctl"],
-            "tsb":            today["tsb"],
-            "atl_score":      atl_score,
-            "ctl_score":      ctl_score,
-            "ctl_trend":      ctl_trend,
-            "recommendation": _tsb_recommendation(today["tsb"]),
+            "date":                    today["date"],
+            "atl":                     today["atl"],
+            "ctl":                     today["ctl"],
+            "tsb":                     today["tsb"],
+            "atl_score":               atl_score,
+            "ctl_score":               ctl_score,
+            "ctl_trend":               ctl_trend,
+            "recommendation":          base_rec,
+            "recommendation_adjusted": adj_rec,
+            "subj_fatigue":            subj,
         },
         "history": history,
     }
@@ -484,7 +510,6 @@ def submit_readiness(data: ReadinessInput, db: Session = Depends(get_db)):
 
     entry = DailyReadiness(
         date=data.date,
-        weight_lbs=data.weight_lbs,
         sore_quad_dom=data.sore_quad_dom,
         sore_posterior=data.sore_posterior,
         sore_upper_push=data.sore_upper_push,
@@ -495,9 +520,6 @@ def submit_readiness(data: ReadinessInput, db: Session = Depends(get_db)):
         perceived_recovery=data.perceived_recovery,
         central_stress=stress["central"],
         peripheral_stress=stress["peripheral"],
-        hrv_ms=data.hrv_ms,
-        sleep_hours=data.sleep_hours,
-        sleep_quality=data.sleep_quality,
     )
     db.add(entry)
     db.commit()
@@ -537,20 +559,16 @@ def get_readiness_log(db: Session = Depends(get_db)):
     return [
         {
             "date":               str(e.date),
-            "weight_lbs":         e.weight_lbs,
-            "sore_quad_dom":      e.sore_quad_dom  or 0,
-            "sore_posterior":     e.sore_posterior  or 0,
-            "sore_upper_push":    e.sore_upper_push or 0,
-            "sore_upper_pull":    e.sore_upper_pull or 0,
-            "joint_upper":        e.joint_upper     or 0,
-            "joint_lower":        e.joint_lower     or 0,
-            "tiredness":          e.tiredness       or 0,
-            "perceived_recovery": e.perceived_recovery or 0,
+            "sore_quad_dom":      e.sore_quad_dom      or 0,
+            "sore_posterior":     e.sore_posterior      or 0,
+            "sore_upper_push":    e.sore_upper_push     or 0,
+            "sore_upper_pull":    e.sore_upper_pull     or 0,
+            "joint_upper":        e.joint_upper         or 0,
+            "joint_lower":        e.joint_lower         or 0,
+            "tiredness":          e.tiredness           or 0,
+            "perceived_recovery": e.perceived_recovery  or 0,
             "central_stress":     e.central_stress,
             "peripheral_stress":  e.peripheral_stress,
-            "hrv_ms":             e.hrv_ms,
-            "sleep_hours":        e.sleep_hours,
-            "sleep_quality":      e.sleep_quality,
         }
         for e in entries
     ]
@@ -561,7 +579,6 @@ def update_readiness(entry_date: date_type, data: ReadinessUpdate, db: Session =
     entry = db.query(DailyReadiness).filter(DailyReadiness.date == entry_date).first()
     if not entry:
         raise HTTPException(status_code=404, detail=f"No readiness entry for {entry_date}")
-    entry.weight_lbs         = data.weight_lbs
     entry.sore_quad_dom      = data.sore_quad_dom
     entry.sore_posterior     = data.sore_posterior
     entry.sore_upper_push    = data.sore_upper_push
@@ -570,9 +587,6 @@ def update_readiness(entry_date: date_type, data: ReadinessUpdate, db: Session =
     entry.joint_lower        = data.joint_lower
     entry.tiredness          = data.tiredness
     entry.perceived_recovery = data.perceived_recovery
-    entry.hrv_ms             = data.hrv_ms
-    entry.sleep_hours        = data.sleep_hours
-    entry.sleep_quality      = data.sleep_quality
     db.commit()
     return {"message": "Entry updated", "date": str(entry_date)}
 
