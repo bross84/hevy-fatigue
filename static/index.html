@@ -759,7 +759,7 @@ tbody tr:hover td { background: var(--row-hover); }
     <button class="nav-tab" data-tab="trends">Trends</button>
     <button class="nav-tab" data-tab="exercises">Exercises</button>
     <button class="nav-tab" data-tab="log">Log</button>
-    <button class="nav-tab" data-tab="settings">⚙ Settings</button>
+    <button class="nav-tab" data-tab="settings">Settings</button>
   </div>
   <div class="nav-right">
     <div class="btn-group theme-group" id="theme-toggle">
@@ -2300,17 +2300,17 @@ async function loadTrainingLoadCard() {
     wrap.innerHTML = `
       <div class="tl-grid">
         <div class="tl-cell">
-          <div class="tl-label">ATL <span class="tip-icon" data-tip="Acute Training Load — 7-day average of your daily stress. Represents short-term fatigue.">i</span></div>
+          <div class="tl-label">Acute Load <span class="tip-icon" data-tip="Acute Training Load — 7-day average of your daily stress. Represents short-term fatigue.">i</span></div>
           <div class="tl-value" style="color:var(--danger);">${t.atl.toFixed(1)}</div>
           <div class="tl-sub">Short-term fatigue</div>
         </div>
         <div class="tl-cell">
-          <div class="tl-label">CTL <span class="tip-icon" data-tip="Chronic Training Load — 28-day average of your daily stress. Represents your long-term fitness baseline.">i</span></div>
+          <div class="tl-label">Chronic Load <span class="tip-icon" data-tip="Chronic Training Load — 28-day average of your daily stress. Represents your long-term fitness baseline.">i</span></div>
           <div class="tl-value" style="color:var(--success);">${t.ctl.toFixed(1)}</div>
           <div class="tl-sub">Long-term baseline</div>
         </div>
         <div class="tl-cell">
-          <div class="tl-label">TSB <span class="tip-icon" data-tip="Training Stress Balance = CTL minus ATL. Positive means you're fresher than your baseline. Negative means you're carrying more fatigue than usual.">i</span></div>
+          <div class="tl-label">Training/Stress Balance <span class="tip-icon" data-tip="Training Stress Balance = CTL minus ATL. Positive means you're fresher than your baseline. Negative means you're carrying more fatigue than usual.">i</span></div>
           <div class="tl-value ${tsbCls}">${t.tsb > 0 ? '+' : ''}${t.tsb.toFixed(1)}</div>
           <div class="tl-sub">${t.tsb >= 0 ? 'Fresh' : 'Fatigued'}</div>
         </div>
