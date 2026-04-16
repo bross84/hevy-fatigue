@@ -470,7 +470,7 @@ tbody tr:hover td { background: var(--row-hover); }
   margin-bottom: 5px;
 }
 .tl-value {
-  font-size: 22px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1;
 }
@@ -482,6 +482,46 @@ tbody tr:hover td { background: var(--row-hover); }
 .tsb-positive { color: var(--success); }
 .tsb-negative { color: var(--danger); }
 .tsb-neutral  { color: var(--warn); }
+
+/* Vertical load bar (ATL / CTL) */
+.tl-bar-wrap {
+  height: 64px;
+  width: 28px;
+  background: var(--border);
+  border-radius: 4px;
+  margin: 8px auto 6px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+.tl-bar-fill {
+  width: 100%;
+  border-radius: 4px;
+  transition: height .5s ease;
+}
+
+/* Bipolar bar (TSB — positive up, negative down) */
+.tl-tsb-wrap {
+  height: 64px;
+  width: 28px;
+  background: var(--border);
+  border-radius: 4px;
+  margin: 8px auto 6px;
+  position: relative;
+  overflow: hidden;
+}
+.tl-tsb-center {
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 1px;
+  background: var(--muted);
+  opacity: .5;
+}
+.tl-tsb-fill {
+  position: absolute;
+  left: 0; right: 0;
+}
 
 /* Recommendation pill */
 .rec-pill {
@@ -2289,28 +2329,57 @@ const REC_META = {
   large_decrease: { label: '↓↓ Large Decrease',   cls: 'rec-large-decrease' },
 };
 
+// Vertical bar for ATL / CTL — fills from bottom up
+function _tlBar(value, color, scaleMax) {
+  const pct = Math.min(100, (value / scaleMax) * 100).toFixed(1);
+  return `<div class="tl-bar-wrap">
+    <div class="tl-bar-fill" style="height:${pct}%;background:${color};"></div>
+  </div>`;
+}
+
+// Bipolar bar for TSB — positive fills upward (green), negative downward (red)
+function _tsbBar(tsb) {
+  const TSB_MAX = 20;
+  const halfH   = 32; // half of 64px
+  const fillH   = Math.round(Math.min(halfH, (Math.abs(tsb) / TSB_MAX) * halfH));
+  const color   = tsb >= 0 ? 'var(--success)' : 'var(--danger)';
+  const topPx   = tsb >= 0 ? (halfH - fillH) : halfH;
+  return `<div class="tl-tsb-wrap">
+    <div class="tl-tsb-center"></div>
+    <div class="tl-tsb-fill" style="top:${topPx}px;height:${fillH}px;background:${color};"></div>
+  </div>`;
+}
+
 async function loadTrainingLoadCard() {
   const wrap = document.getElementById('tl-wrap');
   try {
     const r = await fetch('/api/training-load?days=60');
     const d = await r.json();
-    const t = d.today;
+    const t   = d.today;
     const rec = REC_META[t.recommendation] || REC_META.continue;
     const tsbCls = t.tsb > 2 ? 'tsb-positive' : t.tsb < -2 ? 'tsb-negative' : 'tsb-neutral';
+
+    // Scale bars to the highest ATL or CTL over the past 60 days, with headroom
+    const histMax  = Math.max(50, ...d.history.map(h => Math.max(h.atl, h.ctl)));
+    const scaleMax = histMax * 1.1;
+
     wrap.innerHTML = `
       <div class="tl-grid">
         <div class="tl-cell">
           <div class="tl-label">Acute Load <span class="tip-icon" data-tip="Acute Training Load — 7-day average of your daily stress. Represents short-term fatigue.">i</span></div>
+          ${_tlBar(t.atl, 'var(--danger)', scaleMax)}
           <div class="tl-value" style="color:var(--danger);">${t.atl.toFixed(1)}</div>
           <div class="tl-sub">Short-term fatigue</div>
         </div>
         <div class="tl-cell">
           <div class="tl-label">Chronic Load <span class="tip-icon" data-tip="Chronic Training Load — 28-day average of your daily stress. Represents your long-term fitness baseline.">i</span></div>
+          ${_tlBar(t.ctl, 'var(--success)', scaleMax)}
           <div class="tl-value" style="color:var(--success);">${t.ctl.toFixed(1)}</div>
           <div class="tl-sub">Long-term baseline</div>
         </div>
         <div class="tl-cell">
-          <div class="tl-label">Training/Stress Balance <span class="tip-icon" data-tip="Training Stress Balance = CTL minus ATL. Positive means you're fresher than your baseline. Negative means you're carrying more fatigue than usual.">i</span></div>
+          <div class="tl-label">Training Stress Balance <span class="tip-icon" data-tip="Training Stress Balance = Chronic Load minus Acute Load. Positive means you're fresher than your baseline. Negative means you're carrying more fatigue than usual.">i</span></div>
+          ${_tsbBar(t.tsb)}
           <div class="tl-value ${tsbCls}">${t.tsb > 0 ? '+' : ''}${t.tsb.toFixed(1)}</div>
           <div class="tl-sub">${t.tsb >= 0 ? 'Fresh' : 'Fatigued'}</div>
         </div>
