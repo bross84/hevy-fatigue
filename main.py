@@ -283,6 +283,7 @@ def _compute_training_load(days: int, db: Session) -> list[dict]:
 
     # Walk day-by-day applying EWMA
     atl, ctl = 0.0, 0.0
+    atl_max, ctl_max = 0.0, 0.0
     results = []
     start = from_date
     end   = date_type.today()
@@ -295,6 +296,12 @@ def _compute_training_load(days: int, db: Session) -> list[dict]:
         ctl = stress * k_ctl + ctl * (1 - k_ctl)
         tsb = ctl - atl
 
+        # Track full-lookback maxima for normalization (not just the display window)
+        if atl > atl_max:
+            atl_max = atl
+        if ctl > ctl_max:
+            ctl_max = ctl
+
         if current >= cutoff:
             results.append({
                 "date":       str(current),
@@ -305,7 +312,7 @@ def _compute_training_load(days: int, db: Session) -> list[dict]:
             })
         current += timedelta(days=1)
 
-    return results
+    return results, max(atl_max, 1.0), max(ctl_max, 1.0)
 
 
 def _tsb_recommendation(tsb: float) -> str:
@@ -321,8 +328,20 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
     """
     Return ATL/CTL/TSB history for the chart and today's summary values.
     """
-    history = _compute_training_load(days, db)
-    today   = history[-1] if history else {"atl": 0, "ctl": 0, "tsb": 0, "stress": 0}
+    history, atl_max, ctl_max = _compute_training_load(days, db)
+    today = history[-1] if history else {"date": str(date_type.today()), "atl": 0, "ctl": 0, "tsb": 0, "stress": 0}
+
+    # Normalize ATL and CTL to a 0–10 scale relative to the user's own peak
+    atl_score = round(min(10.0, (today["atl"] / atl_max) * 10), 1)
+    ctl_score = round(min(10.0, (today["ctl"] / ctl_max) * 10), 1)
+
+    # CTL trend: compare today vs 7 days ago (rising/flat/declining)
+    ctl_7d_ago = history[-8]["ctl"] if len(history) >= 8 else None
+    if ctl_7d_ago and ctl_7d_ago > 0:
+        ctl_pct_change = (today["ctl"] - ctl_7d_ago) / ctl_7d_ago * 100
+        ctl_trend = "building" if ctl_pct_change > 1 else "declining" if ctl_pct_change < -1 else "maintaining"
+    else:
+        ctl_trend = "maintaining"
 
     return {
         "today": {
@@ -330,6 +349,9 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
             "atl":            today["atl"],
             "ctl":            today["ctl"],
             "tsb":            today["tsb"],
+            "atl_score":      atl_score,
+            "ctl_score":      ctl_score,
+            "ctl_trend":      ctl_trend,
             "recommendation": _tsb_recommendation(today["tsb"]),
         },
         "history": history,

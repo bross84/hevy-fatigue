@@ -2331,9 +2331,9 @@ const REC_META = {
   large_decrease: { label: '↓↓ Large Decrease',   cls: 'rec-large-decrease' },
 };
 
-// Vertical bar for ATL / CTL — fills from bottom up
-function _tlBar(value, color, scaleMax) {
-  const pct = Math.min(100, (value / scaleMax) * 100).toFixed(1);
+// Vertical bar for ATL / CTL — fills from bottom up, score is 0–10
+function _tlBar(score, color) {
+  const pct = (score / 10 * 100).toFixed(1);
   return `<div class="tl-bar-wrap">
     <div class="tl-bar-fill" style="height:${pct}%;background:${color};"></div>
   </div>`;
@@ -2370,28 +2370,32 @@ async function loadTrainingLoadCard() {
                    : t.tsb > -15 ? 'Fatigued'
                    :               'Overtrained';
 
-    // Scale bars to the highest ATL or CTL over the past 60 days, with headroom
-    const histMax  = Math.max(50, ...d.history.map(h => Math.max(h.atl, h.ctl)));
-    const scaleMax = histMax * 1.1;
+    const atlLabel  = t.atl_score < 2.5 ? 'Low Fatigue'
+                    : t.atl_score < 5.0 ? 'Moderate Fatigue'
+                    : t.atl_score < 7.5 ? 'High Fatigue'
+                    :                     'Very High Fatigue';
+    const trendLabel = t.ctl_trend === 'building'  ? '↗ Building'
+                     : t.ctl_trend === 'declining' ? '↘ Declining'
+                     :                               '→ Maintaining';
 
     wrap.innerHTML = `
       <div class="tl-grid">
         <div class="tl-cell">
-          <div class="tl-label">Acute Load <span class="tip-icon" data-tip="Acute Training Load — 7-day average of your daily stress. Represents short-term fatigue.">i</span></div>
-          ${_tlBar(t.atl, 'var(--danger)', scaleMax)}
-          <div class="tl-value" style="color:var(--danger);">${t.atl.toFixed(1)}</div>
-          <div class="tl-sub">Short-term fatigue</div>
+          <div class="tl-label">Fatigue <span class="tip-icon" data-tip="Your short-term fatigue relative to your personal peak — based on the 7-day average of your daily training stress.">i</span></div>
+          ${_tlBar(t.atl_score, 'var(--danger)')}
+          <div class="tl-value" style="color:var(--danger);font-size:14px;">${t.atl_score} / 10</div>
+          <div class="tl-sub">${atlLabel}</div>
         </div>
         <div class="tl-cell">
-          <div class="tl-label">Chronic Load <span class="tip-icon" data-tip="Chronic Training Load — 28-day average of your daily stress. Represents your long-term fitness baseline.">i</span></div>
-          ${_tlBar(t.ctl, 'var(--success)', scaleMax)}
-          <div class="tl-value" style="color:var(--success);">${t.ctl.toFixed(1)}</div>
-          <div class="tl-sub">Long-term baseline</div>
+          <div class="tl-label">Fitness <span class="tip-icon" data-tip="Your long-term fitness baseline relative to your personal peak — based on the 28-day average of your daily training stress.">i</span></div>
+          ${_tlBar(t.ctl_score, 'var(--success)')}
+          <div class="tl-value" style="color:var(--success);font-size:14px;">${t.ctl_score} / 10</div>
+          <div class="tl-sub">${trendLabel}</div>
         </div>
         <div class="tl-cell" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
-          <div class="tl-label" style="margin-bottom:8px;">Training Stress Balance <span class="tip-icon" data-tip="Training Stress Balance = Chronic Load minus Acute Load. Positive means you're fresher than your baseline. Negative means you're carrying more fatigue than usual.">i</span></div>
+          <div class="tl-label" style="margin-bottom:8px;">Balance <span class="tip-icon" data-tip="Training Stress Balance = Chronic Load minus Acute Load. Positive means you're fresher than your baseline. Negative means you're carrying more fatigue than usual.">i</span></div>
           <div class="tl-value ${tsbCls}" style="font-size:22px;margin-bottom:4px;">${tsbLabel}</div>
-          <div class="${tsbCls}" style="font-size:15px;margin-top:2px;">${t.tsb > 0 ? '+' : ''}${t.tsb.toFixed(1)}</div>
+          <div class="tl-sub" style="margin-top:2px;">TSB ${t.tsb > 0 ? '+' : ''}${t.tsb.toFixed(1)}</div>
         </div>
         <div class="tl-cell" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
           <div class="tl-label" style="margin-bottom:8px;">Today</div>
