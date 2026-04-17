@@ -1859,6 +1859,7 @@ async function loadLog() {
     wrap.innerHTML = `<div class="table-scroll"><table>
       <thead><tr>
         <th>Date</th>
+        <th>Rec</th>
         <th>Tired</th>
         <th>Recovery</th>
         <th>Soreness</th>
@@ -1866,8 +1867,11 @@ async function loadLog() {
         <th></th>
       </tr></thead>
       <tbody>
-      ${entries.map((e, i) => `<tr>
+      ${entries.map((e, i) => {
+        const rec = REC_META[e.recommendation_adjusted] || REC_META.continue;
+        return `<tr>
         <td style="white-space:nowrap;">${e.date}</td>
+        <td><span class="rec-pill ${rec.cls}" style="margin-top:0;padding:3px 10px;font-size:12px;">${rec.label}</span></td>
         <td><span class="sev-badge sev-${e.tiredness}">${e.tiredness}</span></td>
         <td><span class="sev-badge sev-${e.perceived_recovery}">${e.perceived_recovery}</span></td>
         <td>
@@ -1880,7 +1884,8 @@ async function loadLog() {
         </td>
         <td class="col-hide" style="font-size:12px;">U:${e.joint_upper} L:${e.joint_lower}</td>
         <td><button class="btn btn-sm btn-secondary" onclick='openLogEdit(${JSON.stringify(e)})'>Edit</button></td>
-      </tr>`).join('')}
+      </tr>`;
+      }).join('')}
       </tbody>
     </table></div>`;
   } catch {
@@ -2351,9 +2356,9 @@ function renderTsbZoneChart(history) {
   //   fresh (top) → blue → green → yellow → orange → red ← fatigued (bottom)
   const bands = [
     { min:  15, max:  999, color: getCSSVar('--accent')    + '45' },  // Large Increase
-    { min:   5, max:   15, color: getCSSVar('--success')   + '45' },  // Increase
-    { min:  -5, max:    5, color: getCSSVar('--warn')      + '45' },  // Continue
-    { min: -15, max:   -5, color: getCSSVar('--posterior') + '45' },  // Decrease
+    { min:  10, max:   15, color: getCSSVar('--success')   + '45' },  // Increase
+    { min: -10, max:   10, color: getCSSVar('--warn')      + '45' },  // Continue
+    { min: -15, max:  -10, color: getCSSVar('--posterior') + '45' },  // Decrease
     { min: -999, max: -15, color: getCSSVar('--danger')    + '45' },  // Large Decrease
   ];
 

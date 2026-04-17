@@ -311,8 +311,8 @@ _REC_LEVELS = ["large_decrease", "decrease", "continue", "increase", "large_incr
 
 def _tsb_recommendation(tsb: float) -> str:
     if   tsb >  15: return "large_increase"
-    elif tsb >   5: return "increase"
-    elif tsb >  -5: return "continue"
+    elif tsb >  10: return "increase"
+    elif tsb > -10: return "continue"
     elif tsb > -15: return "decrease"
     else:           return "large_decrease"
 
@@ -556,22 +556,35 @@ def get_readiness_log(db: Session = Depends(get_db)):
         .order_by(DailyReadiness.date.desc())
         .all()
     )
-    return [
-        {
-            "date":               str(e.date),
-            "sore_quad_dom":      e.sore_quad_dom      or 0,
-            "sore_posterior":     e.sore_posterior      or 0,
-            "sore_upper_push":    e.sore_upper_push     or 0,
-            "sore_upper_pull":    e.sore_upper_pull     or 0,
-            "joint_upper":        e.joint_upper         or 0,
-            "joint_lower":        e.joint_lower         or 0,
-            "tiredness":          e.tiredness           or 0,
-            "perceived_recovery": e.perceived_recovery  or 0,
-            "central_stress":     e.central_stress,
-            "peripheral_stress":  e.peripheral_stress,
-        }
-        for e in entries
-    ]
+    if not entries:
+        return []
+
+    earliest = min(e.date for e in entries)
+    days_back = (date_type.today() - earliest).days + 1
+    history, _, _ = _compute_training_load(max(days_back, 30), db)
+    tsb_by_date = {h["date"]: h["tsb"] for h in history}
+
+    result = []
+    for e in entries:
+        tsb      = tsb_by_date.get(str(e.date), 0.0)
+        base_rec = _tsb_recommendation(tsb)
+        adj_rec  = _adjusted_recommendation(base_rec, _subjective_fatigue(e))
+        result.append({
+            "date":                    str(e.date),
+            "sore_quad_dom":           e.sore_quad_dom      or 0,
+            "sore_posterior":          e.sore_posterior      or 0,
+            "sore_upper_push":         e.sore_upper_push     or 0,
+            "sore_upper_pull":         e.sore_upper_pull     or 0,
+            "joint_upper":             e.joint_upper         or 0,
+            "joint_lower":             e.joint_lower         or 0,
+            "tiredness":               e.tiredness           or 0,
+            "perceived_recovery":      e.perceived_recovery  or 0,
+            "central_stress":          e.central_stress,
+            "peripheral_stress":       e.peripheral_stress,
+            "recommendation":          base_rec,
+            "recommendation_adjusted": adj_rec,
+        })
+    return result
 
 @app.put("/api/readiness/{entry_date}")
 def update_readiness(entry_date: date_type, data: ReadinessUpdate, db: Session = Depends(get_db)):
