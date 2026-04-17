@@ -311,8 +311,8 @@ _REC_LEVELS = ["large_decrease", "decrease", "continue", "increase", "large_incr
 
 def _tsb_recommendation(tsb: float) -> str:
     if   tsb >  15: return "large_increase"
-    elif tsb >   5: return "increase"
-    elif tsb >  -5: return "continue"
+    elif tsb >  10: return "increase"
+    elif tsb > -10: return "continue"
     elif tsb > -15: return "decrease"
     else:           return "large_decrease"
 
