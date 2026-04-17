@@ -23,12 +23,14 @@ Both are calculated from your logged RPE and reps using an RPE percentage table 
 ### Features
 
 - 📊 **Stress chart** — 60-day rolling history of central and peripheral stress with a configurable moving average baseline. Filter by movement pattern (Quad, Hip, Push, Pull).
-- 📝 **Daily check-in** — Log soreness by movement pattern, joint health, tiredness, perceived recovery, and optionally HRV, sleep hours, and sleep quality.
+- 🎯 **Training recommendation** — 30-day TSB (Training Stress Balance) chart with a daily recommendation pill (Large Decrease → Large Increase). The recommendation blends objective TSB with your subjective check-in data so high soreness or fatigue can pull it down even when your training load looks manageable.
+- 💪 **Fatigue & Fitness scores** — ATL and CTL normalized to a 0–10 scale relative to your own historical peak, so the numbers mean something regardless of your training volume.
+- 📝 **Daily check-in** — Log soreness by movement pattern (quad, hip, push, pull), joint health (upper/lower), tiredness, and perceived recovery. These scores feed directly into the adjusted training recommendation.
 - 💪 **Workouts tab** — Last 12 sessions with per-workout central and peripheral stress scores.
 - 🗂️ **Exercise mappings** — All exercises auto-classified into movement patterns by keyword rules. Reviewable and editable with custom percentage splits for blended movements.
-- 🔄 **Hevy sync** — Manual sync button on the dashboard; auto-syncs on every check-in submission.
+- 🔄 **Hevy sync** — Manual sync button in Settings; auto-syncs on every check-in submission.
 - 🌗 **Light / Dark / Auto theme** — Follows system preference by default.
-- 📱 **Mobile responsive** — Works on phone browsers for daily check-ins.
+- 📱 **Mobile-first** — Optimised for phone browsers; no viewport zoom on input focus.
 
 ---
 
@@ -152,17 +154,17 @@ Open your browser at **http://localhost:8125**
 
 ### 4. Import your Hevy data
 
-The first time you run the app, click **⟳ Sync Now** on the Dashboard to pull your full Hevy workout history. This may take a minute depending on how many workouts you have.
+The first time you run the app, go to the **Settings tab** and click **⟳ Sync Now** to pull your full Hevy workout history. This may take a minute depending on how many workouts you have.
 
-After the initial import, syncing happens automatically every time you submit a daily check-in. You can also trigger it manually from the Dashboard at any time.
+After the initial import, syncing happens automatically every time you submit a daily check-in. You can also trigger it manually from Settings at any time.
 
 ---
 
 ### Updating the app
 
 ```bash
-git pull
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 Your data is untouched. The `hevy-data` Docker volume holds both the database and the API key file — both survive container rebuilds and updates.
@@ -172,9 +174,9 @@ Your data is untouched. The `hevy-data` Docker volume holds both the database an
 ## Daily Workflow
 
 1. **Open the app each day**
-2. **Submit a check-in** — rate soreness by movement pattern, joint health, tiredness, and recovery. Optionally add HRV and sleep data.
-   The app auto-syncs your latest Hevy workouts before calculating stress scores.
-3. **Review the dashboard** — the stress chart shows how yesterday's session compares to your rolling baseline.
+2. **Submit a check-in** — rate soreness by movement pattern (quad, hip, push, pull), joint health (upper/lower), tiredness, and recovery using the dropdowns.
+   The app auto-syncs your latest Hevy workouts on submission.
+3. **Review the Dashboard** — the Training Load card shows your Fatigue and Fitness scores (0–10) and a recommendation pill that blends your training load with today's check-in.
 4. **Check the Workouts tab** for a session-by-session breakdown.
 
 <!-- SCREENSHOT: Daily check-in form -->
