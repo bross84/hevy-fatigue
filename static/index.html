@@ -161,7 +161,7 @@ input[type="number"], input[type="date"] {
   color: var(--text);
   padding: 7px 10px;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 16px;
   width: 100%;
   min-width: 0;
   max-width: 100%;
@@ -190,7 +190,7 @@ select {
   color: var(--text);
   padding: 10px 32px 10px 10px;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 16px;
   width: 100%;
   min-width: 0;
   min-height: 44px;
@@ -444,7 +444,7 @@ tbody tr:hover td { background: var(--row-hover); }
   width: 58px !important;
   text-align: center;
   padding: 4px 8px !important;
-  font-size: 13px !important;
+  font-size: 16px !important;
   -moz-appearance: textfield;
   appearance: textfield;
 }
@@ -648,7 +648,7 @@ tbody tr:hover td { background: var(--row-hover); }
   width: 42px;
   text-align: center;
   padding: 2px 4px;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 600;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -701,7 +701,7 @@ tbody tr:hover td { background: var(--row-hover); }
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text);
-  font-size: 13px;
+  font-size: 16px;
   font-family: monospace;
 }
 .settings-key-row input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
@@ -927,14 +927,6 @@ tbody tr:hover td { background: var(--row-hover); }
         </form>
       </div>
 
-      <div class="card">
-        <div class="card-title">Hevy Sync</div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
-          Pull the latest workouts from Hevy into the local database. The check-in form auto-syncs on submit, but you can also trigger it manually here.
-        </p>
-        <div id="sync-status" style="margin-bottom:10px;"></div>
-        <button class="btn btn-secondary" id="sync-btn" onclick="runSync()" style="width:100%;">⟳ Sync Now</button>
-      </div>
     </div>
 
     <!-- right: chart + workout summary -->
@@ -983,7 +975,7 @@ tbody tr:hover td { background: var(--row-hover); }
       </div>
 
       <div class="card">
-        <div class="card-title">Training Recommendation (60 days)</div>
+        <div class="card-title">Training Recommendation (30 days)</div>
         <div style="position:relative;height:200px;">
           <canvas id="tsbZoneChart"></canvas>
         </div>
@@ -1099,6 +1091,16 @@ tbody tr:hover td { background: var(--row-hover); }
       machine except to make requests to the official Hevy API.<br><br>
       Find your key at <strong>hevy.com → Settings → Developer</strong>.
     </div>
+  </div>
+
+  <div class="card settings-card" style="margin-top:14px;">
+    <div class="card-title">Hevy Sync</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
+      Pull the latest workouts from Hevy into the local database.
+      The check-in form auto-syncs on submit — use this to sync manually.
+    </p>
+    <div id="sync-status" style="margin-bottom:10px;"></div>
+    <button class="btn btn-secondary" id="sync-btn" onclick="runSync()" style="width:100%;">⟳ Sync Now</button>
   </div>
 </section>
 
@@ -2256,7 +2258,7 @@ function _tsbBar(tsb) {
 async function loadTrainingLoadCard() {
   const wrap = document.getElementById('tl-wrap');
   try {
-    const r = await fetch('/api/training-load?days=60');
+    const r = await fetch('/api/training-load?days=30');
     const d = await r.json();
     _tlHistory = d.history;
     renderTsbZoneChart(d.history);
