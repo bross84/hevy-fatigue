@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hevy Fatigue</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<link rel="icon" href="/static/favicon.png" type="image/png">
-<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<link rel="icon" href="/resources/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="/resources/apple-touch-icon.png">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -708,6 +708,29 @@ tbody tr:hover td { background: var(--row-hover); }
 
 /* ── Settings tab ── */
 .settings-card { max-width: 520px; }
+.tab-content#tab-settings.active {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+#tab-settings .settings-card {
+  max-width: none;
+  margin-top: 0 !important;
+  margin-bottom: 0;
+}
+#tab-settings .settings-card:nth-child(1) {
+  grid-column: 1;
+  grid-row: 1;
+}
+#tab-settings .settings-card:nth-child(2) {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+#tab-settings .settings-card:nth-child(3) {
+  grid-column: 1;
+  grid-row: 2;
+}
 .settings-key-row { display: flex; gap: 8px; align-items: stretch; }
 .settings-key-row input {
   flex: 1;
@@ -743,6 +766,17 @@ tbody tr:hover td { background: var(--row-hover); }
   gap: 10px;
 }
 @media (max-width: 640px) { .settings-grid-2 { grid-template-columns: 1fr; } }
+@media (max-width: 900px) {
+  .tab-content#tab-settings.active {
+    grid-template-columns: 1fr;
+  }
+  #tab-settings .settings-card:nth-child(1),
+  #tab-settings .settings-card:nth-child(2),
+  #tab-settings .settings-card:nth-child(3) {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}
 
 /* ── Log tab: soreness pattern cell ── */
 .sore-cell { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
@@ -854,7 +888,7 @@ tbody tr:hover td { background: var(--row-hover); }
 </script>
 
 <nav>
-  <div class="logo"><img class="logo-icon" src="/static/favicon.png" alt="Hevy Fatigue icon">HEVY FATIGUE</div>
+  <div class="logo"><img class="logo-icon" src="/resources/favicon.png" alt="Hevy Fatigue icon">HEVY FATIGUE</div>
   <div class="nav-tabs">
     <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
     <button class="nav-tab" data-tab="workouts">Workouts</button>
@@ -2553,7 +2587,7 @@ async function loadTrainingLoadCard() {
         <div class="tl-cell">
           <div class="tl-label" style="margin-bottom:8px;">Daily Recommendation</div>
           <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
-            <img src="/static/${rec.img}" style="width:48px;height:48px;image-rendering:pixelated;">
+            <img src="/resources/${rec.img}" style="width:48px;height:48px;image-rendering:pixelated;">
             <span class="rec-pill ${rec.cls}">${rec.label}</span>
             <div class="tl-sub" style="color:${modeColor};font-weight:600;">${modeLabel}</div>
             <div class="tl-sub" style="margin-top:4px;">Fatigue Score: ${fatigueScore} / 10</div>

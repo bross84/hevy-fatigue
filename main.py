@@ -61,6 +61,7 @@ app.add_middleware(
 )
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+RESOURCES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources")
 
 # --- Database Dependency ---
 def get_db():
@@ -1127,3 +1128,5 @@ def update_exercise_mapping(
 # --- Static files (mounted AFTER all API routes) ---
 if os.path.isdir(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+if os.path.isdir(RESOURCES_DIR):
+    app.mount("/resources", StaticFiles(directory=RESOURCES_DIR), name="resources")
