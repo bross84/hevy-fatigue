@@ -95,6 +95,13 @@ class ReadinessUpdate(BaseModel):
 class SettingsInput(BaseModel):
     hevy_api_key: str
 
+class CalibrationSettingsInput(BaseModel):
+    enabled: bool = False
+    threshold_large_decrease: float = Field(8.0, ge=0.0, le=10.0)
+    threshold_decrease: float = Field(6.5, ge=0.0, le=10.0)
+    threshold_continue: float = Field(4.5, ge=0.0, le=10.0)
+    threshold_increase: float = Field(3.0, ge=0.0, le=10.0)
+
 class MappingUpdate(BaseModel):
     pct_quad_dom: float = Field(ge=0.0, le=1.0)
     pct_posterior: float = Field(ge=0.0, le=1.0)
@@ -178,6 +185,62 @@ def _get_db_api_key(db: Session) -> str | None:
         row.value = _encrypt(legacy_plaintext)
         db.commit()
         return legacy_plaintext
+
+_CALIBRATION_DEFAULTS = {
+    "enabled": False,
+    "threshold_large_decrease": 8.0,
+    "threshold_decrease": 6.5,
+    "threshold_continue": 4.5,
+    "threshold_increase": 3.0,
+}
+
+def _get_setting_value(db: Session, key: str) -> str | None:
+    row = db.query(AppSetting).filter(AppSetting.key == key).first()
+    return row.value if row else None
+
+def _set_setting_value(db: Session, key: str, value: str) -> None:
+    row = db.query(AppSetting).filter(AppSetting.key == key).first()
+    if row:
+        row.value = value
+    else:
+        db.add(AppSetting(key=key, value=value))
+
+def _validate_calibration_thresholds(cfg: dict) -> None:
+    if not (
+        cfg["threshold_large_decrease"] >= cfg["threshold_decrease"] >=
+        cfg["threshold_continue"] >= cfg["threshold_increase"] >= 0.0
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Thresholds must be ordered: "
+                "large_decrease >= decrease >= continue >= increase >= 0"
+            ),
+        )
+
+def _get_calibration_settings(db: Session) -> dict:
+    def _safe_float(raw: str | None, default: float) -> float:
+        if raw is None:
+            return default
+        try:
+            return float(raw)
+        except (TypeError, ValueError):
+            return default
+
+    enabled_raw = _get_setting_value(db, "fatigue_calibration_enabled")
+    ld_raw = _get_setting_value(db, "fatigue_threshold_large_decrease")
+    d_raw = _get_setting_value(db, "fatigue_threshold_decrease")
+    c_raw = _get_setting_value(db, "fatigue_threshold_continue")
+    i_raw = _get_setting_value(db, "fatigue_threshold_increase")
+
+    cfg = {
+        "enabled": enabled_raw == "1" if enabled_raw is not None else _CALIBRATION_DEFAULTS["enabled"],
+        "threshold_large_decrease": _safe_float(ld_raw, _CALIBRATION_DEFAULTS["threshold_large_decrease"]),
+        "threshold_decrease": _safe_float(d_raw, _CALIBRATION_DEFAULTS["threshold_decrease"]),
+        "threshold_continue": _safe_float(c_raw, _CALIBRATION_DEFAULTS["threshold_continue"]),
+        "threshold_increase": _safe_float(i_raw, _CALIBRATION_DEFAULTS["threshold_increase"]),
+    }
+    return cfg
 
 # --- Routes ---
 
@@ -263,6 +326,45 @@ def test_api_key(db: Session = Depends(get_db)):
     client = HevyClient(api_key=key)
     ok = client.test_connection()
     return {"ok": ok}
+
+@app.get("/api/settings/calibration")
+def get_calibration_settings(db: Session = Depends(get_db)):
+    """Return fatigue recommendation calibration settings."""
+    cfg = _get_calibration_settings(db)
+    _validate_calibration_thresholds(cfg)
+    return cfg
+
+@app.put("/api/settings/calibration")
+def save_calibration_settings(data: CalibrationSettingsInput, db: Session = Depends(get_db)):
+    """Save user-defined fatigue recommendation thresholds (opt-in)."""
+    cfg = {
+        "enabled": data.enabled,
+        "threshold_large_decrease": round(float(data.threshold_large_decrease), 2),
+        "threshold_decrease": round(float(data.threshold_decrease), 2),
+        "threshold_continue": round(float(data.threshold_continue), 2),
+        "threshold_increase": round(float(data.threshold_increase), 2),
+    }
+    _validate_calibration_thresholds(cfg)
+
+    _set_setting_value(db, "fatigue_calibration_enabled", "1" if cfg["enabled"] else "0")
+    _set_setting_value(db, "fatigue_threshold_large_decrease", str(cfg["threshold_large_decrease"]))
+    _set_setting_value(db, "fatigue_threshold_decrease", str(cfg["threshold_decrease"]))
+    _set_setting_value(db, "fatigue_threshold_continue", str(cfg["threshold_continue"]))
+    _set_setting_value(db, "fatigue_threshold_increase", str(cfg["threshold_increase"]))
+    db.commit()
+    return {"message": "Calibration settings saved.", **cfg}
+
+@app.post("/api/settings/calibration/reset")
+def reset_calibration_settings(db: Session = Depends(get_db)):
+    """Reset fatigue recommendation thresholds to defaults and disable calibration."""
+    defaults = dict(_CALIBRATION_DEFAULTS)
+    _set_setting_value(db, "fatigue_calibration_enabled", "0")
+    _set_setting_value(db, "fatigue_threshold_large_decrease", str(defaults["threshold_large_decrease"]))
+    _set_setting_value(db, "fatigue_threshold_decrease", str(defaults["threshold_decrease"]))
+    _set_setting_value(db, "fatigue_threshold_continue", str(defaults["threshold_continue"]))
+    _set_setting_value(db, "fatigue_threshold_increase", str(defaults["threshold_increase"]))
+    db.commit()
+    return {"message": "Calibration settings reset.", **defaults}
 
 # ── Training Load (ATL / CTL / TSB) ──────────────────────────────────────────
 
@@ -391,15 +493,28 @@ def _training_modifier_for_index(stresses: list[float], idx: int) -> float:
     relative_delta = (recent_load - baseline_load) / baseline_load
     return round(_clamp(relative_delta * 1.2, -1.5, 1.5), 2)
 
-def _fatigue_recommendation(fatigue_score: float) -> str:
+def _fatigue_recommendation(fatigue_score: float, calibration: dict | None = None) -> str:
     """Map 0-10 fatigue score (10 = worst) to recommendation buckets."""
-    if fatigue_score >= 8.0:
+    cfg = calibration or _CALIBRATION_DEFAULTS
+    enabled = bool(cfg.get("enabled", False))
+    if enabled:
+        ld = float(cfg.get("threshold_large_decrease", _CALIBRATION_DEFAULTS["threshold_large_decrease"]))
+        d = float(cfg.get("threshold_decrease", _CALIBRATION_DEFAULTS["threshold_decrease"]))
+        c = float(cfg.get("threshold_continue", _CALIBRATION_DEFAULTS["threshold_continue"]))
+        i = float(cfg.get("threshold_increase", _CALIBRATION_DEFAULTS["threshold_increase"]))
+    else:
+        ld = _CALIBRATION_DEFAULTS["threshold_large_decrease"]
+        d = _CALIBRATION_DEFAULTS["threshold_decrease"]
+        c = _CALIBRATION_DEFAULTS["threshold_continue"]
+        i = _CALIBRATION_DEFAULTS["threshold_increase"]
+
+    if fatigue_score >= ld:
         return "large_decrease"
-    if fatigue_score >= 6.5:
+    if fatigue_score >= d:
         return "decrease"
-    if fatigue_score >= 4.5:
+    if fatigue_score >= c:
         return "continue"
-    if fatigue_score >= 3.0:
+    if fatigue_score >= i:
         return "increase"
     return "large_increase"
 
@@ -453,7 +568,8 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
         fatigue_score = round(_clamp(5.0 + training_mod, 0.0, 10.0), 2)
         score_source = "training_fallback"
 
-    fatigue_rec = _fatigue_recommendation(fatigue_score)
+    calibration = _get_calibration_settings(db)
+    fatigue_rec = _fatigue_recommendation(fatigue_score, calibration)
 
     # Enrich history items with fatigue_score and recommendation_adjusted.
     # Fetch all readiness entries for the history window in one query.
@@ -480,7 +596,7 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
         else:
             h_fatigue = round(_clamp(5.0 + t_mod, 0.0, 10.0), 2)
         item["fatigue_score"] = h_fatigue
-        item["recommendation_adjusted"] = _fatigue_recommendation(h_fatigue)
+        item["recommendation_adjusted"] = _fatigue_recommendation(h_fatigue, calibration)
 
     return {
         "today": {
@@ -501,6 +617,7 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
             "recommendation_adjusted": fatigue_rec,
             "recommendation_legacy_tsb": tsb_rec,
             "subj_fatigue":            subj,
+            "calibration_enabled":      calibration.get("enabled", False),
         },
         "history": history,
     }
@@ -686,6 +803,8 @@ def get_readiness_log(db: Session = Depends(get_db)):
     history_index = {h["date"]: idx for idx, h in enumerate(history)}
     stress_series = [max(0.0, float(h.get("stress", 0.0))) for h in history]
 
+    calibration = _get_calibration_settings(db)
+
     result = []
     for e in entries:
         date_key = str(e.date)
@@ -697,7 +816,7 @@ def get_readiness_log(db: Session = Depends(get_db)):
         idx = history_index.get(date_key)
         training_mod = _training_modifier_for_index(stress_series, idx) if idx is not None else 0.0
         fatigue_score = round(_clamp(subj_base_score + training_mod, 0.0, 10.0), 2)
-        adj_rec = _fatigue_recommendation(fatigue_score)
+        adj_rec = _fatigue_recommendation(fatigue_score, calibration)
 
         result.append({
             "date":                    date_key,
