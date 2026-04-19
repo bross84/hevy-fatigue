@@ -61,10 +61,10 @@
 
 /* ── Base ─────────────────────────────── */
 html {
-  overflow-x: hidden;
+  overflow-x: auto;
 }
 body {
-  overflow-x: hidden;
+  overflow-x: auto;
   width: 100%;
   background: var(--bg);
   color: var(--text);
@@ -662,6 +662,7 @@ tbody tr:hover td { background: var(--row-hover); }
   color: var(--text);
   cursor: text;
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 .val-input::-webkit-outer-spin-button,
 .val-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
@@ -1414,6 +1415,9 @@ function applyTheme(pref) {
         b.classList.toggle('active', b.dataset.pattern === 'total')
       );
       activePattern = 'total';
+    }
+    if (_tlHistory) {
+      renderFatigueChart(_tlHistory);
     }
   });
 }

@@ -2,23 +2,22 @@
 
 A self-hosted fatigue and training-readiness app for strength athletes using the [Hevy](https://hevy.com) workout logger.
 
-The app pulls workouts from the Hevy API, calculates training stress from your logged sets, and combines that with a daily subjective check-in to generate a simple daily recommendation.
+The app pulls workouts from the Hevy API, derives training stress from your logged sets, and combines that with a daily subjective check-in to generate a simple daily recommendation.
 
 > Requires a Hevy PRO subscription for API access.
 
 ## What It Does
 
-Most training dashboards either track volume badly, ignore intensity, or treat subjective recovery like an afterthought. This app uses both:
+This app combines two inputs:
 
-- Objective training load from your Hevy workout history
-- A daily subjective check-in that drives the main fatigue score
+- Training stress derived from your Hevy workout history
+- A daily subjective check-in that drives the base fatigue score
 
 The current model is subjective-first:
 
 - Your check-in creates the base fatigue score
-- Recent training load applies a bounded modifier
+- Recent training stress applies a bounded modifier
 - The final fatigue score is shown on a 0-10 scale
-- `10` means very fatigued
 
 ## Current Dashboard Terms
 
@@ -43,6 +42,8 @@ The current model is subjective-first:
 - Mobile-friendly single-page UI
 - Optional calibration settings for recommendation thresholds
 - Optional adaptive percentile mode based on recent fatigue history
+
+> Screenshot to add: Main dashboard showing Short Term Fatigue, Long Term Fatigue, Daily Recommendation, the 30-day recommendation chart, and the stress chart.
 
 ## Recommendation Model
 
@@ -84,7 +85,60 @@ These are derived from the RPE table and your logged reps, not from arbitrary se
 
 Warm-up sets are excluded.
 
-Exercises marked Exclude from stress calculations are also excluded.
+Exercises marked "Exclude from stress calculations" are also excluded.
+
+## Daily Workflow
+
+1. Open the app
+2. Submit your daily check-in
+3. The app auto-syncs recent Hevy data before calculating the new entry
+4. Review:
+  - Short Term Fatigue
+  - Long Term Fatigue
+  - Daily Recommendation
+5. Use the Log tab to review past entries and fatigue trends
+
+> Screenshot to add: Daily check-in form with soreness, joint health, tiredness, and recovery inputs visible before submission.
+
+> Screenshot to add: Log view showing past entries and fatigue trend history.
+
+## Settings
+
+The Settings tab handles:
+
+- Hevy API key management
+- Manual sync
+- Advanced calibration
+
+Advanced calibration is optional and off by default.
+
+It supports:
+
+- Custom fixed thresholds
+- Adaptive percentile thresholds
+- Configurable lookback window
+- Configurable minimum entry count before adaptive mode activates
+
+> Screenshot to add: Settings tab with API key management, manual sync, and advanced calibration options visible.
+
+## Exercise Mappings
+
+Exercises are auto-classified into four movement groups:
+
+- Quad
+- Hip
+- Push
+- Pull
+
+You can review and edit mappings in the Exercises tab.
+
+Notes:
+
+- Custom movement splits affect the pattern charts only
+- They do not change the total fatigue score directly
+- Excluding a movement from stress calculations removes it from stress totals entirely
+
+> Screenshot to add: Exercises tab showing exercise mappings, movement group assignment, and an example of the stress-calculation exclusion toggle.
 
 ## Tech Stack
 
@@ -144,6 +198,8 @@ Open the Settings tab and save your API key there.
 
 That is now the primary setup flow.
 
+> Screenshot to add: First-time setup view showing where to paste and save the Hevy API key.
+
 ### Optional local fallback
 
 If you prefer not to use the Settings tab locally, the Hevy client still supports:
@@ -184,7 +240,7 @@ The app stores the key encrypted in the app settings table.
 
 ### Optional Docker fallback
 
-The runtime still supports a file-based fallback key at:
+The app still supports a file-based fallback key at:
 
 ```text
 /data/hevy_api_key
@@ -201,51 +257,6 @@ docker compose up -d
 
 Your SQLite database lives in the persistent Docker volume and survives rebuilds.
 
-## Daily Workflow
-
-1. Open the app
-2. Submit your daily check-in
-3. The app auto-syncs recent Hevy data before calculating the new entry
-4. Review:
-  - Short Term Fatigue
-  - Long Term Fatigue
-  - Daily Recommendation
-5. Use the Log tab to review past entries and fatigue trends
-
-## Settings
-
-The Settings tab currently handles:
-
-- Hevy API key management
-- Manual sync
-- Advanced calibration
-
-Advanced calibration is optional and off by default.
-
-It supports:
-
-- Custom fixed thresholds
-- Adaptive percentile thresholds
-- Configurable lookback window
-- Configurable minimum entry count before adaptive mode activates
-
-## Exercise Mappings
-
-Exercises are auto-classified into four movement groups:
-
-- Quad
-- Hip
-- Push
-- Pull
-
-You can review and edit mappings in the Exercises tab.
-
-Notes:
-
-- Custom movement splits affect the pattern charts only
-- They do not change the total fatigue score directly
-- Excluding a movement from stress calculations removes it from stress totals entirely
-
 ## CLI Importer
 
 If you want to run a one-off import outside the UI:
@@ -256,18 +267,9 @@ python importer.py
 
 This is optional. Most users can rely entirely on the in-app sync flow.
 
-## Remote Access
-
-For remote access, a tunnel or reverse proxy in front of the app is recommended.
-
-Cloudflare Tunnel is a good fit if you want HTTPS access without opening router ports.
-
 ## Acknowledgements
 
 The project is heavily inspired by Mike Tuchscherer's RTS / TRAC ideas and broader RPE-based autoregulation concepts.
 
 This app is not an RTS product and does not claim to reproduce TRAC exactly.
 
-## License
-
-MIT
