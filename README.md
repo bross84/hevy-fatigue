@@ -1,4 +1,4 @@
-# Hevy Fatigue
+# <img src="static/favicon.png" alt="Hevy Fatigue icon" width="18" height="18"> Hevy Fatigue
 
 A self-hosted fatigue and training-readiness app for strength athletes using the [Hevy](https://hevy.com) workout logger.
 
