@@ -960,12 +960,12 @@ tbody tr:hover td { background: var(--row-hover); }
         <div style="display:flex;gap:18px;margin-top:10px;font-size:12px;color:var(--muted);">
           <span style="display:inline-flex;align-items:center;gap:5px;">
             <span style="width:16px;height:2px;background:var(--accent);display:inline-block;border-radius:1px;"></span>
-            Central
+            Intensity Load
             <span class="tip-icon" data-tip="How hard you trained. Heavy sets close to your max drive this number up fast. Think of it as nervous system fatigue — the kind that makes you feel strong but drained.">i</span>
           </span>
           <span style="display:inline-flex;align-items:center;gap:5px;">
             <span style="width:16px;height:2px;background:var(--posterior);display:inline-block;border-radius:1px;"></span>
-            Peripheral
+            Volume Load
             <span class="tip-icon" data-tip="How much total work you did. Adds up with every set and rep regardless of how heavy. Think of it as muscle fatigue — the kind that makes you sore and tired the next day.">i</span>
           </span>
         </div>
@@ -1375,7 +1375,7 @@ if (window.ResizeObserver) {
     let _tsbTimer;
     new ResizeObserver(() => {
       clearTimeout(_tsbTimer);
-      _tsbTimer = setTimeout(() => { if (_tlHistory) renderTsbZoneChart(_tlHistory); }, 60);
+      _tsbTimer = setTimeout(() => { if (_tlHistory) renderFatigueChart(_tlHistory); }, 60);
     }).observe(_tsbEl);
   }
 }
@@ -1549,7 +1549,7 @@ async function checkTodayReadiness() {
     const r = await fetch('/api/readiness/today');
     if (r.ok) {
       const d = await r.json();
-      setStatus('success', `✓ Already logged today — Central: ${d.central_stress ?? '—'} | Peripheral: ${d.peripheral_stress ?? '—'}`);
+      setStatus('success', `✓ Already logged today — Intensity Load: ${d.central_stress ?? '—'} | Volume Load: ${d.peripheral_stress ?? '—'}`);  
       const btn = document.getElementById('ci-submit');
       btn.disabled = true;
       btn.textContent = 'Already logged today';
@@ -1620,12 +1620,12 @@ document.getElementById('checkin-form').addEventListener('submit', async e => {
         document.getElementById(id).value = 0;
       });
       if (isToday) {
-        setStatus('success', `✓ Logged! Central: ${d.central_stress} | Peripheral: ${d.peripheral_stress}`);
+        setStatus('success', `✓ Logged! Intensity Load: ${d.central_stress} | Volume Load: ${d.peripheral_stress}`);
         btn.disabled    = true;
         btn.textContent = 'Already logged today';
         loadTrainingLoadCard();
       } else {
-        setStatus('success', `✓ Added entry for ${submittedDate} — Central: ${d.central_stress} | Peripheral: ${d.peripheral_stress}`);
+        setStatus('success', `✓ Added entry for ${submittedDate} — Intensity Load: ${d.central_stress} | Volume Load: ${d.peripheral_stress}`);
         // Leave the form open so the user can keep adding past entries back-to-back
         btn.disabled    = false;
         btn.textContent = 'Add Past Entry';
@@ -1742,10 +1742,10 @@ function buildDatasets(labels, cVals, pVals, cColor, pColor) {
   return {
     labels,
     datasets: [
-      { label: 'Central Stress',    data: cVals, borderColor: cColor, backgroundColor: cColor+'22', borderWidth: 2, tension: 0.35, pointRadius: 3, pointHoverRadius: 6 },
-      { label: 'Peripheral Stress', data: pVals, borderColor: pColor, backgroundColor: pColor+'22', borderWidth: 2, tension: 0.35, pointRadius: 3, pointHoverRadius: 6 },
-      { label: `${baselineDays}d Central Avg`,    data: rollingAvg(cVals, baselineDays), borderColor: cColor, borderWidth: 1.5, borderDash: [5,4], pointRadius: 0, tension: 0.35 },
-      { label: `${baselineDays}d Peripheral Avg`, data: rollingAvg(pVals, baselineDays), borderColor: pColor, borderWidth: 1.5, borderDash: [5,4], pointRadius: 0, tension: 0.35 },
+      { label: 'Intensity Load',    data: cVals, borderColor: cColor, backgroundColor: cColor+'22', borderWidth: 2, tension: 0.35, pointRadius: 3, pointHoverRadius: 6 },
+      { label: 'Volume Load', data: pVals, borderColor: pColor, backgroundColor: pColor+'22', borderWidth: 2, tension: 0.35, pointRadius: 3, pointHoverRadius: 6 },
+      { label: `${baselineDays}d Intensity Avg`,    data: rollingAvg(cVals, baselineDays), borderColor: cColor, borderWidth: 1.5, borderDash: [5,4], pointRadius: 0, tension: 0.35 },
+      { label: `${baselineDays}d Volume Avg`, data: rollingAvg(pVals, baselineDays), borderColor: pColor, borderWidth: 1.5, borderDash: [5,4], pointRadius: 0, tension: 0.35 },
     ]
   };
 }
@@ -2265,7 +2265,7 @@ async function loadTrainingLoadCard() {
     const r = await fetch('/api/training-load?days=30');
     const d = await r.json();
     _tlHistory = d.history;
-    renderTsbZoneChart(d.history);
+    renderFatigueChart(d.history);
     const t   = d.today;
     const rec = REC_META[t.recommendation_adjusted] || REC_META.continue;
     const fatigueScore = typeof t.fatigue_score === 'number' ? t.fatigue_score.toFixed(1) : '—';
@@ -2307,7 +2307,7 @@ async function loadTrainingLoadCard() {
           <div class="tl-sub">${trendLabel}</div>
         </div>
         <div class="tl-cell" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
-          <div class="tl-label" style="margin-bottom:8px;">Balance <span class="tip-icon" data-tip="Training Stress Balance = Chronic Load minus Acute Load. Positive means you're fresher than your baseline. Negative means you're carrying more fatigue than usual.">i</span></div>
+          <div class="tl-label" style="margin-bottom:8px;">Readiness <span class="tip-icon" data-tip="How rested you are compared to your normal training baseline. Positive means you're fresher than usual; negative means you're carrying more fatigue than usual.">i</span></div>
           <div class="tl-value ${tsbCls}" style="font-size:22px;margin-bottom:4px;">${tsbLabel}</div>
           <div class="tl-sub" style="margin-top:2px;">TSB ${t.tsb > 0 ? '+' : ''}${t.tsb.toFixed(1)}</div>
         </div>
@@ -2318,6 +2318,9 @@ async function loadTrainingLoadCard() {
             <span class="rec-pill ${rec.cls}">${rec.label}</span>
             <div class="tl-sub" style="margin-top:4px;">Fatigue Score: ${fatigueScore} / 10</div>
             <div class="tl-sub">Base ${baseScore} ${modScore !== '—' ? `· Modifier ${modScore}` : ''}</div>
+            ${t.score_source === 'subjective_plus_training' && t.tiredness != null && t.perceived_recovery != null
+              ? `<div class="tl-sub" style="margin-top:2px;color:var(--muted);">Tired ${t.tiredness}/4 · Recovery ${t.perceived_recovery}/4</div>`
+              : `<div class="tl-sub" style="margin-top:2px;color:var(--muted);font-style:italic;">No check-in today</div>`}
           </div>
         </div>
       </div>`;
@@ -2348,35 +2351,31 @@ const bandPlugin = {
 Chart.register(bandPlugin);
 
 
-function renderTsbZoneChart(history) {
+function renderFatigueChart(history) {
   const c      = themeColors();
   const ctx    = document.getElementById('tsbZoneChart').getContext('2d');
   const labels = history.map(d => d.date.slice(5));
-  const values = history.map(d => d.tsb);
+  const values = history.map(d => d.fatigue_score ?? 5.0);
 
-  // Dynamic y-axis: always include ±20 so all 5 zones are visible,
-  // but expand further if the data goes beyond that range
-  const dataMin = values.length ? Math.min(...values) : -20;
-  const dataMax = values.length ? Math.max(...values) :  20;
-  const yMin = Math.floor(Math.min(dataMin, -20) - 2);
-  const yMax = Math.ceil( Math.max(dataMax,  20) + 2);
+  // Fixed 0–10 y-axis — bands match the fatigue score thresholds
+  const yMin = 0;
+  const yMax = 10;
 
-  // Colored bands match the legend below the chart:
-  //   fresh (top) → blue → green → yellow → orange → red ← fatigued (bottom)
+  // Colored bands: higher score = more fatigued = decrease band (red/orange at top)
   const bands = [
-    { min:  15, max:  999, color: getCSSVar('--accent')    + '45' },  // Large Increase
-    { min:  10, max:   15, color: getCSSVar('--success')   + '45' },  // Increase
-    { min: -10, max:   10, color: getCSSVar('--warn')      + '45' },  // Continue
-    { min: -15, max:  -10, color: getCSSVar('--posterior') + '45' },  // Decrease
-    { min: -999, max: -15, color: getCSSVar('--danger')    + '45' },  // Large Decrease
+    { min:  8.0, max:  10,  color: getCSSVar('--danger')    + '45' },  // Large Decrease
+    { min:  6.5, max:   8.0, color: getCSSVar('--posterior') + '45' },  // Decrease
+    { min:  4.5, max:   6.5, color: getCSSVar('--warn')      + '45' },  // Continue
+    { min:  3.0, max:   4.5, color: getCSSVar('--success')   + '45' },  // Increase
+    { min:  0,   max:   3.0, color: getCSSVar('--accent')    + '45' },  // Large Increase
   ];
 
-  function tsbZone(tsb) {
-    if (tsb >  15) return 'Large Increase';
-    if (tsb >   5) return 'Increase';
-    if (tsb >  -5) return 'Continue';
-    if (tsb > -15) return 'Decrease';
-    return 'Large Decrease';
+  function fatigueZone(score) {
+    if (score >= 8.0) return 'Large Decrease';
+    if (score >= 6.5) return 'Decrease';
+    if (score >= 4.5) return 'Continue';
+    if (score >= 3.0) return 'Increase';
+    return 'Large Increase';
   }
 
   if (tsbZoneChart) tsbZoneChart.destroy();
@@ -2404,9 +2403,8 @@ function renderTsbZoneChart(history) {
           ...chartOpts().plugins.tooltip,
           callbacks: {
             label(item) {
-              const tsb = item.raw;
-              const sign = tsb >= 0 ? '+' : '';
-              return `TSB: ${sign}${tsb.toFixed(1)}  →  ${tsbZone(tsb)}`;
+              const score = item.raw;
+              return `Fatigue: ${score.toFixed(1)} / 10  →  ${fatigueZone(score)}`;
             },
           },
         },
@@ -2416,7 +2414,7 @@ function renderTsbZoneChart(history) {
         y: {
           min: yMin,
           max: yMax,
-          ticks: { color: c.muted, font: { size: 10 }, stepSize: 5 },
+          ticks: { color: c.muted, font: { size: 10 }, stepSize: 1 },
           grid:  { color: c.border },
         },
       },
