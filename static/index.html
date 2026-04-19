@@ -1038,7 +1038,7 @@ tbody tr:hover td { background: var(--row-hover); }
         <strong style="color:var(--text);">To review an exercise:</strong> click <strong style="color:var(--text);">Edit</strong>, confirm or adjust the split, then click <strong style="color:var(--text);">Save &amp; Mark Reviewed</strong>.
         Auto-classified exercises show <span class="badge badge-unreviewed">unreviewed</span> until confirmed.
         Use the <strong style="color:var(--text);">Unreviewed only</strong> filter to work through the list efficiently.
-        If you'd rather not classify at all, leaving exercises as Unassigned has no impact on your fatigue scores.
+        If a movement should not count toward stress at all, enable <strong style="color:var(--text);">Exclude movement from stress calculations</strong> in the editor.
       </p>
     </div>
     <div class="table-controls">
@@ -1142,7 +1142,7 @@ tbody tr:hover td { background: var(--row-hover); }
       <button class="preset-btn" onclick="setPreset(20,80,0,0)">20/80 Quad/Hip</button>
       <button class="preset-btn" onclick="setPreset(30,70,0,0)">30/70 Quad/Hip</button>
       <button class="preset-btn" onclick="setPreset(50,50,0,0)">50/50 Quad/Hip</button>
-      <button class="preset-btn" onclick="setPreset(0,0,0,0)">Clear (0%)</button>
+      <button class="preset-btn" onclick="setPreset(0,0,0,0,true)">Exclude from Stress</button>
     </div>
 
     <div class="form-row">
@@ -2191,12 +2191,12 @@ function onNum(key) {
   syncModal();
 }
 
-function setPreset(q, po, pu, pl) {
+function setPreset(q, po, pu, pl, exclude = false) {
   for (const [k, v] of [['quad',q],['post',po],['push',pu],['pull',pl]]) {
     document.getElementById(`mv-${k}`).value     = v;
     document.getElementById(`mv-${k}-num`).value = v;
   }
-  document.getElementById('mv-cond').checked = false;
+  document.getElementById('mv-cond').checked = exclude;
   syncModal();
 }
 
