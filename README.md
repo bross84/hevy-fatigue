@@ -1,4 +1,4 @@
-# <img src="static/favicon.png" alt="Hevy Fatigue icon" width="18" height="18"> Hevy Fatigue
+# <img src="resources/favicon.png" alt="Hevy Fatigue icon" width="18" height="18"> Hevy Fatigue
 
 A self-hosted fatigue and training-readiness app for strength athletes using the [Hevy](https://hevy.com) workout logger.
 
@@ -43,7 +43,27 @@ The current model is subjective-first:
 - Optional calibration settings for recommendation thresholds
 - Optional adaptive percentile mode based on recent fatigue history
 
-> Screenshot to add: Main dashboard showing Short Term Fatigue, Long Term Fatigue, Daily Recommendation, the 30-day recommendation chart, and the stress chart.
+## Screenshots
+
+### Dashboard
+
+![Dashboard](resources/Dashboard.png)
+
+### Workouts
+
+![Workouts](resources/Workouts.png)
+
+### Exercises
+
+![Exercises](resources/Exercises.png)
+
+### Log
+
+![Log](resources/Log.png)
+
+### Settings
+
+![Settings](resources/Settings.png)
 
 ## Recommendation Model
 
@@ -98,10 +118,6 @@ Exercises marked "Exclude from stress calculations" are also excluded.
   - Daily Recommendation
 5. Use the Log tab to review past entries and fatigue trends
 
-> Screenshot to add: Daily check-in form with soreness, joint health, tiredness, and recovery inputs visible before submission.
-
-> Screenshot to add: Log view showing past entries and fatigue trend history.
-
 ## Settings
 
 The Settings tab handles:
@@ -119,8 +135,6 @@ It supports:
 - Configurable lookback window
 - Configurable minimum entry count before adaptive mode activates
 
-> Screenshot to add: Settings tab with API key management, manual sync, and advanced calibration options visible.
-
 ## Exercise Mappings
 
 Exercises are auto-classified into four movement groups:
@@ -137,8 +151,6 @@ Notes:
 - Custom movement splits affect the pattern charts only
 - They do not change the total fatigue score directly
 - Excluding a movement from stress calculations removes it from stress totals entirely
-
-> Screenshot to add: Exercises tab showing exercise mappings, movement group assignment, and an example of the stress-calculation exclusion toggle.
 
 ## Tech Stack
 
@@ -197,8 +209,6 @@ http://localhost:8000
 Open the Settings tab and save your API key there.
 
 That is now the primary setup flow.
-
-> Screenshot to add: First-time setup view showing where to paste and save the Hevy API key.
 
 ### Optional local fallback
 

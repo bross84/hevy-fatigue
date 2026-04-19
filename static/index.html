@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hevy Fatigue</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<link rel="icon" href="/static/favicon.png" type="image/png">
-<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<link rel="icon" href="/resources/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="/resources/apple-touch-icon.png">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -888,7 +888,7 @@ tbody tr:hover td { background: var(--row-hover); }
 </script>
 
 <nav>
-  <div class="logo"><img class="logo-icon" src="/static/favicon.png" alt="Hevy Fatigue icon">HEVY FATIGUE</div>
+  <div class="logo"><img class="logo-icon" src="/resources/favicon.png" alt="Hevy Fatigue icon">HEVY FATIGUE</div>
   <div class="nav-tabs">
     <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
     <button class="nav-tab" data-tab="workouts">Workouts</button>
@@ -2587,7 +2587,7 @@ async function loadTrainingLoadCard() {
         <div class="tl-cell">
           <div class="tl-label" style="margin-bottom:8px;">Daily Recommendation</div>
           <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
-            <img src="/static/${rec.img}" style="width:48px;height:48px;image-rendering:pixelated;">
+            <img src="/resources/${rec.img}" style="width:48px;height:48px;image-rendering:pixelated;">
             <span class="rec-pill ${rec.cls}">${rec.label}</span>
             <div class="tl-sub" style="color:${modeColor};font-weight:600;">${modeLabel}</div>
             <div class="tl-sub" style="margin-top:4px;">Fatigue Score: ${fatigueScore} / 10</div>
