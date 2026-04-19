@@ -476,17 +476,21 @@ tbody tr:hover td { background: var(--row-hover); }
 /* ── Training Load summary card ──────── */
 .tl-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   margin-bottom: 4px;
 }
-@media (max-width: 640px) { .tl-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { .tl-grid { grid-template-columns: repeat(1, 1fr); } }
 .tl-cell {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 12px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 .tl-label {
   font-size: 10px;
@@ -2295,24 +2299,19 @@ async function loadTrainingLoadCard() {
     wrap.innerHTML = `
       <div class="tl-grid">
         <div class="tl-cell">
-          <div class="tl-label">Fatigue <span class="tip-icon" data-tip="Your short-term fatigue relative to your personal peak — based on the 7-day average of your daily training stress.">i</span></div>
+          <div class="tl-label">Short Term Fatigue <span class="tip-icon" data-tip="How hard you've pushed recently relative to your personal peak — based on the 7-day average of your daily training stress.">i</span></div>
           ${_tlBar(t.atl_score, 'var(--danger)')}
           <div class="tl-value" style="color:var(--danger);font-size:14px;">${t.atl_score} / 10</div>
           <div class="tl-sub">${atlLabel}</div>
         </div>
         <div class="tl-cell">
-          <div class="tl-label">Fitness <span class="tip-icon" data-tip="Your long-term fitness baseline relative to your personal peak — based on the 28-day average of your daily training stress.">i</span></div>
+          <div class="tl-label">Long Term Fatigue <span class="tip-icon" data-tip="The accumulated fatigue your body has adapted to — based on the 28-day average of your daily training stress.">i</span></div>
           ${_tlBar(t.ctl_score, 'var(--success)')}
           <div class="tl-value" style="color:var(--success);font-size:14px;">${t.ctl_score} / 10</div>
           <div class="tl-sub">${trendLabel}</div>
         </div>
-        <div class="tl-cell" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
-          <div class="tl-label" style="margin-bottom:8px;">Readiness <span class="tip-icon" data-tip="How rested you are compared to your normal training baseline. Positive means you're fresher than usual; negative means you're carrying more fatigue than usual.">i</span></div>
-          <div class="tl-value ${tsbCls}" style="font-size:22px;margin-bottom:4px;">${tsbLabel}</div>
-          <div class="tl-sub" style="margin-top:2px;">TSB ${t.tsb > 0 ? '+' : ''}${t.tsb.toFixed(1)}</div>
-        </div>
-        <div class="tl-cell" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
-          <div class="tl-label" style="margin-bottom:8px;">Today</div>
+        <div class="tl-cell">
+          <div class="tl-label" style="margin-bottom:8px;">Daily Recommendation</div>
           <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
             <img src="/static/${rec.img}" style="width:48px;height:48px;image-rendering:pixelated;">
             <span class="rec-pill ${rec.cls}">${rec.label}</span>
