@@ -101,6 +101,9 @@ class CalibrationSettingsInput(BaseModel):
     threshold_decrease: float = Field(6.5, ge=0.0, le=10.0)
     threshold_continue: float = Field(4.5, ge=0.0, le=10.0)
     threshold_increase: float = Field(3.0, ge=0.0, le=10.0)
+    adaptive_enabled: bool = False
+    adaptive_lookback_days: int = Field(90, ge=30, le=180)
+    adaptive_min_entries: int = Field(21, ge=7, le=120)
 
 class MappingUpdate(BaseModel):
     pct_quad_dom: float = Field(ge=0.0, le=1.0)
@@ -192,6 +195,9 @@ _CALIBRATION_DEFAULTS = {
     "threshold_decrease": 6.5,
     "threshold_continue": 4.5,
     "threshold_increase": 3.0,
+    "adaptive_enabled": False,
+    "adaptive_lookback_days": 90,
+    "adaptive_min_entries": 21,
 }
 
 def _get_setting_value(db: Session, key: str) -> str | None:
@@ -227,11 +233,22 @@ def _get_calibration_settings(db: Session) -> dict:
         except (TypeError, ValueError):
             return default
 
+    def _safe_int(raw: str | None, default: int) -> int:
+        if raw is None:
+            return default
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return default
+
     enabled_raw = _get_setting_value(db, "fatigue_calibration_enabled")
     ld_raw = _get_setting_value(db, "fatigue_threshold_large_decrease")
     d_raw = _get_setting_value(db, "fatigue_threshold_decrease")
     c_raw = _get_setting_value(db, "fatigue_threshold_continue")
     i_raw = _get_setting_value(db, "fatigue_threshold_increase")
+    adaptive_enabled_raw = _get_setting_value(db, "fatigue_calibration_adaptive_enabled")
+    adaptive_lookback_raw = _get_setting_value(db, "fatigue_calibration_adaptive_lookback_days")
+    adaptive_min_raw = _get_setting_value(db, "fatigue_calibration_adaptive_min_entries")
 
     cfg = {
         "enabled": enabled_raw == "1" if enabled_raw is not None else _CALIBRATION_DEFAULTS["enabled"],
@@ -239,6 +256,9 @@ def _get_calibration_settings(db: Session) -> dict:
         "threshold_decrease": _safe_float(d_raw, _CALIBRATION_DEFAULTS["threshold_decrease"]),
         "threshold_continue": _safe_float(c_raw, _CALIBRATION_DEFAULTS["threshold_continue"]),
         "threshold_increase": _safe_float(i_raw, _CALIBRATION_DEFAULTS["threshold_increase"]),
+        "adaptive_enabled": adaptive_enabled_raw == "1" if adaptive_enabled_raw is not None else _CALIBRATION_DEFAULTS["adaptive_enabled"],
+        "adaptive_lookback_days": _safe_int(adaptive_lookback_raw, _CALIBRATION_DEFAULTS["adaptive_lookback_days"]),
+        "adaptive_min_entries": _safe_int(adaptive_min_raw, _CALIBRATION_DEFAULTS["adaptive_min_entries"]),
     }
     return cfg
 
@@ -343,6 +363,9 @@ def save_calibration_settings(data: CalibrationSettingsInput, db: Session = Depe
         "threshold_decrease": round(float(data.threshold_decrease), 2),
         "threshold_continue": round(float(data.threshold_continue), 2),
         "threshold_increase": round(float(data.threshold_increase), 2),
+        "adaptive_enabled": data.adaptive_enabled,
+        "adaptive_lookback_days": int(data.adaptive_lookback_days),
+        "adaptive_min_entries": int(data.adaptive_min_entries),
     }
     _validate_calibration_thresholds(cfg)
 
@@ -351,6 +374,9 @@ def save_calibration_settings(data: CalibrationSettingsInput, db: Session = Depe
     _set_setting_value(db, "fatigue_threshold_decrease", str(cfg["threshold_decrease"]))
     _set_setting_value(db, "fatigue_threshold_continue", str(cfg["threshold_continue"]))
     _set_setting_value(db, "fatigue_threshold_increase", str(cfg["threshold_increase"]))
+    _set_setting_value(db, "fatigue_calibration_adaptive_enabled", "1" if cfg["adaptive_enabled"] else "0")
+    _set_setting_value(db, "fatigue_calibration_adaptive_lookback_days", str(cfg["adaptive_lookback_days"]))
+    _set_setting_value(db, "fatigue_calibration_adaptive_min_entries", str(cfg["adaptive_min_entries"]))
     db.commit()
     return {"message": "Calibration settings saved.", **cfg}
 
@@ -363,6 +389,9 @@ def reset_calibration_settings(db: Session = Depends(get_db)):
     _set_setting_value(db, "fatigue_threshold_decrease", str(defaults["threshold_decrease"]))
     _set_setting_value(db, "fatigue_threshold_continue", str(defaults["threshold_continue"]))
     _set_setting_value(db, "fatigue_threshold_increase", str(defaults["threshold_increase"]))
+    _set_setting_value(db, "fatigue_calibration_adaptive_enabled", "0")
+    _set_setting_value(db, "fatigue_calibration_adaptive_lookback_days", str(defaults["adaptive_lookback_days"]))
+    _set_setting_value(db, "fatigue_calibration_adaptive_min_entries", str(defaults["adaptive_min_entries"]))
     db.commit()
     return {"message": "Calibration settings reset.", **defaults}
 
@@ -493,20 +522,13 @@ def _training_modifier_for_index(stresses: list[float], idx: int) -> float:
     relative_delta = (recent_load - baseline_load) / baseline_load
     return round(_clamp(relative_delta * 1.2, -1.5, 1.5), 2)
 
-def _fatigue_recommendation(fatigue_score: float, calibration: dict | None = None) -> str:
+def _fatigue_recommendation(fatigue_score: float, thresholds: dict | None = None) -> str:
     """Map 0-10 fatigue score (10 = worst) to recommendation buckets."""
-    cfg = calibration or _CALIBRATION_DEFAULTS
-    enabled = bool(cfg.get("enabled", False))
-    if enabled:
-        ld = float(cfg.get("threshold_large_decrease", _CALIBRATION_DEFAULTS["threshold_large_decrease"]))
-        d = float(cfg.get("threshold_decrease", _CALIBRATION_DEFAULTS["threshold_decrease"]))
-        c = float(cfg.get("threshold_continue", _CALIBRATION_DEFAULTS["threshold_continue"]))
-        i = float(cfg.get("threshold_increase", _CALIBRATION_DEFAULTS["threshold_increase"]))
-    else:
-        ld = _CALIBRATION_DEFAULTS["threshold_large_decrease"]
-        d = _CALIBRATION_DEFAULTS["threshold_decrease"]
-        c = _CALIBRATION_DEFAULTS["threshold_continue"]
-        i = _CALIBRATION_DEFAULTS["threshold_increase"]
+    cfg = thresholds or _CALIBRATION_DEFAULTS
+    ld = float(cfg.get("threshold_large_decrease", _CALIBRATION_DEFAULTS["threshold_large_decrease"]))
+    d = float(cfg.get("threshold_decrease", _CALIBRATION_DEFAULTS["threshold_decrease"]))
+    c = float(cfg.get("threshold_continue", _CALIBRATION_DEFAULTS["threshold_continue"]))
+    i = float(cfg.get("threshold_increase", _CALIBRATION_DEFAULTS["threshold_increase"]))
 
     if fatigue_score >= ld:
         return "large_decrease"
@@ -525,6 +547,86 @@ def _adjusted_recommendation(base_rec: str, subj: float) -> str:
     elif subj <  0.15: adj = +1
     else:              adj =  0
     return _REC_LEVELS[max(0, min(4, level + adj))]
+
+def _percentile(values: list[float], p: float) -> float:
+    """Linear-interpolated percentile for an unsorted list."""
+    if not values:
+        return 0.0
+    if len(values) == 1:
+        return float(values[0])
+
+    ordered = sorted(values)
+    idx = (p / 100.0) * (len(ordered) - 1)
+    lower = int(idx)
+    upper = min(lower + 1, len(ordered) - 1)
+    frac = idx - lower
+    return (ordered[lower] * (1 - frac)) + (ordered[upper] * frac)
+
+def _recent_fatigue_scores_for_adaptive(db: Session, lookback_days: int) -> list[float]:
+    """Compute recent fatigue scores (0..10) from readiness entries for adaptive thresholds."""
+    from_date = date_type.today() - timedelta(days=max(1, lookback_days) - 1)
+    readiness_rows = (
+        db.query(DailyReadiness)
+        .filter(DailyReadiness.date >= from_date)
+        .order_by(DailyReadiness.date)
+        .all()
+    )
+    if not readiness_rows:
+        return []
+
+    history, _, _ = _compute_training_load(max(lookback_days, 30), db)
+    history_index = {h["date"]: idx for idx, h in enumerate(history)}
+    stress_series = [max(0.0, float(h.get("stress", 0.0))) for h in history]
+
+    scores: list[float] = []
+    for entry in readiness_rows:
+        date_key = str(entry.date)
+        subj = _subjective_fatigue(entry)
+        idx = history_index.get(date_key)
+        training_mod = _training_modifier_for_index(stress_series, idx) if idx is not None else 0.0
+        score = _clamp((subj * 10) + training_mod, 0.0, 10.0)
+        scores.append(round(score, 2))
+    return scores
+
+def _resolve_recommendation_thresholds(db: Session, calibration: dict | None = None) -> dict:
+    """Resolve active thresholds and mode (default/custom/adaptive/adaptive_fallback)."""
+    cfg = calibration or _get_calibration_settings(db)
+
+    if bool(cfg.get("enabled", False)):
+        base = {
+            "threshold_large_decrease": float(cfg.get("threshold_large_decrease", _CALIBRATION_DEFAULTS["threshold_large_decrease"])),
+            "threshold_decrease": float(cfg.get("threshold_decrease", _CALIBRATION_DEFAULTS["threshold_decrease"])),
+            "threshold_continue": float(cfg.get("threshold_continue", _CALIBRATION_DEFAULTS["threshold_continue"])),
+            "threshold_increase": float(cfg.get("threshold_increase", _CALIBRATION_DEFAULTS["threshold_increase"])),
+        }
+        mode = "custom"
+    else:
+        base = {
+            "threshold_large_decrease": _CALIBRATION_DEFAULTS["threshold_large_decrease"],
+            "threshold_decrease": _CALIBRATION_DEFAULTS["threshold_decrease"],
+            "threshold_continue": _CALIBRATION_DEFAULTS["threshold_continue"],
+            "threshold_increase": _CALIBRATION_DEFAULTS["threshold_increase"],
+        }
+        mode = "default"
+
+    if not bool(cfg.get("adaptive_enabled", False)):
+        return {"mode": mode, "sample_size": 0, **base}
+
+    lookback_days = int(cfg.get("adaptive_lookback_days", _CALIBRATION_DEFAULTS["adaptive_lookback_days"]))
+    min_entries = int(cfg.get("adaptive_min_entries", _CALIBRATION_DEFAULTS["adaptive_min_entries"]))
+    scores = _recent_fatigue_scores_for_adaptive(db, lookback_days)
+    sample_size = len(scores)
+
+    if sample_size < min_entries:
+        return {"mode": "adaptive_fallback", "sample_size": sample_size, **base}
+
+    adaptive = {
+        "threshold_large_decrease": round(_percentile(scores, 80), 2),
+        "threshold_decrease": round(_percentile(scores, 60), 2),
+        "threshold_continue": round(_percentile(scores, 40), 2),
+        "threshold_increase": round(_percentile(scores, 20), 2),
+    }
+    return {"mode": "adaptive", "sample_size": sample_size, **adaptive}
 
 
 @app.get("/api/training-load")
@@ -569,7 +671,8 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
         score_source = "training_fallback"
 
     calibration = _get_calibration_settings(db)
-    fatigue_rec = _fatigue_recommendation(fatigue_score, calibration)
+    thresholds = _resolve_recommendation_thresholds(db, calibration)
+    fatigue_rec = _fatigue_recommendation(fatigue_score, thresholds)
 
     # Enrich history items with fatigue_score and recommendation_adjusted.
     # Fetch all readiness entries for the history window in one query.
@@ -596,7 +699,7 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
         else:
             h_fatigue = round(_clamp(5.0 + t_mod, 0.0, 10.0), 2)
         item["fatigue_score"] = h_fatigue
-        item["recommendation_adjusted"] = _fatigue_recommendation(h_fatigue, calibration)
+        item["recommendation_adjusted"] = _fatigue_recommendation(h_fatigue, thresholds)
 
     return {
         "today": {
@@ -618,6 +721,7 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
             "recommendation_legacy_tsb": tsb_rec,
             "subj_fatigue":            subj,
             "calibration_enabled":      calibration.get("enabled", False),
+            "recommendation_mode":      thresholds.get("mode", "default"),
         },
         "history": history,
     }
@@ -804,6 +908,7 @@ def get_readiness_log(db: Session = Depends(get_db)):
     stress_series = [max(0.0, float(h.get("stress", 0.0))) for h in history]
 
     calibration = _get_calibration_settings(db)
+    thresholds = _resolve_recommendation_thresholds(db, calibration)
 
     result = []
     for e in entries:
@@ -816,7 +921,7 @@ def get_readiness_log(db: Session = Depends(get_db)):
         idx = history_index.get(date_key)
         training_mod = _training_modifier_for_index(stress_series, idx) if idx is not None else 0.0
         fatigue_score = round(_clamp(subj_base_score + training_mod, 0.0, 10.0), 2)
-        adj_rec = _fatigue_recommendation(fatigue_score, calibration)
+        adj_rec = _fatigue_recommendation(fatigue_score, thresholds)
 
         result.append({
             "date":                    date_key,
