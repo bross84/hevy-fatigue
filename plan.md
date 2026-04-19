@@ -25,6 +25,7 @@ Last updated: 2026-04-19
   - Adaptive percentile mode over recent fatigue history
   - Lookback and minimum-entry controls
 
+
 ## UI State Snapshot
 
 - Settings desktop layout:
