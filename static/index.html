@@ -793,6 +793,40 @@ tbody tr:hover td { background: var(--row-hover); }
 }
 
 @media (max-width: 400px) {
+  .setup-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .setup-banner .btn {
+    width: 100%;
+  }
+
+  /* Dashboard controls are the tightest layout on very small screens. */
+  #pattern-filter {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    gap: 3px;
+  }
+  #pattern-filter button {
+    white-space: normal;
+    text-align: center;
+    padding: 5px 4px;
+    font-size: 10px;
+    line-height: 1.15;
+  }
+  #baseline-toggle {
+    width: 100%;
+    justify-content: center;
+  }
+  .stress-legend {
+    flex-direction: column;
+    gap: 8px !important;
+  }
+  .stress-legend-item {
+    width: 100%;
+  }
+
   .theme-group button { font-size: 10px; padding: 3px 5px; }
   .btn-group button { padding: 4px 7px; font-size: 11px; }
 }
@@ -970,13 +1004,13 @@ tbody tr:hover td { background: var(--row-hover); }
         <div id="chart-loading" style="display:none;" class="loading-wrap">
           <span class="spinner"></span> Fetching pattern data…
         </div>
-        <div style="display:flex;gap:18px;margin-top:10px;font-size:12px;color:var(--muted);">
-          <span style="display:inline-flex;align-items:center;gap:5px;">
+        <div class="stress-legend" style="display:flex;gap:18px;margin-top:10px;font-size:12px;color:var(--muted);">
+          <span class="stress-legend-item" style="display:inline-flex;align-items:center;gap:5px;">
             <span style="width:16px;height:2px;background:var(--accent);display:inline-block;border-radius:1px;"></span>
             Intensity Load
             <span class="tip-icon" data-tip="How hard you trained. Heavy sets close to your max drive this number up fast. Think of it as nervous system fatigue — the kind that makes you feel strong but drained.">i</span>
           </span>
-          <span style="display:inline-flex;align-items:center;gap:5px;">
+          <span class="stress-legend-item" style="display:inline-flex;align-items:center;gap:5px;">
             <span style="width:16px;height:2px;background:var(--posterior);display:inline-block;border-radius:1px;"></span>
             Volume Load
             <span class="tip-icon" data-tip="How much total work you did. Adds up with every set and rep regardless of how heavy. Think of it as muscle fatigue — the kind that makes you sore and tired the next day.">i</span>
