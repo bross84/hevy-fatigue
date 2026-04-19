@@ -2383,7 +2383,7 @@ function renderFatigueChart(history) {
     data: {
       labels,
       datasets: [{
-        label: 'TSB',
+        label: 'Fatigue',
         data: values,
         borderColor: c.text,
         borderWidth: 2.5,
@@ -2397,6 +2397,10 @@ function renderFatigueChart(history) {
       ...chartOpts(),
       plugins: {
         ...chartOpts().plugins,
+        legend: {
+          ...chartOpts().plugins.legend,
+          onClick: () => {},
+        },
         bandBackground: { bands },
         tooltip: {
           ...chartOpts().plugins.tooltip,
