@@ -1,4 +1,4 @@
-from database import SessionLocal, WorkoutLog, init_db
+from database import SessionLocal, WorkoutLog, ExerciseMapping, init_db
 from hevy_client import HevyClient
 from rpe_table import calculate_e1rm, seed_rpe_table
 from exercise_classifier import ensure_exercise_mapped
@@ -19,6 +19,7 @@ def import_hevy_data(api_key: str | None = None):
         page = 1
         total_added = 0
         skipped_workouts_missing_date = 0
+        exercise_conditioning_cache: dict[str, bool] = {}
 
         while True:
             data = client.get_workouts(page)
@@ -46,6 +47,15 @@ def import_hevy_data(api_key: str | None = None):
 
                     # Auto-classify exercise if not already in the mapping table
                     ensure_exercise_mapped(title, db)
+
+                    if title in exercise_conditioning_cache:
+                        is_conditioning = exercise_conditioning_cache[title]
+                    else:
+                        mapping = db.query(ExerciseMapping).filter(
+                            ExerciseMapping.exercise_title == title
+                        ).first()
+                        is_conditioning = bool(mapping.is_conditioning) if mapping else False
+                        exercise_conditioning_cache[title] = is_conditioning
 
                     for set_data in exercise.get('sets', []):
                         if set_data.get('type') == 'warmup':
@@ -82,7 +92,8 @@ def import_hevy_data(api_key: str | None = None):
                             reps=reps,
                             rpe=rpe,
                             rir=rir,
-                            estimated_1rm=e1rm
+                            estimated_1rm=e1rm,
+                            is_conditioning=is_conditioning,
                         ).on_conflict_do_nothing()
                         result = db.execute(stmt)
                         if result.rowcount:
