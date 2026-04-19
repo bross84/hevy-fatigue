@@ -455,6 +455,33 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
 
     fatigue_rec = _fatigue_recommendation(fatigue_score)
 
+    # Enrich history items with fatigue_score and recommendation_adjusted.
+    # Fetch all readiness entries for the history window in one query.
+    history_dates = [h["date"] for h in history]
+    if history_dates:
+        from datetime import date as _date_cls
+        earliest_hist = min(history_dates)
+        readiness_rows = (
+            db.query(DailyReadiness)
+            .filter(DailyReadiness.date >= earliest_hist)
+            .all()
+        )
+        readiness_by_date = {str(r.date): r for r in readiness_rows}
+    else:
+        readiness_by_date = {}
+
+    stress_series_hist = [max(0.0, float(h.get("stress", 0.0))) for h in history]
+    for idx, item in enumerate(history):
+        r_entry = readiness_by_date.get(item["date"])
+        t_mod = _training_modifier_for_index(stress_series_hist, idx)
+        if r_entry:
+            h_subj = _subjective_fatigue(r_entry)
+            h_fatigue = round(_clamp(h_subj * 10 + t_mod, 0.0, 10.0), 2)
+        else:
+            h_fatigue = round(_clamp(5.0 + t_mod, 0.0, 10.0), 2)
+        item["fatigue_score"] = h_fatigue
+        item["recommendation_adjusted"] = _fatigue_recommendation(h_fatigue)
+
     return {
         "today": {
             "date":                    today["date"],
@@ -468,6 +495,8 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
             "subjective_base_score":   subjective_base_score,
             "training_modifier":       training_mod,
             "score_source":            score_source,
+            "tiredness":               checkin.tiredness           if checkin else None,
+            "perceived_recovery":      checkin.perceived_recovery  if checkin else None,
             "recommendation":          tsb_rec,
             "recommendation_adjusted": fatigue_rec,
             "recommendation_legacy_tsb": tsb_rec,
