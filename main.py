@@ -116,13 +116,33 @@ def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
     """
     sets = db.query(WorkoutLog).filter(WorkoutLog.date == target_date).all()
 
+    # Backfill-safe conditioning exclusion:
+    # prefer per-set snapshot flag, with ExerciseMapping fallback for legacy rows.
+    exercise_titles = {s.exercise_title for s in sets if s.exercise_title}
+    conditioning_titles = set()
+    if exercise_titles:
+        mapping_rows = (
+            db.query(ExerciseMapping.exercise_title)
+            .filter(
+                ExerciseMapping.exercise_title.in_(exercise_titles),
+                ExerciseMapping.is_conditioning == True,
+            )
+            .all()
+        )
+        conditioning_titles = {row.exercise_title for row in mapping_rows}
+
+    working_sets = [
+        s for s in sets
+        if not (s.is_conditioning or s.exercise_title in conditioning_titles)
+    ]
+
     central = sum(
         get_set_central_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
-        for s in sets
+        for s in working_sets
     )
     peripheral = sum(
         get_set_peripheral_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
-        for s in sets
+        for s in working_sets
     )
 
     return {"central": round(central, 3), "peripheral": round(peripheral, 3)}
@@ -413,8 +433,6 @@ def get_readiness_history(days: int = 30, db: Session = Depends(get_db)):
             "soreness":         (r.sore_quad_dom or 0) + (r.sore_posterior or 0)
                                 + (r.sore_upper_push or 0) + (r.sore_upper_pull or 0),
             "joint":            (r.joint_upper or 0) + (r.joint_lower or 0),
-            "hrv_ms":           r.hrv_ms,
-            "sleep_hours":      r.sleep_hours,
         }
         for r in rows
     ]
@@ -545,7 +563,7 @@ def get_today_readiness(db: Session = Depends(get_db)):
     return entry
 
 @app.get("/api/readiness")
-def get_readiness_history(days: int = 30, db: Session = Depends(get_db)):
+def get_readiness_entries(days: int = 30, db: Session = Depends(get_db)):
     """Return readiness entries for the past N days."""
     since = date_type.today() - timedelta(days=days)
     entries = db.query(DailyReadiness).filter(
@@ -741,10 +759,10 @@ def update_exercise_mapping(
         pct_upper_push = 0.0
         pct_upper_pull = 0.0
     else:
-        if abs(total_pct - 1.0) > 0.01:
+        if abs(total_pct - 1.0) > 0.005:
             raise HTTPException(
                 status_code=422,
-                detail="Pattern percentages must sum to 1.0 (±0.01) unless conditioning is enabled.",
+                detail="Pattern percentages must sum to 1.0 (±0.005) unless stress exclusion is enabled.",
             )
         pct_quad_dom = data.pct_quad_dom
         pct_posterior = data.pct_posterior

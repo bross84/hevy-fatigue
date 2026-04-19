@@ -1187,7 +1187,7 @@ tbody tr:hover td { background: var(--row-hover); }
 
     <label class="checkbox-label" style="margin-top:14px;">
       <input type="checkbox" id="mv-cond" onchange="syncModal()">
-      Conditioning / METCON — exclude from pattern stress calculations
+      Exclude movement from stress calculations
     </label>
 
     <div class="pct-feedback" id="pct-feedback"></div>
@@ -2056,7 +2056,7 @@ async function loadExercises() {
 function pct(v) { return Math.round(v * 100) + '%'; }
 
 function patternChips(ex) {
-  if (ex.is_conditioning) return '<span class="chip chip-cond">Conditioning</span>';
+  if (ex.is_conditioning) return '<span class="chip chip-cond">Excluded from Stress</span>';
   const chips = [];
   if (ex.pct_quad_dom   > 0) chips.push(`<span class="chip chip-quad">Quad ${pct(ex.pct_quad_dom)}</span>`);
   if (ex.pct_posterior  > 0) chips.push(`<span class="chip chip-posterior">Hip ${pct(ex.pct_posterior)}</span>`);
@@ -2218,16 +2218,13 @@ function syncModal() {
   const btn = document.getElementById('modal-save');
 
   if (cond) {
-    fb.innerHTML = '<span class="pct-ok">Conditioning — excluded from all pattern stress</span>';
+    fb.innerHTML = '<span class="pct-ok">Stress exclusion enabled for this movement</span>';
     btn.disabled = false;
   } else if (total === 100) {
     fb.innerHTML = '<span class="pct-ok">✓ Splits sum to 100%</span>';
     btn.disabled = false;
-  } else if (total === 0) {
-    fb.innerHTML = '<span class="pct-warn">All zeros — will show as Unassigned until corrected</span>';
-    btn.disabled = false;
   } else {
-    fb.innerHTML = `<span class="pct-err">Splits sum to ${total}% — must equal 0% or 100%</span>`;
+    fb.innerHTML = `<span class="pct-err">Splits sum to ${total}% — must equal 100% unless stress exclusion is enabled</span>`;
     btn.disabled = true;
   }
 }
