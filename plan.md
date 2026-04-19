@@ -39,19 +39,7 @@ Last updated: 2026-04-19
 - Screenshot placeholders were removed.
 - Dedicated Screenshots section added (Dashboard, Workouts, Exercises, Log, Settings).
 
-## 5) Known Workflow Notes
-
-- Branch work has been on feature/reliability-hardening.
-- If merge fails, verify branch names and current branch first:
-	- git branch --show-current
-	- git branch --all
-- Correct merge pattern from main:
-	- git switch main
-	- git pull origin main
-	- git merge feature/reliability-hardening
-	- git push origin main
-
-## 6) Suggested Next Backlog
+## 5) Suggested Next Backlog
 
 Priority A
 
@@ -64,12 +52,13 @@ Priority B
 - Remove remaining internal variable names that still use legacy tsb naming where safe.
 - Add tiny UI polish pass for spacing and card rhythm in Settings and Dashboard.
 - Add a short deployment workflow section in README for quick local-first iteration.
+- Evaluate a future "Recovery Rate" feature as an optional replacement/complement to legacy freshness-style framing.
 
 Priority C
 
 - Optional: add a lightweight release checklist file for merge/deploy sanity checks.
 
-## 7) Quick Context Prompt For Future Sessions
+## 6) Quick Context Prompt For Future Sessions
 
 Use this when you come back:
 
