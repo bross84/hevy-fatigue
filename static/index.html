@@ -728,6 +728,12 @@ tbody tr:hover td { background: var(--row-hover); }
   color: var(--muted);
   line-height: 1.6;
 }
+.settings-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 640px) { .settings-grid-2 { grid-template-columns: 1fr; } }
 
 /* ── Log tab: soreness pattern cell ── */
 .sore-cell { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
@@ -1100,6 +1106,55 @@ tbody tr:hover td { background: var(--row-hover); }
   </div>
 
   <div class="card settings-card" style="margin-top:14px;">
+    <div class="card-title">Advanced Calibration</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
+      Optional manual calibration for daily recommendation thresholds.
+      Leave disabled to use default system thresholds.
+    </p>
+
+    <label class="checkbox-label" style="margin-bottom:12px;">
+      <input type="checkbox" id="cal-enabled" onchange="syncCalibrationUi()">
+      Enable custom recommendation thresholds
+    </label>
+
+    <div style="font-size:12px;color:var(--muted);margin:-2px 0 12px 0;line-height:1.6;">
+      <strong style="color:var(--text);">Default mode:</strong>
+      calibration disabled with system thresholds:
+      Large Decrease <code>&gt;= 8.0</code>,
+      Decrease <code>&gt;= 6.5</code>,
+      Continue <code>&gt;= 4.5</code>,
+      Increase <code>&gt;= 3.0</code>,
+      otherwise Large Increase.
+    </div>
+
+    <div class="settings-grid-2" style="margin-bottom:10px;">
+      <div class="form-row" style="margin-bottom:0;">
+        <div class="form-label">Large Decrease threshold</div>
+        <input type="number" id="cal-ld" min="0" max="10" step="0.1">
+      </div>
+      <div class="form-row" style="margin-bottom:0;">
+        <div class="form-label">Decrease threshold</div>
+        <input type="number" id="cal-d" min="0" max="10" step="0.1">
+      </div>
+      <div class="form-row" style="margin-bottom:0;">
+        <div class="form-label">Continue threshold</div>
+        <input type="number" id="cal-c" min="0" max="10" step="0.1">
+      </div>
+      <div class="form-row" style="margin-bottom:0;">
+        <div class="form-label">Increase threshold</div>
+        <input type="number" id="cal-i" min="0" max="10" step="0.1">
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-primary" id="btn-save-cal" onclick="saveCalibrationSettings()">Save Calibration</button>
+      <button class="btn" id="btn-reset-cal" onclick="resetCalibrationSettings()">Reset Defaults</button>
+    </div>
+
+    <div class="settings-result" id="cal-result" style="margin-top:10px;"></div>
+  </div>
+
+  <div class="card settings-card" style="margin-top:14px;">
     <div class="card-title">Hevy Sync</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
       Pull the latest workouts from Hevy into the local database.
@@ -1466,6 +1521,7 @@ async function loadSettingsTab() {
     }
     // Clear result box whenever the tab refreshes
     _setKeyResult('', null);
+    await loadCalibrationSettings();
   } catch (e) {
     document.getElementById('api-key-current').textContent = 'Could not load settings.';
   }
@@ -1482,6 +1538,95 @@ function _setKeyResult(msg, ok) {
   el.textContent = msg;
   el.className = 'settings-result ' + (ok ? 'ok' : 'error');
   el.style.display = 'block';
+}
+
+function _setCalResult(msg, ok) {
+  const el = document.getElementById('cal-result');
+  if (!msg) { el.style.display = 'none'; return; }
+  el.textContent = msg;
+  el.className = 'settings-result ' + (ok ? 'ok' : 'error');
+  el.style.display = 'block';
+}
+
+function syncCalibrationUi() {
+  const enabled = document.getElementById('cal-enabled').checked;
+  ['cal-ld', 'cal-d', 'cal-c', 'cal-i'].forEach(id => {
+    document.getElementById(id).disabled = !enabled;
+  });
+}
+
+async function loadCalibrationSettings() {
+  try {
+    const r = await fetch('/api/settings/calibration');
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Failed to load calibration settings.');
+
+    document.getElementById('cal-enabled').checked = !!d.enabled;
+    document.getElementById('cal-ld').value = d.threshold_large_decrease;
+    document.getElementById('cal-d').value = d.threshold_decrease;
+    document.getElementById('cal-c').value = d.threshold_continue;
+    document.getElementById('cal-i').value = d.threshold_increase;
+    syncCalibrationUi();
+    _setCalResult('', null);
+  } catch (e) {
+    _setCalResult('✗ ' + e.message, false);
+  }
+}
+
+async function saveCalibrationSettings() {
+  const btn = document.getElementById('btn-save-cal');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    const payload = {
+      enabled: document.getElementById('cal-enabled').checked,
+      threshold_large_decrease: +document.getElementById('cal-ld').value,
+      threshold_decrease: +document.getElementById('cal-d').value,
+      threshold_continue: +document.getElementById('cal-c').value,
+      threshold_increase: +document.getElementById('cal-i').value,
+    };
+
+    const r = await fetch('/api/settings/calibration', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Save failed.');
+    _setCalResult('✓ Calibration settings saved.', true);
+    loadTrainingLoadCard();
+    if (logLoaded) { logLoaded = false; loadLog(); }
+  } catch (e) {
+    _setCalResult('✗ ' + e.message, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save Calibration';
+  }
+}
+
+async function resetCalibrationSettings() {
+  const btn = document.getElementById('btn-reset-cal');
+  btn.disabled = true;
+  btn.textContent = 'Resetting…';
+  try {
+    const r = await fetch('/api/settings/calibration/reset', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Reset failed.');
+    document.getElementById('cal-enabled').checked = !!d.enabled;
+    document.getElementById('cal-ld').value = d.threshold_large_decrease;
+    document.getElementById('cal-d').value = d.threshold_decrease;
+    document.getElementById('cal-c').value = d.threshold_continue;
+    document.getElementById('cal-i').value = d.threshold_increase;
+    syncCalibrationUi();
+    _setCalResult('✓ Calibration reset to defaults.', true);
+    loadTrainingLoadCard();
+    if (logLoaded) { logLoaded = false; loadLog(); }
+  } catch (e) {
+    _setCalResult('✗ ' + e.message, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Reset Defaults';
+  }
 }
 
 async function saveApiKey() {
@@ -2277,16 +2422,8 @@ async function loadTrainingLoadCard() {
     const modScore = typeof t.training_modifier === 'number'
       ? `${t.training_modifier >= 0 ? '+' : ''}${t.training_modifier.toFixed(1)}`
       : '—';
-    const tsbCls  = t.tsb >  15 ? 'tsb-very-fresh'
-                 : t.tsb >   5 ? 'tsb-positive'
-                 : t.tsb >  -5 ? 'tsb-neutral'
-                 : t.tsb > -15 ? 'tsb-negative'
-                 :               'tsb-overtrained';
-    const tsbLabel = t.tsb >  15 ? 'Very Fresh'
-                   : t.tsb >   5 ? 'Fresh'
-                   : t.tsb >  -5 ? 'On Track'
-                   : t.tsb > -15 ? 'Fatigued'
-                   :               'Overtrained';
+    const modeLabel = t.calibration_enabled ? 'Custom Mode' : 'Default Mode';
+    const modeColor = t.calibration_enabled ? 'var(--accent)' : 'var(--muted)';
 
     const atlLabel  = t.atl_score < 2.5 ? 'Low Fatigue'
                     : t.atl_score < 5.0 ? 'Moderate Fatigue'
@@ -2315,6 +2452,7 @@ async function loadTrainingLoadCard() {
           <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
             <img src="/static/${rec.img}" style="width:48px;height:48px;image-rendering:pixelated;">
             <span class="rec-pill ${rec.cls}">${rec.label}</span>
+            <div class="tl-sub" style="color:${modeColor};font-weight:600;">${modeLabel}</div>
             <div class="tl-sub" style="margin-top:4px;">Fatigue Score: ${fatigueScore} / 10</div>
             <div class="tl-sub">Base ${baseScore} ${modScore !== '—' ? `· Modifier ${modScore}` : ''}</div>
             ${t.score_source === 'subjective_plus_training' && t.tiredness != null && t.perceived_recovery != null
