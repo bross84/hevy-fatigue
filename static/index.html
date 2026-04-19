@@ -2268,6 +2268,11 @@ async function loadTrainingLoadCard() {
     renderTsbZoneChart(d.history);
     const t   = d.today;
     const rec = REC_META[t.recommendation_adjusted] || REC_META.continue;
+    const fatigueScore = typeof t.fatigue_score === 'number' ? t.fatigue_score.toFixed(1) : '—';
+    const baseScore = typeof t.subjective_base_score === 'number' ? t.subjective_base_score.toFixed(1) : '—';
+    const modScore = typeof t.training_modifier === 'number'
+      ? `${t.training_modifier >= 0 ? '+' : ''}${t.training_modifier.toFixed(1)}`
+      : '—';
     const tsbCls  = t.tsb >  15 ? 'tsb-very-fresh'
                  : t.tsb >   5 ? 'tsb-positive'
                  : t.tsb >  -5 ? 'tsb-neutral'
@@ -2311,6 +2316,8 @@ async function loadTrainingLoadCard() {
           <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
             <img src="/static/${rec.img}" style="width:48px;height:48px;image-rendering:pixelated;">
             <span class="rec-pill ${rec.cls}">${rec.label}</span>
+            <div class="tl-sub" style="margin-top:4px;">Fatigue Score: ${fatigueScore} / 10</div>
+            <div class="tl-sub">Base ${baseScore} ${modScore !== '—' ? `· Modifier ${modScore}` : ''}</div>
           </div>
         </div>
       </div>`;
