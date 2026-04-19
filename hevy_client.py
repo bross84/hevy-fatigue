@@ -28,10 +28,13 @@ class HevyClient:
         # Falls back to file → env var for local dev.
         self.api_key = api_key or _load_api_key()
         self.base_url = "https://api.hevyapp.com/v1"
-        self.headers = {"api-key": self.api_key}
+        self.headers = {"api-key": self.api_key} if self.api_key else {}
 
     def test_connection(self):
         """Simple check to see if the API key is valid."""
+        if not self.api_key:
+            print("❌ Connection failed. No Hevy API key is configured.")
+            return False
         url = f"{self.base_url}/workouts?page=1"
         try:
             response = requests.get(url, headers=self.headers, timeout=10)
@@ -47,6 +50,8 @@ class HevyClient:
 
     def get_workouts(self, page=1):
         """Fetch one page of workouts from the Hevy API."""
+        if not self.api_key:
+            raise ValueError("No Hevy API key is configured.")
         url = f"{self.base_url}/workouts?page={page}"
         response = requests.get(url, headers=self.headers, timeout=10)
         response.raise_for_status()

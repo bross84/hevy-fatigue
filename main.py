@@ -42,11 +42,7 @@ def _encrypt(plaintext: str) -> str:
     return _get_fernet().encrypt(plaintext.encode()).decode()
 
 def _decrypt(ciphertext: str) -> str:
-    try:
-        return _get_fernet().decrypt(ciphertext.encode()).decode()
-    except Exception:
-        # If decryption fails the value may be a legacy plaintext key — return as-is
-        return ciphertext
+    return _get_fernet().decrypt(ciphertext.encode()).decode()
 from rpe_table import get_set_central_stress, get_set_peripheral_stress, seed_rpe_table
 from importer import import_hevy_data
 
@@ -152,7 +148,16 @@ def _get_db_api_key(db: Session) -> str | None:
     row = db.query(AppSetting).filter(AppSetting.key == "hevy_api_key").first()
     if not row or not row.value:
         return None
-    return _decrypt(row.value)
+    try:
+        return _decrypt(row.value)
+    except Exception:
+        # One-time compatibility migration from legacy plaintext storage.
+        legacy_plaintext = row.value.strip()
+        if not legacy_plaintext:
+            return None
+        row.value = _encrypt(legacy_plaintext)
+        db.commit()
+        return legacy_plaintext
 
 # --- Routes ---
 
@@ -728,10 +733,28 @@ def update_exercise_mapping(
     if not mapping:
         raise HTTPException(status_code=404, detail=f"Exercise mapping #{mapping_id} not found.")
 
-    mapping.pct_quad_dom    = data.pct_quad_dom
-    mapping.pct_posterior   = data.pct_posterior
-    mapping.pct_upper_push  = data.pct_upper_push
-    mapping.pct_upper_pull  = data.pct_upper_pull
+    total_pct = data.pct_quad_dom + data.pct_posterior + data.pct_upper_push + data.pct_upper_pull
+    if data.is_conditioning:
+        # Conditioning entries are excluded from movement-pattern stress.
+        pct_quad_dom = 0.0
+        pct_posterior = 0.0
+        pct_upper_push = 0.0
+        pct_upper_pull = 0.0
+    else:
+        if abs(total_pct - 1.0) > 0.01:
+            raise HTTPException(
+                status_code=422,
+                detail="Pattern percentages must sum to 1.0 (±0.01) unless conditioning is enabled.",
+            )
+        pct_quad_dom = data.pct_quad_dom
+        pct_posterior = data.pct_posterior
+        pct_upper_push = data.pct_upper_push
+        pct_upper_pull = data.pct_upper_pull
+
+    mapping.pct_quad_dom    = pct_quad_dom
+    mapping.pct_posterior   = pct_posterior
+    mapping.pct_upper_push  = pct_upper_push
+    mapping.pct_upper_pull  = pct_upper_pull
     mapping.is_conditioning = data.is_conditioning
     mapping.is_reviewed     = data.is_reviewed
     mapping.source          = "user"
