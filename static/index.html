@@ -61,10 +61,10 @@
 
 /* ── Base ─────────────────────────────── */
 html {
-  overflow-x: hidden;
+  overflow-x: auto;
 }
 body {
-  overflow-x: hidden;
+  overflow-x: auto;
   width: 100%;
   background: var(--bg);
   color: var(--text);
@@ -662,6 +662,7 @@ tbody tr:hover td { background: var(--row-hover); }
   color: var(--text);
   cursor: text;
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 .val-input::-webkit-outer-spin-button,
 .val-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
@@ -738,6 +739,8 @@ tbody tr:hover td { background: var(--row-hover); }
 /* ── Log tab: soreness pattern cell ── */
 .sore-cell { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
 .sore-cell span { font-size: 12px; }
+.fatigue-cell { display: inline-flex; align-items: center; gap: 7px; }
+.sparkline { display: inline-block; width: 56px; height: 18px; }
 
 /* ── Log edit modal: section separators reuse check-in styles ── */
 #log-modal .section-sep  { border: none; border-top: 1px solid var(--border); margin: 14px 0 10px; }
@@ -1117,6 +1120,16 @@ tbody tr:hover td { background: var(--row-hover); }
       Enable custom recommendation thresholds
     </label>
 
+    <label class="checkbox-label" style="margin-bottom:12px;">
+      <input type="checkbox" id="cal-adaptive" onchange="syncCalibrationUi()">
+      Enable adaptive percentile thresholds (based on recent history)
+    </label>
+
+    <div style="font-size:12px;color:var(--muted);margin:-2px 0 12px 0;line-height:1.6;">
+      Adaptive mode builds thresholds from your recent fatigue scores using percentiles:
+      <code>P20</code> increase, <code>P40</code> continue, <code>P60</code> decrease, <code>P80</code> large decrease.
+    </div>
+
     <div style="font-size:12px;color:var(--muted);margin:-2px 0 12px 0;line-height:1.6;">
       <strong style="color:var(--text);">Default mode:</strong>
       calibration disabled with system thresholds:
@@ -1143,6 +1156,14 @@ tbody tr:hover td { background: var(--row-hover); }
       <div class="form-row" style="margin-bottom:0;">
         <div class="form-label">Increase threshold</div>
         <input type="number" id="cal-i" min="0" max="10" step="0.1">
+      </div>
+      <div class="form-row" style="margin-bottom:0;">
+        <div class="form-label">Adaptive lookback (days)</div>
+        <input type="number" id="cal-lookback" min="30" max="180" step="1">
+      </div>
+      <div class="form-row" style="margin-bottom:0;">
+        <div class="form-label">Adaptive minimum entries</div>
+        <input type="number" id="cal-min" min="7" max="120" step="1">
       </div>
     </div>
 
@@ -1395,6 +1416,9 @@ function applyTheme(pref) {
       );
       activePattern = 'total';
     }
+    if (_tlHistory) {
+      renderFatigueChart(_tlHistory);
+    }
   });
 }
 
@@ -1550,8 +1574,12 @@ function _setCalResult(msg, ok) {
 
 function syncCalibrationUi() {
   const enabled = document.getElementById('cal-enabled').checked;
+  const adaptive = document.getElementById('cal-adaptive').checked;
   ['cal-ld', 'cal-d', 'cal-c', 'cal-i'].forEach(id => {
     document.getElementById(id).disabled = !enabled;
+  });
+  ['cal-lookback', 'cal-min'].forEach(id => {
+    document.getElementById(id).disabled = !adaptive;
   });
 }
 
@@ -1562,10 +1590,13 @@ async function loadCalibrationSettings() {
     if (!r.ok) throw new Error(d.detail || 'Failed to load calibration settings.');
 
     document.getElementById('cal-enabled').checked = !!d.enabled;
+    document.getElementById('cal-adaptive').checked = !!d.adaptive_enabled;
     document.getElementById('cal-ld').value = d.threshold_large_decrease;
     document.getElementById('cal-d').value = d.threshold_decrease;
     document.getElementById('cal-c').value = d.threshold_continue;
     document.getElementById('cal-i').value = d.threshold_increase;
+    document.getElementById('cal-lookback').value = d.adaptive_lookback_days;
+    document.getElementById('cal-min').value = d.adaptive_min_entries;
     syncCalibrationUi();
     _setCalResult('', null);
   } catch (e) {
@@ -1584,6 +1615,9 @@ async function saveCalibrationSettings() {
       threshold_decrease: +document.getElementById('cal-d').value,
       threshold_continue: +document.getElementById('cal-c').value,
       threshold_increase: +document.getElementById('cal-i').value,
+      adaptive_enabled: document.getElementById('cal-adaptive').checked,
+      adaptive_lookback_days: +document.getElementById('cal-lookback').value,
+      adaptive_min_entries: +document.getElementById('cal-min').value,
     };
 
     const r = await fetch('/api/settings/calibration', {
@@ -1613,10 +1647,13 @@ async function resetCalibrationSettings() {
     const d = await r.json();
     if (!r.ok) throw new Error(d.detail || 'Reset failed.');
     document.getElementById('cal-enabled').checked = !!d.enabled;
+    document.getElementById('cal-adaptive').checked = !!d.adaptive_enabled;
     document.getElementById('cal-ld').value = d.threshold_large_decrease;
     document.getElementById('cal-d').value = d.threshold_decrease;
     document.getElementById('cal-c').value = d.threshold_continue;
     document.getElementById('cal-i').value = d.threshold_increase;
+    document.getElementById('cal-lookback').value = d.adaptive_lookback_days;
+    document.getElementById('cal-min').value = d.adaptive_min_entries;
     syncCalibrationUi();
     _setCalResult('✓ Calibration reset to defaults.', true);
     loadTrainingLoadCard();
@@ -2007,10 +2044,26 @@ async function loadLog() {
 
     count.textContent = `${entries.length} entr${entries.length === 1 ? 'y' : 'ies'}`;
 
+    function _sparkline(values, width = 56, height = 18) {
+      const nums = (values || []).map(v => +v).filter(v => Number.isFinite(v));
+      if (!nums.length) return '';
+      if (nums.length === 1) {
+        const y = height - ((nums[0] / 10) * height);
+        return `<svg class="sparkline" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none"><line x1="0" y1="${y.toFixed(2)}" x2="${width}" y2="${y.toFixed(2)}" stroke="var(--accent)" stroke-width="1.8" /></svg>`;
+      }
+      const pts = nums.map((v, idx) => {
+        const x = (idx / (nums.length - 1)) * width;
+        const y = height - ((Math.max(0, Math.min(10, v)) / 10) * height);
+        return `${x.toFixed(2)},${y.toFixed(2)}`;
+      }).join(' ');
+      return `<svg class="sparkline" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none"><polyline fill="none" stroke="var(--accent)" stroke-width="1.8" points="${pts}" /></svg>`;
+    }
+
     wrap.innerHTML = `<div class="table-scroll"><table>
       <thead><tr>
         <th>Date</th>
         <th>Rec</th>
+        <th>Fatigue</th>
         <th>Tired</th>
         <th>Recovery</th>
         <th>Soreness</th>
@@ -2020,9 +2073,12 @@ async function loadLog() {
       <tbody>
       ${entries.map((e, i) => {
         const rec = REC_META[e.recommendation_adjusted] || REC_META.continue;
+        const fatigueVal = Number.isFinite(+e.fatigue_score) ? (+e.fatigue_score).toFixed(1) : '—';
+        const trendWindow = entries.slice(i, i + 7).map(x => x.fatigue_score).reverse();
         return `<tr>
         <td style="white-space:nowrap;">${e.date}</td>
         <td><span class="rec-pill ${rec.cls}" style="margin-top:0;padding:3px 10px;font-size:12px;">${rec.label}</span></td>
+        <td><span class="fatigue-cell"><span style="font-weight:600;">${fatigueVal}</span>${_sparkline(trendWindow)}</span></td>
         <td><span class="sev-badge sev-${e.tiredness}">${e.tiredness}</span></td>
         <td><span class="sev-badge sev-${e.perceived_recovery}">${e.perceived_recovery}</span></td>
         <td>
@@ -2422,8 +2478,13 @@ async function loadTrainingLoadCard() {
     const modScore = typeof t.training_modifier === 'number'
       ? `${t.training_modifier >= 0 ? '+' : ''}${t.training_modifier.toFixed(1)}`
       : '—';
-    const modeLabel = t.calibration_enabled ? 'Custom Mode' : 'Default Mode';
-    const modeColor = t.calibration_enabled ? 'var(--accent)' : 'var(--muted)';
+    const modeLabel = t.recommendation_mode === 'adaptive'
+      ? 'Adaptive Mode'
+      : t.calibration_enabled
+        ? 'Custom Mode'
+        : 'Default Mode';
+    const modeColor = modeLabel === 'Adaptive Mode' ? 'var(--success)'
+      : t.calibration_enabled ? 'var(--accent)' : 'var(--muted)';
 
     const atlLabel  = t.atl_score < 2.5 ? 'Low Fatigue'
                     : t.atl_score < 5.0 ? 'Moderate Fatigue'
