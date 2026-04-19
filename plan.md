@@ -1,63 +1,77 @@
-# Hevy Fatigue - Plan and Bookmark Notes
+# Hevy Fatigue - Local Plan Snapshot
 
 Last updated: 2026-04-19
 
-## Current Direction
+## 1) Current Product State
 
-- Keep the model subjective-first.
-- Keep user-facing language simple: fatigue, readiness, short-term fatigue, long-term fatigue, daily recommendation.
-- Avoid TSB-first wording in UI messaging.
+- Subjective-first fatigue model is the primary recommendation driver.
+- Daily recommendation is based on:
+	- subjective base fatigue score from the check-in
+	- bounded training-stress modifier from recent loading
+- Dashboard language is fatigue/readiness oriented.
+- Advanced calibration exists in Settings:
+	- custom fixed thresholds (optional)
+	- adaptive percentile mode (optional)
+	- lookback and minimum-entry controls
 
-## Readiness and Fatigue Score Model
+## 2) UI and Frontend Status
 
-- Subjective base score comes from daily check-in inputs (0-4 fields), weighted into a 0.0-1.0 value, then scaled to 0-10.
-- Training modifier is bounded and applied on top of the subjective base.
-- Final fatigue score = clamp(subjective base + training modifier, 0, 10).
-- If no check-in exists for today, fallback uses a neutral base (5.0) plus training modifier.
-- Recommendation buckets are generated from fatigue thresholds:
-  - >= 8.0: Large Decrease
-  - >= 6.5: Decrease
-  - >= 4.5: Continue
-  - >= 3.0: Increase
-  - < 3.0: Large Increase
-- Calibration settings support:
-  - Custom thresholds (manual, optional)
-  - Adaptive percentile mode over recent fatigue history
-  - Lookback and minimum-entry controls
+- Main UI is single-page in static/index.html.
+- Theme switching now refreshes both charts (no manual page refresh needed).
+- Narrow-screen behavior improved for Dashboard controls.
+- Settings tab now uses desktop two-column placement:
+	- API key card top-left
+	- Advanced calibration right column (spanning down)
+	- Hevy sync card lower-left
+- Header icon uses resources/favicon.png.
 
+## 3) Assets and Paths
 
-## UI State Snapshot
+- Images moved to resources/.
+- FastAPI serves:
+	- /static -> static/
+	- /resources -> resources/
+- README and frontend image references were updated to /resources.
 
-- Settings desktop layout:
-  - API key card in upper-left
-  - Advanced calibration in right column
-  - Hevy sync in lower-left
-- Theme toggle now re-renders both charts (no manual refresh needed).
-- Dashboard narrow-width controls were tuned for very small screens.
+## 4) Documentation Status
 
-## Assets and Paths
+- README refreshed for current model language.
+- Screenshot placeholders were removed.
+- Dedicated Screenshots section added (Dashboard, Workouts, Exercises, Log, Settings).
 
-- Images now live in resources/.
-- Server mounts:
-  - /static -> static/
-  - /resources -> resources/
-- Frontend icon and recommendation face images use /resources paths.
-- README screenshots now reference resources/*.png.
+## 5) Known Workflow Notes
 
-## Bookmarked / Deferred Items
+- Branch work has been on feature/reliability-hardening.
+- If merge fails, verify branch names and current branch first:
+	- git branch --show-current
+	- git branch --all
+- Correct merge pattern from main:
+	- git switch main
+	- git pull origin main
+	- git merge feature/reliability-hardening
+	- git push origin main
 
-- Keep the current freshness concept for now; possible future rename to recovery rate.
-- Keep architecture simple (single-page static/index.html) unless complexity forces a split.
-- Keep advanced calibration opt-in only; default mode should remain clearly documented.
-- One proposed UI change was intentionally skipped/bookmarked during this cycle and can be revisited later if needed.
+## 6) Suggested Next Backlog
 
-## Next Priority Backlog
+Priority A
 
-1. Verify all resources paths and screenshots load correctly in local and deployed environments.
-2. Do a final language sweep for any remaining internal TSB wording leaking into user-facing text.
-3. Validate very-small-screen behavior (iPhone SE width) for Dashboard and Settings.
-4. Optional: clean up legacy variable names that still use tsb naming internally.
+- Verify all moved image assets load correctly in both local and server environments.
+- Confirm mobile behavior on iPhone SE width and real-device Safari after final CSS tweaks.
+- Confirm chart colors/contrast in light and dark themes for accessibility.
 
-## Reuse Prompt For Future Chats
+Priority B
 
-Read plan.md first. Continue from Next Priority Backlog item 1. Keep subjective-first fatigue logic and do not reintroduce TSB-first user-facing terminology.
+- Remove remaining internal variable names that still use legacy tsb naming where safe.
+- Add tiny UI polish pass for spacing and card rhythm in Settings and Dashboard.
+- Add a short deployment workflow section in README for quick local-first iteration.
+
+Priority C
+
+- Optional: add a lightweight release checklist file for merge/deploy sanity checks.
+
+## 7) Quick Context Prompt For Future Sessions
+
+Use this when you come back:
+
+"Read plan.md first, then continue implementation from Priority A. Keep subjective-first fatigue language, preserve the two-column Settings layout, and do not reintroduce TSB-first wording in user-facing text."
+
