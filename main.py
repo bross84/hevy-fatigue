@@ -348,7 +348,60 @@ def _subjective_fatigue(entry) -> float:
     s = ((entry.sore_quad_dom  or 0) + (entry.sore_posterior  or 0) +
          (entry.sore_upper_push or 0) + (entry.sore_upper_pull or 0)) / 16
     j = ((entry.joint_upper or 0) + (entry.joint_lower or 0)) / 8
-    return round(0.30 * t + 0.30 * r + 0.25 * s + 0.15 * j, 3)
+    # Subjective base weighting (global score):
+    # tiredness/recovery dominate, soreness/joints remain meaningful secondary signals.
+    return round(0.40 * t + 0.30 * r + 0.20 * s + 0.10 * j, 3)
+
+def _clamp(value: float, min_value: float, max_value: float) -> float:
+    return max(min_value, min(max_value, value))
+
+def _training_modifier(history: list[dict]) -> float:
+    """
+    Convert recent training stress into a bounded fatigue modifier.
+
+    Positive modifier increases fatigue score (worse); negative reduces it.
+    Uses a weighted 3-day recent load vs personal baseline for adaptability.
+    """
+    if not history:
+        return 0.0
+
+    stresses = [max(0.0, float(day.get("stress", 0.0))) for day in history]
+    if not any(stresses):
+        return 0.0
+
+    return _training_modifier_for_index(stresses, len(stresses) - 1)
+
+def _training_modifier_for_index(stresses: list[float], idx: int) -> float:
+    """Compute bounded training modifier using a given day index in a stress series."""
+    if not stresses or idx < 0 or idx >= len(stresses):
+        return 0.0
+
+    s1 = stresses[idx]
+    s2 = stresses[idx - 1] if idx - 1 >= 0 else 0.0
+    s3 = stresses[idx - 2] if idx - 2 >= 0 else 0.0
+    recent_load = (1.0 * s1 + 0.6 * s2 + 0.3 * s3) / 1.9
+
+    baseline_pool = stresses[:max(0, idx - 2)]
+    baseline_slice = baseline_pool[-28:] if baseline_pool else stresses[:idx + 1]
+    baseline_load = (sum(baseline_slice) / len(baseline_slice)) if baseline_slice else recent_load
+
+    if baseline_load <= 0:
+        return 0.0
+
+    relative_delta = (recent_load - baseline_load) / baseline_load
+    return round(_clamp(relative_delta * 1.2, -1.5, 1.5), 2)
+
+def _fatigue_recommendation(fatigue_score: float) -> str:
+    """Map 0-10 fatigue score (10 = worst) to recommendation buckets."""
+    if fatigue_score >= 8.0:
+        return "large_decrease"
+    if fatigue_score >= 6.5:
+        return "decrease"
+    if fatigue_score >= 4.5:
+        return "continue"
+    if fatigue_score >= 3.0:
+        return "increase"
+    return "large_increase"
 
 def _adjusted_recommendation(base_rec: str, subj: float) -> str:
     level = _REC_LEVELS.index(base_rec)
@@ -379,18 +432,28 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
     else:
         ctl_trend = "maintaining"
 
-    base_rec = _tsb_recommendation(today["tsb"])
+    # Keep TSB recommendation available for legacy context displays.
+    tsb_rec = _tsb_recommendation(today["tsb"])
 
-    # Blend with today's subjective check-in if it exists
+    # Subjective-first model: check-in defines the base fatigue score.
+    # Training stress modifies the base score in a bounded way.
+    training_mod = _training_modifier(history)
     checkin = db.query(DailyReadiness).filter(
         DailyReadiness.date == date_type.today()
     ).first()
     if checkin:
-        subj    = _subjective_fatigue(checkin)
-        adj_rec = _adjusted_recommendation(base_rec, subj)
+        subj = _subjective_fatigue(checkin)
+        subjective_base_score = round(subj * 10, 2)
+        fatigue_score = round(_clamp(subjective_base_score + training_mod, 0.0, 10.0), 2)
+        score_source = "subjective_plus_training"
     else:
-        subj    = None
-        adj_rec = base_rec
+        subj = None
+        subjective_base_score = None
+        # If no check-in exists today, provide a neutral fallback adjusted by training.
+        fatigue_score = round(_clamp(5.0 + training_mod, 0.0, 10.0), 2)
+        score_source = "training_fallback"
+
+    fatigue_rec = _fatigue_recommendation(fatigue_score)
 
     return {
         "today": {
@@ -401,8 +464,13 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
             "atl_score":               atl_score,
             "ctl_score":               ctl_score,
             "ctl_trend":               ctl_trend,
-            "recommendation":          base_rec,
-            "recommendation_adjusted": adj_rec,
+            "fatigue_score":           fatigue_score,
+            "subjective_base_score":   subjective_base_score,
+            "training_modifier":       training_mod,
+            "score_source":            score_source,
+            "recommendation":          tsb_rec,
+            "recommendation_adjusted": fatigue_rec,
+            "recommendation_legacy_tsb": tsb_rec,
             "subj_fatigue":            subj,
         },
         "history": history,
@@ -586,14 +654,24 @@ def get_readiness_log(db: Session = Depends(get_db)):
     days_back = (date_type.today() - earliest).days + 1
     history, _, _ = _compute_training_load(max(days_back, 30), db)
     tsb_by_date = {h["date"]: h["tsb"] for h in history}
+    history_index = {h["date"]: idx for idx, h in enumerate(history)}
+    stress_series = [max(0.0, float(h.get("stress", 0.0))) for h in history]
 
     result = []
     for e in entries:
-        tsb      = tsb_by_date.get(str(e.date), 0.0)
+        date_key = str(e.date)
+        tsb = tsb_by_date.get(date_key, 0.0)
         base_rec = _tsb_recommendation(tsb)
-        adj_rec  = _adjusted_recommendation(base_rec, _subjective_fatigue(e))
+        subj = _subjective_fatigue(e)
+        subj_base_score = round(subj * 10, 2)
+
+        idx = history_index.get(date_key)
+        training_mod = _training_modifier_for_index(stress_series, idx) if idx is not None else 0.0
+        fatigue_score = round(_clamp(subj_base_score + training_mod, 0.0, 10.0), 2)
+        adj_rec = _fatigue_recommendation(fatigue_score)
+
         result.append({
-            "date":                    str(e.date),
+            "date":                    date_key,
             "sore_quad_dom":           e.sore_quad_dom      or 0,
             "sore_posterior":          e.sore_posterior      or 0,
             "sore_upper_push":         e.sore_upper_push     or 0,
@@ -604,6 +682,9 @@ def get_readiness_log(db: Session = Depends(get_db)):
             "perceived_recovery":      e.perceived_recovery  or 0,
             "central_stress":          e.central_stress,
             "peripheral_stress":       e.peripheral_stress,
+            "fatigue_score":           fatigue_score,
+            "subjective_base_score":   subj_base_score,
+            "training_modifier":       training_mod,
             "recommendation":          base_rec,
             "recommendation_adjusted": adj_rec,
         })
