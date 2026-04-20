@@ -30,6 +30,7 @@
   --push:         #4db870;
   --pull:         #9b7fd4;
   --danger:       #ef3e36;
+  --decrease-band:#f0ad5c;
   --success:      #4db870;
   --warn:         #eca72c;
   --accent-sub:   rgba(93,169,233,.13);
@@ -51,6 +52,7 @@
   --push:         #1a7a3c;
   --pull:         #6b3fa0;
   --danger:       #b9314f;
+  --decrease-band:#e7a24a;
   --success:      #1a7a3c;
   --warn:         #9a6e00;
   --accent-sub:   rgba(5,142,217,.13);
@@ -2650,7 +2652,7 @@ function renderFatigueChart(history, thresholds = null) {
   // Colored bands: higher score = more fatigued = decrease band (red/orange at top)
   const bands = [
     { min: largeDecreaseThreshold, max: 10, color: getCSSVar('--danger') + '45' },
-    { min: decreaseThreshold, max: largeDecreaseThreshold, color: getCSSVar('--posterior') + '45' },
+    { min: decreaseThreshold, max: largeDecreaseThreshold, color: getCSSVar('--decrease-band') + '45' },
     { min: continueThreshold, max: decreaseThreshold, color: getCSSVar('--warn') + '45' },
     { min: increaseThreshold, max: continueThreshold, color: getCSSVar('--success') + '45' },
     { min: 0, max: increaseThreshold, color: getCSSVar('--accent') + '45' },
