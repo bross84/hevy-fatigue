@@ -724,6 +724,14 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
             "calibration_enabled":      calibration.get("enabled", False),
             "recommendation_mode":      thresholds.get("mode", "default"),
         },
+        "thresholds": {
+            "threshold_large_decrease": thresholds.get("threshold_large_decrease", _CALIBRATION_DEFAULTS["threshold_large_decrease"]),
+            "threshold_decrease": thresholds.get("threshold_decrease", _CALIBRATION_DEFAULTS["threshold_decrease"]),
+            "threshold_continue": thresholds.get("threshold_continue", _CALIBRATION_DEFAULTS["threshold_continue"]),
+            "threshold_increase": thresholds.get("threshold_increase", _CALIBRATION_DEFAULTS["threshold_increase"]),
+            "mode": thresholds.get("mode", "default"),
+            "sample_size": thresholds.get("sample_size"),
+        },
         "history": history,
     }
 
