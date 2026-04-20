@@ -1493,7 +1493,7 @@ function applyTheme(pref) {
       activePattern = 'total';
     }
     if (_tlHistory) {
-      renderFatigueChart(_tlHistory);
+      renderFatigueChart(_tlHistory, _tlThresholds);
     }
   });
 }
@@ -1534,7 +1534,7 @@ if (window.ResizeObserver) {
     let _tsbTimer;
     new ResizeObserver(() => {
       clearTimeout(_tsbTimer);
-      _tsbTimer = setTimeout(() => { if (_tlHistory) renderFatigueChart(_tlHistory); }, 60);
+      _tsbTimer = setTimeout(() => { if (_tlHistory) renderFatigueChart(_tlHistory, _tlThresholds); }, 60);
     }).observe(_tsbEl);
   }
 }
@@ -1545,6 +1545,7 @@ let logLoaded      = false;
 let logEditDate    = null;
 let exSort         = 'alpha';
 let tsbZoneChart   = null;
+let _tlThresholds  = null;
 
 // ═══ Tabs ════════════════════════════════════════════
 document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -2546,7 +2547,8 @@ async function loadTrainingLoadCard() {
     const r = await fetch('/api/training-load?days=30');
     const d = await r.json();
     _tlHistory = d.history;
-    renderFatigueChart(d.history);
+    _tlThresholds = d.thresholds || null;
+    renderFatigueChart(d.history, _tlThresholds);
     const t   = d.today;
     const rec = REC_META[t.recommendation_adjusted] || REC_META.continue;
     const fatigueScore = typeof t.fatigue_score === 'number' ? t.fatigue_score.toFixed(1) : '—';
@@ -2625,11 +2627,21 @@ const bandPlugin = {
 Chart.register(bandPlugin);
 
 
-function renderFatigueChart(history) {
+function renderFatigueChart(history, thresholds = null) {
   const c      = themeColors();
   const ctx    = document.getElementById('tsbZoneChart').getContext('2d');
   const labels = history.map(d => d.date.slice(5));
   const values = history.map(d => d.fatigue_score ?? 5.0);
+  const activeThresholds = {
+    threshold_large_decrease: Number(thresholds?.threshold_large_decrease ?? 8.0),
+    threshold_decrease: Number(thresholds?.threshold_decrease ?? 6.5),
+    threshold_continue: Number(thresholds?.threshold_continue ?? 4.5),
+    threshold_increase: Number(thresholds?.threshold_increase ?? 3.0),
+  };
+  const largeDecreaseThreshold = activeThresholds.threshold_large_decrease;
+  const decreaseThreshold = activeThresholds.threshold_decrease;
+  const continueThreshold = activeThresholds.threshold_continue;
+  const increaseThreshold = activeThresholds.threshold_increase;
 
   // Fixed 0–10 y-axis — bands match the fatigue score thresholds
   const yMin = 0;
@@ -2637,18 +2649,18 @@ function renderFatigueChart(history) {
 
   // Colored bands: higher score = more fatigued = decrease band (red/orange at top)
   const bands = [
-    { min:  8.0, max:  10,  color: getCSSVar('--danger')    + '45' },  // Large Decrease
-    { min:  6.5, max:   8.0, color: getCSSVar('--posterior') + '45' },  // Decrease
-    { min:  4.5, max:   6.5, color: getCSSVar('--warn')      + '45' },  // Continue
-    { min:  3.0, max:   4.5, color: getCSSVar('--success')   + '45' },  // Increase
-    { min:  0,   max:   3.0, color: getCSSVar('--accent')    + '45' },  // Large Increase
+    { min: largeDecreaseThreshold, max: 10, color: getCSSVar('--danger') + '45' },
+    { min: decreaseThreshold, max: largeDecreaseThreshold, color: getCSSVar('--posterior') + '45' },
+    { min: continueThreshold, max: decreaseThreshold, color: getCSSVar('--warn') + '45' },
+    { min: increaseThreshold, max: continueThreshold, color: getCSSVar('--success') + '45' },
+    { min: 0, max: increaseThreshold, color: getCSSVar('--accent') + '45' },
   ];
 
   function fatigueZone(score) {
-    if (score >= 8.0) return 'Large Decrease';
-    if (score >= 6.5) return 'Decrease';
-    if (score >= 4.5) return 'Continue';
-    if (score >= 3.0) return 'Increase';
+    if (score >= largeDecreaseThreshold) return 'Large Decrease';
+    if (score >= decreaseThreshold) return 'Decrease';
+    if (score >= continueThreshold) return 'Continue';
+    if (score >= increaseThreshold) return 'Increase';
     return 'Large Increase';
   }
 
