@@ -14,7 +14,7 @@ This document locks implementation to strict stage gates and dependency order.
 
 1. Stage 1 (COMPLETE)
 2. Stage 2 (COMPLETE)
-3. Stage 4
+3. Stage 4 (COMPLETE)
 4. Stage 3
 5. Stage 5
 6. Stage 6
@@ -129,7 +129,7 @@ Files changed in Stage 2:
 - `importer.py`
 - `main.py`
 
-## Stage 4 - sRPE Collection
+## Stage 4 - sRPE Collection - COMPLETE
 
 Goal: Capture session sRPE required for conditioning/cardio pathways.
 
@@ -139,6 +139,31 @@ Scope:
 
 Gate tests:
 - sRPE can be captured, edited, and retrieved per session.
+
+### Stage 4 Completion Summary (for review before Stage 3)
+
+Status: COMPLETE and committed on `v2`.
+
+Implemented changes:
+- Added Session Verification Queue card to the Workouts tab in `static/index.html`.
+- `loadSessionVerificationQueue()`: fetches `GET /api/workout-sessions/pending?days=45` and renders one card per session with modality select, duration input, and conditional sRPE input.
+- `_toggleSessionSrpe(card)`: shows/hides the sRPE field based on selected modality — visible only for `conditioning` and `cardio`.
+- `verifySessionFromCard(btn)`: validates inputs client-side (duration 1–480, sRPE required for conditioning/cardio), sends `PUT /api/workout-sessions/{id}/verify`, refreshes queue on success.
+- `_modalityOption()` helper for select rendering.
+- `loadWorkouts()` now calls `loadSessionVerificationQueue()` on entry.
+- CSS added: `.verify-list`, `.verify-item`, `.verify-head`, `.verify-title`, `.verify-meta`, `.verify-fields`, `.verify-field`, `.verify-status`.
+
+Gate evidence (passed — `stage4_gate.py`):
+- Conditioning verify without sRPE correctly rejected.
+- Cardio verify without sRPE correctly rejected.
+- Conditioning verify with `sRPE=7.5` accepted; value persisted and status set to `verified`.
+- sRPE retrievable via `GET /api/workout-sessions`.
+- sRPE editable (7.5 → 8.0) via status endpoint.
+- Strength verify without sRPE accepted.
+- Verify without duration correctly rejected.
+
+Files changed in Stage 4:
+- `static/index.html`
 
 ## Stage 3 - Stress Pathway Dispatcher
 

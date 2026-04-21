@@ -483,6 +483,56 @@ tbody tr:hover td { background: var(--row-hover); }
 .workout-stress-val { font-weight: 700; font-size: 15px; }
 .stress-note { font-size: 11px; color: var(--muted); margin-top: 14px; line-height: 1.6; }
 
+.verify-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.verify-item {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+.verify-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.verify-title {
+  font-weight: 600;
+  font-size: 13px;
+}
+.verify-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+.verify-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.verify-field label {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.verify-status {
+  min-height: 18px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .verify-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ── Training Load summary card ──────── */
 .tl-grid {
   display: grid;
@@ -1091,6 +1141,11 @@ tbody tr:hover td { background: var(--row-hover); }
 
 <!-- ══════════════ WORKOUTS TAB ══════════════ -->
 <section id="tab-workouts" class="tab-content">
+  <div class="card">
+    <div class="card-title">Session Verification Queue</div>
+    <div id="session-verify-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
+  </div>
+
   <div class="card">
     <div class="card-title">Last 12 Workouts — Stress Detail</div>
     <div id="workouts-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
@@ -2275,6 +2330,8 @@ async function deleteLogEntry() {
 
 // ═══ Workouts tab ═════════════════════════════════════
 async function loadWorkouts() {
+  loadSessionVerificationQueue();
+
   const wrap = document.getElementById('workouts-wrap');
   try {
     const r = await fetch('/api/workouts/recent?count=12');
@@ -2315,6 +2372,145 @@ async function loadWorkouts() {
   } catch {
     wrap.innerHTML = '<div style="color:var(--danger)">Failed to load workouts.</div>';
     workoutsLoaded = false;
+  }
+}
+
+function _modalityOption(modality, current) {
+  const selected = modality === current ? 'selected' : '';
+  const label = modality.charAt(0).toUpperCase() + modality.slice(1);
+  return `<option value="${modality}" ${selected}>${label}</option>`;
+}
+
+function _toggleSessionSrpe(card) {
+  const modality = card.querySelector('.sv-modality')?.value;
+  const srpeRow = card.querySelector('.sv-srpe-row');
+  const srpeInput = card.querySelector('.sv-srpe');
+  const needsSrpe = modality === 'conditioning' || modality === 'cardio';
+  if (!srpeRow || !srpeInput) return;
+  srpeRow.style.display = needsSrpe ? 'block' : 'none';
+  srpeInput.required = needsSrpe;
+}
+
+async function loadSessionVerificationQueue() {
+  const wrap = document.getElementById('session-verify-wrap');
+  if (!wrap) return;
+
+  wrap.innerHTML = '<div class="loading-wrap"><span class="spinner"></span> Loading pending sessions…</div>';
+
+  try {
+    const r = await fetch('/api/workout-sessions/pending?days=45');
+    const sessions = await r.json();
+
+    if (!r.ok) throw new Error(sessions.detail || 'Failed to load pending sessions.');
+
+    if (!sessions.length) {
+      wrap.innerHTML = '<div class="loading-wrap" style="color:var(--muted)">No sessions pending verification.</div>';
+      return;
+    }
+
+    wrap.innerHTML = `<div class="verify-list">${sessions.map(s => {
+      const title = escHtml(s.workout_title || 'Untitled workout');
+      const needsDuration = s.needs_manual_duration || !Number.isFinite(Number(s.duration_minutes));
+      return `<div class="verify-item" data-session-id="${escHtml(String(s.hevy_workout_id))}">
+        <div class="verify-head">
+          <div class="verify-title">${title}</div>
+          <div class="verify-meta">${s.workout_date} · confidence ${(Number(s.modality_confidence || 0) * 100).toFixed(0)}%</div>
+        </div>
+        <div class="verify-fields">
+          <div class="verify-field">
+            <label>Modality</label>
+            <select class="sv-modality">
+              ${_modalityOption('strength', s.modality)}
+              ${_modalityOption('hypertrophy', s.modality)}
+              ${_modalityOption('conditioning', s.modality)}
+              ${_modalityOption('cardio', s.modality)}
+            </select>
+          </div>
+          <div class="verify-field">
+            <label>Duration (min)</label>
+            <input type="number" min="1" max="480" class="sv-duration" value="${needsDuration ? '' : Number(s.duration_minutes)}" placeholder="required">
+          </div>
+          <div class="verify-field sv-srpe-row" style="display:none;">
+            <label>sRPE (0-10)</label>
+            <input type="number" min="0" max="10" step="0.5" class="sv-srpe" value="${s.srpe ?? ''}" placeholder="required for conditioning/cardio">
+          </div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="btn btn-primary" style="width:auto;padding:8px 12px;" onclick="verifySessionFromCard(this)">Verify Session</button>
+          ${needsDuration ? '<span style="font-size:11px;color:var(--warn);">Manual duration required before verification.</span>' : ''}
+        </div>
+        <div class="verify-status"></div>
+      </div>`;
+    }).join('')}</div>`;
+
+    wrap.querySelectorAll('.verify-item').forEach(card => {
+      const modalitySelect = card.querySelector('.sv-modality');
+      if (modalitySelect) {
+        modalitySelect.addEventListener('change', () => _toggleSessionSrpe(card));
+      }
+      _toggleSessionSrpe(card);
+    });
+  } catch (e) {
+    wrap.innerHTML = `<div style="color:var(--danger)">Failed to load session verification queue: ${escHtml(e.message || '')}</div>`;
+  }
+}
+
+async function verifySessionFromCard(btn) {
+  const card = btn.closest('.verify-item');
+  if (!card) return;
+
+  const sessionId = card.getAttribute('data-session-id');
+  const modality = card.querySelector('.sv-modality')?.value;
+  const durationRaw = card.querySelector('.sv-duration')?.value;
+  const srpeRaw = card.querySelector('.sv-srpe')?.value;
+  const statusEl = card.querySelector('.verify-status');
+  const isConditioningOrCardio = modality === 'conditioning' || modality === 'cardio';
+
+  const durationNum = durationRaw === '' ? NaN : Number(durationRaw);
+  if (!Number.isFinite(durationNum) || durationNum < 1 || durationNum > 480) {
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = 'Enter a valid duration between 1 and 480 minutes.';
+    return;
+  }
+
+  const payload = {
+    modality,
+    duration_minutes: Math.round(durationNum),
+  };
+
+  if (isConditioningOrCardio) {
+    const srpeNum = srpeRaw === '' ? NaN : Number(srpeRaw);
+    if (!Number.isFinite(srpeNum) || srpeNum < 0 || srpeNum > 10) {
+      statusEl.style.color = 'var(--danger)';
+      statusEl.textContent = 'sRPE is required for conditioning/cardio (0-10).';
+      return;
+    }
+    payload.srpe = srpeNum;
+  }
+
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = 'Verifying…';
+  btn.disabled = true;
+
+  try {
+    const r = await fetch(`/api/workout-sessions/${encodeURIComponent(sessionId)}/verify`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      throw new Error(d.detail || 'Verification failed.');
+    }
+
+    statusEl.style.color = 'var(--success)';
+    statusEl.textContent = 'Verified.';
+    await loadSessionVerificationQueue();
+  } catch (e) {
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = e.message || 'Verification failed.';
+  } finally {
+    btn.disabled = false;
   }
 }
 
