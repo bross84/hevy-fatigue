@@ -130,26 +130,29 @@ class SessionStatusUpdate(BaseModel):
 # --- Stress Calculators ---
 def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
     """
-    Calculate central and peripheral stress for a given day across three pathways.
+    Calculate central and peripheral stress for a given day across three pathways,
+    plus per-pattern (knee/hip/push/pull) stress for Stage 5 EWMA inputs.
 
     Pathway 1 — Strength / Hypertrophy (per-set RPE math, unchanged):
         central_stress    = sum of (pct² × reps) — intensity-driven, reflects CNS fatigue
         peripheral_stress = sum of (pct  × reps) — volume-driven, reflects muscular fatigue
+        pattern_stress[p] = sum of (central_i + peripheral_i) × pct_p  — per set
 
     Pathway 2 — Conditioning (verified sessions only):
         raw = (srpe × duration_minutes) / scaling_factor
-        central   = raw × Σ avg_pct_i²   (mirrors strength central weighting)
-        peripheral = raw × Σ avg_pct_i    (mirrors strength peripheral weighting)
-        avg_pct_i derived from ExerciseMapping averages for the session's exercises.
+        central   = raw × Σ avg_pct_i²
+        peripheral = raw × Σ avg_pct_i
+        pattern_stress[p] = raw × avg_pct_p   (per session)
 
     Pathway 3 — Cardio (verified sessions only):
         raw = (srpe × duration_minutes) / scaling_factor
         central   = raw × 0.30
         peripheral = raw × 0.70
+        pattern_stress — zero (cardio has no pattern distribution)
 
     Unverified conditioning/cardio sessions contribute zero stress (silent).
     Multiple sessions on the same date are summed.
-    Returns {"central": float, "peripheral": float}
+    Returns {"central": float, "peripheral": float, "knee": float, "hip": float, "push": float, "pull": float}
     """
     sets = db.query(WorkoutLog).filter(WorkoutLog.date == target_date).all()
 
@@ -174,14 +177,33 @@ def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
         if not (s.is_conditioning or s.exercise_title in conditioning_titles)
     ]
 
-    central = sum(
-        get_set_central_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
-        for s in working_sets
-    )
-    peripheral = sum(
-        get_set_peripheral_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
-        for s in working_sets
-    )
+    # Fetch pct mappings for all working-set exercises in one query so pattern
+    # stress can be accumulated in the same pass as central/peripheral.
+    strength_titles = {s.exercise_title for s in working_sets if s.exercise_title}
+    pct_map: dict = {}
+    if strength_titles:
+        pct_rows = (
+            db.query(ExerciseMapping)
+            .filter(ExerciseMapping.exercise_title.in_(strength_titles))
+            .all()
+        )
+        pct_map = {m.exercise_title: m for m in pct_rows}
+
+    central = peripheral = 0.0
+    knee = hip = push = pull = 0.0
+
+    for s in working_sets:
+        c = get_set_central_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
+        p = get_set_peripheral_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
+        central    += c
+        peripheral += p
+        m = pct_map.get(s.exercise_title)
+        if m:
+            ss = c + p
+            knee += ss * (m.pct_quad_dom    or 0.0)
+            hip  += ss * (m.pct_posterior   or 0.0)
+            push += ss * (m.pct_upper_push  or 0.0)
+            pull += ss * (m.pct_upper_pull  or 0.0)
 
     # ── Pathways 2 & 3: Conditioning / Cardio ────────────────────────────────
     scaling_factor = _get_conditioning_scaling_factor(db)
@@ -212,6 +234,7 @@ def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
             }
             pct_c_weight = 0.0
             pct_p_weight = 0.0
+            avg_quad = avg_post = avg_push = avg_pull = 0.0
             if session_titles:
                 maps = (
                     db.query(ExerciseMapping)
@@ -228,17 +251,31 @@ def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
                     pct_p_weight = avg_quad    + avg_post    + avg_push    + avg_pull
             if pct_c_weight == 0.0 and pct_p_weight == 0.0:
                 # Fallback: equal distribution across four patterns
+                avg_quad = avg_post = avg_push = avg_pull = 0.25
                 pct_c_weight = 4 * (0.25 ** 2)  # 0.25
                 pct_p_weight = 4 *  0.25         # 1.0
             central    += raw * pct_c_weight
             peripheral += raw * pct_p_weight
+            # Distribute conditioning stress to pattern buckets
+            knee += raw * avg_quad
+            hip  += raw * avg_post
+            push += raw * avg_push
+            pull += raw * avg_pull
 
         else:
             # Pathway 3: Cardio — flat 30/70 split, no pattern distribution
             central    += raw * 0.30
             peripheral += raw * 0.70
+            # Cardio contributes zero to pattern buckets
 
-    return {"central": round(central, 3), "peripheral": round(peripheral, 3)}
+    return {
+        "central":    round(central,    3),
+        "peripheral": round(peripheral, 3),
+        "knee":       round(knee,       3),
+        "hip":        round(hip,        3),
+        "push":       round(push,       3),
+        "pull":       round(pull,       3),
+    }
 
 # --- Startup ---
 @app.on_event("startup")
@@ -545,6 +582,10 @@ def _compute_training_load(days: int, db: Session) -> list[dict]:
     ATL (Acute Training Load)   — 7-day EWMA  — short-term fatigue
     CTL (Chronic Training Load) — 28-day EWMA — long-term fitness baseline
     TSB (Training Stress Balance) = CTL - ATL  — positive = fresh, negative = fatigued
+
+    Also computes four parallel pattern EWMAs (knee/hip/push/pull) using the
+    same k values, sourced from calculate_stress_scores pattern breakdown.
+    Pattern loads are included in each history item as "pattern_loads".
     """
     k_atl = 2 / (7  + 1)   # ≈ 0.250
     k_ctl = 2 / (28 + 1)   # ≈ 0.069
@@ -562,16 +603,26 @@ def _compute_training_load(days: int, db: Session) -> list[dict]:
         .all()
     )
 
-    # Build a dict of date → combined stress using the same RPE-based calculator
-    # used everywhere else (central + peripheral computed from actual sets)
-    stress_by_date = {}
+    # Build dicts of date → combined stress and date → pattern stress
+    stress_by_date: dict = {}
+    pattern_stress_by_date: dict = {}
     for row in workout_dates:
         scores = calculate_stress_scores(row.date, db)
         stress_by_date[row.date] = scores["central"] + scores["peripheral"]
+        pattern_stress_by_date[row.date] = {
+            "knee": scores["knee"],
+            "hip":  scores["hip"],
+            "push": scores["push"],
+            "pull": scores["pull"],
+        }
+
+    _PATTERNS = ("knee", "hip", "push", "pull")
 
     # Walk day-by-day applying EWMA
     atl, ctl = 0.0, 0.0
     atl_max, ctl_max = 0.0, 0.0
+    p_atl = {p: 0.0 for p in _PATTERNS}
+    p_ctl = {p: 0.0 for p in _PATTERNS}
     results = []
     start = from_date
     end   = date_type.today()
@@ -583,10 +634,18 @@ def _compute_training_load(days: int, db: Session) -> list[dict]:
     while current <= end:
         # Ignore workouts that are newer than the unlocked stress window.
         # They become active once the following day's readiness is submitted.
-        stress = stress_by_date.get(current, 0.0) if current <= included_through else 0.0
+        locked_in = current <= included_through
+        stress = stress_by_date.get(current, 0.0) if locked_in else 0.0
+        p_stress = pattern_stress_by_date.get(current, {p: 0.0 for p in _PATTERNS}) if locked_in else {p: 0.0 for p in _PATTERNS}
+
         atl = stress * k_atl + atl * (1 - k_atl)
         ctl = stress * k_ctl + ctl * (1 - k_ctl)
         tsb = ctl - atl
+
+        for p in _PATTERNS:
+            ps = p_stress.get(p, 0.0)
+            p_atl[p] = ps * k_atl + p_atl[p] * (1 - k_atl)
+            p_ctl[p] = ps * k_ctl + p_ctl[p] * (1 - k_ctl)
 
         # Track full-lookback maxima for normalization (not just the display window)
         if atl > atl_max:
@@ -601,6 +660,14 @@ def _compute_training_load(days: int, db: Session) -> list[dict]:
                 "ctl":        round(ctl, 2),
                 "tsb":        round(tsb, 2),
                 "stress":     round(stress, 2),
+                "pattern_loads": {
+                    p: {
+                        "atl": round(p_atl[p], 3),
+                        "ctl": round(p_ctl[p], 3),
+                        "tsb": round(p_ctl[p] - p_atl[p], 3),
+                    }
+                    for p in _PATTERNS
+                },
             })
         current += timedelta(days=1)
 
@@ -871,6 +938,7 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
             "recommendation_mode":      thresholds.get("mode", "default"),
             "stress_included_through": str(stress_included_through),
             "has_pending_workout_stress": has_pending_workout_stress,
+            "pattern_loads":           today.get("pattern_loads", {}),
         },
         "thresholds": {
             "threshold_large_decrease": thresholds.get("threshold_large_decrease", _CALIBRATION_DEFAULTS["threshold_large_decrease"]),

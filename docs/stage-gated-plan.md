@@ -16,7 +16,7 @@ This document locks implementation to strict stage gates and dependency order.
 2. Stage 2 (COMPLETE)
 3. Stage 4 (COMPLETE)
 4. Stage 3 (COMPLETE)
-5. Stage 5
+5. Stage 5 (COMPLETE)
 6. Stage 6
 7. Stage 7
 
@@ -207,8 +207,9 @@ Files changed in Stage 3:
 
 ## Stage 5 - Pattern EWMA Tracking
 
-Goal: Maintain pattern ATL/CTL/TSB for knee/hip/push/pull.
+## Stage 5 - Pattern EWMA Tracking - COMPLETE
 
+Goal: Maintain pattern ATL/CTL/TSB for knee/hip/push/pull.
 Scope:
 - Extend training-load loop with parallel EWMAs using existing `k_atl` and `k_ctl`.
 - Compute on demand and return via `/api/training-load`.
@@ -221,6 +222,30 @@ Gate tests:
 - Thruster session distributes to all four pattern ATLs.
 - Pure cardio leaves pattern ATLs unchanged.
 - Pattern values are returned per day.
+
+### Stage 5 Completion Summary (for review before Stage 6)
+
+Status: COMPLETE and ready for commit on `v2`.
+
+Implemented changes:
+- Extended `calculate_stress_scores(target_date, db)` to return four additional keys: `knee`, `hip`, `push`, `pull`.
+	- **Pathway 1 (strength):** for each working set, accumulates `(central_i + peripheral_i) × pct_p` into the corresponding pattern bucket. `ExerciseMapping` pct values fetched in a single query per date.
+	- **Pathway 2 (conditioning):** distributes `raw × avg_pct_p` to each pattern bucket using the same `ExerciseMapping` averages already computed for central/peripheral weights. Fallback to equal 0.25 distribution if no mappings found.
+	- **Pathway 3 (cardio):** contributes zero to all four pattern buckets.
+- Extended `_compute_training_load(days, db)` to run four parallel EWMAs (knee/hip/push/pull) using the same `k_atl` and `k_ctl` as the main EWMA. Pattern stress is sourced from `calculate_stress_scores` results without any additional DB queries. Each history item now includes `"pattern_loads": {"knee": {atl, ctl, tsb}, ...}`.
+- Extended `GET /api/training-load` response: `today.pattern_loads` contains the last history item's pattern ATL/CTL/TSB values.
+- No new database table. All pattern history is computed on demand — correcting an `ExerciseMapping` immediately changes retroactive pattern output.
+
+Gate evidence (passed — `stage5_gate.py`):
+- Gate 1: Squat day (quad=0.80) → knee=6.076, push=0.190, pull=0.190 (knee dominates).
+- Gate 2: Deadlift day (post=0.85) → hip=4.219 dominates over knee=0.248.
+- Gate 3: Thruster conditioning (30/30/20/20) → knee=2.483, hip=2.483, push=1.655, pull=1.655 matching `raw × pct` exactly.
+- Gate 4: Pure cardio → knee=hip=push=pull=0.000, central/peripheral still non-zero.
+- Gate 5: `_compute_training_load` history items contain `pattern_loads` with `atl`/`ctl`/`tsb` for all four patterns.
+- Gate 6 (compute-on-demand): Changing squat mapping from quad=0.80 to quad=0.10 instantly changed knee 6.076 → 0.759 and hip rose to 6.455 — no recompute step required.
+
+Files changed in Stage 5:
+- `main.py`
 
 ## Stage 6 - Recommendation Engine v2
 
