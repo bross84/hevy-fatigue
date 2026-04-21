@@ -398,6 +398,19 @@ def reset_calibration_settings(db: Session = Depends(get_db)):
 
 # ── Training Load (ATL / CTL / TSB) ──────────────────────────────────────────
 
+def _training_stress_included_through(db: Session) -> date_type:
+    """
+    Freeze imported workout impact until the next check-in is submitted.
+
+    A readiness entry dated D is assumed to reflect training completed through D-1.
+    So only workout stress up to (latest_readiness_date - 1) is allowed to affect
+    ATL/CTL/TSB and fatigue recommendation math.
+    """
+    latest_readiness = db.query(func.max(DailyReadiness.date)).scalar()
+    if latest_readiness:
+        return latest_readiness - timedelta(days=1)
+    return date_type.today() - timedelta(days=1)
+
 def _compute_training_load(days: int, db: Session) -> list[dict]:
     """
     Calculate ATL, CTL, and TSB for each day using exponentially weighted
@@ -439,8 +452,12 @@ def _compute_training_load(days: int, db: Session) -> list[dict]:
     current = start
     cutoff  = date_type.today() - timedelta(days=days - 1)
 
+    included_through = _training_stress_included_through(db)
+
     while current <= end:
-        stress = stress_by_date.get(current, 0.0)
+        # Ignore workouts that are newer than the unlocked stress window.
+        # They become active once the following day's readiness is submitted.
+        stress = stress_by_date.get(current, 0.0) if current <= included_through else 0.0
         atl = stress * k_atl + atl * (1 - k_atl)
         ctl = stress * k_ctl + ctl * (1 - k_ctl)
         tsb = ctl - atl
@@ -637,6 +654,9 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
     """
     history, atl_max, ctl_max = _compute_training_load(days, db)
     today = history[-1] if history else {"date": str(date_type.today()), "atl": 0, "ctl": 0, "tsb": 0, "stress": 0}
+    stress_included_through = _training_stress_included_through(db)
+    latest_workout_date = db.query(func.max(WorkoutLog.date)).scalar()
+    has_pending_workout_stress = bool(latest_workout_date and latest_workout_date > stress_included_through)
 
     # Normalize ATL and CTL to a 0–10 scale relative to the user's own peak
     atl_score = round(min(10.0, (today["atl"] / atl_max) * 10), 1)
@@ -723,6 +743,8 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
             "subj_fatigue":            subj,
             "calibration_enabled":      calibration.get("enabled", False),
             "recommendation_mode":      thresholds.get("mode", "default"),
+            "stress_included_through": str(stress_included_through),
+            "has_pending_workout_stress": has_pending_workout_stress,
         },
         "thresholds": {
             "threshold_large_decrease": thresholds.get("threshold_large_decrease", _CALIBRATION_DEFAULTS["threshold_large_decrease"]),
