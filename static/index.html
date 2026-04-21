@@ -1945,6 +1945,9 @@ async function runSync({ silent = false } = {}) {
         renderChart();
         loadWorkoutSummary();
         loadTrainingLoadCard();
+        if (exercises.length || document.getElementById('tab-exercises').classList.contains('active')) {
+          loadExercises();
+        }
         if (workoutsLoaded) loadWorkouts();
       } else {
         statusEl.innerHTML = `<div class="alert alert-error">Sync failed: ${d.detail || 'Unknown error'}</div>`;
@@ -2565,6 +2568,9 @@ async function loadTrainingLoadCard() {
         : 'Default Mode';
     const modeColor = modeLabel === 'Adaptive Mode' ? 'var(--success)'
       : t.calibration_enabled ? 'var(--accent)' : 'var(--muted)';
+    const pendingStressNote = t.has_pending_workout_stress
+      ? `<div class="tl-sub" style="margin-top:2px;color:var(--muted);font-style:italic;">Newly synced workouts are preview-only until the next check-in (currently applying stress through ${t.stress_included_through}).</div>`
+      : '';
 
     const atlLabel  = t.atl_score < 2.5 ? 'Low Fatigue'
                     : t.atl_score < 5.0 ? 'Moderate Fatigue'
@@ -2583,9 +2589,9 @@ async function loadTrainingLoadCard() {
           <div class="tl-sub">${atlLabel}</div>
         </div>
         <div class="tl-cell">
-          <div class="tl-label">Long Term Fatigue <span class="tip-icon" data-tip="The accumulated fatigue your body has adapted to — based on the 28-day average of your daily training stress.">i</span></div>
-          ${_tlBar(t.ctl_score, 'var(--success)')}
-          <div class="tl-value" style="color:var(--success);font-size:14px;">${t.ctl_score} / 10</div>
+          <div class="tl-label">Long Term Load <span class="tip-icon" data-tip="Your longer-term training baseline from the 28-day average of daily stress. Higher means more chronic load capacity, not necessarily a bad state by itself.">i</span></div>
+          ${_tlBar(t.ctl_score, 'var(--accent)')}
+          <div class="tl-value" style="color:var(--accent);font-size:14px;">${t.ctl_score} / 10</div>
           <div class="tl-sub">${trendLabel}</div>
         </div>
         <div class="tl-cell">
@@ -2599,6 +2605,7 @@ async function loadTrainingLoadCard() {
             ${t.score_source === 'subjective_plus_training' && t.tiredness != null && t.perceived_recovery != null
               ? `<div class="tl-sub" style="margin-top:2px;color:var(--muted);">Tired ${t.tiredness}/4 · Recovery ${t.perceived_recovery}/4</div>`
               : `<div class="tl-sub" style="margin-top:2px;color:var(--muted);font-style:italic;">No check-in today</div>`}
+            ${pendingStressNote}
           </div>
         </div>
       </div>`;
