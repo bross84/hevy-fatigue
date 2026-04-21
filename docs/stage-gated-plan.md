@@ -15,7 +15,7 @@ This document locks implementation to strict stage gates and dependency order.
 1. Stage 1 (COMPLETE)
 2. Stage 2 (COMPLETE)
 3. Stage 4 (COMPLETE)
-4. Stage 3
+4. Stage 3 (COMPLETE)
 5. Stage 5
 6. Stage 6
 7. Stage 7
@@ -165,7 +165,7 @@ Gate evidence (passed — `stage4_gate.py`):
 Files changed in Stage 4:
 - `static/index.html`
 
-## Stage 3 - Stress Pathway Dispatcher
+## Stage 3 - Stress Pathway Dispatcher - COMPLETE
 
 Goal: Route stress computation by modality.
 
@@ -179,6 +179,31 @@ Scope note:
 
 Gate tests:
 - All pathways produce expected stress in controlled fixtures.
+
+### Stage 3 Completion Summary (for review before Stage 5)
+
+Status: COMPLETE and ready for commit on `v2`.
+
+Implemented changes:
+- Added `_CONDITIONING_SCALING_DEFAULT = 29.0` constant in `main.py`.
+- Added `_get_conditioning_scaling_factor(db)` helper — reads `conditioning_stress_scaling_factor` from `app_settings`, falls back to 29 if absent or invalid.
+- Extended `calculate_stress_scores(target_date, db)` with two new pathways after the existing Pathway 1 logic:
+  - **Pathway 2 (conditioning):** queries `WorkoutSession` rows for the date where `modality='conditioning'`, `verification_status='verified'`, `srpe` and `duration_minutes` are not null. Computes `raw = (srpe × duration_minutes) / scaling_factor`. Derives central/peripheral weights from `ExerciseMapping` averages across the session's `WorkoutLog` rows: `central_weight = Σ avg_pct_i²`, `peripheral_weight = Σ avg_pct_i`. Falls back to equal 4-pattern distribution (0.25 each) if no mappings found.
+  - **Pathway 3 (cardio):** same `raw` formula. Flat 30% central / 70% peripheral split. No pattern distribution.
+  - Unverified or missing-sRPE sessions contribute zero stress (silent, no error).
+  - Multiple sessions on the same date are summed.
+- `_compute_training_load` unchanged — benefits automatically from the improved `calculate_stress_scores` return values.
+
+Gate evidence (passed — `stage3_gate.py`):
+- Pathway 1: strength set produces non-zero central and peripheral stress (3.444 / 4.150).
+- Pathway 2 (unverified): pending conditioning session adds zero stress.
+- Pathway 2 (verified): conditioning central Δ=7.169 and peripheral Δ=10.862 match formula exactly.
+- Pathway 3: cardio central Δ=3.725 and peripheral Δ=8.690 match 30/70 split exactly.
+- Custom `scaling_factor=10` overrides default 29 and produces proportionally higher stress.
+- Multi-session same day: second cardio session stacks correctly onto the daily total.
+
+Files changed in Stage 3:
+- `main.py`
 
 ## Stage 5 - Pattern EWMA Tracking
 

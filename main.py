@@ -130,16 +130,30 @@ class SessionStatusUpdate(BaseModel):
 # --- Stress Calculators ---
 def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
     """
-    Calculate central and peripheral stress for a given day.
+    Calculate central and peripheral stress for a given day across three pathways.
 
-    central_stress    = sum of (pct² × reps) — driven by intensity, reflects CNS fatigue
-    peripheral_stress = sum of (pct  × reps) — driven by volume, reflects muscular fatigue
+    Pathway 1 — Strength / Hypertrophy (per-set RPE math, unchanged):
+        central_stress    = sum of (pct² × reps) — intensity-driven, reflects CNS fatigue
+        peripheral_stress = sum of (pct  × reps) — volume-driven, reflects muscular fatigue
 
-    Both use the RPE table → history → Wendler fallback hierarchy.
+    Pathway 2 — Conditioning (verified sessions only):
+        raw = (srpe × duration_minutes) / scaling_factor
+        central   = raw × Σ avg_pct_i²   (mirrors strength central weighting)
+        peripheral = raw × Σ avg_pct_i    (mirrors strength peripheral weighting)
+        avg_pct_i derived from ExerciseMapping averages for the session's exercises.
+
+    Pathway 3 — Cardio (verified sessions only):
+        raw = (srpe × duration_minutes) / scaling_factor
+        central   = raw × 0.30
+        peripheral = raw × 0.70
+
+    Unverified conditioning/cardio sessions contribute zero stress (silent).
+    Multiple sessions on the same date are summed.
     Returns {"central": float, "peripheral": float}
     """
     sets = db.query(WorkoutLog).filter(WorkoutLog.date == target_date).all()
 
+    # ── Pathway 1: Strength / Hypertrophy ────────────────────────────────────
     # Backfill-safe conditioning exclusion:
     # prefer per-set snapshot flag, with ExerciseMapping fallback for legacy rows.
     exercise_titles = {s.exercise_title for s in sets if s.exercise_title}
@@ -168,6 +182,61 @@ def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
         get_set_peripheral_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
         for s in working_sets
     )
+
+    # ── Pathways 2 & 3: Conditioning / Cardio ────────────────────────────────
+    scaling_factor = _get_conditioning_scaling_factor(db)
+
+    cond_sessions = (
+        db.query(WorkoutSession)
+        .filter(
+            WorkoutSession.workout_date == target_date,
+            WorkoutSession.verification_status == "verified",
+            WorkoutSession.srpe.isnot(None),
+            WorkoutSession.duration_minutes.isnot(None),
+            WorkoutSession.modality.in_(["conditioning", "cardio"]),
+        )
+        .all()
+    )
+
+    for session in cond_sessions:
+        raw = (session.srpe * session.duration_minutes) / scaling_factor
+
+        if session.modality == "conditioning":
+            # Pathway 2: use average ExerciseMapping pcts from this session's sets.
+            # central weight = Σ avg_pct_i²  (mirrors strength central formula)
+            # peripheral weight = Σ avg_pct_i (mirrors strength peripheral formula)
+            session_titles = {
+                s.exercise_title
+                for s in sets
+                if s.workout_id == session.hevy_workout_id and s.exercise_title
+            }
+            pct_c_weight = 0.0
+            pct_p_weight = 0.0
+            if session_titles:
+                maps = (
+                    db.query(ExerciseMapping)
+                    .filter(ExerciseMapping.exercise_title.in_(session_titles))
+                    .all()
+                )
+                if maps:
+                    n = len(maps)
+                    avg_quad = sum(m.pct_quad_dom    for m in maps) / n
+                    avg_post = sum(m.pct_posterior   for m in maps) / n
+                    avg_push = sum(m.pct_upper_push  for m in maps) / n
+                    avg_pull = sum(m.pct_upper_pull  for m in maps) / n
+                    pct_c_weight = avg_quad**2 + avg_post**2 + avg_push**2 + avg_pull**2
+                    pct_p_weight = avg_quad    + avg_post    + avg_push    + avg_pull
+            if pct_c_weight == 0.0 and pct_p_weight == 0.0:
+                # Fallback: equal distribution across four patterns
+                pct_c_weight = 4 * (0.25 ** 2)  # 0.25
+                pct_p_weight = 4 *  0.25         # 1.0
+            central    += raw * pct_c_weight
+            peripheral += raw * pct_p_weight
+
+        else:
+            # Pathway 3: Cardio — flat 30/70 split, no pattern distribution
+            central    += raw * 0.30
+            peripheral += raw * 0.70
 
     return {"central": round(central, 3), "peripheral": round(peripheral, 3)}
 
@@ -202,6 +271,8 @@ def _get_db_api_key(db: Session) -> str | None:
         row.value = _encrypt(legacy_plaintext)
         db.commit()
         return legacy_plaintext
+
+_CONDITIONING_SCALING_DEFAULT = 29.0
 
 _CALIBRATION_DEFAULTS = {
     "enabled": False,
@@ -250,6 +321,22 @@ def _set_setting_value(db: Session, key: str, value: str) -> None:
         row.value = value
     else:
         db.add(AppSetting(key=key, value=value))
+
+def _get_conditioning_scaling_factor(db: Session) -> float:
+    """
+    Read conditioning_stress_scaling_factor from app_settings.
+    Normalises (sRPE × duration_minutes) onto the same scale as strength stress.
+    Default 29 — chosen so a moderate conditioning session (sRPE 7, 45 min) produces
+    a combined stress comparable to a moderate strength day.
+    """
+    raw = _get_setting_value(db, "conditioning_stress_scaling_factor")
+    if raw is None:
+        return _CONDITIONING_SCALING_DEFAULT
+    try:
+        v = float(raw)
+        return v if v > 0 else _CONDITIONING_SCALING_DEFAULT
+    except (TypeError, ValueError):
+        return _CONDITIONING_SCALING_DEFAULT
 
 def _validate_calibration_thresholds(cfg: dict) -> None:
     if not (
