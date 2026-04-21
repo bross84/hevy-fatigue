@@ -11,7 +11,7 @@ from cryptography.fernet import Fernet
 import os
 import threading
 
-from database import SessionLocal, DailyReadiness, WorkoutLog, ExerciseMapping, AppSetting, init_db
+from database import SessionLocal, DailyReadiness, WorkoutLog, WorkoutSession, ExerciseMapping, AppSetting, init_db
 
 # ── Encryption ────────────────────────────────────────────────────────────────
 # A Fernet key is generated once and stored in the Docker volume at /data/app.key.
@@ -114,6 +114,19 @@ class MappingUpdate(BaseModel):
     is_conditioning: bool = False
     is_reviewed: bool = True
 
+
+class SessionVerificationUpdate(BaseModel):
+    modality: str
+    duration_minutes: Optional[int] = Field(None, ge=1, le=480)
+    srpe: Optional[float] = Field(None, ge=0.0, le=10.0)
+
+
+class SessionStatusUpdate(BaseModel):
+    verification_status: str = Field(pattern="^(pending|verified)$")
+    modality: Optional[str] = None
+    duration_minutes: Optional[int] = Field(None, ge=1, le=480)
+    srpe: Optional[float] = Field(None, ge=0.0, le=10.0)
+
 # --- Stress Calculators ---
 def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
     """
@@ -200,6 +213,32 @@ _CALIBRATION_DEFAULTS = {
     "adaptive_lookback_days": 90,
     "adaptive_min_entries": 21,
 }
+
+_VALID_MODALITIES = {"strength", "hypertrophy", "conditioning", "cardio"}
+
+
+def _normalize_modality(value: str | None) -> str:
+    normalized = (value or "").strip().lower()
+    if normalized not in _VALID_MODALITIES:
+        raise HTTPException(
+            status_code=422,
+            detail="modality must be one of: strength, hypertrophy, conditioning, cardio",
+        )
+    return normalized
+
+
+def _assert_session_can_be_verified(modality: str, duration_minutes: int | None, srpe: float | None) -> None:
+    if duration_minutes is None or duration_minutes <= 0 or duration_minutes > 480:
+        raise HTTPException(
+            status_code=422,
+            detail="Valid duration_minutes (1..480) is required before verification.",
+        )
+
+    if modality in {"conditioning", "cardio"} and srpe is None:
+        raise HTTPException(
+            status_code=422,
+            detail="sRPE is required to verify conditioning/cardio sessions.",
+        )
 
 def _get_setting_value(db: Session, key: str) -> str | None:
     row = db.query(AppSetting).filter(AppSetting.key == key).first()
@@ -1046,6 +1085,133 @@ def get_recent_workouts(count: int = 12, db: Session = Depends(get_db)):
         })
 
     return result
+
+
+@app.get("/api/workout-sessions")
+def get_workout_sessions(
+    days: int = 30,
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """List workout sessions for review and verification workflows."""
+    since = date_type.today() - timedelta(days=max(1, days) - 1)
+    q = db.query(WorkoutSession).filter(WorkoutSession.workout_date >= since)
+
+    if status:
+        status_normalized = status.strip().lower()
+        if status_normalized not in {"pending", "verified"}:
+            raise HTTPException(status_code=422, detail="status must be 'pending' or 'verified'")
+        q = q.filter(WorkoutSession.verification_status == status_normalized)
+
+    rows = (
+        q.order_by(WorkoutSession.workout_date.desc(), WorkoutSession.start_time.desc())
+        .all()
+    )
+
+    return [
+        {
+            "hevy_workout_id": row.hevy_workout_id,
+            "workout_date": str(row.workout_date),
+            "workout_title": row.workout_title,
+            "start_time": row.start_time,
+            "end_time": row.end_time,
+            "duration_minutes": row.duration_minutes,
+            "modality": row.modality,
+            "modality_confidence": row.modality_confidence,
+            "verification_status": row.verification_status,
+            "verified_at": row.verified_at,
+            "srpe": row.srpe,
+            "needs_manual_duration": row.duration_minutes is None,
+        }
+        for row in rows
+    ]
+
+
+@app.get("/api/workout-sessions/pending")
+def get_pending_workout_sessions(days: int = 30, db: Session = Depends(get_db)):
+    """Convenience endpoint for pending verification queue."""
+    return get_workout_sessions(days=days, status="pending", db=db)
+
+
+@app.put("/api/workout-sessions/{hevy_workout_id}/verify")
+def verify_workout_session(
+    hevy_workout_id: str,
+    data: SessionVerificationUpdate,
+    db: Session = Depends(get_db),
+):
+    """Manual verification endpoint with modality pre-selected from importer inference."""
+    session_row = db.query(WorkoutSession).filter(
+        WorkoutSession.hevy_workout_id == hevy_workout_id
+    ).first()
+    if not session_row:
+        raise HTTPException(status_code=404, detail=f"Workout session {hevy_workout_id} not found")
+
+    modality = _normalize_modality(data.modality)
+    duration_minutes = data.duration_minutes if data.duration_minutes is not None else session_row.duration_minutes
+    srpe = data.srpe if data.srpe is not None else session_row.srpe
+
+    _assert_session_can_be_verified(modality=modality, duration_minutes=duration_minutes, srpe=srpe)
+
+    session_row.modality = modality
+    session_row.duration_minutes = duration_minutes
+    session_row.srpe = srpe
+    session_row.verification_status = "verified"
+    session_row.verified_at = datetime.utcnow()
+    db.commit()
+    db.refresh(session_row)
+
+    return {
+        "hevy_workout_id": session_row.hevy_workout_id,
+        "verification_status": session_row.verification_status,
+        "modality": session_row.modality,
+        "modality_confidence": session_row.modality_confidence,
+        "duration_minutes": session_row.duration_minutes,
+        "srpe": session_row.srpe,
+        "verified_at": session_row.verified_at,
+    }
+
+
+@app.put("/api/workout-sessions/{hevy_workout_id}/status")
+def update_workout_session_status(
+    hevy_workout_id: str,
+    data: SessionStatusUpdate,
+    db: Session = Depends(get_db),
+):
+    """Set session status to pending/verified while applying Stage 2 verification rules."""
+    session_row = db.query(WorkoutSession).filter(
+        WorkoutSession.hevy_workout_id == hevy_workout_id
+    ).first()
+    if not session_row:
+        raise HTTPException(status_code=404, detail=f"Workout session {hevy_workout_id} not found")
+
+    modality = _normalize_modality(data.modality) if data.modality else session_row.modality
+    duration_minutes = data.duration_minutes if data.duration_minutes is not None else session_row.duration_minutes
+    srpe = data.srpe if data.srpe is not None else session_row.srpe
+
+    session_row.modality = modality
+    session_row.duration_minutes = duration_minutes
+    session_row.srpe = srpe
+
+    if data.verification_status == "verified":
+        _assert_session_can_be_verified(modality=modality, duration_minutes=duration_minutes, srpe=srpe)
+        session_row.verification_status = "verified"
+        session_row.verified_at = datetime.utcnow()
+    else:
+        session_row.verification_status = "pending"
+        session_row.verified_at = None
+
+    db.commit()
+    db.refresh(session_row)
+
+    return {
+        "hevy_workout_id": session_row.hevy_workout_id,
+        "verification_status": session_row.verification_status,
+        "modality": session_row.modality,
+        "modality_confidence": session_row.modality_confidence,
+        "duration_minutes": session_row.duration_minutes,
+        "srpe": session_row.srpe,
+        "verified_at": session_row.verified_at,
+    }
 
 
 @app.get("/api/workouts/summary")

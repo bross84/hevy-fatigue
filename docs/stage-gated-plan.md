@@ -12,15 +12,16 @@ This document locks implementation to strict stage gates and dependency order.
 
 ## Dependency Order
 
-1. Stage 1
-2. Stage 2
+1. Stage 1 (COMPLETE)
+2. Stage 2 (COMPLETE)
 3. Stage 4
 4. Stage 3
 5. Stage 5
 6. Stage 6
 7. Stage 7
 
-## Stage 1 - Full Body Classification Baseline
+## Stage 1 - Full Body Classification Baseline - COMPLETE
+
 
 Goal: Reclassify full-body movements using existing percentage fields.
 
@@ -33,7 +34,28 @@ Gate tests:
 - These exercises classify as non-conditioning.
 - Pattern stress reflects split distribution.
 
-## Stage 2 - Session Model + Modality Verification
+### Stage 1 Completion Summary (for review before Stage 2)
+
+Status: COMPLETE and committed on `v2`.
+
+Implemented changes:
+- Reclassified `thruster`, `box jump`, and `burpee` from conditioning to full-body mixed patterns.
+- Added explicit full-body mappings for `burpee`, `burpees`, `thruster`, `barbell thruster`, `dumbbell thruster`, `box jump`, and `box jumps`.
+- Applied split values: `pct_quad_dom=0.30`, `pct_posterior=0.30`, `pct_upper_push=0.20`, `pct_upper_pull=0.20`, `is_conditioning=False`.
+- Removed `burpee`, `thruster`, and `box jump` from conditioning explicit mappings.
+- Removed `burpee`, `thruster`, and `box jump` from `CONDITIONING_KEYWORDS` to prevent fallback misclassification.
+
+Gate evidence (passed):
+- Core exercises (`thruster`, `box jump`, `burpee`) classify as non-conditioning with 30/30/20/20 distribution.
+- Variants (`barbell thruster`, `dumbbell thruster`, `box jumps`, `burpees`) classify with the same distribution.
+- True conditioning examples (`assault bike`, `jump rope`, `treadmill`, `amrap workout`, `metcon`) remain conditioning.
+- Assertion suite completed with all checks passing.
+
+Files changed in Stage 1:
+- `exercise_classifier.py`
+- `docs/stage-gated-plan.md`
+
+## Stage 2 - Session Model + Modality Verification - COMPLETE
 
 Goal: Introduce session-level records with verification flow.
 
@@ -70,6 +92,42 @@ Gate tests:
 - Pending/verified flows work.
 - Sessions persist with durations where valid.
 - Workout rows remain linked by `workout_id`.
+
+### Stage 2 Completion Summary (for review before Stage 4)
+
+Status: COMPLETE and ready for commit on `v2`.
+
+Implemented changes:
+- Added `WorkoutSession` ORM model and `workout_sessions` table schema in `database.py`.
+- Extended importer sync in `importer.py` to upsert session rows keyed by `hevy_workout_id`.
+- Added duration parsing and duration safety guard logic:
+	- missing `start_time`/`end_time` -> `duration_minutes = null`
+	- computed duration `<= 0` or `> 480` -> `duration_minutes = null`
+- Added modality inference and confidence assignment in importer.
+- Enforced Stage 2 auto-verify policy at import time:
+	- `strength`/`hypertrophy` auto-verify only when confidence `>= 0.80` and duration valid
+	- `conditioning`/`cardio` never auto-verify
+- Added verification API endpoints in `main.py`:
+	- `GET /api/workout-sessions`
+	- `GET /api/workout-sessions/pending`
+	- `PUT /api/workout-sessions/{hevy_workout_id}/verify`
+	- `PUT /api/workout-sessions/{hevy_workout_id}/status`
+- Added server-side verification guards in `main.py`:
+	- verified status requires valid `duration_minutes` (1..480)
+	- `conditioning`/`cardio` require `srpe` before verification
+
+Gate evidence (passed):
+- Duration guard behavior validated for null, invalid, and valid durations.
+- Modality-specific auto-verify behavior validated (`strength`/`hypertrophy` threshold, no auto-verify for `conditioning`/`cardio`).
+- Pending queue retrieval validated via session endpoints.
+- Conditioning verification without `srpe` correctly rejected.
+- Conditioning verification with valid `srpe` correctly accepted.
+- Manual status transitions (`pending` <-> `verified`) validated.
+
+Files changed in Stage 2:
+- `database.py`
+- `importer.py`
+- `main.py`
 
 ## Stage 4 - sRPE Collection
 

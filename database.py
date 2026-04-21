@@ -1,5 +1,6 @@
 from datetime import date as date_type
-from sqlalchemy import create_engine, Column, Integer, Float, String, Date, Boolean, UniqueConstraint
+from datetime import datetime as dt_datetime
+from sqlalchemy import create_engine, Column, Integer, Float, String, Date, DateTime, Boolean, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 # Path to the database file.
@@ -107,6 +108,31 @@ class ExerciseMapping(Base):
 
     def __repr__(self):
         return f"<ExerciseMapping {self.exercise_title} source={self.source} reviewed={self.is_reviewed}>"
+
+# --- TABLE 6: Workout Sessions (Imported from Hevy) ---
+class WorkoutSession(Base):
+    __tablename__ = "workout_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    hevy_workout_id = Column(String, nullable=False, unique=True, index=True)
+    workout_date = Column(Date, nullable=False)
+    workout_title = Column(String, nullable=True)
+    start_time = Column(DateTime, nullable=True)
+    end_time = Column(DateTime, nullable=True)
+    duration_minutes = Column(Integer, nullable=True)
+    modality = Column(String, nullable=False, default="strength")  # strength|hypertrophy|conditioning|cardio
+    modality_confidence = Column(Float, nullable=False, default=0.0)
+    verification_status = Column(String, nullable=False, default="pending")  # pending|verified
+    verified_at = Column(DateTime, nullable=True)
+    srpe = Column(Float, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=dt_datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=dt_datetime.utcnow, onupdate=dt_datetime.utcnow)
+
+    def __repr__(self):
+        return (
+            f"<WorkoutSession workout_id={self.hevy_workout_id} "
+            f"modality={self.modality} status={self.verification_status}>"
+        )
 
 # This part actually creates the file and tables when you run the script
 def init_db():
