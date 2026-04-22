@@ -331,7 +331,7 @@ Goal: Present recommendation output clearly with Today-first UX.
 Scope:
 - Keep existing custom CSS system (no Tailwind migration in this pass).
 
-### Stage 7.1 - Today View (active)
+### Stage 7.1 - Today View (COMPLETE)
 
 Goal:
 - Build Today as default landing view with one primary data fetch to `/api/training-load` plus one pending-session fetch for badge count.
@@ -361,10 +361,41 @@ Out of scope for 7.1:
 - check-in form changes
 - verification queue changes
 
-### Stage 7.2 - Trend View (Session B)
+### Stage 7.2 - Trend View (COMPLETE)
 
 Goal:
 - Move trend-specific charts and controls into a dedicated Trend experience.
+
+Implemented changes:
+- Added dedicated Trend tab and section in `static/index.html`.
+- Added one time-range selector (`6w`, `3m`, `6m`) with client-side filtering only.
+- Added chart lifecycle state and render flow:
+	- `activateTrendTab()`
+	- `renderTrendView()`
+	- chart destroy/recreate on range switch for clean redraws
+- Added shared payload fetch/cache plumbing:
+	- `ensureTrainingLoadPayload()` now owns the only frontend `/api/training-load` fetch call.
+	- Today and Trend views both consume the same in-memory payload/promise.
+	- Cache invalidation added on actions that mutate load outputs (check-in save, sync success, calibration save/reset).
+- Added Trend chart 1 (Fatigue/Fitness/Form):
+	- ATL, CTL, TSB lines
+	- auto y-scale
+	- dashed zero reference line hidden from legend/tooltip
+	- tooltip includes derived training state label fallback from TSB thresholds
+- Added Trend chart 2 (pattern ATL):
+	- knee, hip, push, pull lines
+	- legend toggles enabled
+	- fallback message when `pattern_loads` is unavailable for selected range
+- Added mobile-specific behavior already aligned to Stage 7.2 requirements:
+	- min chart heights at narrow widths
+	- range controls keep 44px touch target size
+
+Gate evidence (passed):
+- No undefined-function runtime risk remains for trend activation (`activateTrendTab` / `renderTrendView` now implemented).
+- Single frontend fetch definition for `/api/training-load` confirmed in code (`ensureTrainingLoadPayload`).
+- Trend can render from existing Today cache without duplicate fetch path.
+- Empty-history and missing-pattern fallbacks render without crashes.
+- Range selection re-renders both charts with filtered history windows (42, 90, 180 days).
 
 ### Stage 7.3 - Log / Session View (Session C)
 
@@ -372,13 +403,21 @@ Goal:
 - Promote workout/session diagnostics and log workflows in a dedicated view.
 
 Gate tests:
-- 7.1 gates only:
+- 7.1 gates:
 	- Today is default landing page.
 	- Training-state headline color maps correctly across all five states.
 	- Pattern grid renders all four cells with status tint, days-since-loaded, and dot counts.
 	- Tooltips render on hover/tap for Fatigue/Fitness/Form labels.
 	- All fallback states render without crash (no check-in, no workout data, missing `recommendation_v2`, null `days_since_loaded`).
 	- Single-fetch behavior on load is preserved (`/api/training-load` + `/api/workout-sessions/pending` only).
+- 7.2 gates:
+	- Trend tab renders two charts from `/api/training-load` history with one time selector.
+	- Range control filters on client only (6w/3m/6m).
+	- Main chart includes ATL/CTL/TSB lines and dashed y=0 reference line.
+	- Tooltip includes training state label (payload label or TSB-threshold fallback).
+	- Pattern chart includes knee/hip/push/pull ATL lines and legend toggles.
+	- Missing pattern history shows note instead of chart crash.
+	- Trend and Today share one cached payload fetch pathway.
 
 ## Decisions Locked
 

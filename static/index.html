@@ -819,13 +819,65 @@ tbody tr:hover td { background: var(--row-hover); }
 .rec-large-decrease { background: color-mix(in srgb, var(--danger)    18%, transparent); color: var(--danger);    border: 1px solid color-mix(in srgb, var(--danger)    35%, transparent); }
 
 /* ── Trends tab ──────────────────────── */
-.trends-grid {
+.trend-wrap {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-  margin-bottom: 18px;
+  gap: 14px;
+  overflow-x: hidden;
 }
-@media (max-width: 800px) { .trends-grid { grid-template-columns: 1fr; } }
+.trend-range {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.trend-range .btn {
+  min-height: 44px;
+}
+.trend-range .btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-sub);
+}
+.trend-chart-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+.trend-chart-wrap {
+  position: relative;
+  width: 100%;
+  min-height: 280px;
+}
+.trend-chart-wrap.secondary {
+  min-height: 170px;
+}
+.trend-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.trend-empty {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--muted);
+  padding: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .trend-range {
+    grid-template-columns: 1fr;
+  }
+  .trend-chart-wrap {
+    min-height: 220px;
+  }
+  .trend-chart-wrap.secondary {
+    min-height: 140px;
+  }
+}
 
 /* ── Tooltips ────────────────────────── */
 .tip-icon {
@@ -1152,6 +1204,7 @@ tbody tr:hover td { background: var(--row-hover); }
   <div class="logo"><img class="logo-icon" src="/resources/favicon.png" alt="Hevy Fatigue icon">HEVY FATIGUE</div>
   <div class="nav-tabs">
     <button class="nav-tab active" data-tab="dashboard">Today</button>
+    <button class="nav-tab" data-tab="trend">Trend</button>
     <button class="nav-tab" data-tab="workouts">Workouts</button>
     <button class="nav-tab" data-tab="exercises">Exercises</button>
     <button class="nav-tab" data-tab="log">Log</button>
@@ -1351,6 +1404,40 @@ tbody tr:hover td { background: var(--row-hover); }
         <div class="card-title">Recent Workouts (14 days)</div>
         <div id="workout-table-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ TREND TAB ══════════════ -->
+<section id="tab-trend" class="tab-content">
+  <div class="trend-wrap">
+    <div class="trend-chart-card">
+      <div class="card-title" style="margin-bottom:10px;">Time Range</div>
+      <div class="trend-range" id="trend-range">
+        <button class="btn btn-secondary active" data-range="3">3 Days</button>
+        <button class="btn btn-secondary" data-range="7">7 Days</button>
+        <button class="btn btn-secondary" data-range="14">14 Days</button>
+      </div>
+    </div>
+
+    <div class="trend-chart-card">
+      <div class="card-title">Training Load Trend</div>
+      <div class="trend-chart-wrap" id="trend-main-wrap">
+        <canvas id="trend-main-chart"></canvas>
+      </div>
+      <div class="trend-note">Fatigue = short-term load, Fitness = long-term load, Form = balance between the two.</div>
+    </div>
+
+    <div class="trend-chart-card" id="trend-pattern-card">
+      <div class="card-title">Per-Pattern Fatigue Trend</div>
+      <div class="trend-chart-wrap secondary" id="trend-pattern-wrap">
+        <canvas id="trend-pattern-chart"></canvas>
+      </div>
+      <div class="trend-note" id="trend-pattern-note" style="display:none;">Pattern data unavailable for this date range.</div>
+    </div>
+
+    <div class="trend-chart-card" id="trend-empty" style="display:none;">
+      <div class="trend-empty">No training history yet. Complete check-ins and log workouts to build your trend data.</div>
     </div>
   </div>
 </section>
@@ -1737,6 +1824,7 @@ function themeColors() {
     card:      getCSSVar('--card'),
     border:    getCSSVar('--border'),
     accent:    getCSSVar('--accent'),
+    success:   getCSSVar('--success'),
     quad:      getCSSVar('--quad'),
     posterior: getCSSVar('--posterior'),
     push:      getCSSVar('--push'),
@@ -1765,8 +1853,8 @@ function applyTheme(pref) {
       );
       activePattern = 'total';
     }
-    if (_tlHistory) {
-      renderFatigueChart(_tlHistory, _tlThresholds);
+    if (document.getElementById('tab-trend')?.classList.contains('active')) {
+      renderTrendView();
     }
   });
 }
@@ -1799,16 +1887,18 @@ let exercises      = [];
   });
 }
 
-// Watch the TSB chart container for resize and re-render with cached history
+// Trend charts: re-render active view on resize after layout settles.
 let _tlHistory = null;
 if (window.ResizeObserver) {
-  const _tsbEl = document.getElementById('tsbZoneChart')?.parentElement;
-  if (_tsbEl) {
-    let _tsbTimer;
+  const _trendMainEl = document.getElementById('trend-main-wrap');
+  if (_trendMainEl) {
+    let _trendTimer;
     new ResizeObserver(() => {
-      clearTimeout(_tsbTimer);
-      _tsbTimer = setTimeout(() => { if (_tlHistory) renderFatigueChart(_tlHistory, _tlThresholds); }, 60);
-    }).observe(_tsbEl);
+      clearTimeout(_trendTimer);
+      _trendTimer = setTimeout(() => {
+        if (document.getElementById('tab-trend')?.classList.contains('active')) renderTrendView();
+      }, 80);
+    }).observe(_trendMainEl);
   }
 }
 let editingTitle   = null;
@@ -1819,6 +1909,11 @@ let logEditDate    = null;
 let exSort         = 'alpha';
 let tsbZoneChart   = null;
 let _tlThresholds  = null;
+let _trainingLoadPayload = null;
+let _trainingLoadFetchPromise = null;
+let trendMainChart = null;
+let trendPatternChart = null;
+let trendRangeDays = 3;
 
 // ═══ Tabs ════════════════════════════════════════════
 document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -1828,6 +1923,7 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     tab.classList.add('active');
     document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
     if (tab.dataset.tab === 'dashboard')                           loadTrainingLoadCard();
+    if (tab.dataset.tab === 'trend')                               activateTrendTab();
     if (tab.dataset.tab === 'exercises' && exercises.length === 0) loadExercises();
     if (tab.dataset.tab === 'workouts'  && !workoutsLoaded)        loadWorkouts();
     if (tab.dataset.tab === 'log'       && !logLoaded)             loadLog();
@@ -1856,8 +1952,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   document.getElementById('ci-date').value = todayStr();
+  initTrendRangeSelector();
   loadTrainingLoadCard();
 });
+
+function initTrendRangeSelector() {
+  const rangeEl = document.getElementById('trend-range');
+  if (!rangeEl || rangeEl.dataset.bound === '1') return;
+  rangeEl.dataset.bound = '1';
+
+  rangeEl.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-range]');
+    if (!btn) return;
+    trendRangeDays = Number(btn.dataset.range || 3);
+    rangeEl.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+    renderTrendView();
+  });
+}
 
 // Tooltips: hover works by CSS; click/tap toggles visibility for touch devices.
 document.addEventListener('click', e => {
@@ -1986,6 +2097,7 @@ async function saveCalibrationSettings() {
     const d = await r.json();
     if (!r.ok) throw new Error(d.detail || 'Save failed.');
     _setCalResult('✓ Calibration settings saved.', true);
+    _trainingLoadPayload = null;
     loadTrainingLoadCard();
     if (logLoaded) { logLoaded = false; loadLog(); }
   } catch (e) {
@@ -2014,6 +2126,7 @@ async function resetCalibrationSettings() {
     document.getElementById('cal-min').value = d.adaptive_min_entries;
     syncCalibrationUi();
     _setCalResult('✓ Calibration reset to defaults.', true);
+    _trainingLoadPayload = null;
     loadTrainingLoadCard();
     if (logLoaded) { logLoaded = false; loadLog(); }
   } catch (e) {
@@ -2167,6 +2280,7 @@ document.getElementById('checkin-form').addEventListener('submit', async e => {
         setStatus('success', `✓ Logged! Intensity Load: ${d.central_stress} | Volume Load: ${d.peripheral_stress}`);
         btn.disabled    = true;
         btn.textContent = 'Already logged today';
+        _trainingLoadPayload = null;
         loadTrainingLoadCard();
       } else {
         setStatus('success', `✓ Added entry for ${submittedDate} — Intensity Load: ${d.central_stress} | Volume Load: ${d.peripheral_stress}`);
@@ -2220,6 +2334,7 @@ async function runSync({ silent = false } = {}) {
           : '✓ Already up to date — no new sets found.';
         statusEl.innerHTML = `<div class="alert alert-success">${msg}</div>`;
         localStorage.setItem('hevy_last_sync_iso', new Date().toISOString());
+        _trainingLoadPayload = null;
         // Refresh stress chart, workout table, and training load card
         await loadStressHistory();
         renderChart();
@@ -3161,7 +3276,7 @@ async function loadTrainingLoadCard() {
   if (!todayWrap) return;
   try {
     const [trainingRes, pendingCount] = await Promise.all([
-      fetch('/api/training-load?days=30').then(r => r.json()),
+      ensureTrainingLoadPayload(),
       _getPendingSessionCount(),
     ]);
     _renderTodayCards(trainingRes, pendingCount);
@@ -3175,109 +3290,305 @@ async function loadTrainingLoadCard() {
 
 // ═══ Trends tab ═══════════════════════════════════════
 
-// Custom Chart.js plugin — draws colored horizontal bands in the background
-const bandPlugin = {
-  id: 'bandBackground',
-  beforeDraw(chart, args, options) {
-    const { ctx, chartArea, scales } = chart;
-    if (!chartArea || !scales.y) return;
-    if (!options || !options.bands || !options.bands.length) return;
-    const { top, bottom, left, right } = chartArea;
-    const yScale = scales.y;
-    options.bands.forEach(band => {
-      const yTop    = yScale.getPixelForValue(Math.min(band.max, yScale.max));
-      const yBottom = yScale.getPixelForValue(Math.max(band.min, yScale.min));
-      ctx.fillStyle = band.color;
-      ctx.fillRect(left, yTop, right - left, yBottom - yTop);
+async function ensureTrainingLoadPayload() {
+  if (_trainingLoadPayload) return _trainingLoadPayload;
+  if (_trainingLoadFetchPromise) return _trainingLoadFetchPromise;
+
+  _trainingLoadFetchPromise = fetch('/api/training-load?days=180')
+    .then(r => r.json())
+    .then(d => {
+      _trainingLoadPayload = d || {};
+      _tlHistory = _trainingLoadPayload.history || [];
+      _tlThresholds = _trainingLoadPayload.thresholds || null;
+      return _trainingLoadPayload;
+    })
+    .finally(() => {
+      _trainingLoadFetchPromise = null;
     });
+
+  return _trainingLoadFetchPromise;
+}
+
+function activateTrendTab() {
+  renderTrendView();
+}
+
+function _dateLabel(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function _resolveStateLabel(item, thresholds) {
+  if (item?.training_state_label) return item.training_state_label;
+  const tsb = Number(item?.tsb || 0);
+  const underloaded = Number(thresholds?.tsb_threshold_underloaded ?? 8);
+  const slightlyFresh = Number(thresholds?.tsb_threshold_slightly_fresh ?? 3);
+  const balanced = Number(thresholds?.tsb_threshold_balanced ?? -5);
+  const slightlyFatigued = Number(thresholds?.tsb_threshold_slightly_fatigued ?? -10);
+  if (tsb >= underloaded) return 'Underloaded';
+  if (tsb >= slightlyFresh) return 'Slightly Fresh';
+  if (tsb >= balanced) return 'Balanced';
+  if (tsb >= slightlyFatigued) return 'Slightly Fatigued';
+  return 'Fatigued';
+}
+
+function _trendSlice(history, days) {
+  if (!Array.isArray(history) || !history.length) return [];
+  if (history.length <= days) return history;
+  return history.slice(history.length - days);
+}
+
+function _destroyTrendCharts() {
+  if (trendMainChart) {
+    trendMainChart.destroy();
+    trendMainChart = null;
   }
-};
-Chart.register(bandPlugin);
+  if (trendPatternChart) {
+    trendPatternChart.destroy();
+    trendPatternChart = null;
+  }
+}
 
-
-function renderFatigueChart(history, thresholds = null) {
-  const c      = themeColors();
-  const ctx    = document.getElementById('tsbZoneChart').getContext('2d');
-  const labels = history.map(d => d.date.slice(5));
-  const values = history.map(d => d.fatigue_score ?? 5.0);
-  const activeThresholds = {
-    threshold_large_decrease: Number(thresholds?.threshold_large_decrease ?? 8.0),
-    threshold_decrease: Number(thresholds?.threshold_decrease ?? 6.5),
-    threshold_continue: Number(thresholds?.threshold_continue ?? 4.5),
-    threshold_increase: Number(thresholds?.threshold_increase ?? 3.0),
+function _trendChartBaseOptions() {
+  const c = themeColors();
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { labels: { color: c.muted, font: { size: 11 } } },
+      tooltip: {
+        backgroundColor: c.card,
+        borderColor: c.border,
+        borderWidth: 1,
+        titleColor: c.text,
+        bodyColor: c.muted,
+        padding: 10,
+      },
+    },
+    scales: {
+      x: {
+        ticks: { color: c.muted, font: { size: 10 }, maxTicksLimit: 12 },
+        grid: { color: 'rgba(255,255,255,0.05)' },
+      },
+      y: {
+        ticks: { color: c.muted, font: { size: 10 } },
+        grid: { color: 'rgba(255,255,255,0.05)' },
+      },
+    },
   };
-  const largeDecreaseThreshold = activeThresholds.threshold_large_decrease;
-  const decreaseThreshold = activeThresholds.threshold_decrease;
-  const continueThreshold = activeThresholds.threshold_continue;
-  const increaseThreshold = activeThresholds.threshold_increase;
+}
 
-  // Fixed 0–10 y-axis — bands match the fatigue score thresholds
-  const yMin = 0;
-  const yMax = 10;
+function _renderTrendMainChart(history, thresholds) {
+  const c = themeColors();
+  const ctx = document.getElementById('trend-main-chart').getContext('2d');
+  const labels = history.map(h => _dateLabel(h.date));
 
-  // Colored bands: higher score = more fatigued = decrease band (red/orange at top)
-  const bands = [
-    { min: largeDecreaseThreshold, max: 10, color: getCSSVar('--danger') + '45' },
-    { min: decreaseThreshold, max: largeDecreaseThreshold, color: getCSSVar('--decrease-band') + '45' },
-    { min: continueThreshold, max: decreaseThreshold, color: getCSSVar('--warn') + '45' },
-    { min: increaseThreshold, max: continueThreshold, color: getCSSVar('--success') + '45' },
-    { min: 0, max: increaseThreshold, color: getCSSVar('--accent') + '45' },
-  ];
-
-  function fatigueZone(score) {
-    if (score >= largeDecreaseThreshold) return 'Large Decrease';
-    if (score >= decreaseThreshold) return 'Decrease';
-    if (score >= continueThreshold) return 'Continue';
-    if (score >= increaseThreshold) return 'Increase';
-    return 'Large Increase';
-  }
-
-  if (tsbZoneChart) tsbZoneChart.destroy();
-  tsbZoneChart = new Chart(ctx, {
+  trendMainChart = new Chart(ctx, {
     type: 'line',
     data: {
       labels,
-      datasets: [{
-        label: 'Fatigue',
-        data: values,
-        borderColor: c.text,
-        borderWidth: 2.5,
-        pointRadius: 3,
-        pointHoverRadius: 6,
-        tension: 0.35,
-        fill: false,
-      }],
+      datasets: [
+        {
+          label: 'Fatigue',
+          data: history.map(h => Number(h.atl || 0)),
+          borderColor: c.posterior,
+          backgroundColor: c.posterior + '33',
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          tension: 0.35,
+        },
+        {
+          label: 'Fitness',
+          data: history.map(h => Number(h.ctl || 0)),
+          borderColor: c.accent,
+          backgroundColor: c.accent + '33',
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          tension: 0.35,
+        },
+        {
+          label: 'Form',
+          data: history.map(h => Number(h.tsb || 0)),
+          borderColor: c.success,
+          backgroundColor: c.success + '33',
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          tension: 0.35,
+        },
+        {
+          label: '__zero__',
+          data: history.map(() => 0),
+          borderColor: 'rgba(255,255,255,0.15)',
+          borderDash: [4, 4],
+          pointRadius: 0,
+          borderWidth: 1,
+          tension: 0,
+        },
+      ],
     },
     options: {
-      ...chartOpts(),
+      ..._trendChartBaseOptions(),
       plugins: {
-        ...chartOpts().plugins,
+        ..._trendChartBaseOptions().plugins,
         legend: {
-          ...chartOpts().plugins.legend,
-          onClick: () => {},
+          ..._trendChartBaseOptions().plugins.legend,
+          labels: {
+            ..._trendChartBaseOptions().plugins.legend.labels,
+            filter: item => item.text !== '__zero__',
+          },
         },
-        bandBackground: { bands },
         tooltip: {
-          ...chartOpts().plugins.tooltip,
+          ..._trendChartBaseOptions().plugins.tooltip,
           callbacks: {
-            label(item) {
-              const score = item.raw;
-              return `Fatigue: ${score.toFixed(1)} / 10  →  ${fatigueZone(score)}`;
+            title(items) {
+              const idx = items?.[0]?.dataIndex ?? 0;
+              return _dateLabel(history[idx].date);
+            },
+            label(ctxItem) {
+              if (ctxItem.dataset.label === '__zero__') return null;
+              const idx = ctxItem.dataIndex;
+              const item = history[idx] || {};
+              if (ctxItem.dataset.label === 'Fatigue') return `Fatigue: ${_fmt1(item.atl)}`;
+              if (ctxItem.dataset.label === 'Fitness') return `Fitness: ${_fmt1(item.ctl)}`;
+              return `Form: ${_fmt1(item.tsb)}`;
+            },
+            afterBody(items) {
+              const idx = items?.[0]?.dataIndex ?? 0;
+              return [`State: ${_resolveStateLabel(history[idx], thresholds)}`];
             },
           },
         },
       },
-      scales: {
-        x: chartOpts().scales.x,
-        y: {
-          min: yMin,
-          max: yMax,
-          ticks: { color: c.muted, font: { size: 10 }, stepSize: 1 },
-          grid:  { color: c.border },
+    },
+  });
+}
+
+function _renderTrendPatternChart(history) {
+  const c = themeColors();
+  const ctx = document.getElementById('trend-pattern-chart').getContext('2d');
+  const labels = history.map(h => _dateLabel(h.date));
+
+  trendPatternChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Knee',
+          data: history.map(h => Number(h.pattern_loads?.knee?.atl || 0)),
+          borderColor: c.quad,
+          backgroundColor: c.quad + '33',
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          tension: 0.35,
+        },
+        {
+          label: 'Hip',
+          data: history.map(h => Number(h.pattern_loads?.hip?.atl || 0)),
+          borderColor: c.posterior,
+          backgroundColor: c.posterior + '33',
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          tension: 0.35,
+        },
+        {
+          label: 'Push',
+          data: history.map(h => Number(h.pattern_loads?.push?.atl || 0)),
+          borderColor: c.push,
+          backgroundColor: c.push + '33',
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          tension: 0.35,
+        },
+        {
+          label: 'Pull',
+          data: history.map(h => Number(h.pattern_loads?.pull?.atl || 0)),
+          borderColor: c.pull,
+          backgroundColor: c.pull + '33',
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          tension: 0.35,
+        },
+      ],
+    },
+    options: {
+      ..._trendChartBaseOptions(),
+      plugins: {
+        ..._trendChartBaseOptions().plugins,
+        tooltip: {
+          ..._trendChartBaseOptions().plugins.tooltip,
+          callbacks: {
+            title(items) {
+              const idx = items?.[0]?.dataIndex ?? 0;
+              return _dateLabel(history[idx].date);
+            },
+            label(ctxItem) {
+              const idx = ctxItem.dataIndex;
+              const item = history[idx] || {};
+              if (ctxItem.dataset.label === 'Knee') return `Knee: ${_fmt1(item.pattern_loads?.knee?.atl || 0)}`;
+              if (ctxItem.dataset.label === 'Hip') return `Hip: ${_fmt1(item.pattern_loads?.hip?.atl || 0)}`;
+              if (ctxItem.dataset.label === 'Push') return `Push: ${_fmt1(item.pattern_loads?.push?.atl || 0)}`;
+              return `Pull: ${_fmt1(item.pattern_loads?.pull?.atl || 0)}`;
+            },
+          },
         },
       },
     },
   });
+}
+
+async function renderTrendView() {
+  const emptyEl = document.getElementById('trend-empty');
+  const mainWrap = document.getElementById('trend-main-wrap');
+  const patternCard = document.getElementById('trend-pattern-card');
+  const patternWrap = document.getElementById('trend-pattern-wrap');
+  const patternNote = document.getElementById('trend-pattern-note');
+  if (!emptyEl || !mainWrap || !patternCard || !patternWrap || !patternNote) return;
+
+  try {
+    const payload = await ensureTrainingLoadPayload();
+    const history = _trendSlice(payload?.history || [], trendRangeDays);
+
+    _destroyTrendCharts();
+
+    if (!history.length) {
+      emptyEl.style.display = 'block';
+      mainWrap.style.display = 'none';
+      patternCard.style.display = 'none';
+      return;
+    }
+
+    emptyEl.style.display = 'none';
+    mainWrap.style.display = 'block';
+    patternCard.style.display = 'block';
+
+    _renderTrendMainChart(history, payload?.thresholds || {});
+
+    const hasPatternLoads = history.some(h => h && typeof h === 'object' && h.pattern_loads && h.pattern_loads.knee && h.pattern_loads.hip && h.pattern_loads.push && h.pattern_loads.pull);
+    if (!hasPatternLoads) {
+      patternWrap.style.display = 'none';
+      patternNote.style.display = 'block';
+      return;
+    }
+
+    patternWrap.style.display = 'block';
+    patternNote.style.display = 'none';
+    _renderTrendPatternChart(history);
+  } catch {
+    _destroyTrendCharts();
+    emptyEl.style.display = 'block';
+    mainWrap.style.display = 'none';
+    patternCard.style.display = 'none';
+  }
 }
 
 
