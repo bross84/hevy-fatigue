@@ -1466,18 +1466,6 @@ tbody tr:hover td { background: var(--row-hover); }
   margin-top: 0 !important;
   margin-bottom: 0;
 }
-#tab-settings .settings-card:nth-child(1) {
-  grid-column: 1;
-  grid-row: 1;
-}
-#tab-settings .settings-card:nth-child(2) {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-}
-#tab-settings .settings-card:nth-child(3) {
-  grid-column: 1;
-  grid-row: 2;
-}
 .settings-key-row { display: flex; gap: 8px; align-items: stretch; }
 .settings-key-row input {
   flex: 1;
@@ -1516,12 +1504,6 @@ tbody tr:hover td { background: var(--row-hover); }
 @media (max-width: 900px) {
   .tab-content#tab-settings.active {
     grid-template-columns: 1fr;
-  }
-  #tab-settings .settings-card:nth-child(1),
-  #tab-settings .settings-card:nth-child(2),
-  #tab-settings .settings-card:nth-child(3) {
-    grid-column: auto;
-    grid-row: auto;
   }
 }
 
@@ -2047,70 +2029,65 @@ tbody tr:hover td { background: var(--row-hover); }
   </div>
 
   <div class="card settings-card" style="margin-top:14px;">
-    <div class="card-title">Advanced Calibration</div>
+    <div class="card-title">Training State Thresholds</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
-      Optional manual calibration for daily recommendation thresholds.
-      Leave disabled to use default system thresholds.
+      Adjust these if your training state label doesn't match how you actually feel. Tune based on your typical ATL/CTL values.
     </p>
-
-    <label class="checkbox-label" style="margin-bottom:12px;">
-      <input type="checkbox" id="cal-enabled" onchange="syncCalibrationUi()">
-      Enable custom recommendation thresholds
-    </label>
-
-    <label class="checkbox-label" style="margin-bottom:12px;">
-      <input type="checkbox" id="cal-adaptive" onchange="syncCalibrationUi()">
-      Enable adaptive percentile thresholds (based on recent history)
-    </label>
-
     <div style="font-size:12px;color:var(--muted);margin:-2px 0 12px 0;line-height:1.6;">
-      Adaptive mode builds thresholds from your recent fatigue scores using percentiles:
-      <code>P20</code> increase, <code>P40</code> continue, <code>P60</code> decrease, <code>P80</code> large decrease.
+      Adjust these to match your personal ATL/CTL scale
     </div>
-
-    <div style="font-size:12px;color:var(--muted);margin:-2px 0 12px 0;line-height:1.6;">
-      <strong style="color:var(--text);">Default mode:</strong>
-      calibration disabled with system thresholds:
-      Large Decrease <code>&gt;= 8.0</code>,
-      Decrease <code>&gt;= 6.5</code>,
-      Continue <code>&gt;= 4.5</code>,
-      Increase <code>&gt;= 3.0</code>,
-      otherwise Large Increase.
-    </div>
-
     <div class="settings-grid-2" style="margin-bottom:10px;">
       <div class="form-row" style="margin-bottom:0;">
-        <div class="form-label">Large Decrease threshold</div>
-        <input type="number" id="cal-ld" min="0" max="10" step="0.1">
+        <div class="form-label">Underloaded threshold</div>
+        <input type="number" id="tsb-underloaded" min="-50" max="50" step="0.1">
       </div>
       <div class="form-row" style="margin-bottom:0;">
-        <div class="form-label">Decrease threshold</div>
-        <input type="number" id="cal-d" min="0" max="10" step="0.1">
+        <div class="form-label">Slightly Fresh threshold</div>
+        <input type="number" id="tsb-slightly-fresh" min="-50" max="50" step="0.1">
       </div>
       <div class="form-row" style="margin-bottom:0;">
-        <div class="form-label">Continue threshold</div>
-        <input type="number" id="cal-c" min="0" max="10" step="0.1">
+        <div class="form-label">Balanced threshold</div>
+        <input type="number" id="tsb-balanced" min="-50" max="50" step="0.1">
       </div>
       <div class="form-row" style="margin-bottom:0;">
-        <div class="form-label">Increase threshold</div>
-        <input type="number" id="cal-i" min="0" max="10" step="0.1">
-      </div>
-      <div class="form-row" style="margin-bottom:0;">
-        <div class="form-label">Adaptive lookback (days)</div>
-        <input type="number" id="cal-lookback" min="30" max="180" step="1">
-      </div>
-      <div class="form-row" style="margin-bottom:0;">
-        <div class="form-label">Adaptive minimum entries</div>
-        <input type="number" id="cal-min" min="7" max="120" step="1">
+        <div class="form-label">Slightly Fatigued threshold</div>
+        <input type="number" id="tsb-slightly-fatigued" min="-50" max="50" step="0.1">
       </div>
     </div>
+    <button class="btn btn-primary" id="btn-save-tsb" onclick="saveTrainingStateThresholds()">Save Training State Thresholds</button>
+    <div class="settings-result" id="tsb-result" style="margin-top:10px;"></div>
+  </div>
 
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn btn-primary" id="btn-save-cal" onclick="saveCalibrationSettings()">Save Calibration</button>
-      <button class="btn" id="btn-reset-cal" onclick="resetCalibrationSettings()">Reset Defaults</button>
+  <div class="card settings-card" style="margin-top:14px;">
+    <div class="card-title">Pattern Sensitivity</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
+      Controls when a movement pattern is flagged as stressed or available. Lower the stressed threshold to flag patterns more aggressively, raise it to require more load before flagging.
+    </p>
+    <div class="settings-grid-2" style="margin-bottom:10px;">
+      <div class="form-row" style="margin-bottom:0;">
+        <div class="form-label">Stressed threshold</div>
+        <input type="number" id="pattern-stressed" min="0" max="1" step="0.01">
+      </div>
+      <div class="form-row" style="margin-bottom:0;">
+        <div class="form-label">Neutral threshold</div>
+        <input type="number" id="pattern-neutral" min="0" max="1" step="0.01">
+      </div>
     </div>
+    <button class="btn btn-primary" id="btn-save-pattern" onclick="savePatternSensitivity()">Save Pattern Sensitivity</button>
+    <div class="settings-result" id="pattern-result" style="margin-top:10px;"></div>
+  </div>
 
-    <div class="settings-result" id="cal-result" style="margin-top:10px;"></div>
+  <div class="card settings-card" style="margin-top:14px;">
+    <div class="card-title">Conditioning Load Scale</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
+      Normalizes conditioning session stress relative to strength sessions. Increase if conditioning feels underweighted in your fatigue score, decrease if overweighted. Default 29.
+    </p>
+    <div class="form-row" style="margin-bottom:10px;">
+      <div class="form-label">Conditioning stress scaling factor</div>
+      <input type="number" id="conditioning-scale" min="0.1" max="200" step="0.1">
+    </div>
+    <button class="btn btn-primary" id="btn-save-conditioning" onclick="saveConditioningLoadScale()">Save Conditioning Load Scale</button>
+    <div class="settings-result" id="conditioning-result" style="margin-top:10px;"></div>
   </div>
 
   <div class="card settings-card" style="margin-top:14px;">
@@ -2587,7 +2564,7 @@ async function loadSettingsTab() {
     }
     // Clear result box whenever the tab refreshes
     _setKeyResult('', null);
-    await loadCalibrationSettings();
+    await loadV2Settings();
   } catch (e) {
     document.getElementById('api-key-current').textContent = 'Could not load settings.';
   }
@@ -2606,107 +2583,119 @@ function _setKeyResult(msg, ok) {
   el.style.display = 'block';
 }
 
-function _setCalResult(msg, ok) {
-  const el = document.getElementById('cal-result');
+function _setSectionResult(id, msg, ok) {
+  const el = document.getElementById(id);
   if (!msg) { el.style.display = 'none'; return; }
   el.textContent = msg;
   el.className = 'settings-result ' + (ok ? 'ok' : 'error');
   el.style.display = 'block';
 }
 
-function syncCalibrationUi() {
-  const enabled = document.getElementById('cal-enabled').checked;
-  const adaptive = document.getElementById('cal-adaptive').checked;
-  ['cal-ld', 'cal-d', 'cal-c', 'cal-i'].forEach(id => {
-    document.getElementById(id).disabled = !enabled;
-  });
-  ['cal-lookback', 'cal-min'].forEach(id => {
-    document.getElementById(id).disabled = !adaptive;
-  });
-}
-
-async function loadCalibrationSettings() {
+async function loadV2Settings() {
   try {
-    const r = await fetch('/api/settings/calibration');
+    const r = await fetch('/api/settings/v2');
     const d = await r.json();
-    if (!r.ok) throw new Error(d.detail || 'Failed to load calibration settings.');
+    if (!r.ok) throw new Error(d.detail || 'Failed to load v2 settings.');
 
-    document.getElementById('cal-enabled').checked = !!d.enabled;
-    document.getElementById('cal-adaptive').checked = !!d.adaptive_enabled;
-    document.getElementById('cal-ld').value = d.threshold_large_decrease;
-    document.getElementById('cal-d').value = d.threshold_decrease;
-    document.getElementById('cal-c').value = d.threshold_continue;
-    document.getElementById('cal-i').value = d.threshold_increase;
-    document.getElementById('cal-lookback').value = d.adaptive_lookback_days;
-    document.getElementById('cal-min').value = d.adaptive_min_entries;
-    syncCalibrationUi();
-    _setCalResult('', null);
+    document.getElementById('tsb-underloaded').value = d.tsb_threshold_underloaded;
+    document.getElementById('tsb-slightly-fresh').value = d.tsb_threshold_slightly_fresh;
+    document.getElementById('tsb-balanced').value = d.tsb_threshold_balanced;
+    document.getElementById('tsb-slightly-fatigued').value = d.tsb_threshold_slightly_fatigued;
+    document.getElementById('pattern-stressed').value = d.v2_threshold_stressed;
+    document.getElementById('pattern-neutral').value = d.v2_threshold_neutral;
+    document.getElementById('conditioning-scale').value = d.conditioning_stress_scaling_factor;
+
+    _setSectionResult('tsb-result', '', null);
+    _setSectionResult('pattern-result', '', null);
+    _setSectionResult('conditioning-result', '', null);
   } catch (e) {
-    _setCalResult('✗ ' + e.message, false);
+    _setSectionResult('tsb-result', '✗ ' + e.message, false);
   }
 }
 
-async function saveCalibrationSettings() {
-  const btn = document.getElementById('btn-save-cal');
+async function saveTrainingStateThresholds() {
+  const btn = document.getElementById('btn-save-tsb');
   btn.disabled = true;
   btn.textContent = 'Saving…';
   try {
     const payload = {
-      enabled: document.getElementById('cal-enabled').checked,
-      threshold_large_decrease: +document.getElementById('cal-ld').value,
-      threshold_decrease: +document.getElementById('cal-d').value,
-      threshold_continue: +document.getElementById('cal-c').value,
-      threshold_increase: +document.getElementById('cal-i').value,
-      adaptive_enabled: document.getElementById('cal-adaptive').checked,
-      adaptive_lookback_days: +document.getElementById('cal-lookback').value,
-      adaptive_min_entries: +document.getElementById('cal-min').value,
+      tsb_threshold_underloaded: +document.getElementById('tsb-underloaded').value,
+      tsb_threshold_slightly_fresh: +document.getElementById('tsb-slightly-fresh').value,
+      tsb_threshold_balanced: +document.getElementById('tsb-balanced').value,
+      tsb_threshold_slightly_fatigued: +document.getElementById('tsb-slightly-fatigued').value,
     };
 
-    const r = await fetch('/api/settings/calibration', {
+    const r = await fetch('/api/settings/v2/training-state', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.detail || 'Save failed.');
-    _setCalResult('✓ Calibration settings saved.', true);
+    _setSectionResult('tsb-result', '✓ Training state thresholds saved.', true);
     _trainingLoadPayload = null;
     loadTrainingLoadCard();
     if (logLoaded) { logLoaded = false; loadLog(); }
   } catch (e) {
-    _setCalResult('✗ ' + e.message, false);
+    _setSectionResult('tsb-result', '✗ ' + e.message, false);
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Save Calibration';
+    btn.textContent = 'Save Training State Thresholds';
   }
 }
 
-async function resetCalibrationSettings() {
-  const btn = document.getElementById('btn-reset-cal');
+async function savePatternSensitivity() {
+  const btn = document.getElementById('btn-save-pattern');
   btn.disabled = true;
-  btn.textContent = 'Resetting…';
+  btn.textContent = 'Saving…';
   try {
-    const r = await fetch('/api/settings/calibration/reset', { method: 'POST' });
+    const payload = {
+      v2_threshold_stressed: +document.getElementById('pattern-stressed').value,
+      v2_threshold_neutral: +document.getElementById('pattern-neutral').value,
+    };
+    const r = await fetch('/api/settings/v2/pattern-sensitivity', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
     const d = await r.json();
-    if (!r.ok) throw new Error(d.detail || 'Reset failed.');
-    document.getElementById('cal-enabled').checked = !!d.enabled;
-    document.getElementById('cal-adaptive').checked = !!d.adaptive_enabled;
-    document.getElementById('cal-ld').value = d.threshold_large_decrease;
-    document.getElementById('cal-d').value = d.threshold_decrease;
-    document.getElementById('cal-c').value = d.threshold_continue;
-    document.getElementById('cal-i').value = d.threshold_increase;
-    document.getElementById('cal-lookback').value = d.adaptive_lookback_days;
-    document.getElementById('cal-min').value = d.adaptive_min_entries;
-    syncCalibrationUi();
-    _setCalResult('✓ Calibration reset to defaults.', true);
+    if (!r.ok) throw new Error(d.detail || 'Save failed.');
+    _setSectionResult('pattern-result', '✓ Pattern sensitivity saved.', true);
     _trainingLoadPayload = null;
     loadTrainingLoadCard();
     if (logLoaded) { logLoaded = false; loadLog(); }
   } catch (e) {
-    _setCalResult('✗ ' + e.message, false);
+    _setSectionResult('pattern-result', '✗ ' + e.message, false);
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Reset Defaults';
+    btn.textContent = 'Save Pattern Sensitivity';
+  }
+}
+
+async function saveConditioningLoadScale() {
+  const btn = document.getElementById('btn-save-conditioning');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    const payload = {
+      conditioning_stress_scaling_factor: +document.getElementById('conditioning-scale').value,
+    };
+    const r = await fetch('/api/settings/v2/conditioning-scale', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Save failed.');
+    _setSectionResult('conditioning-result', '✓ Conditioning load scale saved.', true);
+    _trainingLoadPayload = null;
+    loadTrainingLoadCard();
+    if (logLoaded) { logLoaded = false; loadLog(); }
+  } catch (e) {
+    _setSectionResult('conditioning-result', '✗ ' + e.message, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save Conditioning Load Scale';
   }
 }
 

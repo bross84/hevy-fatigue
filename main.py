@@ -96,21 +96,20 @@ class ReadinessUpdate(BaseModel):
 class SettingsInput(BaseModel):
     hevy_api_key: str
 
-class CalibrationSettingsInput(BaseModel):
-    enabled: bool = False
-    threshold_large_decrease: float = Field(8.0, ge=0.0, le=10.0)
-    threshold_decrease: float = Field(6.5, ge=0.0, le=10.0)
-    threshold_continue: float = Field(4.5, ge=0.0, le=10.0)
-    threshold_increase: float = Field(3.0, ge=0.0, le=10.0)
-    v2_threshold_stressed: float = Field(0.75, ge=0.0, le=1.0)
-    v2_threshold_neutral: float = Field(0.50, ge=0.0, le=1.0)
+class TrainingStateThresholdsInput(BaseModel):
     tsb_threshold_underloaded: float = Field(8.0, ge=-50.0, le=50.0)
     tsb_threshold_slightly_fresh: float = Field(3.0, ge=-50.0, le=50.0)
     tsb_threshold_balanced: float = Field(-5.0, ge=-50.0, le=50.0)
     tsb_threshold_slightly_fatigued: float = Field(-10.0, ge=-50.0, le=50.0)
-    adaptive_enabled: bool = False
-    adaptive_lookback_days: int = Field(90, ge=30, le=180)
-    adaptive_min_entries: int = Field(21, ge=7, le=120)
+
+
+class PatternSensitivityInput(BaseModel):
+    v2_threshold_stressed: float = Field(0.75, ge=0.0, le=1.0)
+    v2_threshold_neutral: float = Field(0.50, ge=0.0, le=1.0)
+
+
+class ConditioningLoadScaleInput(BaseModel):
+    conditioning_stress_scaling_factor: float = Field(29.0, gt=0.0, le=200.0)
 
 class MappingUpdate(BaseModel):
     pct_quad_dom: float = Field(ge=0.0, le=1.0)
@@ -317,6 +316,16 @@ def _get_db_api_key(db: Session) -> str | None:
 
 _CONDITIONING_SCALING_DEFAULT = 29.0
 
+_V2_SETTINGS_DEFAULTS = {
+    "v2_threshold_stressed": 0.75,
+    "v2_threshold_neutral": 0.50,
+    "tsb_threshold_underloaded": 8.0,
+    "tsb_threshold_slightly_fresh": 3.0,
+    "tsb_threshold_balanced": -5.0,
+    "tsb_threshold_slightly_fatigued": -10.0,
+    "conditioning_stress_scaling_factor": _CONDITIONING_SCALING_DEFAULT,
+}
+
 _CALIBRATION_DEFAULTS = {
     "enabled": False,
     "threshold_large_decrease": 8.0,
@@ -386,6 +395,84 @@ def _get_conditioning_scaling_factor(db: Session) -> float:
         return v if v > 0 else _CONDITIONING_SCALING_DEFAULT
     except (TypeError, ValueError):
         return _CONDITIONING_SCALING_DEFAULT
+
+
+def _validate_tsb_thresholds(cfg: dict) -> None:
+    if not (
+        cfg["tsb_threshold_underloaded"] >= cfg["tsb_threshold_slightly_fresh"] >=
+        cfg["tsb_threshold_balanced"] >= cfg["tsb_threshold_slightly_fatigued"]
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "TSB thresholds must be in descending order: "
+                "underloaded >= slightly_fresh >= balanced >= slightly_fatigued"
+            ),
+        )
+
+
+def _validate_pattern_thresholds(cfg: dict) -> None:
+    stressed = float(cfg["v2_threshold_stressed"])
+    neutral = float(cfg["v2_threshold_neutral"])
+    if not (stressed > neutral > 0.0):
+        raise HTTPException(
+            status_code=422,
+            detail="Pattern thresholds must satisfy stressed > neutral > 0",
+        )
+
+
+def _validate_conditioning_scale(cfg: dict) -> None:
+    scale = float(cfg["conditioning_stress_scaling_factor"])
+    if scale <= 0.0:
+        raise HTTPException(
+            status_code=422,
+            detail="Conditioning load scale must be greater than 0",
+        )
+
+
+def _get_v2_settings(db: Session) -> dict:
+    def _safe_float(raw: str | None, default: float) -> float:
+        if raw is None:
+            return default
+        try:
+            return float(raw)
+        except (TypeError, ValueError):
+            return default
+
+    cfg = {
+        "tsb_threshold_underloaded": _safe_float(
+            _get_setting_value(db, "tsb_threshold_underloaded"),
+            _V2_SETTINGS_DEFAULTS["tsb_threshold_underloaded"],
+        ),
+        "tsb_threshold_slightly_fresh": _safe_float(
+            _get_setting_value(db, "tsb_threshold_slightly_fresh"),
+            _V2_SETTINGS_DEFAULTS["tsb_threshold_slightly_fresh"],
+        ),
+        "tsb_threshold_balanced": _safe_float(
+            _get_setting_value(db, "tsb_threshold_balanced"),
+            _V2_SETTINGS_DEFAULTS["tsb_threshold_balanced"],
+        ),
+        "tsb_threshold_slightly_fatigued": _safe_float(
+            _get_setting_value(db, "tsb_threshold_slightly_fatigued"),
+            _V2_SETTINGS_DEFAULTS["tsb_threshold_slightly_fatigued"],
+        ),
+        "v2_threshold_stressed": _safe_float(
+            _get_setting_value(db, "fatigue_v2_threshold_stressed"),
+            _V2_SETTINGS_DEFAULTS["v2_threshold_stressed"],
+        ),
+        "v2_threshold_neutral": _safe_float(
+            _get_setting_value(db, "fatigue_v2_threshold_neutral"),
+            _V2_SETTINGS_DEFAULTS["v2_threshold_neutral"],
+        ),
+        "conditioning_stress_scaling_factor": _safe_float(
+            _get_setting_value(db, "conditioning_stress_scaling_factor"),
+            _V2_SETTINGS_DEFAULTS["conditioning_stress_scaling_factor"],
+        ),
+    }
+    _validate_tsb_thresholds(cfg)
+    _validate_pattern_thresholds(cfg)
+    _validate_conditioning_scale(cfg)
+    return cfg
 
 def _validate_calibration_thresholds(cfg: dict) -> None:
     if not (
@@ -556,71 +643,57 @@ def test_api_key(db: Session = Depends(get_db)):
     ok = client.test_connection()
     return {"ok": ok}
 
+@app.get("/api/settings/v2")
+def get_v2_settings(db: Session = Depends(get_db)):
+    """Return v2-facing settings used by training state, pattern status, and conditioning scale."""
+    return _get_v2_settings(db)
+
+
 @app.get("/api/settings/calibration")
 def get_calibration_settings(db: Session = Depends(get_db)):
-    """Return fatigue recommendation calibration settings."""
-    cfg = _get_calibration_settings(db)
-    _validate_calibration_thresholds(cfg)
-    return cfg
+    """Back-compat alias for v2 settings payload."""
+    return _get_v2_settings(db)
 
-@app.put("/api/settings/calibration")
-def save_calibration_settings(data: CalibrationSettingsInput, db: Session = Depends(get_db)):
-    """Save user-defined fatigue recommendation thresholds (opt-in)."""
+
+@app.put("/api/settings/v2/training-state")
+def save_training_state_thresholds(data: TrainingStateThresholdsInput, db: Session = Depends(get_db)):
     cfg = {
-        "enabled": data.enabled,
-        "threshold_large_decrease": round(float(data.threshold_large_decrease), 2),
-        "threshold_decrease": round(float(data.threshold_decrease), 2),
-        "threshold_continue": round(float(data.threshold_continue), 2),
-        "threshold_increase": round(float(data.threshold_increase), 2),
-        "v2_threshold_stressed": round(float(data.v2_threshold_stressed), 3),
-        "v2_threshold_neutral": round(float(data.v2_threshold_neutral), 3),
         "tsb_threshold_underloaded": round(float(data.tsb_threshold_underloaded), 2),
         "tsb_threshold_slightly_fresh": round(float(data.tsb_threshold_slightly_fresh), 2),
         "tsb_threshold_balanced": round(float(data.tsb_threshold_balanced), 2),
         "tsb_threshold_slightly_fatigued": round(float(data.tsb_threshold_slightly_fatigued), 2),
-        "adaptive_enabled": data.adaptive_enabled,
-        "adaptive_lookback_days": int(data.adaptive_lookback_days),
-        "adaptive_min_entries": int(data.adaptive_min_entries),
     }
-    _validate_calibration_thresholds(cfg)
-
-    _set_setting_value(db, "fatigue_calibration_enabled", "1" if cfg["enabled"] else "0")
-    _set_setting_value(db, "fatigue_threshold_large_decrease", str(cfg["threshold_large_decrease"]))
-    _set_setting_value(db, "fatigue_threshold_decrease", str(cfg["threshold_decrease"]))
-    _set_setting_value(db, "fatigue_threshold_continue", str(cfg["threshold_continue"]))
-    _set_setting_value(db, "fatigue_threshold_increase", str(cfg["threshold_increase"]))
-    _set_setting_value(db, "fatigue_v2_threshold_stressed", str(cfg["v2_threshold_stressed"]))
-    _set_setting_value(db, "fatigue_v2_threshold_neutral", str(cfg["v2_threshold_neutral"]))
+    _validate_tsb_thresholds(cfg)
     _set_setting_value(db, "tsb_threshold_underloaded", str(cfg["tsb_threshold_underloaded"]))
     _set_setting_value(db, "tsb_threshold_slightly_fresh", str(cfg["tsb_threshold_slightly_fresh"]))
     _set_setting_value(db, "tsb_threshold_balanced", str(cfg["tsb_threshold_balanced"]))
     _set_setting_value(db, "tsb_threshold_slightly_fatigued", str(cfg["tsb_threshold_slightly_fatigued"]))
-    _set_setting_value(db, "fatigue_calibration_adaptive_enabled", "1" if cfg["adaptive_enabled"] else "0")
-    _set_setting_value(db, "fatigue_calibration_adaptive_lookback_days", str(cfg["adaptive_lookback_days"]))
-    _set_setting_value(db, "fatigue_calibration_adaptive_min_entries", str(cfg["adaptive_min_entries"]))
     db.commit()
-    return {"message": "Calibration settings saved.", **cfg}
+    return {"message": "Training state thresholds saved.", **cfg}
 
-@app.post("/api/settings/calibration/reset")
-def reset_calibration_settings(db: Session = Depends(get_db)):
-    """Reset fatigue recommendation thresholds to defaults and disable calibration."""
-    defaults = dict(_CALIBRATION_DEFAULTS)
-    _set_setting_value(db, "fatigue_calibration_enabled", "0")
-    _set_setting_value(db, "fatigue_threshold_large_decrease", str(defaults["threshold_large_decrease"]))
-    _set_setting_value(db, "fatigue_threshold_decrease", str(defaults["threshold_decrease"]))
-    _set_setting_value(db, "fatigue_threshold_continue", str(defaults["threshold_continue"]))
-    _set_setting_value(db, "fatigue_threshold_increase", str(defaults["threshold_increase"]))
-    _set_setting_value(db, "fatigue_v2_threshold_stressed", str(defaults["v2_threshold_stressed"]))
-    _set_setting_value(db, "fatigue_v2_threshold_neutral", str(defaults["v2_threshold_neutral"]))
-    _set_setting_value(db, "tsb_threshold_underloaded", str(defaults["tsb_threshold_underloaded"]))
-    _set_setting_value(db, "tsb_threshold_slightly_fresh", str(defaults["tsb_threshold_slightly_fresh"]))
-    _set_setting_value(db, "tsb_threshold_balanced", str(defaults["tsb_threshold_balanced"]))
-    _set_setting_value(db, "tsb_threshold_slightly_fatigued", str(defaults["tsb_threshold_slightly_fatigued"]))
-    _set_setting_value(db, "fatigue_calibration_adaptive_enabled", "0")
-    _set_setting_value(db, "fatigue_calibration_adaptive_lookback_days", str(defaults["adaptive_lookback_days"]))
-    _set_setting_value(db, "fatigue_calibration_adaptive_min_entries", str(defaults["adaptive_min_entries"]))
+
+@app.put("/api/settings/v2/pattern-sensitivity")
+def save_pattern_sensitivity(data: PatternSensitivityInput, db: Session = Depends(get_db)):
+    cfg = {
+        "v2_threshold_stressed": round(float(data.v2_threshold_stressed), 3),
+        "v2_threshold_neutral": round(float(data.v2_threshold_neutral), 3),
+    }
+    _validate_pattern_thresholds(cfg)
+    _set_setting_value(db, "fatigue_v2_threshold_stressed", str(cfg["v2_threshold_stressed"]))
+    _set_setting_value(db, "fatigue_v2_threshold_neutral", str(cfg["v2_threshold_neutral"]))
     db.commit()
-    return {"message": "Calibration settings reset.", **defaults}
+    return {"message": "Pattern sensitivity saved.", **cfg}
+
+
+@app.put("/api/settings/v2/conditioning-scale")
+def save_conditioning_load_scale(data: ConditioningLoadScaleInput, db: Session = Depends(get_db)):
+    cfg = {
+        "conditioning_stress_scaling_factor": round(float(data.conditioning_stress_scaling_factor), 3),
+    }
+    _validate_conditioning_scale(cfg)
+    _set_setting_value(db, "conditioning_stress_scaling_factor", str(cfg["conditioning_stress_scaling_factor"]))
+    db.commit()
+    return {"message": "Conditioning load scale saved.", **cfg}
 
 # ── Training Load (ATL / CTL / TSB) ──────────────────────────────────────────
 
