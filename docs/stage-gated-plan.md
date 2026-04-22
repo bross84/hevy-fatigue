@@ -397,10 +397,65 @@ Gate evidence (passed):
 - Empty-history and missing-pattern fallbacks render without crashes.
 - Range selection re-renders both charts with filtered history windows (42, 90, 180 days).
 
-### Stage 7.3 - Log / Session View (Session C)
+### Stage 7.3 - Log / Session View (Session C) - COMPLETE
 
 Goal:
 - Promote workout/session diagnostics and log workflows in a dedicated view.
+
+Implemented changes:
+- Reworked the Workouts tab in `static/index.html` to split into two distinct surfaces:
+	- Session Verification Queue (existing Stage 4 flow retained)
+	- Session Log (new Stage 7.3 surface)
+- Removed the old `Last 12 Workouts - Stress Detail` table and replaced it with a session-log experience backed by `GET /api/workout-sessions`.
+- Added session log state and helpers in `static/index.html`:
+	- `sessionLogRows`, `sessionLogVisibleCount`, `sessionLogFilter`, `sessionLogFatiguePayload`, `sessionDetailCache`
+	- `loadSessionLog()`, `renderSessionLog()`, `setSessionLogFilter()`, `loadMoreSessionLog()`
+	- `_sessionBadgeClass()`, `_sessionFilterMatches()`, `_sessionFatigueAnnotation()`, `_sessionStatusNote()`
+	- `toggleSessionDetail()` and detail rendering helpers for all supported session types
+- Added a new on-demand backend detail endpoint in `main.py`:
+	- `GET /api/workout-sessions/{hevy_workout_id}`
+- Added modality-aware session detail payloads in `main.py`:
+	- `strength` / `hypertrophy`: set-level detail plus central/peripheral stress
+	- `conditioning`: sRPE x duration load plus mapped pattern distribution
+	- `cardio`: sRPE x duration load plus fixed 30/70 central/peripheral split
+	- `pending`: verification requirements plus imported exercise summary
+- Fixed FastAPI route ordering so static `GET /api/workout-sessions/pending` is not shadowed by dynamic `GET /api/workout-sessions/{hevy_workout_id}`.
+- Added responsive session-log CSS for badges, toolbar, cards, detail grids, and stacked mobile layout.
+
+Gate evidence (passed):
+- Workouts tab now loads the verification queue and session log together via `loadWorkouts()`.
+- Session log filtering, empty-state rendering, and load-more behavior implemented without relying on the removed recent-workouts table.
+- On-demand session detail rendering implemented for all four variants: pending, strength/hypertrophy, conditioning, and cardio.
+- Pending queue fetch path restored after route-order fix.
+- Empty-state live validation passed without API key or workout data.
+
+Open validation gap before broader rollout:
+- Real-data visual validation for populated session-detail cards, modality realism, and trend-shape realism is still pending until the local database contains representative imported sessions.
+
+### Post-Stage 7.3 Scoped Changes (completed before commit)
+
+Implemented changes:
+- Updated `_subjective_fatigue()` in `main.py` so joint fields no longer contribute to the global fatigue score; weighting is now `0.45 tiredness + 0.30 recovery + 0.25 soreness`.
+- Added `_resolve_joint_advisory()` in `main.py` and included `joint_advisory` in `today.recommendation_v2`.
+- Added a conditional `Joint Advisory` card to the Today view in `static/index.html`.
+- Rendered advisory/warning rows for upper and lower joint signals using existing Stage 7.1 pattern color tokens:
+	- knee -> `--quad`
+	- hip -> `--posterior`
+	- push -> `--push`
+	- pull -> `--pull`
+- Polished the Today status tiles so `Check-in pending` / `0 pending` inherit the app font and align correctly inside the status cards.
+
+Validation evidence (passed):
+- Backend joint gate assertions passed for:
+	- no-check-in hidden advisory state
+	- `2/1` -> none / none
+	- `3/1` -> upper advisory
+	- `4/3` -> upper warning + lower advisory
+	- `4/4` -> upper warning + lower warning
+	- fatigue-score invariance with joint values changed
+- Frontend advisory rendering was validated with injected payload cases for hidden, advisory, and warning combinations.
+- Pattern chips were manually verified to use existing CSS token variables rather than hardcoded colors.
+- Today status tile typography/alignment fix validated with no file errors and live page rendering confirmation.
 
 Gate tests:
 - 7.1 gates:
@@ -418,6 +473,13 @@ Gate tests:
 	- Pattern chart includes knee/hip/push/pull ATL lines and legend toggles.
 	- Missing pattern history shows note instead of chart crash.
 	- Trend and Today share one cached payload fetch pathway.
+- 7.3 gates:
+	- Workouts tab renders the verification queue and session log together.
+	- Session log is driven by session endpoints rather than the removed recent-workouts table.
+	- Filter chips (`all`, `pending`, `verified`, `strength`, `hypertrophy`, `conditioning`, `cardio`) render and switch views client-side.
+	- Empty-state rendering succeeds without crashes when there is no API key or no imported workout data.
+	- Session detail expands on demand and supports pending, strength/hypertrophy, conditioning, and cardio payload shapes.
+	- Static `pending` route remains reachable after adding dynamic session detail route.
 
 ## Decisions Locked
 

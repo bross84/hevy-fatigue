@@ -333,6 +333,62 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
   font-size: 12px;
   color: var(--muted);
 }
+.today-joint-list {
+  display: grid;
+  gap: 8px;
+}
+.today-joint-row {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--warn);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  padding: 10px;
+  display: grid;
+  gap: 5px;
+}
+.today-joint-row-warning {
+  border-left-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+.today-joint-title {
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.today-joint-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.today-joint-patterns {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.today-joint-pattern {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+.today-joint-pattern-knee {
+  background: color-mix(in srgb, var(--quad) 20%, transparent);
+  color: var(--quad);
+}
+.today-joint-pattern-hip {
+  background: color-mix(in srgb, var(--posterior) 20%, transparent);
+  color: var(--posterior);
+}
+.today-joint-pattern-push {
+  background: color-mix(in srgb, var(--push) 20%, transparent);
+  color: var(--push);
+}
+.today-joint-pattern-pull {
+  background: color-mix(in srgb, var(--pull) 20%, transparent);
+  color: var(--pull);
+}
 .today-metric-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -377,8 +433,17 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
   background: var(--bg);
   cursor: pointer;
   min-width: 0;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
 }
 .today-footer-item:hover { border-color: var(--accent); }
+.today-footer-body {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
 .today-footer-label {
   font-size: 11px;
   color: var(--muted);
@@ -781,9 +846,246 @@ tbody tr:hover td { background: var(--row-hover); }
   font-size: 12px;
 }
 
+.session-log-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.session-log-count {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.session-log-list {
+  display: grid;
+  gap: 10px;
+}
+
+.session-log-item {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.session-log-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.session-log-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.session-log-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.session-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.session-badge-strength,
+.session-badge-hypertrophy {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.session-badge-conditioning {
+  background: color-mix(in srgb, var(--warn) 18%, transparent);
+  color: var(--warn);
+}
+
+.session-badge-cardio {
+  background: color-mix(in srgb, var(--posterior) 18%, transparent);
+  color: var(--posterior);
+}
+
+.session-badge-pending {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+
+.session-badge-verified {
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--success);
+}
+
+.session-log-meta {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.session-log-fatigue {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.session-log-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.session-log-status-note {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.session-log-load-more {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+}
+
+.session-log-empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 18px 12px;
+}
+
+.session-detail-wrap {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.session-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.session-detail-cell {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  padding: 10px;
+}
+
+.session-detail-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+
+.session-detail-value {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.session-detail-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.session-detail-section {
+  margin-top: 12px;
+}
+
+.session-detail-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.session-detail-exercise-list {
+  display: grid;
+  gap: 8px;
+}
+
+.session-detail-exercise {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  padding: 10px;
+}
+
+.session-detail-exercise-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.session-detail-exercise-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.session-detail-exercise-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.session-detail-table td,
+.session-detail-table th {
+  font-size: 12px;
+}
+
 @media (max-width: 760px) {
   .verify-fields {
     grid-template-columns: 1fr;
+  }
+
+  .session-log-toolbar {
+    align-items: stretch;
+  }
+
+  .session-log-toolbar .btn-group {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .session-log-head,
+  .session-log-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .session-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .session-log-badges {
+    justify-content: flex-start;
   }
 }
 
@@ -1323,6 +1625,7 @@ tbody tr:hover td { background: var(--row-hover); }
   <div id="today-wrap" class="today-wrap">
     <div class="today-card" id="today-state-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
     <div class="today-card" id="today-pattern-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
+    <div class="today-card" id="today-joint-card" style="display:none;"></div>
     <div class="today-card" id="today-metrics-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
     <div class="today-card" id="today-footer-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
   </div>
@@ -1546,8 +1849,8 @@ tbody tr:hover td { background: var(--row-hover); }
   </div>
 
   <div class="card">
-    <div class="card-title">Last 12 Workouts — Stress Detail</div>
-    <div id="workouts-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
+    <div class="card-title">Session Log</div>
+    <div id="session-log-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
   </div>
 </section>
 
@@ -2010,6 +2313,11 @@ let _trainingLoadFetchPromise = null;
 let trendMainChart = null;
 let trendPatternChart = null;
 let trendRangeDays = 3;
+let sessionLogRows = [];
+let sessionLogVisibleCount = 10;
+let sessionLogFilter = 'all';
+let sessionLogFatiguePayload = null;
+let sessionDetailCache = {};
 
 function setMobileNavOpen(isOpen) {
   document.body.classList.toggle('mobile-nav-open', !!isOpen);
@@ -2789,48 +3097,321 @@ async function deleteLogEntry() {
 
 // ═══ Workouts tab ═════════════════════════════════════
 async function loadWorkouts() {
+  workoutsLoaded = true;
   loadSessionVerificationQueue();
+  loadSessionLog();
+}
 
-  const wrap = document.getElementById('workouts-wrap');
+function _sessionBadgeClass(modalityOrStatus) {
+  const key = String(modalityOrStatus || '').toLowerCase();
+  if (['strength', 'hypertrophy', 'conditioning', 'cardio', 'pending', 'verified'].includes(key)) {
+    return `session-badge session-badge-${key}`;
+  }
+  return 'session-badge';
+}
+
+function _sessionFilterMatches(session) {
+  if (sessionLogFilter === 'all') return true;
+  if (sessionLogFilter === 'pending' || sessionLogFilter === 'verified') {
+    return session.verification_status === sessionLogFilter;
+  }
+  return session.modality === sessionLogFilter;
+}
+
+function _sessionFatigueAnnotation(session) {
+  const history = sessionLogFatiguePayload?.history || [];
+  const item = history.find(entry => entry.date === session.workout_date);
+  if (!item) return 'Fatigue annotation unavailable for this date.';
+  const label = _resolveStateLabel(item, sessionLogFatiguePayload?.thresholds || {});
+  const score = Number(item.fatigue_score ?? 0);
+  return `${label} · Fatigue ${_fmt1(score)} · ATL ${_fmt1(item.atl)} · CTL ${_fmt1(item.ctl)} · TSB ${_fmt1(item.tsb)}`;
+}
+
+function _sessionStatusNote(session) {
+  if (session.verification_status === 'pending') {
+    return session.needs_manual_duration
+      ? 'Pending verification - manual duration still required.'
+      : 'Pending verification - review modality and confirm session inputs.';
+  }
+  if (session.modality === 'conditioning' || session.modality === 'cardio') {
+    return session.srpe == null
+      ? 'Verified without sRPE details available.'
+      : `Verified with sRPE ${_fmt1(session.srpe)}.`;
+  }
+  return 'Verified and ready for detail review.';
+}
+
+function setSessionLogFilter(filterKey) {
+  sessionLogFilter = filterKey;
+  sessionLogVisibleCount = 10;
+  renderSessionLog();
+}
+
+function loadMoreSessionLog() {
+  sessionLogVisibleCount += 10;
+  renderSessionLog();
+}
+
+function _sessionDetailMetric(label, value) {
+  return `
+    <div class="session-detail-cell">
+      <div class="session-detail-label">${escHtml(label)}</div>
+      <div class="session-detail-value">${escHtml(String(value))}</div>
+    </div>
+  `;
+}
+
+function _sessionDetailExerciseList(exercises) {
+  if (!Array.isArray(exercises) || !exercises.length) {
+    return '<div class="session-detail-note">No exercise rows were imported for this session.</div>';
+  }
+  return `<div class="session-detail-exercise-list">${exercises.map(ex => `
+    <div class="session-detail-exercise">
+      <div class="session-detail-exercise-head">
+        <div class="session-detail-exercise-title">${escHtml(ex.exercise_title || 'Unknown exercise')}</div>
+        <div class="session-detail-exercise-meta">
+          <span>${escHtml(String(ex.set_count || 0))} sets</span>
+          <span>${escHtml(String(ex.total_reps || 0))} reps</span>
+        </div>
+      </div>
+      <div class="session-detail-exercise-meta">
+        <span>Volume ${escHtml(Number(ex.total_volume || 0).toLocaleString())} lbs</span>
+        <span>Top ${escHtml(_fmt1(ex.top_weight || 0))} lbs</span>
+        <span>${ex.avg_rpe == null ? 'Avg RPE -' : `Avg RPE ${escHtml(_fmt1(ex.avg_rpe))}`}</span>
+      </div>
+    </div>
+  `).join('')}</div>`;
+}
+
+function _sessionSetTable(setRows) {
+  if (!Array.isArray(setRows) || !setRows.length) {
+    return '<div class="session-detail-note">No set rows were imported for this session.</div>';
+  }
+  return `
+    <div class="table-scroll session-detail-table"><table>
+      <thead><tr>
+        <th>Exercise</th>
+        <th>Set</th>
+        <th>Weight</th>
+        <th>Reps</th>
+        <th>RPE</th>
+      </tr></thead>
+      <tbody>
+        ${setRows.map(setRow => `
+          <tr>
+            <td>${escHtml(setRow.exercise_title || 'Unknown exercise')}</td>
+            <td>${escHtml(String(setRow.set_number ?? '-'))}</td>
+            <td>${setRow.weight_lbs == null ? '—' : escHtml(_fmt1(setRow.weight_lbs))}</td>
+            <td>${escHtml(String(setRow.reps ?? '-'))}</td>
+            <td>${setRow.rpe == null ? '—' : escHtml(_fmt1(setRow.rpe))}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table></div>
+  `;
+}
+
+function _renderSessionDetail(detail) {
+  const summary = detail.summary || {};
+  const session = detail.session || {};
+  const stress = detail.stress || null;
+  const exercisesHtml = _sessionDetailExerciseList(detail.exercises || []);
+
+  if (detail.detail_type === 'strength' || detail.detail_type === 'hypertrophy') {
+    return `
+      <div class="session-detail-grid">
+        ${_sessionDetailMetric('Sets', summary.set_count || 0)}
+        ${_sessionDetailMetric('Volume', `${Number(summary.volume || 0).toLocaleString()} lbs`)}
+        ${_sessionDetailMetric('Avg RPE', summary.avg_rpe == null ? '—' : _fmt1(summary.avg_rpe))}
+        ${_sessionDetailMetric('Central', _fmt1(stress?.central || 0))}
+        ${_sessionDetailMetric('Peripheral', _fmt1(stress?.peripheral || 0))}
+        ${_sessionDetailMetric('Exercises', summary.exercise_count || 0)}
+      </div>
+      <div class="session-detail-note">Per-set stress is shown here using the same strength/hypertrophy pathway as the existing stress model.</div>
+      <div class="session-detail-section">
+        <div class="session-detail-section-title">Exercise Summary</div>
+        ${exercisesHtml}
+      </div>
+      <div class="session-detail-section">
+        <div class="session-detail-section-title">Set Detail</div>
+        ${_sessionSetTable(detail.sets || [])}
+      </div>
+    `;
+  }
+
+  if (detail.detail_type === 'conditioning') {
+    const pattern = stress?.pattern_distribution || {};
+    return `
+      <div class="session-detail-grid">
+        ${_sessionDetailMetric('Duration', session.duration_minutes == null ? 'Pending' : `${session.duration_minutes} min`)}
+        ${_sessionDetailMetric('sRPE', session.srpe == null ? '—' : _fmt1(session.srpe))}
+        ${_sessionDetailMetric('Session Load', stress ? _fmt1(stress.raw) : '—')}
+        ${_sessionDetailMetric('Central', stress ? _fmt1(stress.central) : '—')}
+        ${_sessionDetailMetric('Peripheral', stress ? _fmt1(stress.peripheral) : '—')}
+        ${_sessionDetailMetric('Exercises', summary.exercise_count || 0)}
+      </div>
+      <div class="session-detail-note">Conditioning sessions use sRPE × duration, then distribute load using the average mapped exercise split for the session. Knee ${_fmt1((pattern.knee || 0) * 100)}%, Hip ${_fmt1((pattern.hip || 0) * 100)}%, Push ${_fmt1((pattern.push || 0) * 100)}%, Pull ${_fmt1((pattern.pull || 0) * 100)}%.</div>
+      <div class="session-detail-section">
+        <div class="session-detail-section-title">Exercise Summary</div>
+        ${exercisesHtml}
+      </div>
+    `;
+  }
+
+  if (detail.detail_type === 'cardio') {
+    return `
+      <div class="session-detail-grid">
+        ${_sessionDetailMetric('Duration', session.duration_minutes == null ? 'Pending' : `${session.duration_minutes} min`)}
+        ${_sessionDetailMetric('sRPE', session.srpe == null ? '—' : _fmt1(session.srpe))}
+        ${_sessionDetailMetric('Session Load', stress ? _fmt1(stress.raw) : '—')}
+        ${_sessionDetailMetric('Central', stress ? _fmt1(stress.central) : '—')}
+        ${_sessionDetailMetric('Peripheral', stress ? _fmt1(stress.peripheral) : '—')}
+        ${_sessionDetailMetric('Exercises', summary.exercise_count || 0)}
+      </div>
+      <div class="session-detail-note">Cardio uses the same sRPE × duration session load, then applies the fixed 30% central / 70% peripheral split.</div>
+      <div class="session-detail-section">
+        <div class="session-detail-section-title">Exercise Summary</div>
+        ${exercisesHtml}
+      </div>
+    `;
+  }
+
+  const pending = detail.pending_requirements || {};
+  return `
+    <div class="session-detail-grid">
+      ${_sessionDetailMetric('Imported Modality', (session.modality || 'unknown').replace(/^./, c => c.toUpperCase()))}
+      ${_sessionDetailMetric('Duration', session.duration_minutes == null ? 'Pending' : `${session.duration_minutes} min`)}
+      ${_sessionDetailMetric('sRPE Needed', pending.needs_srpe ? 'Yes' : 'No')}
+      ${_sessionDetailMetric('Sets', summary.set_count || 0)}
+      ${_sessionDetailMetric('Exercises', summary.exercise_count || 0)}
+      ${_sessionDetailMetric('Avg RPE', summary.avg_rpe == null ? '—' : _fmt1(summary.avg_rpe))}
+    </div>
+    <div class="session-detail-note">This session is still pending verification. ${pending.needs_manual_duration ? 'Add a valid duration before verification.' : 'Review modality and confirm the imported session fields.'}</div>
+    <div class="session-detail-section">
+      <div class="session-detail-section-title">Exercise Summary</div>
+      ${exercisesHtml}
+    </div>
+  `;
+}
+
+async function toggleSessionDetail(btn) {
+  const card = btn.closest('.session-log-item');
+  if (!card) return;
+  const sessionId = card.getAttribute('data-session-id');
+  const wrap = card.querySelector('.session-detail-wrap');
+  if (!sessionId || !wrap) return;
+
+  const isOpen = wrap.style.display !== 'none';
+  if (isOpen) {
+    wrap.style.display = 'none';
+    btn.textContent = 'Show Details';
+    return;
+  }
+
+  wrap.style.display = 'block';
+  btn.textContent = 'Hide Details';
+
+  if (sessionDetailCache[sessionId]) {
+    wrap.innerHTML = _renderSessionDetail(sessionDetailCache[sessionId]);
+    return;
+  }
+
+  wrap.innerHTML = '<div class="loading-wrap"><span class="spinner"></span> Loading session detail…</div>';
   try {
-    const r = await fetch('/api/workouts/recent?count=12');
-    const workouts = await r.json();
-    workoutsLoaded = true;
-    if (!workouts.length) {
-      wrap.innerHTML = '<div class="loading-wrap" style="color:var(--muted)">No workouts found. Run the importer.</div>';
-      return;
-    }
+    const r = await fetch(`/api/workout-sessions/${encodeURIComponent(sessionId)}`);
+    const detail = await r.json();
+    if (!r.ok) throw new Error(detail.detail || 'Failed to load session detail.');
+    sessionDetailCache[sessionId] = detail;
+    wrap.innerHTML = _renderSessionDetail(detail);
+  } catch (e) {
+    wrap.innerHTML = `<div style="color:var(--danger)">Failed to load session detail: ${escHtml(e.message || '')}</div>`;
+    btn.textContent = 'Show Details';
+  }
+}
+
+function renderSessionLog() {
+  const wrap = document.getElementById('session-log-wrap');
+  if (!wrap) return;
+
+  const filtered = sessionLogRows.filter(_sessionFilterMatches);
+  const visibleRows = filtered.slice(0, sessionLogVisibleCount);
+  const filterButtons = [
+    ['all', 'All'],
+    ['pending', 'Pending'],
+    ['verified', 'Verified'],
+    ['strength', 'Strength'],
+    ['hypertrophy', 'Hypertrophy'],
+    ['conditioning', 'Conditioning'],
+    ['cardio', 'Cardio'],
+  ].map(([key, label]) => `<button class="${sessionLogFilter === key ? 'active' : ''}" onclick="setSessionLogFilter('${key}')">${label}</button>`).join('');
+
+  if (!filtered.length) {
     wrap.innerHTML = `
-      <div class="table-scroll"><table>
-        <thead><tr>
-          <th>Date</th>
-          <th>Workout</th>
-          <th class="col-hide">Sets</th>
-          <th class="col-hide">Volume (lbs)</th>
-          <th class="col-hide">Avg RPE</th>
-          <th style="color:var(--accent);">Central <span class="tip-icon" style="border-color:var(--accent);color:var(--accent);" data-tip="How hard you trained. Heavy sets close to your max drive this up fast. Nervous system fatigue.">i</span></th>
-          <th style="color:var(--posterior);">Peripheral <span class="tip-icon" style="border-color:var(--posterior);color:var(--posterior);" data-tip="How much total work you did. Adds up with every set and rep. Muscle fatigue.">i</span></th>
-        </tr></thead>
-        <tbody>
-        ${workouts.map(w => `<tr>
-          <td style="white-space:nowrap;">${w.date}</td>
-          <td style="font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
-              title="${escHtml(w.workout_title || '')}">${w.workout_title || '—'}</td>
-          <td class="col-hide">${w.set_count}</td>
-          <td class="col-hide">${Number(w.volume).toLocaleString()}</td>
-          <td class="col-hide">${w.avg_rpe ?? '—'}</td>
-          <td><span class="workout-stress-val" style="color:var(--accent);">${w.central_stress}</span></td>
-          <td><span class="workout-stress-val" style="color:var(--posterior);">${w.peripheral_stress}</span></td>
-        </tr>`).join('')}
-        </tbody>
-      </table></div>
-      <div class="stress-note">
-        <strong style="color:var(--text);">Central stress</strong> = Σ(intensity%² × reps) — intensity-driven, reflects CNS / neural fatigue. High RPE sets move this number significantly.<br>
-        <strong style="color:var(--text);">Peripheral stress</strong> = Σ(intensity% × reps) — volume-driven, reflects muscular fatigue. Accumulates with total workload regardless of RPE.
-      </div>`;
-  } catch {
-    wrap.innerHTML = '<div style="color:var(--danger)">Failed to load workouts.</div>';
-    workoutsLoaded = false;
+      <div class="session-log-toolbar">
+        <div class="btn-group">${filterButtons}</div>
+        <div class="session-log-count">0 sessions</div>
+      </div>
+      <div class="session-log-empty">No sessions match the current filter.</div>
+    `;
+    return;
+  }
+
+  wrap.innerHTML = `
+    <div class="session-log-toolbar">
+      <div class="btn-group">${filterButtons}</div>
+      <div class="session-log-count">Showing ${visibleRows.length} of ${filtered.length} session${filtered.length === 1 ? '' : 's'}</div>
+    </div>
+    <div class="session-log-list">
+      ${visibleRows.map(session => `
+        <div class="session-log-item" data-session-id="${escHtml(String(session.hevy_workout_id))}">
+          <div class="session-log-head">
+            <div>
+              <div class="session-log-title">${escHtml(session.workout_title || 'Untitled workout')}</div>
+              <div class="session-log-meta">
+                <span>${escHtml(session.workout_date)}</span>
+                <span>${session.duration_minutes == null ? 'Duration pending' : `${Math.round(Number(session.duration_minutes))} min`}</span>
+                <span>Confidence ${(Number(session.modality_confidence || 0) * 100).toFixed(0)}%</span>
+                <span>${session.srpe == null ? 'sRPE -' : `sRPE ${_fmt1(session.srpe)}`}</span>
+              </div>
+            </div>
+            <div class="session-log-badges">
+              <span class="${_sessionBadgeClass(session.modality)}">${escHtml((session.modality || 'unknown').replace(/^./, c => c.toUpperCase()))}</span>
+              <span class="${_sessionBadgeClass(session.verification_status)}">${escHtml((session.verification_status || 'unknown').replace(/^./, c => c.toUpperCase()))}</span>
+            </div>
+          </div>
+          <div class="session-log-fatigue">${escHtml(_sessionFatigueAnnotation(session))}</div>
+          <div class="session-log-actions">
+            <div class="session-log-status-note">${escHtml(_sessionStatusNote(session))}</div>
+            <button class="btn btn-secondary" style="width:auto;" onclick="toggleSessionDetail(this)">Show Details</button>
+          </div>
+          <div class="session-detail-wrap" style="display:none;"></div>
+        </div>
+      `).join('')}
+    </div>
+    ${filtered.length > visibleRows.length ? `<div class="session-log-load-more"><button class="btn btn-secondary" onclick="loadMoreSessionLog()">Load More</button></div>` : ''}
+  `;
+}
+
+async function loadSessionLog() {
+  const wrap = document.getElementById('session-log-wrap');
+  if (!wrap) return;
+
+  wrap.innerHTML = '<div class="loading-wrap"><span class="spinner"></span> Loading session log…</div>';
+
+  try {
+    const [sessionRes, fatiguePayload] = await Promise.all([
+      fetch('/api/workout-sessions'),
+      ensureTrainingLoadPayload().catch(() => null),
+    ]);
+    const sessions = await sessionRes.json();
+    if (!sessionRes.ok) throw new Error(sessions.detail || 'Failed to load workout sessions.');
+
+    sessionLogRows = Array.isArray(sessions) ? sessions : [];
+    sessionLogFatiguePayload = fatiguePayload;
+    sessionLogVisibleCount = 10;
+    renderSessionLog();
+  } catch (e) {
+    wrap.innerHTML = `<div style="color:var(--danger)">Failed to load session log: ${escHtml(e.message || '')}</div>`;
   }
 }
 
@@ -3268,6 +3849,30 @@ function _safePatternStatus(r2) {
   return out;
 }
 
+function _safeJointAdvisory(r2) {
+  const fallback = {
+    upper: { score: 0, level: 'none', label: null, affected_patterns: [] },
+    lower: { score: 0, level: 'none', label: null, affected_patterns: [] },
+  };
+  if (!r2 || !r2.joint_advisory) return fallback;
+  const upper = r2.joint_advisory.upper || {};
+  const lower = r2.joint_advisory.lower || {};
+  return {
+    upper: {
+      score: Number(upper.score || 0),
+      level: upper.level || 'none',
+      label: upper.label || null,
+      affected_patterns: Array.isArray(upper.affected_patterns) ? upper.affected_patterns : [],
+    },
+    lower: {
+      score: Number(lower.score || 0),
+      level: lower.level || 'none',
+      label: lower.label || null,
+      affected_patterns: Array.isArray(lower.affected_patterns) ? lower.affected_patterns : [],
+    },
+  };
+}
+
 function _renderTodayCards(data, pendingCount) {
   const today = data?.today || {};
   const recV2 = today.recommendation_v2 || null;
@@ -3314,6 +3919,38 @@ function _renderTodayCards(data, pendingCount) {
     ${!checkinExists ? '<div class="today-grid-note">No check-in today - pattern signals based on training load only</div>' : ''}
   `;
 
+  const jointCard = document.getElementById('today-joint-card');
+  const jointAdv = _safeJointAdvisory(recV2);
+  const jointRows = [
+    { key: 'upper', region: 'Upper', data: jointAdv.upper },
+    { key: 'lower', region: 'Lower', data: jointAdv.lower },
+  ].filter(r => r.data.level === 'advisory' || r.data.level === 'warning')
+   .map(r => {
+     const icon = r.data.level === 'warning' ? '❗' : '⚠';
+     const levelText = r.data.level === 'warning' ? 'warning' : 'advisory';
+     const patt = r.data.affected_patterns || [];
+     const pattLabels = patt.map(p => p === 'knee' ? 'Knee' : p === 'hip' ? 'Hip' : p === 'push' ? 'Push' : 'Pull');
+     const pattChips = patt.map(p => `<span class="today-joint-pattern today-joint-pattern-${p}">${p === 'knee' ? 'Knee' : p === 'hip' ? 'Hip' : p === 'push' ? 'Push' : 'Pull'}</span>`).join('');
+     return `
+       <div class="today-joint-row ${r.data.level === 'warning' ? 'today-joint-row-warning' : ''}">
+         <div class="today-joint-title">${icon} ${escHtml(r.region)} joint health ${levelText}</div>
+         <div class="today-joint-desc">${escHtml(r.data.label || `${r.region} joint advisory`)}</div>
+         <div class="today-joint-desc">${escHtml(pattLabels.join(' and '))} patterns affected - be conservative with loading</div>
+         <div class="today-joint-patterns">${pattChips}</div>
+       </div>
+     `;
+   }).join('');
+
+  if (jointCard) {
+    if (jointRows) {
+      jointCard.style.display = 'block';
+      jointCard.innerHTML = `<div class="card-title">Joint Advisory</div><div class="today-joint-list">${jointRows}</div>`;
+    } else {
+      jointCard.style.display = 'none';
+      jointCard.innerHTML = '';
+    }
+  }
+
   const metric = (label, val) => `
     <div class="today-metric">
       <div class="today-metric-label">${label} <span class="tip-icon" data-tip="${_tips(label)}">i</span></div>
@@ -3339,23 +3976,23 @@ function _renderTodayCards(data, pendingCount) {
     <div class="card-title">Status</div>
     <div class="today-footer">
       <button class="today-footer-item" onclick="showLegacyCheckin()" aria-label="Open check-in form">
-        <span>
+        <div class="today-footer-body">
           <div class="today-footer-label">Check-in</div>
           <div class="today-footer-value ${checkinCls}">${checkinExists ? '✓ ' : '⚠ '}${checkinText}</div>
-        </span>
+        </div>
       </button>
       <button class="today-footer-item" onclick="switchToWorkoutsFromToday()" aria-label="Open pending sessions">
-        <span>
+        <div class="today-footer-body">
           <div class="today-footer-label">Pending Sessions</div>
           <div class="today-footer-value">${pendingText}</div>
-        </span>
+        </div>
         ${pendingBadge}
       </button>
       <div class="today-footer-item" aria-label="Last sync status" style="cursor:default;">
-        <span>
+        <div class="today-footer-body">
           <div class="today-footer-label">Last Sync</div>
           <div class="today-footer-value">${escHtml(syncText)}</div>
-        </span>
+        </div>
       </div>
     </div>
   `;
@@ -3398,8 +4035,9 @@ async function loadTrainingLoadCard() {
   } catch {
     document.getElementById('today-state-card').innerHTML = '<div class="today-state-label today-state-nodata">No Data Yet</div><div class="today-state-detail">Log workouts and complete daily check-ins to build your baseline</div><div class="today-fatigue-line">Fatigue: 0.0 · Low</div>';
     document.getElementById('today-pattern-card').innerHTML = '<div class="card-title">Pattern Stress</div><div class="today-pattern-grid">' + ['KNEE','HIP','PUSH','PULL'].map(p => `<div class="today-pattern-cell today-pattern-neutral"><div class="today-pattern-name">${p}</div><div class="today-pattern-days">Never loaded</div><div class="today-dots"><span class="today-dot today-dot-filled"></span><span class="today-dot"></span><span class="today-dot"></span><span class="today-dot"></span><span class="today-dot"></span></div><div class="today-pattern-level">Moderate</div></div>`).join('') + '</div>';
+    const jointCard = document.getElementById('today-joint-card'); if (jointCard) { jointCard.style.display = 'none'; jointCard.innerHTML = ''; }
     document.getElementById('today-metrics-card').innerHTML = '<div class="card-title">Load Summary</div><div class="today-metric-row"><div class="today-metric"><div class="today-metric-label">Fatigue (ATL)</div><div class="today-metric-value">0.0</div></div><div class="today-metric"><div class="today-metric-label">Fitness (CTL)</div><div class="today-metric-value">0.0</div></div><div class="today-metric"><div class="today-metric-label">Form (TSB)</div><div class="today-metric-value">0.0</div></div></div>';
-    document.getElementById('today-footer-card').innerHTML = '<div class="card-title">Status</div><div class="today-footer"><button class="today-footer-item" onclick="showLegacyCheckin()"><span><div class="today-footer-label">Check-in</div><div class="today-footer-value today-footer-warn">⚠ Check-in pending</div></span></button><button class="today-footer-item" onclick="switchToWorkoutsFromToday()"><span><div class="today-footer-label">Pending Sessions</div><div class="today-footer-value">0 pending</div></span></button><div class="today-footer-item" style="cursor:default;"><span><div class="today-footer-label">Last Sync</div><div class="today-footer-value">Sync time unavailable</div></span></div></div>';
+    document.getElementById('today-footer-card').innerHTML = '<div class="card-title">Status</div><div class="today-footer"><button class="today-footer-item" onclick="showLegacyCheckin()"><div class="today-footer-body"><div class="today-footer-label">Check-in</div><div class="today-footer-value today-footer-warn">⚠ Check-in pending</div></div></button><button class="today-footer-item" onclick="switchToWorkoutsFromToday()"><div class="today-footer-body"><div class="today-footer-label">Pending Sessions</div><div class="today-footer-value">0 pending</div></div></button><div class="today-footer-item" style="cursor:default;"><div class="today-footer-body"><div class="today-footer-label">Last Sync</div><div class="today-footer-value">Sync time unavailable</div></div></div></div>';
   }
 }
 

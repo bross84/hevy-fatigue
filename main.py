@@ -752,10 +752,9 @@ def _subjective_fatigue(entry) -> float:
     r = (entry.perceived_recovery or 0) / 4
     s = ((entry.sore_quad_dom  or 0) + (entry.sore_posterior  or 0) +
          (entry.sore_upper_push or 0) + (entry.sore_upper_pull or 0)) / 16
-    j = ((entry.joint_upper or 0) + (entry.joint_lower or 0)) / 8
     # Subjective base weighting (global score):
-    # tiredness/recovery dominate, soreness/joints remain meaningful secondary signals.
-    return round(0.40 * t + 0.30 * r + 0.20 * s + 0.10 * j, 3)
+    # joints are collected but not included in fatigue score weighting.
+    return round(0.45 * t + 0.30 * r + 0.25 * s, 3)
 
 def _clamp(value: float, min_value: float, max_value: float) -> float:
     return max(min_value, min(max_value, value))
@@ -1063,6 +1062,37 @@ def _state_from_signal(signal: float, thresholds: dict) -> str:
     return "available"
 
 
+def _resolve_joint_advisory(joint_upper: int, joint_lower: int) -> dict:
+    def level(score: int) -> str:
+        if score >= 4:
+            return "warning"
+        if score >= 3:
+            return "advisory"
+        return "none"
+
+    def label(score: int, region: str) -> str | None:
+        if score >= 4:
+            return f"{region} joint health poor - consider avoiding loading today"
+        if score >= 3:
+            return f"{region} joint health suboptimal - be conservative with loading"
+        return None
+
+    return {
+        "upper": {
+            "score": int(joint_upper),
+            "level": level(int(joint_upper)),
+            "label": label(int(joint_upper), "Upper"),
+            "affected_patterns": ["push", "pull"] if int(joint_upper) >= 3 else [],
+        },
+        "lower": {
+            "score": int(joint_lower),
+            "level": level(int(joint_lower)),
+            "label": label(int(joint_lower), "Lower"),
+            "affected_patterns": ["knee", "hip"] if int(joint_lower) >= 3 else [],
+        },
+    }
+
+
 def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness | None, calibration: dict | None = None, db: Session | None = None, today_date: date_type | None = None, today_tsb: float = 0.0, fatigue_score: float = 0.0) -> dict:
     """
     Stage 6 recommendation engine using pattern ATL/CTL/TSB and same-day soreness.
@@ -1071,6 +1101,9 @@ def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness 
     thresholds = _resolve_v2_thresholds(calibration)
     tsb_thresholds = _resolve_tsb_state_thresholds(calibration)
     soreness = _pattern_soreness_signals(checkin)
+    joint_upper = int((checkin.joint_upper if checkin else 0) or 0)
+    joint_lower = int((checkin.joint_lower if checkin else 0) or 0)
+    joint_advisory = _resolve_joint_advisory(joint_upper, joint_lower)
 
     pattern_rows = {}
     for p in _PATTERN_KEYS:
@@ -1124,6 +1157,7 @@ def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness 
         "fatigue_tier": fatigue_tier,
         "fatigue_tier_detail": fatigue_tier_detail,
         "pattern_status": pattern_status,
+        "joint_advisory": joint_advisory,
         "tsb_thresholds": tsb_thresholds,
         "signal_thresholds": thresholds,
     }
@@ -1592,6 +1626,176 @@ def get_workout_sessions(
 def get_pending_workout_sessions(days: int = 30, db: Session = Depends(get_db)):
     """Convenience endpoint for pending verification queue."""
     return get_workout_sessions(days=days, status="pending", db=db)
+
+
+@app.get("/api/workout-sessions/{hevy_workout_id}")
+def get_workout_session_detail(hevy_workout_id: str, db: Session = Depends(get_db)):
+    """Return one session plus on-demand detail for the Workouts session log."""
+    session_row = db.query(WorkoutSession).filter(
+        WorkoutSession.hevy_workout_id == hevy_workout_id
+    ).first()
+    if not session_row:
+        raise HTTPException(status_code=404, detail=f"Workout session {hevy_workout_id} not found")
+
+    workout_sets = (
+        db.query(WorkoutLog)
+        .filter(WorkoutLog.workout_id == hevy_workout_id)
+        .order_by(WorkoutLog.exercise_title.asc(), WorkoutLog.set_number.asc())
+        .all()
+    )
+
+    total_volume = 0.0
+    rpe_values = []
+    exercise_rollup = {}
+    set_rows = []
+    for s in workout_sets:
+        weight = float(s.weight_lbs or 0)
+        reps = int(s.reps or 0)
+        set_volume = weight * reps
+        total_volume += set_volume
+        if s.rpe is not None:
+            rpe_values.append(float(s.rpe))
+
+        title = s.exercise_title or "Unknown exercise"
+        agg = exercise_rollup.setdefault(title, {
+            "exercise_title": title,
+            "set_count": 0,
+            "total_reps": 0,
+            "total_volume": 0.0,
+            "top_weight": 0.0,
+            "rpe_values": [],
+        })
+        agg["set_count"] += 1
+        agg["total_reps"] += reps
+        agg["total_volume"] += set_volume
+        agg["top_weight"] = max(float(agg["top_weight"]), weight)
+        if s.rpe is not None:
+            agg["rpe_values"].append(float(s.rpe))
+
+        set_rows.append({
+            "exercise_title": title,
+            "set_number": s.set_number,
+            "weight_lbs": s.weight_lbs,
+            "reps": s.reps,
+            "rpe": s.rpe,
+            "rir": s.rir,
+            "notes": s.notes,
+        })
+
+    exercises = []
+    for title in sorted(exercise_rollup.keys()):
+        agg = exercise_rollup[title]
+        avg_rpe = None
+        if agg["rpe_values"]:
+            avg_rpe = round(sum(agg["rpe_values"]) / len(agg["rpe_values"]), 1)
+        exercises.append({
+            "exercise_title": agg["exercise_title"],
+            "set_count": agg["set_count"],
+            "total_reps": agg["total_reps"],
+            "total_volume": round(float(agg["total_volume"]), 0),
+            "top_weight": round(float(agg["top_weight"]), 1),
+            "avg_rpe": avg_rpe,
+        })
+
+    detail_type = "pending" if session_row.verification_status == "pending" else session_row.modality
+
+    response = {
+        "detail_type": detail_type,
+        "session": {
+            "hevy_workout_id": session_row.hevy_workout_id,
+            "workout_date": str(session_row.workout_date),
+            "workout_title": session_row.workout_title,
+            "start_time": session_row.start_time,
+            "end_time": session_row.end_time,
+            "duration_minutes": session_row.duration_minutes,
+            "modality": session_row.modality,
+            "modality_confidence": session_row.modality_confidence,
+            "verification_status": session_row.verification_status,
+            "verified_at": session_row.verified_at,
+            "srpe": session_row.srpe,
+            "needs_manual_duration": session_row.duration_minutes is None,
+        },
+        "summary": {
+            "set_count": len(workout_sets),
+            "exercise_count": len(exercises),
+            "volume": round(float(total_volume), 0),
+            "avg_rpe": round(sum(rpe_values) / len(rpe_values), 1) if rpe_values else None,
+        },
+        "exercises": exercises,
+    }
+
+    if detail_type in {"strength", "hypertrophy"}:
+        central = sum(
+            get_set_central_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
+            for s in workout_sets
+        )
+        peripheral = sum(
+            get_set_peripheral_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
+            for s in workout_sets
+        )
+        response["stress"] = {
+            "central": round(central, 3),
+            "peripheral": round(peripheral, 3),
+        }
+        response["sets"] = set_rows
+
+    elif detail_type == "conditioning":
+        stress = None
+        scaling_factor = _get_conditioning_scaling_factor(db)
+        if session_row.srpe is not None and session_row.duration_minutes is not None:
+            raw = (session_row.srpe * session_row.duration_minutes) / scaling_factor
+            avg_quad = avg_post = avg_push = avg_pull = 0.25
+            session_titles = {s.exercise_title for s in workout_sets if s.exercise_title}
+            if session_titles:
+                maps = (
+                    db.query(ExerciseMapping)
+                    .filter(ExerciseMapping.exercise_title.in_(session_titles))
+                    .all()
+                )
+                if maps:
+                    n = len(maps)
+                    avg_quad = sum(m.pct_quad_dom for m in maps) / n
+                    avg_post = sum(m.pct_posterior for m in maps) / n
+                    avg_push = sum(m.pct_upper_push for m in maps) / n
+                    avg_pull = sum(m.pct_upper_pull for m in maps) / n
+            pct_c_weight = avg_quad**2 + avg_post**2 + avg_push**2 + avg_pull**2
+            pct_p_weight = avg_quad + avg_post + avg_push + avg_pull
+            stress = {
+                "raw": round(raw, 3),
+                "central": round(raw * pct_c_weight, 3),
+                "peripheral": round(raw * pct_p_weight, 3),
+                "pattern_distribution": {
+                    "knee": round(avg_quad, 3),
+                    "hip": round(avg_post, 3),
+                    "push": round(avg_push, 3),
+                    "pull": round(avg_pull, 3),
+                },
+                "scaling_factor": scaling_factor,
+            }
+        response["stress"] = stress
+
+    elif detail_type == "cardio":
+        stress = None
+        scaling_factor = _get_conditioning_scaling_factor(db)
+        if session_row.srpe is not None and session_row.duration_minutes is not None:
+            raw = (session_row.srpe * session_row.duration_minutes) / scaling_factor
+            stress = {
+                "raw": round(raw, 3),
+                "central": round(raw * 0.30, 3),
+                "peripheral": round(raw * 0.70, 3),
+                "scaling_factor": scaling_factor,
+            }
+        response["stress"] = stress
+
+    else:
+        response["pending_requirements"] = {
+            "needs_manual_duration": session_row.duration_minutes is None,
+            "needs_srpe": session_row.modality in {"conditioning", "cardio"},
+            "modality": session_row.modality,
+        }
+        response["sets"] = set_rows
+
+    return response
 
 
 @app.put("/api/workout-sessions/{hevy_workout_id}/verify")
