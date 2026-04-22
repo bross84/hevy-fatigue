@@ -120,6 +120,74 @@ nav {
 .nav-tab:hover  { color: var(--text); background: var(--border); }
 .nav-tab.active { color: var(--accent); background: var(--accent-sub); }
 
+.mobile-menu-btn {
+  display: none;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 8px;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mobile-nav-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.18s ease;
+  z-index: 400;
+}
+
+.mobile-nav-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 75vw;
+  max-width: 280px;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  transform: translateX(-100%);
+  transition: transform 0.18s ease;
+  z-index: 410;
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.mobile-drawer-nav {
+  display: grid;
+  gap: 4px;
+}
+
+.mobile-drawer-nav .nav-tab {
+  width: 100%;
+  min-height: 48px;
+  text-align: left;
+  padding: 12px 14px;
+}
+
+body.mobile-nav-open .mobile-nav-overlay {
+  opacity: 1;
+  visibility: visible;
+}
+
+body.mobile-nav-open .mobile-nav-drawer {
+  transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
+}
+
 /* Theme toggle — pushed to far right */
 .nav-right { margin-left: auto; }
 .theme-group button {
@@ -879,6 +947,21 @@ tbody tr:hover td { background: var(--row-hover); }
   }
 }
 
+@media (max-width: 767px) {
+  .nav-tabs {
+    display: none;
+  }
+
+  .mobile-menu-btn {
+    display: inline-flex;
+  }
+
+  .mobile-drawer-nav .nav-tab {
+    flex: none;
+    text-align: left;
+  }
+}
+
 /* ── Tooltips ────────────────────────── */
 .tip-icon {
   display: inline-flex;
@@ -1201,6 +1284,7 @@ tbody tr:hover td { background: var(--row-hover); }
 </script>
 
 <nav>
+  <button class="mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-nav-drawer">☰</button>
   <div class="logo"><img class="logo-icon" src="/resources/favicon.png" alt="Hevy Fatigue icon">HEVY FATIGUE</div>
   <div class="nav-tabs">
     <button class="nav-tab active" data-tab="dashboard">Today</button>
@@ -1218,6 +1302,18 @@ tbody tr:hover td { background: var(--row-hover); }
     </div>
   </div>
 </nav>
+
+<div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
+<aside class="mobile-nav-drawer" id="mobile-nav-drawer" aria-label="Mobile navigation" aria-hidden="true">
+  <div class="mobile-drawer-nav">
+    <button class="nav-tab active" data-tab="dashboard">Today</button>
+    <button class="nav-tab" data-tab="trend">Trend</button>
+    <button class="nav-tab" data-tab="workouts">Workouts</button>
+    <button class="nav-tab" data-tab="exercises">Exercises</button>
+    <button class="nav-tab" data-tab="log">Log</button>
+    <button class="nav-tab" data-tab="settings">Settings</button>
+  </div>
+</aside>
 
 <main>
 
@@ -1915,20 +2011,46 @@ let trendMainChart = null;
 let trendPatternChart = null;
 let trendRangeDays = 3;
 
+function setMobileNavOpen(isOpen) {
+  document.body.classList.toggle('mobile-nav-open', !!isOpen);
+  const menuBtn = document.getElementById('mobile-menu-btn');
+  const drawer = document.getElementById('mobile-nav-drawer');
+  if (menuBtn) menuBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  if (drawer) drawer.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+}
+
+function activateTab(tabName) {
+  setMobileNavOpen(false);
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+  document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-' + tabName).classList.add('active');
+  if (tabName === 'dashboard')                           loadTrainingLoadCard();
+  if (tabName === 'trend')                               activateTrendTab();
+  if (tabName === 'exercises' && exercises.length === 0) loadExercises();
+  if (tabName === 'workouts'  && !workoutsLoaded)        loadWorkouts();
+  if (tabName === 'log'       && !logLoaded)             loadLog();
+  if (tabName === 'settings')                            loadSettingsTab();
+}
+
 // ═══ Tabs ════════════════════════════════════════════
 document.querySelectorAll('.nav-tab').forEach(tab => {
   tab.addEventListener('click', () => {
-    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
-    if (tab.dataset.tab === 'dashboard')                           loadTrainingLoadCard();
-    if (tab.dataset.tab === 'trend')                               activateTrendTab();
-    if (tab.dataset.tab === 'exercises' && exercises.length === 0) loadExercises();
-    if (tab.dataset.tab === 'workouts'  && !workoutsLoaded)        loadWorkouts();
-    if (tab.dataset.tab === 'log'       && !logLoaded)             loadLog();
-    if (tab.dataset.tab === 'settings')                            loadSettingsTab();
+    activateTab(tab.dataset.tab);
   });
+});
+
+document.addEventListener('click', e => {
+  if (e.target.closest('#mobile-menu-btn')) {
+    setMobileNavOpen(true);
+    return;
+  }
+  if (e.target.closest('#mobile-nav-overlay')) {
+    setMobileNavOpen(false);
+    return;
+  }
+  if (e.target.closest('.mobile-drawer-nav .nav-tab')) {
+    setMobileNavOpen(false);
+  }
 });
 
 // Theme toggle clicks
@@ -1952,6 +2074,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   document.getElementById('ci-date').value = todayStr();
+  setMobileNavOpen(false);
   initTrendRangeSelector();
   loadTrainingLoadCard();
 });
@@ -1986,11 +2109,7 @@ function todayStr() { return new Date().toISOString().split('T')[0]; }
 
 // ═══ Settings ════════════════════════════════════════
 function switchToSettings() {
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
-  document.querySelector('[data-tab="settings"]').classList.add('active');
-  document.getElementById('tab-settings').classList.add('active');
-  loadSettingsTab();
+  activateTab('settings');
 }
 
 async function checkSetupBanner() {
@@ -3243,11 +3362,7 @@ function _renderTodayCards(data, pendingCount) {
 }
 
 function switchToWorkoutsFromToday() {
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
-  document.querySelector('[data-tab="workouts"]').classList.add('active');
-  document.getElementById('tab-workouts').classList.add('active');
-  if (!workoutsLoaded) loadWorkouts();
+  activateTab('workouts');
 }
 
 // Vertical bar for ATL / CTL — fills from bottom up, score is 0–10
