@@ -17,7 +17,7 @@ This document locks implementation to strict stage gates and dependency order.
 3. Stage 4 (COMPLETE)
 4. Stage 3 (COMPLETE)
 5. Stage 5 (COMPLETE)
-6. Stage 6
+6. Stage 6 (COMPLETE)
 7. Stage 7
 
 ## Stage 1 - Full Body Classification Baseline - COMPLETE
@@ -247,7 +247,7 @@ Gate evidence (passed — `stage5_gate.py`):
 Files changed in Stage 5:
 - `main.py`
 
-## Stage 6 - Recommendation Engine v2
+## Stage 6 - Recommendation Engine v2 - COMPLETE
 
 Goal: Add pattern-aware recommendations while preserving Layer 1 fatigue tiers.
 
@@ -268,6 +268,47 @@ Other requirements:
 
 Gate tests:
 - JSON is complete and valid for rest-day, all-fresh, single-pattern stress, and all-stressed cases.
+
+### Stage 6 Completion Summary (for review before Stage 7)
+
+Status: COMPLETE and ready for commit on `v2`.
+
+Implemented changes:
+- Extended calibration settings model and storage in `main.py` with persisted Stage 6 thresholds:
+	- `v2_threshold_stressed` (default `0.75`)
+	- `v2_threshold_neutral` (default `0.50`)
+	- Stored in `app_settings` as `fatigue_v2_threshold_stressed` / `fatigue_v2_threshold_neutral`.
+- Added Stage 6 recommendation engine helpers in `main.py`:
+	- `_resolve_v2_thresholds(calibration)`
+	- `_pattern_soreness_signals(checkin)`
+	- `_pattern_load_signal(atl, ctl)` with explicit CTL=0 edge handling
+	- `_state_from_signal(signal, thresholds)`
+	- `_build_recommendation_v2(today_pattern_loads, checkin, calibration)`
+- Added `today.recommendation_v2` to `/api/training-load` response with:
+	- overall `status` and `combined_signal`
+	- active v2 `thresholds`
+	- per-pattern (`knee`/`hip`/`push`/`pull`) ATL/CTL/TSB + load/soreness/combined signals + state
+	- reasoning string constrained to model-honest pattern language
+- Kept Layer 1 behavior unchanged (`fatigue_score`, `recommendation_adjusted`, and legacy fields are preserved).
+
+Reasoning language constraints enforced:
+- Uses only pattern-level claims such as:
+	- `[Pattern] stress is elevated`
+	- `[Pattern] load is high relative to baseline`
+	- `[Pattern] is fresh / available`
+	- `Overall fatigue is elevated`
+- Avoids any pattern-level references to CNS/central or muscular/peripheral claims.
+
+Gate evidence (passed — `stage6_gate.py`):
+- Rest-day fixture returns valid JSON and all patterns available.
+- All-fresh fixture returns valid JSON with available pattern states.
+- Single-pattern stress fixture marks the stressed pattern correctly and names it in reasoning.
+- All-stressed fixture marks all patterns stressed and includes overall-elevated reasoning.
+- V2 thresholds persist correctly via calibration save/get flow.
+- `/api/training-load` includes complete `today.recommendation_v2` payload.
+
+Files changed in Stage 6:
+- `main.py`
 
 ## Stage 7 - Dashboard UI Restructure
 
