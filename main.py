@@ -104,6 +104,10 @@ class CalibrationSettingsInput(BaseModel):
     threshold_increase: float = Field(3.0, ge=0.0, le=10.0)
     v2_threshold_stressed: float = Field(0.75, ge=0.0, le=1.0)
     v2_threshold_neutral: float = Field(0.50, ge=0.0, le=1.0)
+    tsb_threshold_underloaded: float = Field(8.0, ge=-50.0, le=50.0)
+    tsb_threshold_slightly_fresh: float = Field(3.0, ge=-50.0, le=50.0)
+    tsb_threshold_balanced: float = Field(-5.0, ge=-50.0, le=50.0)
+    tsb_threshold_slightly_fatigued: float = Field(-10.0, ge=-50.0, le=50.0)
     adaptive_enabled: bool = False
     adaptive_lookback_days: int = Field(90, ge=30, le=180)
     adaptive_min_entries: int = Field(21, ge=7, le=120)
@@ -321,6 +325,10 @@ _CALIBRATION_DEFAULTS = {
     "threshold_increase": 3.0,
     "v2_threshold_stressed": 0.75,
     "v2_threshold_neutral": 0.50,
+    "tsb_threshold_underloaded": 8.0,
+    "tsb_threshold_slightly_fresh": 3.0,
+    "tsb_threshold_balanced": -5.0,
+    "tsb_threshold_slightly_fatigued": -10.0,
     "adaptive_enabled": False,
     "adaptive_lookback_days": 90,
     "adaptive_min_entries": 21,
@@ -401,6 +409,18 @@ def _validate_calibration_thresholds(cfg: dict) -> None:
             ),
         )
 
+    if not (
+        cfg["tsb_threshold_underloaded"] >= cfg["tsb_threshold_slightly_fresh"] >=
+        cfg["tsb_threshold_balanced"] >= cfg["tsb_threshold_slightly_fatigued"]
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "TSB thresholds must be ordered: "
+                "underloaded >= slightly_fresh >= balanced >= slightly_fatigued"
+            ),
+        )
+
 def _get_calibration_settings(db: Session) -> dict:
     def _safe_float(raw: str | None, default: float) -> float:
         if raw is None:
@@ -425,6 +445,10 @@ def _get_calibration_settings(db: Session) -> dict:
     i_raw = _get_setting_value(db, "fatigue_threshold_increase")
     v2_stressed_raw = _get_setting_value(db, "fatigue_v2_threshold_stressed")
     v2_neutral_raw = _get_setting_value(db, "fatigue_v2_threshold_neutral")
+    tsb_underloaded_raw = _get_setting_value(db, "tsb_threshold_underloaded")
+    tsb_fresh_raw = _get_setting_value(db, "tsb_threshold_slightly_fresh")
+    tsb_balanced_raw = _get_setting_value(db, "tsb_threshold_balanced")
+    tsb_slightly_fatigued_raw = _get_setting_value(db, "tsb_threshold_slightly_fatigued")
     adaptive_enabled_raw = _get_setting_value(db, "fatigue_calibration_adaptive_enabled")
     adaptive_lookback_raw = _get_setting_value(db, "fatigue_calibration_adaptive_lookback_days")
     adaptive_min_raw = _get_setting_value(db, "fatigue_calibration_adaptive_min_entries")
@@ -437,6 +461,10 @@ def _get_calibration_settings(db: Session) -> dict:
         "threshold_increase": _safe_float(i_raw, _CALIBRATION_DEFAULTS["threshold_increase"]),
         "v2_threshold_stressed": _safe_float(v2_stressed_raw, _CALIBRATION_DEFAULTS["v2_threshold_stressed"]),
         "v2_threshold_neutral": _safe_float(v2_neutral_raw, _CALIBRATION_DEFAULTS["v2_threshold_neutral"]),
+        "tsb_threshold_underloaded": _safe_float(tsb_underloaded_raw, _CALIBRATION_DEFAULTS["tsb_threshold_underloaded"]),
+        "tsb_threshold_slightly_fresh": _safe_float(tsb_fresh_raw, _CALIBRATION_DEFAULTS["tsb_threshold_slightly_fresh"]),
+        "tsb_threshold_balanced": _safe_float(tsb_balanced_raw, _CALIBRATION_DEFAULTS["tsb_threshold_balanced"]),
+        "tsb_threshold_slightly_fatigued": _safe_float(tsb_slightly_fatigued_raw, _CALIBRATION_DEFAULTS["tsb_threshold_slightly_fatigued"]),
         "adaptive_enabled": adaptive_enabled_raw == "1" if adaptive_enabled_raw is not None else _CALIBRATION_DEFAULTS["adaptive_enabled"],
         "adaptive_lookback_days": _safe_int(adaptive_lookback_raw, _CALIBRATION_DEFAULTS["adaptive_lookback_days"]),
         "adaptive_min_entries": _safe_int(adaptive_min_raw, _CALIBRATION_DEFAULTS["adaptive_min_entries"]),
@@ -546,6 +574,10 @@ def save_calibration_settings(data: CalibrationSettingsInput, db: Session = Depe
         "threshold_increase": round(float(data.threshold_increase), 2),
         "v2_threshold_stressed": round(float(data.v2_threshold_stressed), 3),
         "v2_threshold_neutral": round(float(data.v2_threshold_neutral), 3),
+        "tsb_threshold_underloaded": round(float(data.tsb_threshold_underloaded), 2),
+        "tsb_threshold_slightly_fresh": round(float(data.tsb_threshold_slightly_fresh), 2),
+        "tsb_threshold_balanced": round(float(data.tsb_threshold_balanced), 2),
+        "tsb_threshold_slightly_fatigued": round(float(data.tsb_threshold_slightly_fatigued), 2),
         "adaptive_enabled": data.adaptive_enabled,
         "adaptive_lookback_days": int(data.adaptive_lookback_days),
         "adaptive_min_entries": int(data.adaptive_min_entries),
@@ -559,6 +591,10 @@ def save_calibration_settings(data: CalibrationSettingsInput, db: Session = Depe
     _set_setting_value(db, "fatigue_threshold_increase", str(cfg["threshold_increase"]))
     _set_setting_value(db, "fatigue_v2_threshold_stressed", str(cfg["v2_threshold_stressed"]))
     _set_setting_value(db, "fatigue_v2_threshold_neutral", str(cfg["v2_threshold_neutral"]))
+    _set_setting_value(db, "tsb_threshold_underloaded", str(cfg["tsb_threshold_underloaded"]))
+    _set_setting_value(db, "tsb_threshold_slightly_fresh", str(cfg["tsb_threshold_slightly_fresh"]))
+    _set_setting_value(db, "tsb_threshold_balanced", str(cfg["tsb_threshold_balanced"]))
+    _set_setting_value(db, "tsb_threshold_slightly_fatigued", str(cfg["tsb_threshold_slightly_fatigued"]))
     _set_setting_value(db, "fatigue_calibration_adaptive_enabled", "1" if cfg["adaptive_enabled"] else "0")
     _set_setting_value(db, "fatigue_calibration_adaptive_lookback_days", str(cfg["adaptive_lookback_days"]))
     _set_setting_value(db, "fatigue_calibration_adaptive_min_entries", str(cfg["adaptive_min_entries"]))
@@ -576,6 +612,10 @@ def reset_calibration_settings(db: Session = Depends(get_db)):
     _set_setting_value(db, "fatigue_threshold_increase", str(defaults["threshold_increase"]))
     _set_setting_value(db, "fatigue_v2_threshold_stressed", str(defaults["v2_threshold_stressed"]))
     _set_setting_value(db, "fatigue_v2_threshold_neutral", str(defaults["v2_threshold_neutral"]))
+    _set_setting_value(db, "tsb_threshold_underloaded", str(defaults["tsb_threshold_underloaded"]))
+    _set_setting_value(db, "tsb_threshold_slightly_fresh", str(defaults["tsb_threshold_slightly_fresh"]))
+    _set_setting_value(db, "tsb_threshold_balanced", str(defaults["tsb_threshold_balanced"]))
+    _set_setting_value(db, "tsb_threshold_slightly_fatigued", str(defaults["tsb_threshold_slightly_fatigued"]))
     _set_setting_value(db, "fatigue_calibration_adaptive_enabled", "0")
     _set_setting_value(db, "fatigue_calibration_adaptive_lookback_days", str(defaults["adaptive_lookback_days"]))
     _set_setting_value(db, "fatigue_calibration_adaptive_min_entries", str(defaults["adaptive_min_entries"]))
@@ -888,6 +928,102 @@ def _resolve_v2_thresholds(calibration: dict | None = None) -> dict:
     }
 
 
+TSB_STATES = [
+    ("underloaded", 8.0, "Underloaded", "Fitness is significantly outpacing recent training stress"),
+    ("slightly_fresh", 3.0, "Slightly Fresh", "Fitness outpacing fatigue - recovery is ahead of training"),
+    ("balanced", -5.0, "Balanced", "Fitness and fatigue well matched - normal training state"),
+    ("slightly_fatigued", -10.0, "Slightly Fatigued", "Fatigue outpacing fitness - accumulated stress present"),
+    ("fatigued", None, "Fatigued", "Fatigue significantly elevated - recovery is the priority"),
+]
+
+
+FATIGUE_TIERS = [
+    (8.0, "High", "Fatigue score elevated"),
+    (6.5, "Moderate-High", "Meaningful fatigue present"),
+    (4.5, "Moderate", "Some fatigue present"),
+    (3.0, "Low-Moderate", "Fatigue manageable"),
+    (0.0, "Low", "Feeling recovered"),
+]
+
+
+def _resolve_tsb_state_thresholds(calibration: dict | None = None) -> dict:
+    cfg = calibration or {}
+    return {
+        "underloaded": float(cfg.get("tsb_threshold_underloaded", _CALIBRATION_DEFAULTS["tsb_threshold_underloaded"])),
+        "slightly_fresh": float(cfg.get("tsb_threshold_slightly_fresh", _CALIBRATION_DEFAULTS["tsb_threshold_slightly_fresh"])),
+        "balanced": float(cfg.get("tsb_threshold_balanced", _CALIBRATION_DEFAULTS["tsb_threshold_balanced"])),
+        "slightly_fatigued": float(cfg.get("tsb_threshold_slightly_fatigued", _CALIBRATION_DEFAULTS["tsb_threshold_slightly_fatigued"])),
+        "fatigued": None,
+    }
+
+
+def _resolve_training_state(tsb: float, tsb_thresholds: dict) -> tuple[str, str, str]:
+    ordered = [
+        ("underloaded", tsb_thresholds.get("underloaded"), "Underloaded", "Fitness is significantly outpacing recent training stress"),
+        ("slightly_fresh", tsb_thresholds.get("slightly_fresh"), "Slightly Fresh", "Fitness outpacing fatigue - recovery is ahead of training"),
+        ("balanced", tsb_thresholds.get("balanced"), "Balanced", "Fitness and fatigue well matched - normal training state"),
+        ("slightly_fatigued", tsb_thresholds.get("slightly_fatigued"), "Slightly Fatigued", "Fatigue outpacing fitness - accumulated stress present"),
+        ("fatigued", None, "Fatigued", "Fatigue significantly elevated - recovery is the priority"),
+    ]
+
+    for key, threshold, label, detail in ordered:
+        if threshold is None or tsb >= float(threshold):
+            return key, label, detail
+    return "fatigued", "Fatigued", "Fatigue significantly elevated - recovery is the priority"
+
+
+def _resolve_fatigue_tier(fatigue_score: float) -> tuple[str, str]:
+    for threshold, label, detail in FATIGUE_TIERS:
+        if fatigue_score >= threshold:
+            return label, detail
+    return "Low", "Feeling recovered"
+
+
+def _dots_filled(combined_signal: float) -> int:
+    if combined_signal >= 0.90:
+        return 5
+    if combined_signal >= 0.75:
+        return 4
+    if combined_signal >= 0.55:
+        return 3
+    if combined_signal >= 0.35:
+        return 2
+    return 1
+
+
+def _stress_level_label(status: str) -> str:
+    if status == "stressed":
+        return "High"
+    if status == "neutral":
+        return "Moderate"
+    return "Fresh"
+
+
+def _pattern_last_loaded_dates(db: Session, today: date_type) -> dict:
+    dates = (
+        db.query(WorkoutLog.date)
+        .filter(WorkoutLog.date <= today)
+        .distinct()
+        .order_by(WorkoutLog.date)
+        .all()
+    )
+
+    last = {p: None for p in _PATTERN_KEYS}
+    for row in dates:
+        scores = calculate_stress_scores(row.date, db)
+        for p in _PATTERN_KEYS:
+            if float(scores.get(p, 0.0) or 0.0) > 0.0:
+                last[p] = row.date
+    return last
+
+
+def _days_since_loaded(pattern: str, last_loaded_dates: dict, today: date_type) -> int | None:
+    last = last_loaded_dates.get(pattern)
+    if last is None:
+        return None
+    return max(0, int((today - last).days))
+
+
 def _pattern_soreness_signals(checkin: DailyReadiness | None) -> dict:
     if not checkin:
         # Missing check-in defaults to neutral soreness (2/4 -> 0.5), not fresh.
@@ -927,12 +1063,13 @@ def _state_from_signal(signal: float, thresholds: dict) -> str:
     return "available"
 
 
-def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness | None, calibration: dict | None = None) -> dict:
+def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness | None, calibration: dict | None = None, db: Session | None = None, today_date: date_type | None = None, today_tsb: float = 0.0, fatigue_score: float = 0.0) -> dict:
     """
     Stage 6 recommendation engine using pattern ATL/CTL/TSB and same-day soreness.
     Produces a pattern-aware recommendation without implying hidden physiology.
     """
     thresholds = _resolve_v2_thresholds(calibration)
+    tsb_thresholds = _resolve_tsb_state_thresholds(calibration)
     soreness = _pattern_soreness_signals(checkin)
 
     pattern_rows = {}
@@ -957,31 +1094,38 @@ def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness 
             "state": state,
         }
 
-    stressed = [p for p in _PATTERN_KEYS if pattern_rows[p]["state"] == "stressed"]
-    available = [p for p in _PATTERN_KEYS if pattern_rows[p]["state"] == "available"]
+    training_state, training_state_label, training_state_detail = _resolve_training_state(float(today_tsb), tsb_thresholds)
+    fatigue_tier, fatigue_tier_detail = _resolve_fatigue_tier(float(fatigue_score))
 
-    overall_signal = max((pattern_rows[p]["combined_signal"] for p in _PATTERN_KEYS), default=0.0)
-    overall_state = _state_from_signal(overall_signal, thresholds)
+    ref_today = today_date or date_type.today()
+    if db is not None:
+        last_loaded_dates = _pattern_last_loaded_dates(db, ref_today)
+    else:
+        last_loaded_dates = {p: None for p in _PATTERN_KEYS}
 
-    reason_lines: list[str] = []
-    if stressed:
-        reason_lines.append("Overall fatigue is elevated")
-        for p in stressed:
-            reason_lines.append(f"{_PATTERN_LABELS[p]} stress is elevated")
-            reason_lines.append(f"{_PATTERN_LABELS[p]} load is high relative to baseline")
-    for p in available:
-        reason_lines.append(f"{_PATTERN_LABELS[p]} is fresh / available")
-
-    if not reason_lines:
-        for p in _PATTERN_KEYS:
-            reason_lines.append(f"{_PATTERN_LABELS[p]} load is high relative to baseline")
+    pattern_status = {}
+    for p in _PATTERN_KEYS:
+        state = pattern_rows[p]["state"]
+        pattern_status[p] = {
+            "status": state,
+            "stress_level_label": _stress_level_label(state),
+            "combined_signal": pattern_rows[p]["combined_signal"],
+            "days_since_loaded": _days_since_loaded(p, last_loaded_dates, ref_today),
+            "dots_filled": _dots_filled(pattern_rows[p]["combined_signal"]),
+            "dots_total": 5,
+        }
 
     return {
-        "status": overall_state,
-        "combined_signal": round(overall_signal, 3),
-        "thresholds": thresholds,
-        "patterns": pattern_rows,
-        "reasoning": ". ".join(reason_lines) + ".",
+        "training_state": training_state,
+        "training_state_label": training_state_label,
+        "training_state_detail": training_state_detail,
+        "tsb": round(float(today_tsb), 3),
+        "fatigue_score": round(float(fatigue_score), 2),
+        "fatigue_tier": fatigue_tier,
+        "fatigue_tier_detail": fatigue_tier_detail,
+        "pattern_status": pattern_status,
+        "tsb_thresholds": tsb_thresholds,
+        "signal_thresholds": thresholds,
     }
 
 
@@ -1032,7 +1176,15 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
     calibration = _get_calibration_settings(db)
     thresholds = _resolve_recommendation_thresholds(db, calibration)
     fatigue_rec = _fatigue_recommendation(fatigue_score, thresholds)
-    recommendation_v2 = _build_recommendation_v2(today.get("pattern_loads", {}), checkin, calibration)
+    recommendation_v2 = _build_recommendation_v2(
+        today.get("pattern_loads", {}),
+        checkin,
+        calibration,
+        db,
+        date_type.today(),
+        today.get("tsb", 0.0),
+        fatigue_score,
+    )
 
     # Enrich history items with fatigue_score and recommendation_adjusted.
     # Fetch all readiness entries for the history window in one query.
@@ -1094,6 +1246,11 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
             "threshold_increase": thresholds.get("threshold_increase", _CALIBRATION_DEFAULTS["threshold_increase"]),
             "v2_threshold_stressed": calibration.get("v2_threshold_stressed", _CALIBRATION_DEFAULTS["v2_threshold_stressed"]),
             "v2_threshold_neutral": calibration.get("v2_threshold_neutral", _CALIBRATION_DEFAULTS["v2_threshold_neutral"]),
+            "tsb_threshold_underloaded": calibration.get("tsb_threshold_underloaded", _CALIBRATION_DEFAULTS["tsb_threshold_underloaded"]),
+            "tsb_threshold_slightly_fresh": calibration.get("tsb_threshold_slightly_fresh", _CALIBRATION_DEFAULTS["tsb_threshold_slightly_fresh"]),
+            "tsb_threshold_balanced": calibration.get("tsb_threshold_balanced", _CALIBRATION_DEFAULTS["tsb_threshold_balanced"]),
+            "tsb_threshold_slightly_fatigued": calibration.get("tsb_threshold_slightly_fatigued", _CALIBRATION_DEFAULTS["tsb_threshold_slightly_fatigued"]),
+            "tsb_threshold_fatigued": None,
             "mode": thresholds.get("mode", "default"),
             "sample_size": thresholds.get("sample_size"),
         },
