@@ -2078,7 +2078,7 @@ tbody tr:hover td { background: var(--row-hover); }
   </div>
 
   <div class="card settings-card" style="margin-top:14px;">
-    <div class="card-title">Conditioning Load Scale</div>
+    <div class="card-title">Session Processing</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
       Normalizes conditioning session stress relative to strength sessions. Increase if conditioning feels underweighted in your fatigue score, decrease if overweighted. Default 29.
     </p>
@@ -2086,7 +2086,16 @@ tbody tr:hover td { background: var(--row-hover); }
       <div class="form-label">Conditioning stress scaling factor</div>
       <input type="number" id="conditioning-scale" min="0.1" max="200" step="0.1">
     </div>
-    <button class="btn btn-primary" id="btn-save-conditioning" onclick="saveConditioningLoadScale()">Save Conditioning Load Scale</button>
+
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
+      Minimum confidence required to automatically verify a Strength or Hypertrophy session. Conditioning and Cardio always require manual verification regardless of this setting.
+    </p>
+    <div class="form-row" style="margin-bottom:10px;">
+      <div class="form-label">Auto-Verify Confidence Threshold</div>
+      <input type="number" id="auto-verify-threshold" min="0.5" max="1" step="0.05">
+    </div>
+
+    <button class="btn btn-primary" id="btn-save-session-processing" onclick="saveSessionProcessingSettings()">Save Session Processing</button>
     <div class="settings-result" id="conditioning-result" style="margin-top:10px;"></div>
   </div>
 
@@ -2381,7 +2390,9 @@ let trendMainChart = null;
 let trendPatternChart = null;
 let trendRangeDays = 3;
 let sessionLogRows = [];
-let sessionLogVisibleCount = 10;
+const SESSION_LOG_PAGE_SIZE = 50;
+let sessionLogOffset = 0;
+let sessionLogHasMore = false;
 let sessionLogFilter = 'all';
 let sessionLogFatiguePayload = null;
 let sessionDetailCache = {};
@@ -2604,6 +2615,7 @@ async function loadV2Settings() {
     document.getElementById('pattern-stressed').value = d.v2_threshold_stressed;
     document.getElementById('pattern-neutral').value = d.v2_threshold_neutral;
     document.getElementById('conditioning-scale').value = d.conditioning_stress_scaling_factor;
+    document.getElementById('auto-verify-threshold').value = d.auto_verify_confidence_threshold;
 
     _setSectionResult('tsb-result', '', null);
     _setSectionResult('pattern-result', '', null);
@@ -2672,22 +2684,23 @@ async function savePatternSensitivity() {
   }
 }
 
-async function saveConditioningLoadScale() {
-  const btn = document.getElementById('btn-save-conditioning');
+async function saveSessionProcessingSettings() {
+  const btn = document.getElementById('btn-save-session-processing');
   btn.disabled = true;
   btn.textContent = 'Saving…';
   try {
     const payload = {
       conditioning_stress_scaling_factor: +document.getElementById('conditioning-scale').value,
+      auto_verify_confidence_threshold: +document.getElementById('auto-verify-threshold').value,
     };
-    const r = await fetch('/api/settings/v2/conditioning-scale', {
+    const r = await fetch('/api/settings/v2/session-processing', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.detail || 'Save failed.');
-    _setSectionResult('conditioning-result', '✓ Conditioning load scale saved.', true);
+    _setSectionResult('conditioning-result', '✓ Session processing settings saved.', true);
     _trainingLoadPayload = null;
     loadTrainingLoadCard();
     if (logLoaded) { logLoaded = false; loadLog(); }
@@ -2695,7 +2708,7 @@ async function saveConditioningLoadScale() {
     _setSectionResult('conditioning-result', '✗ ' + e.message, false);
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Save Conditioning Load Scale';
+    btn.textContent = 'Save Session Processing';
   }
 }
 
@@ -3278,13 +3291,99 @@ function _sessionStatusNote(session) {
 
 function setSessionLogFilter(filterKey) {
   sessionLogFilter = filterKey;
-  sessionLogVisibleCount = 10;
   renderSessionLog();
 }
 
-function loadMoreSessionLog() {
-  sessionLogVisibleCount += 10;
-  renderSessionLog();
+async function loadMoreSessionLog() {
+  await _loadSessionLogPage(true);
+}
+
+function toggleSessionLogEdit(btn) {
+  const card = btn.closest('.session-log-item');
+  if (!card) return;
+  const editWrap = card.querySelector('.session-edit-wrap');
+  const detailBtn = card.querySelector('.session-detail-btn');
+  if (!editWrap) return;
+
+  const opening = editWrap.style.display === 'none';
+  editWrap.style.display = opening ? 'block' : 'none';
+  btn.textContent = opening ? 'Cancel Edit' : 'Edit';
+  if (detailBtn) detailBtn.disabled = opening;
+  if (opening) _toggleSessionSrpe(editWrap);
+}
+
+function _resetSessionLogEdit(card) {
+  const editWrap = card.querySelector('.session-edit-wrap');
+  const editBtn = card.querySelector('.session-edit-btn');
+  const detailBtn = card.querySelector('.session-detail-btn');
+  const statusEl = card.querySelector('.session-edit-status');
+  if (editWrap) editWrap.style.display = 'none';
+  if (editBtn) editBtn.textContent = 'Edit';
+  if (detailBtn) detailBtn.disabled = false;
+  if (statusEl) statusEl.textContent = '';
+}
+
+function cancelSessionLogEdit(btn) {
+  const card = btn.closest('.session-log-item');
+  if (!card) return;
+  _resetSessionLogEdit(card);
+}
+
+async function saveSessionLogEdit(btn) {
+  const card = btn.closest('.session-log-item');
+  if (!card) return;
+
+  const sessionId = card.getAttribute('data-session-id');
+  const modality = card.querySelector('.sv-modality')?.value;
+  const durationRaw = card.querySelector('.sv-duration')?.value;
+  const srpeRaw = card.querySelector('.sv-srpe')?.value;
+  const statusEl = card.querySelector('.session-edit-status');
+  const isConditioningOrCardio = modality === 'conditioning' || modality === 'cardio';
+
+  const durationNum = durationRaw === '' ? NaN : Number(durationRaw);
+  if (!Number.isFinite(durationNum) || durationNum < 1 || durationNum > 480) {
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = 'Enter a valid duration between 1 and 480 minutes.';
+    return;
+  }
+
+  const payload = {
+    modality,
+    duration_minutes: Math.round(durationNum),
+    verify: false,
+  };
+
+  if (isConditioningOrCardio) {
+    const srpeNum = srpeRaw === '' ? NaN : Number(srpeRaw);
+    if (!Number.isFinite(srpeNum) || srpeNum < 0 || srpeNum > 10) {
+      statusEl.style.color = 'var(--danger)';
+      statusEl.textContent = 'sRPE is required for conditioning/cardio (0-10).';
+      return;
+    }
+    payload.srpe = srpeNum;
+  }
+
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = 'Saving…';
+  btn.disabled = true;
+
+  try {
+    const r = await fetch(`/api/workout-sessions/${encodeURIComponent(sessionId)}/verify`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Save failed.');
+
+    await loadSessionLog();
+    await loadSessionVerificationQueue();
+  } catch (e) {
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = e.message || 'Save failed.';
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function _sessionDetailMetric(label, value) {
@@ -3469,7 +3568,6 @@ function renderSessionLog() {
   if (!wrap) return;
 
   const filtered = sessionLogRows.filter(_sessionFilterMatches);
-  const visibleRows = filtered.slice(0, sessionLogVisibleCount);
   const filterButtons = [
     ['all', 'All'],
     ['pending', 'Pending'],
@@ -3494,10 +3592,10 @@ function renderSessionLog() {
   wrap.innerHTML = `
     <div class="session-log-toolbar">
       <div class="btn-group">${filterButtons}</div>
-      <div class="session-log-count">Showing ${visibleRows.length} of ${filtered.length} session${filtered.length === 1 ? '' : 's'}</div>
+      <div class="session-log-count">Showing ${filtered.length} loaded session${filtered.length === 1 ? '' : 's'}${sessionLogHasMore ? ' (more available)' : ''}</div>
     </div>
     <div class="session-log-list">
-      ${visibleRows.map(session => `
+      ${filtered.map(session => `
         <div class="session-log-item" data-session-id="${escHtml(String(session.hevy_workout_id))}">
           <div class="session-log-head">
             <div>
@@ -3517,14 +3615,46 @@ function renderSessionLog() {
           <div class="session-log-fatigue">${escHtml(_sessionFatigueAnnotation(session))}</div>
           <div class="session-log-actions">
             <div class="session-log-status-note">${escHtml(_sessionStatusNote(session))}</div>
-            <button class="btn btn-secondary" style="width:auto;" onclick="toggleSessionDetail(this)">Show Details</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-secondary session-edit-btn" style="width:auto;" onclick="toggleSessionLogEdit(this)">Edit</button>
+              <button class="btn btn-secondary session-detail-btn" style="width:auto;" onclick="toggleSessionDetail(this)">Show Details</button>
+            </div>
+          </div>
+          <div class="session-edit-wrap" style="display:none;border-top:1px solid var(--border);margin-top:10px;padding-top:10px;">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Editing</div>
+            <div class="verify-fields" style="margin-bottom:8px;">
+              <div class="verify-field">
+                <label>Modality</label>
+                <select class="sv-modality" onchange="_toggleSessionSrpe(this.closest('.session-edit-wrap'))">
+                  ${_modalityOption('strength', session.modality)}
+                  ${_modalityOption('hypertrophy', session.modality)}
+                  ${_modalityOption('conditioning', session.modality)}
+                  ${_modalityOption('cardio', session.modality)}
+                </select>
+              </div>
+              <div class="verify-field">
+                <label>Duration (min)</label>
+                <input type="number" min="1" max="480" class="sv-duration" value="${session.duration_minutes == null ? '' : Number(session.duration_minutes)}" placeholder="required">
+              </div>
+              <div class="verify-field sv-srpe-row" style="display:none;">
+                <label>sRPE (0-10)</label>
+                <input type="number" min="0" max="10" step="0.5" class="sv-srpe" value="${session.srpe ?? ''}" placeholder="required for conditioning/cardio">
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <button class="btn btn-primary" style="width:auto;padding:8px 12px;" onclick="saveSessionLogEdit(this)">Save</button>
+              <button class="btn" style="width:auto;padding:8px 12px;" onclick="cancelSessionLogEdit(this)">Cancel</button>
+            </div>
+            <div class="session-edit-status" style="font-size:12px;margin-top:8px;"></div>
           </div>
           <div class="session-detail-wrap" style="display:none;"></div>
         </div>
       `).join('')}
     </div>
-    ${filtered.length > visibleRows.length ? `<div class="session-log-load-more"><button class="btn btn-secondary" onclick="loadMoreSessionLog()">Load More</button></div>` : ''}
+    ${sessionLogHasMore ? `<div class="session-log-load-more"><button class="btn btn-secondary" onclick="loadMoreSessionLog()">Load More</button></div>` : ''}
   `;
+
+  wrap.querySelectorAll('.session-edit-wrap').forEach(editWrap => _toggleSessionSrpe(editWrap));
 }
 
 async function loadSessionLog() {
@@ -3533,21 +3663,39 @@ async function loadSessionLog() {
 
   wrap.innerHTML = '<div class="loading-wrap"><span class="spinner"></span> Loading session log…</div>';
 
-  try {
-    const [sessionRes, fatiguePayload] = await Promise.all([
-      fetch('/api/workout-sessions'),
-      ensureTrainingLoadPayload().catch(() => null),
-    ]);
-    const sessions = await sessionRes.json();
-    if (!sessionRes.ok) throw new Error(sessions.detail || 'Failed to load workout sessions.');
+  sessionLogRows = [];
+  sessionLogOffset = 0;
+  sessionLogHasMore = false;
 
-    sessionLogRows = Array.isArray(sessions) ? sessions : [];
-    sessionLogFatiguePayload = fatiguePayload;
-    sessionLogVisibleCount = 10;
-    renderSessionLog();
+  try {
+    sessionLogFatiguePayload = await ensureTrainingLoadPayload().catch(() => null);
+    await _loadSessionLogPage(false);
   } catch (e) {
     wrap.innerHTML = `<div style="color:var(--danger)">Failed to load session log: ${escHtml(e.message || '')}</div>`;
   }
+}
+
+async function _loadSessionLogPage(append) {
+  const wrap = document.getElementById('session-log-wrap');
+  if (!wrap) return;
+
+  if (!append && sessionLogRows.length === 0) {
+    wrap.innerHTML = '<div class="loading-wrap"><span class="spinner"></span> Loading session log…</div>';
+  }
+
+  const r = await fetch(`/api/workout-sessions?limit=${SESSION_LOG_PAGE_SIZE}&offset=${sessionLogOffset}`);
+  const sessions = await r.json();
+  if (!r.ok) throw new Error(sessions.detail || 'Failed to load workout sessions.');
+
+  const page = Array.isArray(sessions) ? sessions : [];
+  if (append) {
+    sessionLogRows = sessionLogRows.concat(page);
+  } else {
+    sessionLogRows = page;
+  }
+  sessionLogOffset += page.length;
+  sessionLogHasMore = page.length === SESSION_LOG_PAGE_SIZE;
+  renderSessionLog();
 }
 
 function _modalityOption(modality, current) {
@@ -3556,10 +3704,10 @@ function _modalityOption(modality, current) {
   return `<option value="${modality}" ${selected}>${label}</option>`;
 }
 
-function _toggleSessionSrpe(card) {
-  const modality = card.querySelector('.sv-modality')?.value;
-  const srpeRow = card.querySelector('.sv-srpe-row');
-  const srpeInput = card.querySelector('.sv-srpe');
+function _toggleSessionSrpe(container) {
+  const modality = container.querySelector('.sv-modality')?.value;
+  const srpeRow = container.querySelector('.sv-srpe-row');
+  const srpeInput = container.querySelector('.sv-srpe');
   const needsSrpe = modality === 'conditioning' || modality === 'cardio';
   if (!srpeRow || !srpeInput) return;
   srpeRow.style.display = needsSrpe ? 'block' : 'none';
@@ -3681,6 +3829,7 @@ async function verifySessionFromCard(btn) {
     statusEl.style.color = 'var(--success)';
     statusEl.textContent = 'Verified.';
     await loadSessionVerificationQueue();
+    await loadSessionLog();
   } catch (e) {
     statusEl.style.color = 'var(--danger)';
     statusEl.textContent = e.message || 'Verification failed.';

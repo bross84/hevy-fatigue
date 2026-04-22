@@ -78,16 +78,16 @@ def _infer_modality(workout_title, exercises, conditioning_cache):
     return "hypertrophy", 0.70
 
 
-def _resolve_verification(modality, confidence, duration_minutes):
+def _resolve_verification(modality, confidence, duration_minutes, auto_verify_confidence_threshold=0.90):
     if duration_minutes is None:
         return "pending", None
 
-    if modality in {"strength", "hypertrophy"} and confidence >= 0.80:
+    if modality in {"strength", "hypertrophy"} and confidence >= auto_verify_confidence_threshold:
         return "verified", datetime.utcnow()
 
     return "pending", None
 
-def import_hevy_data(api_key: str | None = None):
+def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshold: float = 0.90):
     init_db()  # Ensure tables exist before we try to use them
     client = HevyClient(api_key=api_key)
     db = SessionLocal()
@@ -154,6 +154,7 @@ def import_hevy_data(api_key: str | None = None):
                     modality=modality,
                     confidence=modality_confidence,
                     duration_minutes=duration_minutes,
+                    auto_verify_confidence_threshold=auto_verify_confidence_threshold,
                 )
 
                 session_stmt = sqlite_insert(WorkoutSession).values(

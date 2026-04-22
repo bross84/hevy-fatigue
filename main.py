@@ -108,8 +108,9 @@ class PatternSensitivityInput(BaseModel):
     v2_threshold_neutral: float = Field(0.50, ge=0.0, le=1.0)
 
 
-class ConditioningLoadScaleInput(BaseModel):
+class SessionProcessingInput(BaseModel):
     conditioning_stress_scaling_factor: float = Field(29.0, gt=0.0, le=200.0)
+    auto_verify_confidence_threshold: float = Field(0.90, ge=0.50, le=1.00)
 
 class MappingUpdate(BaseModel):
     pct_quad_dom: float = Field(ge=0.0, le=1.0)
@@ -124,6 +125,7 @@ class SessionVerificationUpdate(BaseModel):
     modality: str
     duration_minutes: Optional[int] = Field(None, ge=1, le=480)
     srpe: Optional[float] = Field(None, ge=0.0, le=10.0)
+    verify: bool = True
 
 
 class SessionStatusUpdate(BaseModel):
@@ -315,6 +317,7 @@ def _get_db_api_key(db: Session) -> str | None:
         return legacy_plaintext
 
 _CONDITIONING_SCALING_DEFAULT = 29.0
+_AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT = 0.90
 
 _V2_SETTINGS_DEFAULTS = {
     "v2_threshold_stressed": 0.75,
@@ -324,6 +327,7 @@ _V2_SETTINGS_DEFAULTS = {
     "tsb_threshold_balanced": -5.0,
     "tsb_threshold_slightly_fatigued": -10.0,
     "conditioning_stress_scaling_factor": _CONDITIONING_SCALING_DEFAULT,
+    "auto_verify_confidence_threshold": _AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT,
 }
 
 _CALIBRATION_DEFAULTS = {
@@ -397,6 +401,19 @@ def _get_conditioning_scaling_factor(db: Session) -> float:
         return _CONDITIONING_SCALING_DEFAULT
 
 
+def _get_auto_verify_confidence_threshold(db: Session) -> float:
+    raw = _get_setting_value(db, "auto_verify_confidence_threshold")
+    if raw is None:
+        return _AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return _AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT
+    if 0.50 <= value <= 1.00:
+        return value
+    return _AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT
+
+
 def _validate_tsb_thresholds(cfg: dict) -> None:
     if not (
         cfg["tsb_threshold_underloaded"] >= cfg["tsb_threshold_slightly_fresh"] >=
@@ -427,6 +444,15 @@ def _validate_conditioning_scale(cfg: dict) -> None:
         raise HTTPException(
             status_code=422,
             detail="Conditioning load scale must be greater than 0",
+        )
+
+
+def _validate_auto_verify_threshold(cfg: dict) -> None:
+    threshold = float(cfg["auto_verify_confidence_threshold"])
+    if not (0.50 <= threshold <= 1.00):
+        raise HTTPException(
+            status_code=422,
+            detail="Auto-verify confidence threshold must be between 0.50 and 1.00",
         )
 
 
@@ -468,10 +494,15 @@ def _get_v2_settings(db: Session) -> dict:
             _get_setting_value(db, "conditioning_stress_scaling_factor"),
             _V2_SETTINGS_DEFAULTS["conditioning_stress_scaling_factor"],
         ),
+        "auto_verify_confidence_threshold": _safe_float(
+            _get_setting_value(db, "auto_verify_confidence_threshold"),
+            _V2_SETTINGS_DEFAULTS["auto_verify_confidence_threshold"],
+        ),
     }
     _validate_tsb_thresholds(cfg)
     _validate_pattern_thresholds(cfg)
     _validate_conditioning_scale(cfg)
+    _validate_auto_verify_threshold(cfg)
     return cfg
 
 def _validate_calibration_thresholds(cfg: dict) -> None:
@@ -588,7 +619,11 @@ def trigger_sync(force: bool = False, db: Session = Depends(get_db)):
         _sync_status["running"] = True
         # Resolve API key: DB setting first, then file/env fallback inside HevyClient
         api_key = _get_db_api_key(db)
-        result = import_hevy_data(api_key=api_key)
+        auto_verify_threshold = _get_auto_verify_confidence_threshold(db)
+        result = import_hevy_data(
+            api_key=api_key,
+            auto_verify_confidence_threshold=auto_verify_threshold,
+        )
         _sync_status["last_result"] = result
         _sync_status["last_run"] = datetime.utcnow()
         return {"status": "ok", "new_sets": result.get("new_sets", 0)}
@@ -685,15 +720,24 @@ def save_pattern_sensitivity(data: PatternSensitivityInput, db: Session = Depend
     return {"message": "Pattern sensitivity saved.", **cfg}
 
 
-@app.put("/api/settings/v2/conditioning-scale")
-def save_conditioning_load_scale(data: ConditioningLoadScaleInput, db: Session = Depends(get_db)):
+@app.put("/api/settings/v2/session-processing")
+def save_session_processing(data: SessionProcessingInput, db: Session = Depends(get_db)):
     cfg = {
         "conditioning_stress_scaling_factor": round(float(data.conditioning_stress_scaling_factor), 3),
+        "auto_verify_confidence_threshold": round(float(data.auto_verify_confidence_threshold), 2),
     }
     _validate_conditioning_scale(cfg)
+    _validate_auto_verify_threshold(cfg)
     _set_setting_value(db, "conditioning_stress_scaling_factor", str(cfg["conditioning_stress_scaling_factor"]))
+    _set_setting_value(db, "auto_verify_confidence_threshold", str(cfg["auto_verify_confidence_threshold"]))
     db.commit()
-    return {"message": "Conditioning load scale saved.", **cfg}
+    return {"message": "Session processing settings saved.", **cfg}
+
+
+@app.put("/api/settings/v2/conditioning-scale")
+def save_conditioning_load_scale(data: SessionProcessingInput, db: Session = Depends(get_db)):
+    """Back-compat alias that now updates the full session-processing settings payload."""
+    return save_session_processing(data, db)
 
 # ── Training Load (ATL / CTL / TSB) ──────────────────────────────────────────
 
@@ -1659,9 +1703,14 @@ def get_recent_workouts(count: int = 12, db: Session = Depends(get_db)):
 def get_workout_sessions(
     days: int = 30,
     status: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
     db: Session = Depends(get_db),
 ):
     """List workout sessions for review and verification workflows."""
+    limit = max(1, min(int(limit), 200))
+    offset = max(0, int(offset))
+
     since = date_type.today() - timedelta(days=max(1, days) - 1)
     q = db.query(WorkoutSession).filter(WorkoutSession.workout_date >= since)
 
@@ -1673,6 +1722,8 @@ def get_workout_sessions(
 
     rows = (
         q.order_by(WorkoutSession.workout_date.desc(), WorkoutSession.start_time.desc())
+        .offset(offset)
+        .limit(limit)
         .all()
     )
 
@@ -1888,13 +1939,18 @@ def verify_workout_session(
     duration_minutes = data.duration_minutes if data.duration_minutes is not None else session_row.duration_minutes
     srpe = data.srpe if data.srpe is not None else session_row.srpe
 
+    # Editing and verifying share this endpoint and use the same field validation rules.
     _assert_session_can_be_verified(modality=modality, duration_minutes=duration_minutes, srpe=srpe)
 
     session_row.modality = modality
     session_row.duration_minutes = duration_minutes
     session_row.srpe = srpe
-    session_row.verification_status = "verified"
-    session_row.verified_at = datetime.utcnow()
+
+    if data.verify:
+        session_row.verification_status = "verified"
+        session_row.verified_at = datetime.utcnow()
+    elif session_row.verification_status == "pending":
+        session_row.verified_at = None
     db.commit()
     db.refresh(session_row)
 
