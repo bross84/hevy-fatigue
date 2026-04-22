@@ -264,10 +264,19 @@ Defaults:
 Other requirements:
 - Persist threshold values in calibration settings for future user tuning.
 - Include edge handling when pattern CTL is zero.
-- Reasoning string must name specific stressed and available patterns when present.
+- Replace free-text modality reasoning in `recommendation_v2` with TSB-driven training state descriptors.
+- Add per-pattern `days_since_loaded` and `dots_filled` (1..5) display primitives.
+- Keep `recommendation_adjusted` unchanged for backward compatibility.
+- No changes to ATL/CTL/TSB math, pattern signal math, combined-signal math, or fatigue-score math.
 
 Gate tests:
-- JSON is complete and valid for rest-day, all-fresh, single-pattern stress, and all-stressed cases.
+- TSB state mapping is correct for +10, +5, -2, -7, and -15 fixtures.
+- Fatigue-tier mapping is correct for 8.5, 5.0, and 2.0 fixtures.
+- Dot mapping is correct (0.91 -> 5, 0.28 -> 1).
+- Pattern never-loaded path returns `days_since_loaded = None` without crash.
+- TSB thresholds are readable from `app_settings` with seed defaults when missing.
+- `recommendation_adjusted` remains present and unchanged.
+- Full payload is well formed across edge cases, including no workout data and no check-in.
 
 ### Stage 6 Completion Summary (for review before Stage 7)
 
@@ -277,57 +286,99 @@ Implemented changes:
 - Extended calibration settings model and storage in `main.py` with persisted Stage 6 thresholds:
 	- `v2_threshold_stressed` (default `0.75`)
 	- `v2_threshold_neutral` (default `0.50`)
+	- `tsb_threshold_underloaded` (default `8`)
+	- `tsb_threshold_slightly_fresh` (default `3`)
+	- `tsb_threshold_balanced` (default `-5`)
+	- `tsb_threshold_slightly_fatigued` (default `-10`)
 	- Stored in `app_settings` as `fatigue_v2_threshold_stressed` / `fatigue_v2_threshold_neutral`.
+	- Stored in `app_settings` as `tsb_threshold_underloaded`, `tsb_threshold_slightly_fresh`, `tsb_threshold_balanced`, `tsb_threshold_slightly_fatigued`.
 - Added Stage 6 recommendation engine helpers in `main.py`:
 	- `_resolve_v2_thresholds(calibration)`
+	- `_resolve_tsb_state_thresholds(calibration)`
+	- `_resolve_training_state(tsb, tsb_thresholds)`
+	- `_resolve_fatigue_tier(fatigue_score)`
+	- `_dots_filled(combined_signal)`
+	- `_pattern_last_loaded_dates(db, today)`
+	- `_days_since_loaded(pattern, last_loaded_dates, today)`
 	- `_pattern_soreness_signals(checkin)`
 	- `_pattern_load_signal(atl, ctl)` with explicit CTL=0 edge handling
 	- `_state_from_signal(signal, thresholds)`
-	- `_build_recommendation_v2(today_pattern_loads, checkin, calibration)`
+	- `_build_recommendation_v2(...)` reworked to return TSB-state payload shape.
 - Added `today.recommendation_v2` to `/api/training-load` response with:
-	- overall `status` and `combined_signal`
-	- active v2 `thresholds`
-	- per-pattern (`knee`/`hip`/`push`/`pull`) ATL/CTL/TSB + load/soreness/combined signals + state
-	- reasoning string constrained to model-honest pattern language
+	- `training_state`, `training_state_label`, `training_state_detail`
+	- `tsb`, `fatigue_score`, `fatigue_tier`, `fatigue_tier_detail`
+	- `pattern_status` per pattern with `status`, `stress_level_label`, `combined_signal`, `days_since_loaded`, `dots_filled`, `dots_total`
+- Removed from `recommendation_v2`:
+	- `suggested_modality`, `reasoning`, `rest_day_recommended`, `primary_stress_driver`, `primary_stress_driver_label`, `available_patterns`, `stressed_patterns`
 - Kept Layer 1 behavior unchanged (`fatigue_score`, `recommendation_adjusted`, and legacy fields are preserved).
 
-Reasoning language constraints enforced:
-- Uses only pattern-level claims such as:
-	- `[Pattern] stress is elevated`
-	- `[Pattern] load is high relative to baseline`
-	- `[Pattern] is fresh / available`
-	- `Overall fatigue is elevated`
-- Avoids any pattern-level references to CNS/central or muscular/peripheral claims.
-
-Gate evidence (passed — `stage6_gate.py`):
-- Rest-day fixture returns valid JSON and all patterns available.
-- All-fresh fixture returns valid JSON with available pattern states.
-- Single-pattern stress fixture marks the stressed pattern correctly and names it in reasoning.
-- All-stressed fixture marks all patterns stressed and includes overall-elevated reasoning.
-- V2 thresholds persist correctly via calibration save/get flow.
-- `/api/training-load` includes complete `today.recommendation_v2` payload.
+Gate evidence (passed — `stage6_rework_gate.py`):
+- TSB state mapping validated for +10, +5, -2, -7, and -15.
+- Fatigue-tier mapping validated for 8.5 -> High, 5.0 -> Moderate, 2.0 -> Low.
+- Dot mapping validated for 0.91 -> 5 and 0.28 -> 1.
+- Never-loaded pattern path validated (`days_since_loaded = None`, no crash).
+- Seed-default fallback for all TSB thresholds validated when settings are missing.
+- `recommendation_adjusted` compatibility validated.
+- `recommendation_v2` payload shape validated and removed fields confirmed absent.
 
 Files changed in Stage 6:
 - `main.py`
 
-## Stage 7 - Dashboard UI Restructure
+## Stage 7 - Dashboard UI Restructure (Split Delivery)
 
 Goal: Present recommendation output clearly with Today-first UX.
 
 Scope:
 - Keep existing custom CSS system (no Tailwind migration in this pass).
-- Default landing view is Today.
-- Today: fatigue score, tier, reasoning, soreness/pattern status, check-in status, pending verification badge, modality CTA.
-- Today state machine: after submit, replace editable form with read-only status panel; restore form on edit/delete.
-- Trend: ATL/CTL/TSB chart + recommendation bands + range selector (6w/3m/6m), plus per-pattern ATL chart.
-- Move existing stress chart to Trend view.
-- Promote Workouts tab into Session Log with expandable session diagnostics.
+
+### Stage 7.1 - Today View (active)
+
+Goal:
+- Build Today as default landing view with one primary data fetch to `/api/training-load` plus one pending-session fetch for badge count.
+
+Scope:
+- Information-only Today summary (no modality recommendation CTA in this slice).
+- Four-section layout:
+	- Training State Header
+	- Pattern Stress Grid
+	- ATL/CTL/TSB Summary with plain-language labels + tooltips
+	- Status Footer (check-in, pending sessions, last sync)
+- Required fallback behavior:
+	- no check-in
+	- no workout data
+	- missing `recommendation_v2`
+	- `days_since_loaded = null`
+- Mobile requirements at 375px width:
+	- no horizontal scroll
+	- pattern grid remains 2x2
+	- 44x44 minimum touch targets
+	- footer stacks vertically
+
+Out of scope for 7.1:
+- Trend view restructure
+- Session/Log restructure
+- backend changes
+- check-in form changes
+- verification queue changes
+
+### Stage 7.2 - Trend View (Session B)
+
+Goal:
+- Move trend-specific charts and controls into a dedicated Trend experience.
+
+### Stage 7.3 - Log / Session View (Session C)
+
+Goal:
+- Promote workout/session diagnostics and log workflows in a dedicated view.
 
 Gate tests:
-- Today fallback states render correctly.
-- Trend charts handle low-data windows (<7 days) without breaking.
-- Session log handles missing RPE gracefully.
-- App loads to Today by default and all views are navigable.
+- 7.1 gates only:
+	- Today is default landing page.
+	- Training-state headline color maps correctly across all five states.
+	- Pattern grid renders all four cells with status tint, days-since-loaded, and dot counts.
+	- Tooltips render on hover/tap for Fatigue/Fitness/Form labels.
+	- All fallback states render without crash (no check-in, no workout data, missing `recommendation_v2`, null `days_since_loaded`).
+	- Single-fetch behavior on load is preserved (`/api/training-load` + `/api/workout-sessions/pending` only).
 
 ## Decisions Locked
 

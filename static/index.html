@@ -155,6 +155,192 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
 }
 .card-title { font-weight: 600; font-size: 14px; margin-bottom: 14px; }
 
+/* ── Today view (Stage 7.1) ───────────────────────── */
+.today-wrap {
+  display: grid;
+  gap: 14px;
+  overflow-x: hidden;
+}
+.today-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+.today-state-label {
+  font-size: 30px;
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: .2px;
+  word-break: break-word;
+}
+.today-state-underloaded { color: var(--success); }
+.today-state-slightly_fresh { color: color-mix(in srgb, var(--success) 72%, white); }
+.today-state-balanced { color: var(--text); }
+.today-state-slightly_fatigued { color: var(--warn); }
+.today-state-fatigued { color: var(--danger); }
+.today-state-nodata { color: var(--muted); }
+.today-state-detail {
+  margin-top: 7px;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.today-fatigue-line {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.today-pattern-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+.today-pattern-cell {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  min-height: 142px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-width: 0;
+}
+.today-pattern-available {
+  border-left-color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+}
+.today-pattern-neutral {
+  border-left-color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 14%, transparent);
+}
+.today-pattern-stressed {
+  border-left-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 13%, transparent);
+}
+.today-pattern-name {
+  font-size: 11px;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.today-pattern-days {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.3;
+}
+.today-dots {
+  display: inline-flex;
+  gap: 5px;
+  min-height: 22px;
+  align-items: center;
+  white-space: nowrap;
+}
+.today-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--muted);
+  background: transparent;
+}
+.today-dot-filled {
+  background: var(--text);
+  border-color: var(--text);
+}
+.today-pattern-level {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.today-grid-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.today-metric-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+.today-metric {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--bg);
+  text-align: center;
+  min-width: 0;
+}
+.today-metric-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.today-metric-value {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.today-footer {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+.today-footer-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-height: 44px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--bg);
+  cursor: pointer;
+  min-width: 0;
+}
+.today-footer-item:hover { border-color: var(--accent); }
+.today-footer-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.today-footer-value {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.today-footer-ok { color: var(--success); }
+.today-footer-warn { color: var(--warn); }
+.today-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  padding: 0 6px;
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+  color: var(--danger);
+  font-size: 11px;
+  font-weight: 700;
+}
+#legacy-dashboard { display: none; }
+
 /* ── Forms ───────────────────────────── */
 .form-row { margin-bottom: 13px; }
 .val-badge {
@@ -688,6 +874,7 @@ tbody tr:hover td { background: var(--row-hover); }
   box-shadow: 0 4px 16px rgba(0,0,0,.3);
 }
 .tip-icon:hover::after { opacity: 1; }
+.tip-icon.show::after { opacity: 1; }
 
 /* ── Spinner ─────────────────────────── */
 .spinner {
@@ -861,6 +1048,16 @@ tbody tr:hover td { background: var(--row-hover); }
   main { padding: 12px 14px; }
   .card { padding: 14px; }
 
+  .today-state-label { font-size: 24px; }
+  .today-footer { grid-template-columns: 1fr; }
+  .today-footer-item { min-height: 48px; }
+  .today-pattern-cell { min-height: 134px; }
+  #tab-dashboard { overflow-x: hidden; }
+  .today-card { padding: 12px; }
+  .today-wrap { gap: 12px; }
+  .today-metric-value { font-size: 20px; }
+  .today-metric-label { font-size: 10px; }
+
   /* ── Horizontal scroll for tables on small screens ── */
   .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
@@ -923,6 +1120,18 @@ tbody tr:hover td { background: var(--row-hover); }
 
   .theme-group button { font-size: 10px; padding: 3px 5px; }
   .btn-group button { padding: 4px 7px; font-size: 11px; }
+  .today-pattern-days,
+  .today-pattern-level { font-size: 12px; }
+  .today-pattern-cell {
+    min-height: 128px;
+    padding: 9px;
+    gap: 7px;
+  }
+  .today-pattern-name { font-size: 10px; letter-spacing: .6px; }
+  .today-dots { gap: 4px; }
+  .today-dot { width: 9px; height: 9px; }
+  .today-metric-row { gap: 8px; }
+  .today-metric { padding: 9px 8px; }
 }
 </style>
 </head>
@@ -942,7 +1151,7 @@ tbody tr:hover td { background: var(--row-hover); }
 <nav>
   <div class="logo"><img class="logo-icon" src="/resources/favicon.png" alt="Hevy Fatigue icon">HEVY FATIGUE</div>
   <div class="nav-tabs">
-    <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
+    <button class="nav-tab active" data-tab="dashboard">Today</button>
     <button class="nav-tab" data-tab="workouts">Workouts</button>
     <button class="nav-tab" data-tab="exercises">Exercises</button>
     <button class="nav-tab" data-tab="log">Log</button>
@@ -962,13 +1171,20 @@ tbody tr:hover td { background: var(--row-hover); }
 <!-- ══════════════ DASHBOARD ══════════════ -->
 <section id="tab-dashboard" class="tab-content active">
 
+  <div id="today-wrap" class="today-wrap">
+    <div class="today-card" id="today-state-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
+    <div class="today-card" id="today-pattern-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
+    <div class="today-card" id="today-metrics-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
+    <div class="today-card" id="today-footer-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
+  </div>
+
   <!-- Banner shown until the user saves their API key -->
   <div class="setup-banner" id="setup-banner" style="display:none;">
     <span>⚡ <strong>Welcome!</strong> Add your Hevy API key to start syncing workouts.</span>
     <button class="btn btn-primary" onclick="switchToSettings()">Go to Settings →</button>
   </div>
 
-  <div class="grid-2">
+  <div class="grid-2" id="legacy-dashboard">
 
     <!-- left: check-in -->
     <div>
@@ -1611,6 +1827,7 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
     document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
     tab.classList.add('active');
     document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    if (tab.dataset.tab === 'dashboard')                           loadTrainingLoadCard();
     if (tab.dataset.tab === 'exercises' && exercises.length === 0) loadExercises();
     if (tab.dataset.tab === 'workouts'  && !workoutsLoaded)        loadWorkouts();
     if (tab.dataset.tab === 'log'       && !logLoaded)             loadLog();
@@ -1639,12 +1856,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   document.getElementById('ci-date').value = todayStr();
-  checkTodayReadiness();
-  await loadStressHistory();
-  renderChart();
-  loadWorkoutSummary();
   loadTrainingLoadCard();
-  checkSetupBanner();   // show banner if API key not yet configured
+});
+
+// Tooltips: hover works by CSS; click/tap toggles visibility for touch devices.
+document.addEventListener('click', e => {
+  const tip = e.target.closest('.tip-icon');
+  document.querySelectorAll('.tip-icon.show').forEach(el => {
+    if (el !== tip) el.classList.remove('show');
+  });
+  if (tip) {
+    tip.classList.toggle('show');
+    e.stopPropagation();
+  }
 });
 
 function todayStr() { return new Date().toISOString().split('T')[0]; }
@@ -1995,6 +2219,7 @@ async function runSync({ silent = false } = {}) {
           ? `✓ Sync complete — ${d.new_sets} new set${d.new_sets !== 1 ? 's' : ''} added.`
           : '✓ Already up to date — no new sets found.';
         statusEl.innerHTML = `<div class="alert alert-success">${msg}</div>`;
+        localStorage.setItem('hevy_last_sync_iso', new Date().toISOString());
         // Refresh stress chart, workout table, and training load card
         await loadStressHistory();
         renderChart();
@@ -2721,6 +2946,195 @@ const REC_META = {
   large_decrease: { label: '↓↓ Large Decrease',   cls: 'rec-large-decrease', img: 'dead.png'    },
 };
 
+function _formatDaysSinceLoaded(days) {
+  if (days == null) return 'Never loaded';
+  if (days <= 1) return 'Today';
+  return `${days} days ago`;
+}
+
+function _fmt1(n) {
+  const v = Number(n);
+  return Number.isFinite(v) ? v.toFixed(1) : '0.0';
+}
+
+function _relativeTimeFromIso(iso) {
+  if (!iso) return 'Sync time unavailable';
+  const ms = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return 'Sync time unavailable';
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return 'Synced just now';
+  if (mins < 60) return `Synced ${mins} minute${mins === 1 ? '' : 's'} ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `Synced ${hrs} hour${hrs === 1 ? '' : 's'} ago`;
+  const days = Math.floor(hrs / 24);
+  return `Synced ${days} day${days === 1 ? '' : 's'} ago`;
+}
+
+function _stateClass(state) {
+  const k = (state || 'nodata').toLowerCase();
+  if (['underloaded','slightly_fresh','balanced','slightly_fatigued','fatigued'].includes(k)) {
+    return `today-state-${k}`;
+  }
+  return 'today-state-nodata';
+}
+
+function _patternCellClass(status, forceNeutral = false) {
+  if (forceNeutral) return 'today-pattern-cell today-pattern-neutral';
+  if (status === 'available') return 'today-pattern-cell today-pattern-available';
+  if (status === 'stressed') return 'today-pattern-cell today-pattern-stressed';
+  return 'today-pattern-cell today-pattern-neutral';
+}
+
+function _tips(label) {
+  if (label === 'Fatigue (ATL)') return 'Short-term training stress over the past 7 days';
+  if (label === 'Fitness (CTL)') return 'Long-term training capacity built over the past 42 days';
+  return 'Balance between fitness and fatigue. Positive = fresh, negative = fatigued';
+}
+
+function showLegacyCheckin() {
+  const legacy = document.getElementById('legacy-dashboard');
+  if (!legacy) return;
+  legacy.style.display = 'grid';
+  const form = document.getElementById('checkin-form');
+  if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  checkTodayReadiness();
+}
+
+async function _getPendingSessionCount() {
+  try {
+    const r = await fetch('/api/workout-sessions/pending?days=45');
+    const data = await r.json();
+    if (!r.ok || !Array.isArray(data)) return 0;
+    return data.length;
+  } catch {
+    return 0;
+  }
+}
+
+function _safePatternStatus(r2) {
+  const fallback = {
+    knee: { status: 'neutral', stress_level_label: 'Moderate', combined_signal: 0.0, days_since_loaded: null, dots_filled: 1, dots_total: 5 },
+    hip: { status: 'neutral', stress_level_label: 'Moderate', combined_signal: 0.0, days_since_loaded: null, dots_filled: 1, dots_total: 5 },
+    push: { status: 'neutral', stress_level_label: 'Moderate', combined_signal: 0.0, days_since_loaded: null, dots_filled: 1, dots_total: 5 },
+    pull: { status: 'neutral', stress_level_label: 'Moderate', combined_signal: 0.0, days_since_loaded: null, dots_filled: 1, dots_total: 5 },
+  };
+  if (!r2 || !r2.pattern_status) return fallback;
+  const out = { ...fallback };
+  ['knee','hip','push','pull'].forEach(p => {
+    const v = r2.pattern_status[p] || {};
+    out[p] = {
+      status: v.status || 'neutral',
+      stress_level_label: v.stress_level_label || 'Moderate',
+      combined_signal: Number(v.combined_signal || 0),
+      days_since_loaded: v.days_since_loaded == null ? null : Number(v.days_since_loaded),
+      dots_filled: Math.max(1, Math.min(5, Number(v.dots_filled || 1))),
+      dots_total: 5,
+    };
+  });
+  return out;
+}
+
+function _renderTodayCards(data, pendingCount) {
+  const today = data?.today || {};
+  const recV2 = today.recommendation_v2 || null;
+  const hasData = Number(today.atl || 0) !== 0 || Number(today.ctl || 0) !== 0 || Number(today.tsb || 0) !== 0;
+  const checkinExists = today.checkin_exists != null
+    ? !!today.checkin_exists
+    : today.score_source === 'subjective_plus_training';
+
+  const recAdj = today.recommendation_adjusted || 'continue';
+  const recAdjLabel = (REC_META[recAdj]?.label || 'Continue').replace(/[↑↓→]+\s*/g, '').trim();
+  const stateLabel = recV2?.training_state_label || (hasData ? 'Today Overview' : 'No Data Yet');
+  const stateDetail = recV2?.training_state_detail || (hasData
+    ? `Recommendation: ${recAdjLabel}`
+    : 'Log workouts and complete daily check-ins to build your baseline');
+  const stateKey = recV2?.training_state || (hasData ? 'balanced' : 'nodata');
+  const fatigueLine = recV2
+    ? `Fatigue: ${_fmt1(recV2.fatigue_score ?? today.fatigue_score)} · ${recV2.fatigue_tier || '—'}`
+    : `Fatigue: ${_fmt1(today.fatigue_score)} · ${recAdjLabel}`;
+
+  document.getElementById('today-state-card').innerHTML = `
+    <div class="today-state-label ${_stateClass(stateKey)}">${escHtml(stateLabel)}</div>
+    <div class="today-state-detail">${escHtml(stateDetail)}</div>
+    <div class="today-fatigue-line">${escHtml(fatigueLine)}</div>
+  `;
+
+  const patterns = _safePatternStatus(recV2);
+  const forceNeutral = !checkinExists;
+  const grid = ['knee','hip','push','pull'].map(p => {
+    const d = patterns[p];
+    const dots = Array.from({ length: 5 }, (_, i) => `<span class="today-dot ${i < d.dots_filled ? 'today-dot-filled' : ''}"></span>`).join('');
+    return `
+      <div class="${_patternCellClass(d.status, forceNeutral)}">
+        <div class="today-pattern-name">${p.toUpperCase()}</div>
+        <div class="today-pattern-days">${escHtml(_formatDaysSinceLoaded(d.days_since_loaded))}</div>
+        <div class="today-dots" aria-label="${p} stress dots">${dots}</div>
+        <div class="today-pattern-level">${escHtml(d.stress_level_label || 'Moderate')}</div>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('today-pattern-card').innerHTML = `
+    <div class="card-title">Pattern Stress</div>
+    <div class="today-pattern-grid">${grid}</div>
+    ${!checkinExists ? '<div class="today-grid-note">No check-in today - pattern signals based on training load only</div>' : ''}
+  `;
+
+  const metric = (label, val) => `
+    <div class="today-metric">
+      <div class="today-metric-label">${label} <span class="tip-icon" data-tip="${_tips(label)}">i</span></div>
+      <div class="today-metric-value">${_fmt1(val)}</div>
+    </div>
+  `;
+  document.getElementById('today-metrics-card').innerHTML = `
+    <div class="card-title">Load Summary</div>
+    <div class="today-metric-row">
+      ${metric('Fatigue (ATL)', today.atl || 0)}
+      ${metric('Fitness (CTL)', today.ctl || 0)}
+      ${metric('Form (TSB)', today.tsb || 0)}
+    </div>
+  `;
+
+  const checkinText = checkinExists ? 'Check-in complete' : 'Check-in pending';
+  const checkinCls = checkinExists ? 'today-footer-ok' : 'today-footer-warn';
+  const pendingText = pendingCount > 0 ? `${pendingCount} pending` : '0 pending';
+  const pendingBadge = pendingCount > 0 ? `<span class="today-badge">${pendingCount}</span>` : '';
+  const syncText = _relativeTimeFromIso(localStorage.getItem('hevy_last_sync_iso'));
+
+  document.getElementById('today-footer-card').innerHTML = `
+    <div class="card-title">Status</div>
+    <div class="today-footer">
+      <button class="today-footer-item" onclick="showLegacyCheckin()" aria-label="Open check-in form">
+        <span>
+          <div class="today-footer-label">Check-in</div>
+          <div class="today-footer-value ${checkinCls}">${checkinExists ? '✓ ' : '⚠ '}${checkinText}</div>
+        </span>
+      </button>
+      <button class="today-footer-item" onclick="switchToWorkoutsFromToday()" aria-label="Open pending sessions">
+        <span>
+          <div class="today-footer-label">Pending Sessions</div>
+          <div class="today-footer-value">${pendingText}</div>
+        </span>
+        ${pendingBadge}
+      </button>
+      <div class="today-footer-item" aria-label="Last sync status" style="cursor:default;">
+        <span>
+          <div class="today-footer-label">Last Sync</div>
+          <div class="today-footer-value">${escHtml(syncText)}</div>
+        </span>
+      </div>
+    </div>
+  `;
+}
+
+function switchToWorkoutsFromToday() {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
+  document.querySelector('[data-tab="workouts"]').classList.add('active');
+  document.getElementById('tab-workouts').classList.add('active');
+  if (!workoutsLoaded) loadWorkouts();
+}
+
 // Vertical bar for ATL / CTL — fills from bottom up, score is 0–10
 function _tlBar(score, color) {
   const pct = (score / 10 * 100).toFixed(1);
@@ -2743,70 +3157,19 @@ function _tsbBar(tsb) {
 }
 
 async function loadTrainingLoadCard() {
-  const wrap = document.getElementById('tl-wrap');
+  const todayWrap = document.getElementById('today-wrap');
+  if (!todayWrap) return;
   try {
-    const r = await fetch('/api/training-load?days=30');
-    const d = await r.json();
-    _tlHistory = d.history;
-    _tlThresholds = d.thresholds || null;
-    renderFatigueChart(d.history, _tlThresholds);
-    const t   = d.today;
-    const rec = REC_META[t.recommendation_adjusted] || REC_META.continue;
-    const fatigueScore = typeof t.fatigue_score === 'number' ? t.fatigue_score.toFixed(1) : '—';
-    const baseScore = typeof t.subjective_base_score === 'number' ? t.subjective_base_score.toFixed(1) : '—';
-    const modScore = typeof t.training_modifier === 'number'
-      ? `${t.training_modifier >= 0 ? '+' : ''}${t.training_modifier.toFixed(1)}`
-      : '—';
-    const modeLabel = t.recommendation_mode === 'adaptive'
-      ? 'Adaptive Mode'
-      : t.calibration_enabled
-        ? 'Custom Mode'
-        : 'Default Mode';
-    const modeColor = modeLabel === 'Adaptive Mode' ? 'var(--success)'
-      : t.calibration_enabled ? 'var(--accent)' : 'var(--muted)';
-    const pendingStressNote = t.has_pending_workout_stress
-      ? `<div class="tl-sub" style="margin-top:2px;color:var(--muted);font-style:italic;">Newly synced workouts are preview-only until the next check-in (currently applying stress through ${t.stress_included_through}).</div>`
-      : '';
-
-    const atlLabel  = t.atl_score < 2.5 ? 'Low Fatigue'
-                    : t.atl_score < 5.0 ? 'Moderate Fatigue'
-                    : t.atl_score < 7.5 ? 'High Fatigue'
-                    :                     'Very High Fatigue';
-    const trendLabel = t.ctl_trend === 'building'  ? '↗ Building'
-                     : t.ctl_trend === 'declining' ? '↘ Declining'
-                     :                               '→ Maintaining';
-
-    wrap.innerHTML = `
-      <div class="tl-grid">
-        <div class="tl-cell">
-          <div class="tl-label">Short Term Fatigue <span class="tip-icon" data-tip="How hard you've pushed recently relative to your personal peak — based on the 7-day average of your daily training stress.">i</span></div>
-          ${_tlBar(t.atl_score, 'var(--danger)')}
-          <div class="tl-value" style="color:var(--danger);font-size:14px;">${t.atl_score} / 10</div>
-          <div class="tl-sub">${atlLabel}</div>
-        </div>
-        <div class="tl-cell">
-          <div class="tl-label">Long Term Load <span class="tip-icon" data-tip="Your longer-term training baseline from the 28-day average of daily stress. Higher means more chronic load capacity, not necessarily a bad state by itself.">i</span></div>
-          ${_tlBar(t.ctl_score, 'var(--accent)')}
-          <div class="tl-value" style="color:var(--accent);font-size:14px;">${t.ctl_score} / 10</div>
-          <div class="tl-sub">${trendLabel}</div>
-        </div>
-        <div class="tl-cell">
-          <div class="tl-label" style="margin-bottom:8px;">Daily Recommendation</div>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
-            <img src="/resources/${rec.img}" style="width:48px;height:48px;image-rendering:pixelated;">
-            <span class="rec-pill ${rec.cls}">${rec.label}</span>
-            <div class="tl-sub" style="color:${modeColor};font-weight:600;">${modeLabel}</div>
-            <div class="tl-sub" style="margin-top:4px;">Fatigue Score: ${fatigueScore} / 10</div>
-            <div class="tl-sub">Base ${baseScore} ${modScore !== '—' ? `· Modifier ${modScore}` : ''}</div>
-            ${t.score_source === 'subjective_plus_training' && t.tiredness != null && t.perceived_recovery != null
-              ? `<div class="tl-sub" style="margin-top:2px;color:var(--muted);">Tired ${t.tiredness}/4 · Recovery ${t.perceived_recovery}/4</div>`
-              : `<div class="tl-sub" style="margin-top:2px;color:var(--muted);font-style:italic;">No check-in today</div>`}
-            ${pendingStressNote}
-          </div>
-        </div>
-      </div>`;
+    const [trainingRes, pendingCount] = await Promise.all([
+      fetch('/api/training-load?days=30').then(r => r.json()),
+      _getPendingSessionCount(),
+    ]);
+    _renderTodayCards(trainingRes, pendingCount);
   } catch {
-    wrap.innerHTML = '<div style="color:var(--muted);font-size:12px;">Training load unavailable — sync some workouts first.</div>';
+    document.getElementById('today-state-card').innerHTML = '<div class="today-state-label today-state-nodata">No Data Yet</div><div class="today-state-detail">Log workouts and complete daily check-ins to build your baseline</div><div class="today-fatigue-line">Fatigue: 0.0 · Low</div>';
+    document.getElementById('today-pattern-card').innerHTML = '<div class="card-title">Pattern Stress</div><div class="today-pattern-grid">' + ['KNEE','HIP','PUSH','PULL'].map(p => `<div class="today-pattern-cell today-pattern-neutral"><div class="today-pattern-name">${p}</div><div class="today-pattern-days">Never loaded</div><div class="today-dots"><span class="today-dot today-dot-filled"></span><span class="today-dot"></span><span class="today-dot"></span><span class="today-dot"></span><span class="today-dot"></span></div><div class="today-pattern-level">Moderate</div></div>`).join('') + '</div>';
+    document.getElementById('today-metrics-card').innerHTML = '<div class="card-title">Load Summary</div><div class="today-metric-row"><div class="today-metric"><div class="today-metric-label">Fatigue (ATL)</div><div class="today-metric-value">0.0</div></div><div class="today-metric"><div class="today-metric-label">Fitness (CTL)</div><div class="today-metric-value">0.0</div></div><div class="today-metric"><div class="today-metric-label">Form (TSB)</div><div class="today-metric-value">0.0</div></div></div>';
+    document.getElementById('today-footer-card').innerHTML = '<div class="card-title">Status</div><div class="today-footer"><button class="today-footer-item" onclick="showLegacyCheckin()"><span><div class="today-footer-label">Check-in</div><div class="today-footer-value today-footer-warn">⚠ Check-in pending</div></span></button><button class="today-footer-item" onclick="switchToWorkoutsFromToday()"><span><div class="today-footer-label">Pending Sessions</div><div class="today-footer-value">0 pending</div></span></button><div class="today-footer-item" style="cursor:default;"><span><div class="today-footer-label">Last Sync</div><div class="today-footer-value">Sync time unavailable</div></span></div></div>';
   }
 }
 
