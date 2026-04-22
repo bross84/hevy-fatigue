@@ -472,7 +472,78 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
   font-size: 11px;
   font-weight: 700;
 }
-#legacy-dashboard { display: none; }
+.checkin-scale-field { margin-bottom: 13px; }
+.checkin-scale-title {
+  font-size: 12px;
+  color: var(--text);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.checkin-scale-row {
+  display: grid;
+  grid-template-columns: minmax(42px, auto) 1fr minmax(42px, auto);
+  align-items: center;
+  gap: 8px;
+}
+.checkin-scale-endpoint {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.2;
+  user-select: none;
+  pointer-events: none;
+}
+.checkin-scale-endpoint:last-child { text-align: right; }
+.checkin-scale-buttons {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  min-width: 0;
+}
+.checkin-scale-buttons button {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  border-radius: 6px;
+  min-height: 44px;
+  padding: 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all .15s;
+}
+.checkin-scale-buttons button:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.checkin-scale-buttons button.active {
+  background: var(--card);
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--border));
+  box-shadow: 0 1px 3px var(--btn-shadow);
+}
+.checkin-readonly-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.checkin-readonly-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 8px;
+}
+.checkin-readonly-label {
+  font-size: 11px;
+  color: var(--muted);
+}
+.checkin-readonly-value {
+  font-size: 16px;
+  font-weight: 700;
+  margin-top: 2px;
+}
 
 /* ── Forms ───────────────────────────── */
 .form-row { margin-bottom: 13px; }
@@ -1494,6 +1565,12 @@ tbody tr:hover td { background: var(--row-hover); }
   .today-wrap { gap: 12px; }
   .today-metric-value { font-size: 20px; }
   .today-metric-label { font-size: 10px; }
+  .checkin-scale-row {
+    grid-template-columns: minmax(24px, auto) 1fr minmax(24px, auto);
+    gap: 6px;
+  }
+  .checkin-scale-endpoint { font-size: 10px; }
+  .checkin-readonly-grid { grid-template-columns: 1fr; }
 
   /* ── Horizontal scroll for tables on small screens ── */
   .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -1569,6 +1646,15 @@ tbody tr:hover td { background: var(--row-hover); }
   .today-dot { width: 9px; height: 9px; }
   .today-metric-row { gap: 8px; }
   .today-metric { padding: 9px 8px; }
+
+  .checkin-scale-endpoint {
+    font-size: 0;
+  }
+  .checkin-scale-endpoint::after {
+    content: attr(data-short);
+    font-size: 10px;
+    color: var(--muted);
+  }
 }
 </style>
 </head>
@@ -1623,6 +1709,153 @@ tbody tr:hover td { background: var(--row-hover); }
 <section id="tab-dashboard" class="tab-content active">
 
   <div id="today-wrap" class="today-wrap">
+    <div class="today-card" id="today-checkin-card">
+      <div class="card-title">Daily Check-in</div>
+      <div id="checkin-readonly" style="display:none;"></div>
+      <form id="checkin-form">
+        <div id="checkin-status"></div>
+        <div class="form-row">
+          <div class="form-label">Date</div>
+          <input type="date" id="ci-date">
+        </div>
+
+        <div class="checkin-scale-field">
+          <div class="checkin-scale-title">Tiredness</div>
+          <div class="checkin-scale-row">
+            <span class="checkin-scale-endpoint" data-short="N">None</span>
+            <div class="checkin-scale-buttons" data-ci-field="ci-t">
+              <button type="button" class="active" data-ci-field="ci-t" data-value="0">0</button>
+              <button type="button" data-ci-field="ci-t" data-value="1">1</button>
+              <button type="button" data-ci-field="ci-t" data-value="2">2</button>
+              <button type="button" data-ci-field="ci-t" data-value="3">3</button>
+              <button type="button" data-ci-field="ci-t" data-value="4">4</button>
+            </div>
+            <span class="checkin-scale-endpoint" data-short="E">Extreme</span>
+          </div>
+          <input type="hidden" id="ci-t" value="0">
+        </div>
+
+        <div class="checkin-scale-field">
+          <div class="checkin-scale-title">Recovery</div>
+          <div class="checkin-scale-row">
+            <span class="checkin-scale-endpoint" data-short="P">Poor</span>
+            <div class="checkin-scale-buttons" data-ci-field="ci-r">
+              <button type="button" class="active" data-ci-field="ci-r" data-value="0">0</button>
+              <button type="button" data-ci-field="ci-r" data-value="1">1</button>
+              <button type="button" data-ci-field="ci-r" data-value="2">2</button>
+              <button type="button" data-ci-field="ci-r" data-value="3">3</button>
+              <button type="button" data-ci-field="ci-r" data-value="4">4</button>
+            </div>
+            <span class="checkin-scale-endpoint" data-short="F">Full</span>
+          </div>
+          <input type="hidden" id="ci-r" value="0">
+        </div>
+
+        <hr class="section-sep">
+        <div class="section-label">Soreness</div>
+
+        <div class="checkin-scale-field">
+          <div class="checkin-scale-title"><span class="dot dot-quad"></span>Quad / Knee</div>
+          <div class="checkin-scale-row">
+            <span class="checkin-scale-endpoint" data-short="N">None</span>
+            <div class="checkin-scale-buttons" data-ci-field="ci-sq">
+              <button type="button" class="active" data-ci-field="ci-sq" data-value="0">0</button>
+              <button type="button" data-ci-field="ci-sq" data-value="1">1</button>
+              <button type="button" data-ci-field="ci-sq" data-value="2">2</button>
+              <button type="button" data-ci-field="ci-sq" data-value="3">3</button>
+              <button type="button" data-ci-field="ci-sq" data-value="4">4</button>
+            </div>
+            <span class="checkin-scale-endpoint" data-short="S">Severe</span>
+          </div>
+          <input type="hidden" id="ci-sq" value="0">
+        </div>
+
+        <div class="checkin-scale-field">
+          <div class="checkin-scale-title"><span class="dot dot-posterior"></span>Hip / Posterior</div>
+          <div class="checkin-scale-row">
+            <span class="checkin-scale-endpoint" data-short="N">None</span>
+            <div class="checkin-scale-buttons" data-ci-field="ci-sp">
+              <button type="button" class="active" data-ci-field="ci-sp" data-value="0">0</button>
+              <button type="button" data-ci-field="ci-sp" data-value="1">1</button>
+              <button type="button" data-ci-field="ci-sp" data-value="2">2</button>
+              <button type="button" data-ci-field="ci-sp" data-value="3">3</button>
+              <button type="button" data-ci-field="ci-sp" data-value="4">4</button>
+            </div>
+            <span class="checkin-scale-endpoint" data-short="S">Severe</span>
+          </div>
+          <input type="hidden" id="ci-sp" value="0">
+        </div>
+
+        <div class="checkin-scale-field">
+          <div class="checkin-scale-title"><span class="dot dot-push"></span>Upper Push</div>
+          <div class="checkin-scale-row">
+            <span class="checkin-scale-endpoint" data-short="N">None</span>
+            <div class="checkin-scale-buttons" data-ci-field="ci-spu">
+              <button type="button" class="active" data-ci-field="ci-spu" data-value="0">0</button>
+              <button type="button" data-ci-field="ci-spu" data-value="1">1</button>
+              <button type="button" data-ci-field="ci-spu" data-value="2">2</button>
+              <button type="button" data-ci-field="ci-spu" data-value="3">3</button>
+              <button type="button" data-ci-field="ci-spu" data-value="4">4</button>
+            </div>
+            <span class="checkin-scale-endpoint" data-short="S">Severe</span>
+          </div>
+          <input type="hidden" id="ci-spu" value="0">
+        </div>
+
+        <div class="checkin-scale-field">
+          <div class="checkin-scale-title"><span class="dot dot-pull"></span>Upper Pull</div>
+          <div class="checkin-scale-row">
+            <span class="checkin-scale-endpoint" data-short="N">None</span>
+            <div class="checkin-scale-buttons" data-ci-field="ci-spl">
+              <button type="button" class="active" data-ci-field="ci-spl" data-value="0">0</button>
+              <button type="button" data-ci-field="ci-spl" data-value="1">1</button>
+              <button type="button" data-ci-field="ci-spl" data-value="2">2</button>
+              <button type="button" data-ci-field="ci-spl" data-value="3">3</button>
+              <button type="button" data-ci-field="ci-spl" data-value="4">4</button>
+            </div>
+            <span class="checkin-scale-endpoint" data-short="S">Severe</span>
+          </div>
+          <input type="hidden" id="ci-spl" value="0">
+        </div>
+
+        <hr class="section-sep">
+        <div class="section-label">Joint Health</div>
+
+        <div class="checkin-scale-field">
+          <div class="checkin-scale-title">Upper Joint</div>
+          <div class="checkin-scale-row">
+            <span class="checkin-scale-endpoint" data-short="G">Good</span>
+            <div class="checkin-scale-buttons" data-ci-field="ci-ju">
+              <button type="button" class="active" data-ci-field="ci-ju" data-value="0">0</button>
+              <button type="button" data-ci-field="ci-ju" data-value="1">1</button>
+              <button type="button" data-ci-field="ci-ju" data-value="2">2</button>
+              <button type="button" data-ci-field="ci-ju" data-value="3">3</button>
+              <button type="button" data-ci-field="ci-ju" data-value="4">4</button>
+            </div>
+            <span class="checkin-scale-endpoint" data-short="P">Pain</span>
+          </div>
+          <input type="hidden" id="ci-ju" value="0">
+        </div>
+
+        <div class="checkin-scale-field">
+          <div class="checkin-scale-title">Lower Joint</div>
+          <div class="checkin-scale-row">
+            <span class="checkin-scale-endpoint" data-short="G">Good</span>
+            <div class="checkin-scale-buttons" data-ci-field="ci-jl">
+              <button type="button" class="active" data-ci-field="ci-jl" data-value="0">0</button>
+              <button type="button" data-ci-field="ci-jl" data-value="1">1</button>
+              <button type="button" data-ci-field="ci-jl" data-value="2">2</button>
+              <button type="button" data-ci-field="ci-jl" data-value="3">3</button>
+              <button type="button" data-ci-field="ci-jl" data-value="4">4</button>
+            </div>
+            <span class="checkin-scale-endpoint" data-short="P">Pain</span>
+          </div>
+          <input type="hidden" id="ci-jl" value="0">
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="ci-submit">Submit Check-in</button>
+      </form>
+    </div>
     <div class="today-card" id="today-state-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
     <div class="today-card" id="today-pattern-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
     <div class="today-card" id="today-joint-card" style="display:none;"></div>
@@ -1636,175 +1869,6 @@ tbody tr:hover td { background: var(--row-hover); }
     <button class="btn btn-primary" onclick="switchToSettings()">Go to Settings →</button>
   </div>
 
-  <div class="grid-2" id="legacy-dashboard">
-
-    <!-- left: check-in -->
-    <div>
-      <div class="card">
-        <div class="card-title">Daily Check-in</div>
-        <div id="checkin-status"></div>
-        <form id="checkin-form">
-          <div class="form-row">
-            <div class="form-label">Date</div>
-            <input type="date" id="ci-date">
-          </div>
-          <hr class="section-sep">
-          <div class="section-label">Soreness</div>
-
-          <div class="form-row">
-            <div class="form-label"><span class="dot dot-quad"></span>Quad / Knee</div>
-            <select id="ci-sq">
-              <option value="0">0 — No soreness</option>
-              <option value="1">1 — Minor soreness</option>
-              <option value="2">2 — Average soreness</option>
-              <option value="3">3 — Moderate soreness</option>
-              <option value="4">4 — High soreness / injury</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <div class="form-label"><span class="dot dot-posterior"></span>Hip / Posterior</div>
-            <select id="ci-sp">
-              <option value="0">0 — No soreness</option>
-              <option value="1">1 — Minor soreness</option>
-              <option value="2">2 — Average soreness</option>
-              <option value="3">3 — Moderate soreness</option>
-              <option value="4">4 — High soreness / injury</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <div class="form-label"><span class="dot dot-push"></span>Upper Push</div>
-            <select id="ci-spu">
-              <option value="0">0 — No soreness</option>
-              <option value="1">1 — Minor soreness</option>
-              <option value="2">2 — Average soreness</option>
-              <option value="3">3 — Moderate soreness</option>
-              <option value="4">4 — High soreness / injury</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <div class="form-label"><span class="dot dot-pull"></span>Upper Pull</div>
-            <select id="ci-spl">
-              <option value="0">0 — No soreness</option>
-              <option value="1">1 — Minor soreness</option>
-              <option value="2">2 — Average soreness</option>
-              <option value="3">3 — Moderate soreness</option>
-              <option value="4">4 — High soreness / injury</option>
-            </select>
-          </div>
-
-          <hr class="section-sep">
-          <div class="section-label">Joint Health</div>
-
-          <div class="form-row">
-            <div class="form-label">Upper (Shoulder / Elbow / Wrist)</div>
-            <select id="ci-ju">
-              <option value="0">0 — No pain</option>
-              <option value="1">1 — Minor pain</option>
-              <option value="2">2 — Average pain</option>
-              <option value="3">3 — Moderate pain</option>
-              <option value="4">4 — High pain / injury</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <div class="form-label">Lower (Low Back / Hip / Knee)</div>
-            <select id="ci-jl">
-              <option value="0">0 — No pain</option>
-              <option value="1">1 — Minor pain</option>
-              <option value="2">2 — Average pain</option>
-              <option value="3">3 — Moderate pain</option>
-              <option value="4">4 — High pain / injury</option>
-            </select>
-          </div>
-
-          <hr class="section-sep">
-          <div class="section-label">Readiness</div>
-
-          <div class="form-row">
-            <div class="form-label">
-              Tiredness (0 Fresh → 4 Exhausted)
-              <input type="number" class="val-input" id="v-t" min="0" max="4" value="0" oninput="syncRange('v-t','ci-t')">
-            </div>
-            <input type="range" min="0" max="4" value="0" id="ci-t" oninput="syncNum('ci-t','v-t')">
-          </div>
-          <div class="form-row">
-            <div class="form-label">
-              Recovery (0 Fully Recovered → 4 Beat Up)
-              <input type="number" class="val-input" id="v-r" min="0" max="4" value="0" oninput="syncRange('v-r','ci-r')">
-            </div>
-            <input type="range" min="0" max="4" value="0" id="ci-r" oninput="syncNum('ci-r','v-r')">
-          </div>
-
-          <button type="submit" class="btn btn-primary" id="ci-submit">Submit Check-in</button>
-        </form>
-      </div>
-
-    </div>
-
-    <!-- right: chart + workout summary -->
-    <div>
-      <div class="card">
-        <div class="chart-header">
-          <div class="card-title" style="margin-bottom:0;">Training Stress</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <div class="btn-group" id="pattern-filter">
-              <button class="active" data-pattern="total">Total</button>
-              <button data-pattern="quad_dom">Quad</button>
-              <button data-pattern="posterior">Hip</button>
-              <button data-pattern="upper_push">Push</button>
-              <button data-pattern="upper_pull">Pull</button>
-            </div>
-            <div class="btn-group" id="baseline-toggle">
-              <button data-days="3">3d</button>
-              <button class="active" data-days="6">6d</button>
-              <button data-days="12">12d</button>
-            </div>
-          </div>
-        </div>
-        <div style="position:relative;height:260px;">
-          <canvas id="stressChart"></canvas>
-        </div>
-        <div id="chart-loading" style="display:none;" class="loading-wrap">
-          <span class="spinner"></span> Fetching pattern data…
-        </div>
-        <div class="stress-legend" style="display:flex;gap:18px;margin-top:10px;font-size:12px;color:var(--muted);">
-          <span class="stress-legend-item" style="display:inline-flex;align-items:center;gap:5px;">
-            <span style="width:16px;height:2px;background:var(--accent);display:inline-block;border-radius:1px;"></span>
-            Intensity Load
-            <span class="tip-icon" data-tip="How hard you trained. Heavy sets close to your max drive this number up fast. Think of it as nervous system fatigue — the kind that makes you feel strong but drained.">i</span>
-          </span>
-          <span class="stress-legend-item" style="display:inline-flex;align-items:center;gap:5px;">
-            <span style="width:16px;height:2px;background:var(--posterior);display:inline-block;border-radius:1px;"></span>
-            Volume Load
-            <span class="tip-icon" data-tip="How much total work you did. Adds up with every set and rep regardless of how heavy. Think of it as muscle fatigue — the kind that makes you sore and tired the next day.">i</span>
-          </span>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Training Load</div>
-        <div id="tl-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Training Recommendation (30 days)</div>
-        <div style="position:relative;height:200px;">
-          <canvas id="tsbZoneChart"></canvas>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
-          <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--accent);display:inline-block;opacity:.7;"></span>Large Increase</span>
-          <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--success);display:inline-block;opacity:.7;"></span>Increase</span>
-          <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--warn);display:inline-block;opacity:.7;"></span>Continue</span>
-          <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--decrease-band);display:inline-block;opacity:.7;"></span>Decrease</span>
-          <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--danger);display:inline-block;opacity:.7;"></span>Large Decrease</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Recent Workouts (14 days)</div>
-        <div id="workout-table-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
-      </div>
-    </div>
-  </div>
 </section>
 
 <!-- ══════════════ TREND TAB ══════════════ -->
@@ -1833,6 +1897,45 @@ tbody tr:hover td { background: var(--row-hover); }
         <canvas id="trend-pattern-chart"></canvas>
       </div>
       <div class="trend-note" id="trend-pattern-note" style="display:none;">Pattern data unavailable for this date range.</div>
+    </div>
+
+    <div class="trend-chart-card" id="trend-stress-card">
+      <div class="card-title" style="margin-bottom:8px;">Training Stress (Legacy View)</div>
+      <div class="trend-note" style="margin-bottom:10px;">Relocated from the legacy check-in panel for trend-side diagnostics.</div>
+      <div class="chart-header">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div class="btn-group" id="pattern-filter">
+            <button class="active" data-pattern="total">Total</button>
+            <button data-pattern="quad_dom">Quad</button>
+            <button data-pattern="posterior">Hip</button>
+            <button data-pattern="upper_push">Push</button>
+            <button data-pattern="upper_pull">Pull</button>
+          </div>
+          <div class="btn-group" id="baseline-toggle">
+            <button data-days="3">3d</button>
+            <button class="active" data-days="6">6d</button>
+            <button data-days="12">12d</button>
+          </div>
+        </div>
+      </div>
+      <div style="position:relative;height:260px;">
+        <canvas id="stressChart"></canvas>
+      </div>
+      <div id="chart-loading" style="display:none;" class="loading-wrap">
+        <span class="spinner"></span> Fetching pattern data…
+      </div>
+      <div class="stress-legend" style="display:flex;gap:18px;margin-top:10px;font-size:12px;color:var(--muted);">
+        <span class="stress-legend-item" style="display:inline-flex;align-items:center;gap:5px;">
+          <span style="width:16px;height:2px;background:var(--accent);display:inline-block;border-radius:1px;"></span>
+          Intensity Load
+          <span class="tip-icon" data-tip="How hard you trained. Heavy sets close to your max drive this number up fast. Think of it as nervous system fatigue — the kind that makes you feel strong but drained.">i</span>
+        </span>
+        <span class="stress-legend-item" style="display:inline-flex;align-items:center;gap:5px;">
+          <span style="width:16px;height:2px;background:var(--posterior);display:inline-block;border-radius:1px;"></span>
+          Volume Load
+          <span class="tip-icon" data-tip="How much total work you did. Adds up with every set and rep regardless of how heavy. Think of it as muscle fatigue — the kind that makes you sore and tired the next day.">i</span>
+        </span>
+      </div>
     </div>
 
     <div class="trend-chart-card" id="trend-empty" style="display:none;">
@@ -2245,13 +2348,10 @@ function applyTheme(pref) {
   // Rebuild charts with new colors after CSS vars settle
   requestAnimationFrame(() => {
     patternCache = {};
-    if (stressChart) {
-      renderChart();
-      document.querySelectorAll('#pattern-filter button').forEach(b =>
-        b.classList.toggle('active', b.dataset.pattern === 'total')
-      );
-      activePattern = 'total';
-    }
+    document.querySelectorAll('#pattern-filter button').forEach(b =>
+      b.classList.toggle('active', b.dataset.pattern === 'total')
+    );
+    activePattern = 'total';
     if (document.getElementById('tab-trend')?.classList.contains('active')) {
       renderTrendView();
     }
@@ -2277,15 +2377,6 @@ let exercises      = [];
 // ResizeObserver fires *after* the browser finishes computing the new layout
 // for each specific container, so we always measure the correct dimensions.
 
-// Stress chart lives on the Dashboard (never in a switching grid) — .resize() is fine
-{
-  let _t;
-  window.addEventListener('resize', () => {
-    clearTimeout(_t);
-    _t = setTimeout(() => { if (stressChart) stressChart.resize(); }, 150);
-  });
-}
-
 // Trend charts: re-render active view on resize after layout settles.
 let _tlHistory = null;
 if (window.ResizeObserver) {
@@ -2306,7 +2397,6 @@ let workoutsLoaded = false;
 let logLoaded      = false;
 let logEditDate    = null;
 let exSort         = 'alpha';
-let tsbZoneChart   = null;
 let _tlThresholds  = null;
 let _trainingLoadPayload = null;
 let _trainingLoadFetchPromise = null;
@@ -2382,8 +2472,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   document.getElementById('ci-date').value = todayStr();
+  ['ci-t','ci-r','ci-sq','ci-sp','ci-spu','ci-spl','ci-ju','ci-jl'].forEach(id => _setCheckinScaleValue(id, 0));
   setMobileNavOpen(false);
   initTrendRangeSelector();
+  checkTodayReadiness();
   loadTrainingLoadCard();
 });
 
@@ -2414,6 +2506,60 @@ document.addEventListener('click', e => {
 });
 
 function todayStr() { return new Date().toISOString().split('T')[0]; }
+
+function _setCheckinScaleValue(fieldId, value) {
+  const input = document.getElementById(fieldId);
+  if (!input) return;
+  const next = Math.max(0, Math.min(4, Number(value) || 0));
+  input.value = String(next);
+  document.querySelectorAll(`.checkin-scale-buttons button[data-ci-field="${fieldId}"]`).forEach(btn => {
+    btn.classList.toggle('active', Number(btn.dataset.value) === next);
+  });
+}
+
+function _renderCheckinReadonly(entry) {
+  const box = document.getElementById('checkin-readonly');
+  if (!box || !entry) return;
+  const rows = [
+    ['Date', entry.date || todayStr()],
+    ['Tiredness', Number(entry.tiredness || 0)],
+    ['Recovery', Number(entry.perceived_recovery || 0)],
+    ['Quad / Knee', Number(entry.sore_quad_dom || 0)],
+    ['Hip / Posterior', Number(entry.sore_posterior || 0)],
+    ['Upper Push', Number(entry.sore_upper_push || 0)],
+    ['Upper Pull', Number(entry.sore_upper_pull || 0)],
+    ['Upper Joint', Number(entry.joint_upper || 0)],
+    ['Lower Joint', Number(entry.joint_lower || 0)],
+  ];
+  box.innerHTML = `
+    <div class="alert alert-success">✓ Already logged today — Intensity Load: ${entry.central_stress ?? '—'} | Volume Load: ${entry.peripheral_stress ?? '—'}</div>
+    <div class="checkin-readonly-grid">
+      ${rows.map(([label, value]) => `
+        <div class="checkin-readonly-item">
+          <div class="checkin-readonly-label">${escHtml(String(label))}</div>
+          <div class="checkin-readonly-value">${escHtml(String(value))}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function _setCheckinTodayVisibility(isSubmitted, entry = null) {
+  const form = document.getElementById('checkin-form');
+  const readonly = document.getElementById('checkin-readonly');
+  const status = document.getElementById('checkin-status');
+  if (!form || !readonly) return;
+  if (isSubmitted) {
+    form.style.display = 'none';
+    readonly.style.display = 'block';
+    _renderCheckinReadonly(entry || {});
+    return;
+  }
+  form.style.display = 'block';
+  readonly.style.display = 'none';
+  readonly.innerHTML = '';
+  if (status) status.innerHTML = '';
+}
 
 // ═══ Settings ════════════════════════════════════════
 function switchToSettings() {
@@ -2629,15 +2775,23 @@ function syncRange(numId, sliderId) {
 
 // ═══ Check-in ════════════════════════════════════════
 async function checkTodayReadiness() {
+  const dateInput = document.getElementById('ci-date');
+  if (!dateInput) return;
+  if (dateInput.value !== todayStr()) {
+    _setCheckinTodayVisibility(false);
+    return;
+  }
   try {
     const r = await fetch('/api/readiness/today');
     if (r.ok) {
       const d = await r.json();
-      setStatus('success', `✓ Already logged today — Intensity Load: ${d.central_stress ?? '—'} | Volume Load: ${d.peripheral_stress ?? '—'}`);  
+      _setCheckinTodayVisibility(true, d);
       const btn = document.getElementById('ci-submit');
       btn.disabled = true;
       btn.textContent = 'Already logged today';
+      return;
     }
+    _setCheckinTodayVisibility(false);
   } catch {}
 }
 
@@ -2654,12 +2808,19 @@ document.getElementById('ci-date').addEventListener('change', function () {
     btn.textContent = 'Submit Check-in';
     checkTodayReadiness();          // re-lock if today already has an entry
   } else {
+    _setCheckinTodayVisibility(false);
     btn.disabled    = false;
     btn.textContent = 'Add Past Entry';
     // Clear any "already logged today" banner so the form looks open
     const st = document.getElementById('checkin-status');
     if (st.querySelector('.alert-success')) st.innerHTML = '';
   }
+});
+
+document.getElementById('checkin-form').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-ci-field][data-value]');
+  if (!btn) return;
+  _setCheckinScaleValue(btn.dataset.ciField, btn.dataset.value);
 });
 
 document.getElementById('checkin-form').addEventListener('submit', async e => {
@@ -2697,14 +2858,16 @@ document.getElementById('checkin-form').addEventListener('submit', async e => {
     const d = await r.json();
     if (r.ok) {
       // Reset all check-in fields after any successful submission
-      ['ci-sq','ci-sp','ci-spu','ci-spl','ci-ju','ci-jl'].forEach(id => {
-        document.getElementById(id).value = '0';
-      });
-      ['ci-t','v-t','ci-r','v-r'].forEach(id => {
-        document.getElementById(id).value = 0;
-      });
+      ['ci-t','ci-r','ci-sq','ci-sp','ci-spu','ci-spl','ci-ju','ci-jl'].forEach(id => _setCheckinScaleValue(id, 0));
       if (isToday) {
-        setStatus('success', `✓ Logged! Intensity Load: ${d.central_stress} | Volume Load: ${d.peripheral_stress}`);
+        _setCheckinTodayVisibility(true, {
+          ...payload,
+          date: submittedDate,
+          central_stress: d.central_stress,
+          peripheral_stress: d.peripheral_stress,
+          perceived_recovery: payload.perceived_recovery,
+          tiredness: payload.tiredness,
+        });
         btn.disabled    = true;
         btn.textContent = 'Already logged today';
         _trainingLoadPayload = null;
@@ -2762,11 +2925,13 @@ async function runSync({ silent = false } = {}) {
         statusEl.innerHTML = `<div class="alert alert-success">${msg}</div>`;
         localStorage.setItem('hevy_last_sync_iso', new Date().toISOString());
         _trainingLoadPayload = null;
-        // Refresh stress chart, workout table, and training load card
-        await loadStressHistory();
-        renderChart();
-        loadWorkoutSummary();
+        // Refresh Today and Trend data surfaces
+        stressHistory = [];
+        patternCache = {};
         loadTrainingLoadCard();
+        if (document.getElementById('tab-trend')?.classList.contains('active')) {
+          renderTrendView();
+        }
         if (exercises.length || document.getElementById('tab-exercises').classList.contains('active')) {
           loadExercises();
         }
@@ -2789,10 +2954,12 @@ async function runSync({ silent = false } = {}) {
 
 // ═══ Stress history ═══════════════════════════════════
 async function loadStressHistory() {
+  if (stressHistory.length) return stressHistory;
   try {
     const r = await fetch('/api/stress/history?days=60');
     stressHistory = await r.json();
   } catch { stressHistory = []; }
+  return stressHistory;
 }
 
 function rollingAvg(vals, win) {
@@ -2841,8 +3008,10 @@ function buildDatasets(labels, cVals, pVals, cColor, pColor) {
 }
 
 function renderChart() {
+  const chartEl = document.getElementById('stressChart');
+  if (!chartEl) return;
   const c = themeColors();
-  const ctx = document.getElementById('stressChart').getContext('2d');
+  const ctx = chartEl.getContext('2d');
   const data = buildDatasets(
     stressHistory.map(d => d.date),
     stressHistory.map(d => d.central),
@@ -2854,12 +3023,18 @@ function renderChart() {
 }
 
 function renderPatternChart(key) {
+  const chartEl = document.getElementById('stressChart');
+  if (!chartEl) return;
   const c = themeColors();
   const colors = { quad_dom: c.quad, posterior: c.posterior, upper_push: c.push, upper_pull: c.pull };
   const col = colors[key] || c.accent;
   const pd  = patternCache[key];
+  if (!pd || !pd.length) {
+    renderChart();
+    return;
+  }
   const data = buildDatasets(pd.map(d => d.date), pd.map(d => d.central), pd.map(d => d.peripheral), col, col+'bb');
-  const ctx = document.getElementById('stressChart').getContext('2d');
+  const ctx = chartEl.getContext('2d');
   if (stressChart) stressChart.destroy();
   stressChart = new Chart(ctx, { type: 'line', data, options: chartOpts() });
 }
@@ -2900,35 +3075,6 @@ document.getElementById('baseline-toggle').addEventListener('click', e => {
   patternCache = {};
   if (activePattern === 'total') renderChart(); else renderPatternChart(activePattern);
 });
-
-// ═══ Dashboard workout summary ════════════════════════
-async function loadWorkoutSummary() {
-  const wrap = document.getElementById('workout-table-wrap');
-  try {
-    const r = await fetch('/api/workouts/summary?days=14');
-    const rows = await r.json();
-    if (!rows.length) {
-      wrap.innerHTML = '<div class="loading-wrap" style="color:var(--muted)">No workout data — run the importer.</div>';
-      return;
-    }
-    wrap.innerHTML = `<div class="table-scroll"><table>
-      <thead><tr>
-        <th>Date</th>
-        <th>Volume (lbs)</th>
-        <th class="col-hide">Sets</th>
-        <th class="col-hide">Avg RPE</th>
-      </tr></thead>
-      <tbody>${[...rows].reverse().map(r => `<tr>
-        <td>${r.date}</td>
-        <td>${Number(r.total_volume).toLocaleString()}</td>
-        <td class="col-hide">${r.total_sets}</td>
-        <td class="col-hide">${r.avg_rpe ?? '—'}</td>
-      </tr>`).join('')}</tbody>
-    </table></div>`;
-  } catch {
-    wrap.innerHTML = '<div style="color:var(--danger)">Failed to load workout data.</div>';
-  }
-}
 
 // ═══ Log tab ══════════════════════════════════════════
 
@@ -3807,11 +3953,9 @@ function _tips(label) {
 }
 
 function showLegacyCheckin() {
-  const legacy = document.getElementById('legacy-dashboard');
-  if (!legacy) return;
-  legacy.style.display = 'grid';
-  const form = document.getElementById('checkin-form');
-  if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const card = document.getElementById('today-checkin-card');
+  if (!card) return;
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
   checkTodayReadiness();
 }
 
@@ -4100,6 +4244,10 @@ function _destroyTrendCharts() {
     trendPatternChart.destroy();
     trendPatternChart = null;
   }
+  if (stressChart) {
+    stressChart.destroy();
+    stressChart = null;
+  }
 }
 
 function _trendChartBaseOptions() {
@@ -4305,10 +4453,15 @@ async function renderTrendView() {
   const patternCard = document.getElementById('trend-pattern-card');
   const patternWrap = document.getElementById('trend-pattern-wrap');
   const patternNote = document.getElementById('trend-pattern-note');
-  if (!emptyEl || !mainWrap || !patternCard || !patternWrap || !patternNote) return;
+  const stressCard = document.getElementById('trend-stress-card');
+  const chartLoading = document.getElementById('chart-loading');
+  if (!emptyEl || !mainWrap || !patternCard || !patternWrap || !patternNote || !stressCard) return;
 
   try {
-    const payload = await ensureTrainingLoadPayload();
+    const [payload] = await Promise.all([
+      ensureTrainingLoadPayload(),
+      loadStressHistory(),
+    ]);
     const history = _trendSlice(payload?.history || [], trendRangeDays);
 
     _destroyTrendCharts();
@@ -4317,12 +4470,14 @@ async function renderTrendView() {
       emptyEl.style.display = 'block';
       mainWrap.style.display = 'none';
       patternCard.style.display = 'none';
+      stressCard.style.display = 'none';
       return;
     }
 
     emptyEl.style.display = 'none';
     mainWrap.style.display = 'block';
     patternCard.style.display = 'block';
+    stressCard.style.display = 'block';
 
     _renderTrendMainChart(history, payload?.thresholds || {});
 
@@ -4330,17 +4485,25 @@ async function renderTrendView() {
     if (!hasPatternLoads) {
       patternWrap.style.display = 'none';
       patternNote.style.display = 'block';
-      return;
+    } else {
+      patternWrap.style.display = 'block';
+      patternNote.style.display = 'none';
+      _renderTrendPatternChart(history);
     }
 
-    patternWrap.style.display = 'block';
-    patternNote.style.display = 'none';
-    _renderTrendPatternChart(history);
+    if (activePattern === 'total') {
+      renderChart();
+    } else if (patternCache[activePattern]) {
+      renderPatternChart(activePattern);
+    } else {
+      renderChart();
+    }
   } catch {
     _destroyTrendCharts();
     emptyEl.style.display = 'block';
     mainWrap.style.display = 'none';
     patternCard.style.display = 'none';
+    stressCard.style.display = 'none';
   }
 }
 
