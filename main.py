@@ -110,7 +110,7 @@ class PatternSensitivityInput(BaseModel):
 
 class SessionProcessingInput(BaseModel):
     conditioning_stress_scaling_factor: float = Field(29.0, gt=0.0, le=200.0)
-    auto_verify_confidence_threshold: float = Field(0.90, ge=0.50, le=1.00)
+    auto_verify_confidence_threshold: float = Field(0.95, ge=0.50, le=1.00)
 
 class MappingUpdate(BaseModel):
     pct_quad_dom: float = Field(ge=0.0, le=1.0)

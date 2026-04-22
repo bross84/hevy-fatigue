@@ -911,6 +911,10 @@ tbody tr:hover td { background: var(--row-hover); }
   color: var(--muted);
   margin-bottom: 4px;
 }
+.verify-field input[type="number"] {
+  min-height: 44px;
+  padding: 10px 10px;
+}
 .verify-status {
   min-height: 18px;
   margin-top: 8px;
@@ -3298,6 +3302,13 @@ async function loadMoreSessionLog() {
   await _loadSessionLogPage(true);
 }
 
+function _resetSessionLogDetail(card) {
+  const wrap = card.querySelector('.session-detail-wrap');
+  const detailBtn = card.querySelector('.session-detail-btn');
+  if (wrap) wrap.style.display = 'none';
+  if (detailBtn) detailBtn.textContent = 'Show Details';
+}
+
 function toggleSessionLogEdit(btn) {
   const card = btn.closest('.session-log-item');
   if (!card) return;
@@ -3306,6 +3317,9 @@ function toggleSessionLogEdit(btn) {
   if (!editWrap) return;
 
   const opening = editWrap.style.display === 'none';
+  if (opening) {
+    _resetSessionLogDetail(card);
+  }
   editWrap.style.display = opening ? 'block' : 'none';
   btn.textContent = opening ? 'Cancel Edit' : 'Edit';
   if (detailBtn) detailBtn.disabled = opening;
@@ -3541,6 +3555,8 @@ async function toggleSessionDetail(btn) {
     btn.textContent = 'Show Details';
     return;
   }
+
+  _resetSessionLogEdit(card);
 
   wrap.style.display = 'block';
   btn.textContent = 'Hide Details';
