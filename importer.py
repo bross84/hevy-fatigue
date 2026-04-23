@@ -6,6 +6,22 @@ from datetime import datetime, timezone
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 
+CONDITIONING_TITLE_KEYWORDS = [
+    "metcon", "wod", "amrap", "emom", "hiit",
+    "conditioning", "cardio", "crossfit", "circuit",
+]
+
+STRENGTH_TITLE_KEYWORDS = [
+    "me upper", "me lower", "max effort",
+]
+
+HYPERTROPHY_TITLE_KEYWORDS = [
+    "hypertrophy", "hyp", "bodybuilding",
+]
+
+_MIXED_SESSION_NOTE = "Mixed session detected - consider splitting by modality"
+
+
 def _parse_hevy_datetime(raw_value):
     if not raw_value:
         return None
@@ -27,7 +43,7 @@ def _compute_duration_minutes(start_dt, end_dt):
     return duration_minutes
 
 
-def _infer_modality(workout_title, exercises, conditioning_cache):
+def _infer_modality_from_exercises(workout_title, exercises, conditioning_cache):
     title = (workout_title or "").lower()
     cardio_title_keywords = ["run", "running", "jog", "cardio", "ride", "cycling", "bike", "row", "rowing"]
     has_cardio_title_hint = any(keyword in title for keyword in cardio_title_keywords)
@@ -78,7 +94,44 @@ def _infer_modality(workout_title, exercises, conditioning_cache):
     return "hypertrophy", 0.70
 
 
-def _resolve_verification(modality, confidence, duration_minutes, auto_verify_confidence_threshold=0.90):
+def _infer_modality_from_title(workout_title):
+    title = (workout_title or "").lower()
+    modality_matches = {
+        "conditioning": sum(1 for kw in CONDITIONING_TITLE_KEYWORDS if kw in title),
+        "strength": sum(1 for kw in STRENGTH_TITLE_KEYWORDS if kw in title),
+        "hypertrophy": sum(1 for kw in HYPERTROPHY_TITLE_KEYWORDS if kw in title),
+    }
+
+    active = [modality for modality, count in modality_matches.items() if count > 0]
+    if not active:
+        return None, None, None
+
+    if len(active) == 1:
+        return active[0], 0.95, None
+
+    # Mixed titles are forced to pending confidence by design.
+    priority = {"conditioning": 3, "strength": 2, "hypertrophy": 1}
+    dominant = max(
+        active,
+        key=lambda modality: (modality_matches[modality], priority[modality]),
+    )
+    return dominant, 0.70, _MIXED_SESSION_NOTE
+
+
+def _infer_modality(workout_title, exercises, conditioning_cache):
+    title_modality, title_confidence, title_note = _infer_modality_from_title(workout_title)
+    if title_modality is not None:
+        return title_modality, title_confidence, title_note
+
+    modality, confidence = _infer_modality_from_exercises(
+        workout_title=workout_title,
+        exercises=exercises,
+        conditioning_cache=conditioning_cache,
+    )
+    return modality, confidence, None
+
+
+def _resolve_verification(modality, confidence, duration_minutes, auto_verify_confidence_threshold=0.95):
     if duration_minutes is None:
         return "pending", None
 
@@ -87,7 +140,7 @@ def _resolve_verification(modality, confidence, duration_minutes, auto_verify_co
 
     return "pending", None
 
-def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshold: float = 0.90):
+def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshold: float = 0.95):
     init_db()  # Ensure tables exist before we try to use them
     client = HevyClient(api_key=api_key)
     db = SessionLocal()
@@ -144,7 +197,7 @@ def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshol
                     is_conditioning = bool(mapping.is_conditioning) if mapping else False
                     exercise_conditioning_cache[title] = is_conditioning
 
-                modality, modality_confidence = _infer_modality(
+                modality, modality_confidence, modality_note = _infer_modality(
                     workout_title=workout_title,
                     exercises=exercises,
                     conditioning_cache=exercise_conditioning_cache,
@@ -166,6 +219,7 @@ def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshol
                     duration_minutes=duration_minutes,
                     modality=modality,
                     modality_confidence=modality_confidence,
+                    modality_note=modality_note,
                     verification_status=verification_status,
                     verified_at=verified_at,
                     updated_at=datetime.utcnow(),
@@ -179,6 +233,7 @@ def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshol
                         "duration_minutes": duration_minutes,
                         "modality": modality,
                         "modality_confidence": modality_confidence,
+                        "modality_note": modality_note,
                         "verification_status": verification_status,
                         "verified_at": verified_at,
                         "updated_at": datetime.utcnow(),

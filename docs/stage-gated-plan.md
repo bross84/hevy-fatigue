@@ -481,6 +481,98 @@ Gate tests:
 	- Session detail expands on demand and supports pending, strength/hypertrophy, conditioning, and cardio payload shapes.
 	- Static `pending` route remains reachable after adding dynamic session detail route.
 
+	### Post-Stage 7.3 Session Log + Session Processing Hardening (completed before commit)
+
+	Implemented changes:
+	- Updated verification-queue success flow in `static/index.html` so session verification refreshes both surfaces immediately:
+		- `loadSessionVerificationQueue()`
+		- `loadSessionLog()`
+	- Added inline session-row editing for both `pending` and `verified` rows in Session Log:
+		- `Edit` action on every row
+		- row-local inline form with modality, duration, and conditional sRPE inputs
+		- `Save` writes through `PUT /api/workout-sessions/{hevy_workout_id}/verify`
+		- `Cancel` closes inline editor without mutation
+	- Extended verification payload contract in `main.py`:
+		- `SessionVerificationUpdate.verify: bool = True`
+		- `verify=true` keeps queue verification behavior (promote to `verified`)
+		- `verify=false` performs edit-only mutation while preserving current status
+		- pending rows remain pending after edit; verified rows remain verified after edit
+	- Added session-log pagination with backend offset/limit support:
+		- Frontend default page size raised to `50`
+		- `Load More` now fetches the next page from API instead of only expanding a local slice
+		- Backend `GET /api/workout-sessions` now supports `limit` and `offset` (default `limit=50`)
+	- Confirmed and reused shared `_toggleSessionSrpe(...)` behavior for both:
+		- verification queue cards
+		- inline edit forms
+	- Raised auto-verify threshold policy from `0.80` to `0.90` for strength/hypertrophy auto-verification.
+	- Added configurable session-processing setting in `app_settings`:
+		- `auto_verify_confidence_threshold` (default `0.90`, valid `0.50..1.00`)
+	- Updated importer verification logic in `importer.py`:
+		- `_resolve_verification(..., auto_verify_confidence_threshold=0.90)`
+		- strength/hypertrophy auto-verify only when confidence >= configured threshold
+		- conditioning/cardio always pending regardless of confidence
+	- Updated sync execution path in `main.py` so new syncs immediately honor current settings:
+		- `/api/sync` reads `auto_verify_confidence_threshold` from `app_settings`
+		- threshold is injected into `import_hevy_data(...)`
+	- Renamed Settings section from `Conditioning Load Scale` to `Session Processing` in `static/index.html`.
+	- Added `Auto-Verify Confidence Threshold` field to Session Processing with single-section save behavior covering:
+		- `conditioning_stress_scaling_factor`
+		- `auto_verify_confidence_threshold`
+		- endpoint: `PUT /api/settings/v2/session-processing`
+
+	Follow-up bugfixes completed:
+	- Fixed row-panel conflict in Session Log so only one panel can be open per row:
+		- opening `Edit` closes `Show Details`
+		- opening `Show Details` closes `Edit`
+		- closing either returns row to collapsed baseline
+	- Normalized inline edit control sizing so duration and sRPE inputs match modality select height/visual weight using existing form styling tokens (no hardcoded fixed px sizes).
+
+	Validation evidence (passed):
+	- Backend gate script validated:
+		- session-processing save/load and threshold-range validation
+		- edit-only behavior preserving row status for pending and verified sessions
+		- verification path still promoting pending sessions when `verify=true`
+		- pagination parameter behavior (`limit`/`offset`)
+		- auto-verify policy gates:
+			- confidence < 0.95 -> pending for strength/hypertrophy
+			- confidence >= 0.95 -> auto-verified for strength/hypertrophy
+			- conditioning/cardio always pending
+	- Frontend wiring verified in code for:
+		- dual refresh after queue verification
+		- inline edit availability on all rows
+		- dynamic sRPE visibility toggle
+		- mutual exclusion between edit/details panels
+		- 50-row page fetch + API-backed load-more flow
+
+	### Post-Stage 7.4 Title-Aware Session Modality Detection (completed before commit)
+
+	Implemented changes:
+	- Added title-first modality inference layer in `importer.py` before exercise-level analysis.
+	- Added explicit title keyword sets:
+		- conditioning: metcon, wod, amrap, emom, hiit, conditioning, cardio, crossfit, circuit
+		- strength: me upper, me lower, max effort
+		- hypertrophy: hypertrophy, hyp, bodybuilding
+	- Single-modality title match behavior:
+		- selects matched modality with confidence `0.95`
+	- Mixed-modality title match behavior:
+		- selects dominant modality by match count, with tie-priority `conditioning > strength > hypertrophy`
+		- sets confidence `0.70` to force verification queue review
+		- writes session note: `Mixed session detected - consider splitting by modality`
+	- No title match behavior:
+		- falls through to prior exercise-level set/rep analysis unchanged
+	- Added `WorkoutSession.modality_note` persistence field and startup-safe schema migration for existing SQLite databases.
+	- Exposed `modality_note` in workout session API list/detail/update responses.
+	- Session-processing default now aligned to `0.95` with legacy `0.90` migration retained.
+
+	Validation evidence (passed):
+	- Gate 1: `CC4.1.2 METCON` -> conditioning, confidence `0.95`
+	- Gate 2: `CC4.1.1 PP/PU + WOD` -> conditioning, confidence `0.95`
+	- Gate 3: `ME Lower + METCON` -> conditioning dominant, confidence `0.70`, mixed-session note present
+	- Gate 4: `Morning Workout` with barbell sets -> no title match, falls through to existing exercise analysis behavior
+	- Gate 5: `Hypertrophy Upper` -> hypertrophy, confidence `0.95`
+	- Gate 6: case-insensitive matching verified
+	- Aggregate result: `TITLE_MODALITY_GATES PASS`
+
 ## Decisions Locked
 
 - Full-body via existing percentage fields (no `is_full_body` column).

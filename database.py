@@ -1,6 +1,6 @@
 from datetime import date as date_type
 from datetime import datetime as dt_datetime
-from sqlalchemy import create_engine, Column, Integer, Float, String, Date, DateTime, Boolean, UniqueConstraint
+from sqlalchemy import create_engine, Column, Integer, Float, String, Date, DateTime, Boolean, UniqueConstraint, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 # Path to the database file.
@@ -122,6 +122,7 @@ class WorkoutSession(Base):
     duration_minutes = Column(Integer, nullable=True)
     modality = Column(String, nullable=False, default="strength")  # strength|hypertrophy|conditioning|cardio
     modality_confidence = Column(Float, nullable=False, default=0.0)
+    modality_note = Column(String, nullable=True)
     verification_status = Column(String, nullable=False, default="pending")  # pending|verified
     verified_at = Column(DateTime, nullable=True)
     srpe = Column(Float, nullable=True)
@@ -137,6 +138,12 @@ class WorkoutSession(Base):
 # This part actually creates the file and tables when you run the script
 def init_db():
     Base.metadata.create_all(bind=engine)
+    with engine.connect() as conn:
+        cols = conn.execute(text("PRAGMA table_info(workout_sessions)")).fetchall()
+        col_names = {row[1] for row in cols}
+        if "modality_note" not in col_names:
+            conn.execute(text("ALTER TABLE workout_sessions ADD COLUMN modality_note VARCHAR"))
+            conn.commit()
     # app_settings table is created by create_all above (new installs and existing DBs)
 if __name__ == "__main__":
     init_db()

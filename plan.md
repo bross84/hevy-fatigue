@@ -23,7 +23,15 @@ Last updated: 2026-04-22
 	- removed legacy recent workouts summary table
 - Workouts tab migration completed:
 	- Session Verification Queue retained
-	- Session Log with filtering, load-more, fatigue annotation, and expandable detail views
+	- Session Log with filtering, fatigue annotation, expandable detail views, and inline per-row edit
+	- Session row panels hardened: Edit and Show Details are now mutually exclusive per row
+	- Session Log default page now loads 50 rows, with API-backed Load More pagination
+- Settings tab updates completed:
+	- Session Processing section now includes both conditioning load scale and auto-verify confidence threshold
+	- Auto-verify threshold input is populated from `/api/settings/v2` and uses placeholder `0.95`
+- Import pipeline updates completed:
+	- Session modality now uses two-layer detection: title keyword pass first, then existing exercise-level fallback
+	- Mixed title matches are flagged with a session note and reduced confidence to force manual review
 
 ## 3) Check-In UX (Latest Overhaul)
 
@@ -56,14 +64,34 @@ Last updated: 2026-04-22
 	- endpoint direction labels and non-interactive endpoint text
 	- mobile 375px width, no overflow, 44px touch targets, full-width submit
 	- backdated date submission behavior
+- Workouts/session-processing backend gate script: PASS for
+	- session-processing save/load and threshold validation range
+	- edit behavior preserving status (`pending` stays pending, `verified` stays verified)
+	- verification path still promoting pending sessions
+	- pagination `limit`/`offset` behavior
+	- auto-verify policy checks (strength/hypertrophy thresholding, conditioning/cardio always pending)
+- Session processing default/migration updates: PASS
+	- runtime default aligned to `0.95`
+	- startup migration upgrades legacy stored `auto_verify_confidence_threshold=0.90` to `0.95`
+- Title modality detection gate script: PASS for
+	- `CC4.1.2 METCON` -> conditioning at confidence `0.95`
+	- `CC4.1.1 PP/PU + WOD` -> conditioning at confidence `0.95`
+	- `ME Lower + METCON` -> mixed-title handling with conditioning dominant, confidence `0.70`, mixed-session note present
+	- `Morning Workout` (no title keywords) -> falls through to existing exercise-level inference unchanged
+	- `Hypertrophy Upper` -> hypertrophy at confidence `0.95`
+	- case-insensitive title matching
 
 ## 5) Open Items / Next Backlog
 
 Priority A
 
-- Manual visual QA on real populated workout/check-in data for Trend and Session Log realism.
+- Manual visual QA on real populated workout/check-in data for Trend and Session Log realism (including inline row edit, mutual exclusion of row panels, and verified/pending filters).
 - Confirm final spacing/typography rhythm in Today card stack after check-in overhaul.
 - Run cross-device pass (Safari iOS + Chrome Android) for check-in button groups and endpoint labels.
+- Browser click-through regression pass for Workouts:
+	- verify queue -> log immediate refresh
+	- Edit/Cancel/Save flows on both pending and verified rows
+	- Show Details expand/collapse while edit mutual exclusion remains enforced
 
 Priority B
 

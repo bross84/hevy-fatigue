@@ -291,6 +291,8 @@ def startup():
     db = SessionLocal()
     try:
         seed_rpe_table(db)
+        _seed_and_migrate_session_processing_settings(db)
+        db.commit()
     finally:
         db.close()
 
@@ -317,7 +319,7 @@ def _get_db_api_key(db: Session) -> str | None:
         return legacy_plaintext
 
 _CONDITIONING_SCALING_DEFAULT = 29.0
-_AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT = 0.90
+_AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT = 0.95
 
 _V2_SETTINGS_DEFAULTS = {
     "v2_threshold_stressed": 0.75,
@@ -383,6 +385,29 @@ def _set_setting_value(db: Session, key: str, value: str) -> None:
         row.value = value
     else:
         db.add(AppSetting(key=key, value=value))
+
+
+def _seed_and_migrate_session_processing_settings(db: Session) -> None:
+    """
+    Seed Session Processing defaults for new installs and migrate legacy values.
+
+    One-time migration rule:
+    - if auto_verify_confidence_threshold is stored as 0.90 from previous default,
+      upgrade it to 0.95.
+    """
+    key = "auto_verify_confidence_threshold"
+    raw = _get_setting_value(db, key)
+    if raw is None:
+        _set_setting_value(db, key, str(_AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT))
+        return
+
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return
+
+    if abs(value - 0.90) < 1e-9:
+        _set_setting_value(db, key, str(_AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT))
 
 def _get_conditioning_scaling_factor(db: Session) -> float:
     """
@@ -1737,6 +1762,7 @@ def get_workout_sessions(
             "duration_minutes": row.duration_minutes,
             "modality": row.modality,
             "modality_confidence": row.modality_confidence,
+            "modality_note": row.modality_note,
             "verification_status": row.verification_status,
             "verified_at": row.verified_at,
             "srpe": row.srpe,
@@ -1834,6 +1860,7 @@ def get_workout_session_detail(hevy_workout_id: str, db: Session = Depends(get_d
             "duration_minutes": session_row.duration_minutes,
             "modality": session_row.modality,
             "modality_confidence": session_row.modality_confidence,
+            "modality_note": session_row.modality_note,
             "verification_status": session_row.verification_status,
             "verified_at": session_row.verified_at,
             "srpe": session_row.srpe,
@@ -1959,6 +1986,7 @@ def verify_workout_session(
         "verification_status": session_row.verification_status,
         "modality": session_row.modality,
         "modality_confidence": session_row.modality_confidence,
+        "modality_note": session_row.modality_note,
         "duration_minutes": session_row.duration_minutes,
         "srpe": session_row.srpe,
         "verified_at": session_row.verified_at,
@@ -2002,6 +2030,7 @@ def update_workout_session_status(
         "verification_status": session_row.verification_status,
         "modality": session_row.modality,
         "modality_confidence": session_row.modality_confidence,
+        "modality_note": session_row.modality_note,
         "duration_minutes": session_row.duration_minutes,
         "srpe": session_row.srpe,
         "verified_at": session_row.verified_at,
