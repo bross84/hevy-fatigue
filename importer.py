@@ -225,7 +225,7 @@ def reclassify_existing_sessions(db, force_all=False):
     }
 
 
-def _resolve_verification(modality, confidence, duration_minutes, auto_verify_confidence_threshold=0.95):
+def _resolve_verification(modality, confidence, duration_minutes, auto_verify_confidence_threshold=0.90):
     if duration_minutes is None:
         return "pending", None
 
@@ -234,7 +234,7 @@ def _resolve_verification(modality, confidence, duration_minutes, auto_verify_co
 
     return "pending", None
 
-def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshold: float = 0.95):
+def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshold: float = 0.90):
     init_db()  # Ensure tables exist before we try to use them
     client = HevyClient(api_key=api_key)
     db = SessionLocal()

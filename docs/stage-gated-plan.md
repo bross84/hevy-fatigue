@@ -562,7 +562,7 @@ Gate tests:
 		- falls through to prior exercise-level set/rep analysis unchanged
 	- Added `WorkoutSession.modality_note` persistence field and startup-safe schema migration for existing SQLite databases.
 	- Exposed `modality_note` in workout session API list/detail/update responses.
-	- Session-processing default now aligned to `0.95` with legacy `0.90` migration retained.
+	- Session-processing default now aligned to `0.90`.
 
 	Validation evidence (passed):
 	- Gate 1: `CC4.1.2 METCON` -> conditioning, confidence `0.95`
@@ -612,6 +612,33 @@ Gate tests:
 		- `Force Reclassify All` option present with confirmation
 		- completion path refreshes `loadSessionVerificationQueue()` and `loadSessionLog()`
 	- Settings spacing repair verified by removing per-card inline `margin-top:14px` overrides so section spacing is controlled by existing shared layout rules.
+
+	### Post-Stage 7.6 Settings V2 Rehydration Fix + Auto-Verify Default Rollback (completed before commit)
+
+	Implemented changes:
+	- Root-cause fix in `static/index.html` for Settings tab hydration:
+		- `loadSettingsTab()` now always calls `loadV2Settings()` even if `GET /api/settings` (API-key metadata fetch) fails.
+		- This prevents stale/default-looking threshold inputs when the API-key fetch path errors.
+	- Confirmed Training State input mapping remains correct:
+		- `tsb-underloaded` <- `tsb_threshold_underloaded`
+		- `tsb-slightly-fresh` <- `tsb_threshold_slightly_fresh`
+		- `tsb-balanced` <- `tsb_threshold_balanced`
+		- `tsb-slightly-fatigued` <- `tsb_threshold_slightly_fatigued`
+	- Confirmed Settings hydration trigger remains on tab activation:
+		- `activateTab('settings')` -> `loadSettingsTab()`
+	- Rolled auto-verify default baseline back to `0.90`:
+		- backend default constant in `main.py`
+		- startup seed behavior now preserves existing user-configured values and only seeds missing values
+		- importer default argument baselines aligned to `0.90`
+		- Session Processing input placeholder aligned to `0.90`
+
+	Validation evidence (passed):
+	- Settings TSB gate validated:
+		- save custom thresholds (`40`, `15`, `-20`, `-50`)
+		- reopen-equivalent fetch returns saved values
+		- refresh-equivalent fetch via fresh DB session returns saved values
+		- auto-verify default baseline verified at `0.90`
+		- aggregate result: `SETTINGS_TSB_GATES_BACKEND PASS`
 
 ## Decisions Locked
 

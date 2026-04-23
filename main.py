@@ -323,7 +323,7 @@ def _get_db_api_key(db: Session) -> str | None:
         return legacy_plaintext
 
 _CONDITIONING_SCALING_DEFAULT = 29.0
-_AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT = 0.95
+_AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT = 0.90
 
 _V2_SETTINGS_DEFAULTS = {
     "v2_threshold_stressed": 0.75,
@@ -393,25 +393,13 @@ def _set_setting_value(db: Session, key: str, value: str) -> None:
 
 def _seed_and_migrate_session_processing_settings(db: Session) -> None:
     """
-    Seed Session Processing defaults for new installs and migrate legacy values.
-
-    One-time migration rule:
-    - if auto_verify_confidence_threshold is stored as 0.90 from previous default,
-      upgrade it to 0.95.
+    Seed Session Processing defaults for new installs.
     """
     key = "auto_verify_confidence_threshold"
     raw = _get_setting_value(db, key)
     if raw is None:
         _set_setting_value(db, key, str(_AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT))
-        return
-
-    try:
-        value = float(raw)
-    except (TypeError, ValueError):
-        return
-
-    if abs(value - 0.90) < 1e-9:
-        _set_setting_value(db, key, str(_AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT))
+    # Existing user-configured values are preserved.
 
 def _get_conditioning_scaling_factor(db: Session) -> float:
     """

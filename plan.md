@@ -28,9 +28,11 @@ Last updated: 2026-04-22
 	- Session Log default page now loads 50 rows, with API-backed Load More pagination
 - Settings tab updates completed:
 	- Session Processing section now includes both conditioning load scale and auto-verify confidence threshold
-	- Auto-verify threshold input is populated from `/api/settings/v2` and uses placeholder `0.95`
+	- Auto-verify threshold input is populated from `/api/settings/v2` and uses placeholder `0.90`
 	- Session Processing now includes local reclassification actions for existing sessions without using Hevy sync
 	- Settings section spacing restored to use existing card/grid spacing tokens after inline margin regression
+	- Settings tab load flow now always fetches `/api/settings/v2` values even if API-key metadata fetch fails
+	- Training State Thresholds fields rehydrate from saved `app_settings` values on each Settings tab open
 - Import pipeline updates completed:
 	- Session modality now uses two-layer detection: title keyword pass first, then existing exercise-level fallback
 	- Mixed title matches are flagged with a session note and reduced confidence to force manual review
@@ -73,8 +75,8 @@ Last updated: 2026-04-22
 	- pagination `limit`/`offset` behavior
 	- auto-verify policy checks (strength/hypertrophy thresholding, conditioning/cardio always pending)
 - Session processing default/migration updates: PASS
-	- runtime default aligned to `0.95`
-	- startup migration upgrades legacy stored `auto_verify_confidence_threshold=0.90` to `0.95`
+	- runtime default aligned to `0.90`
+	- startup seeding preserves existing user values and only seeds missing `auto_verify_confidence_threshold` with `0.90`
 - Title modality detection gate script: PASS for
 	- `CC4.1.2 METCON` -> conditioning at confidence `0.95`
 	- `CC4.1.1 PP/PU + WOD` -> conditioning at confidence `0.95`
@@ -88,6 +90,11 @@ Last updated: 2026-04-22
 	- force-all reclassification updates verified sessions only when explicitly requested
 	- result summary counts returned as expected
 	- no Hevy API import/sync path invoked during reclassification
+- Settings TSB reload gate script: PASS for
+	- custom TSB thresholds saved (`40`, `15`, `-20`, `-50`)
+	- settings payload re-read (tab reopen equivalent) returns saved values, not defaults
+	- fresh DB session re-read (page refresh equivalent) returns saved values, not defaults
+	- default auto-verify threshold baseline confirmed at `0.90`
 
 ## 5) Open Items / Next Backlog
 

@@ -2096,7 +2096,7 @@ tbody tr:hover td { background: var(--row-hover); }
     </p>
     <div class="form-row" style="margin-bottom:10px;">
       <div class="form-label">Auto-Verify Confidence Threshold</div>
-      <input type="number" id="auto-verify-threshold" min="0.5" max="1" step="0.05" placeholder="0.95">
+      <input type="number" id="auto-verify-threshold" min="0.5" max="1" step="0.05" placeholder="0.90">
     </div>
 
     <button class="btn btn-primary" id="btn-save-session-processing" onclick="saveSessionProcessingSettings()">Save Session Processing</button>
@@ -2578,6 +2578,7 @@ async function loadSettingsTab() {
   try {
     const r = await fetch('/api/settings');
     const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Could not load API key settings.');
     const el = document.getElementById('api-key-current');
     if (d.api_key_set) {
       el.textContent = `Current key: ${d.api_key_preview}`;
@@ -2586,10 +2587,10 @@ async function loadSettingsTab() {
     }
     // Clear result box whenever the tab refreshes
     _setKeyResult('', null);
-    await loadV2Settings();
   } catch (e) {
     document.getElementById('api-key-current').textContent = 'Could not load settings.';
   }
+  await loadV2Settings();
 }
 
 function toggleKeyVisibility() {
