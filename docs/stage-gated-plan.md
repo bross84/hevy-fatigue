@@ -705,6 +705,36 @@ Gate tests:
 	- `CC4.1.6 @7` (tag only) -> `conditioning`, `srpe=7.0`, auto-verified
 	- Aggregate result: `SRPE_TITLE_GATES_PASS`
 
+	### Post-Stage 7.9 Today Page Consolidation + Check-in Toggle Refinement (completed before commit)
+
+	Implemented changes:
+	- Today recommendation card content simplified:
+		- removed fatigue score/tier display line
+		- retained only training-state label and training-state detail text.
+	- Removed Today Status card entirely:
+		- removed CHECK-IN / PENDING SESSIONS / LAST SYNC tile card from markup and render paths.
+	- Updated submitted-check-in interaction model:
+		- when today's check-in exists, show collapsed read-only summary card
+		- add `Edit / Backdate` toggle that expands/collapses full form
+		- expanded form always shows date picker and defaults it to today.
+	- Collapse-without-save behavior hardened:
+		- collapsing editor resets all fields back to today's saved values (no unsaved draft retained).
+	- Backdated save while today's summary exists:
+		- post-submit flow resets picker to today and re-fetches `/api/readiness/today` so summary card always reflects today's canonical entry.
+	- Date picker constrained:
+		- `ci-date` now has `max=today`, preventing future-date submissions while preserving backdated entries.
+	- Removed dead CSS:
+		- deleted unused `.today-fatigue-line` class after fatigue line render removal.
+
+	Validation evidence (passed):
+	- Recommendation card no longer renders fatigue/tier line.
+	- Status card removed from Today markup and render fallback path.
+	- Submitted mode shows collapsed summary + `Edit / Backdate` toggle.
+	- Toggle collapse restores today's saved values and clears transient status.
+	- Backdated submit from expanded submitted-mode re-fetches today's entry via `/api/readiness/today`.
+	- Date picker enforces max=today.
+	- Static file diagnostics clean after patch.
+
 ## Decisions Locked
 
 - Full-body via existing percentage fields (no `is_full_body` column).

@@ -254,11 +254,6 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
   color: var(--muted);
   line-height: 1.45;
 }
-.today-fatigue-line {
-  margin-top: 8px;
-  font-size: 13px;
-  color: var(--muted);
-}
 .today-pattern-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1856,7 +1851,6 @@ tbody tr:hover td { background: var(--row-hover); }
     <div class="today-card" id="today-pattern-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
     <div class="today-card" id="today-joint-card" style="display:none;"></div>
     <div class="today-card" id="today-metrics-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
-    <div class="today-card" id="today-footer-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
   </div>
 
   <!-- Banner shown until the user saves their API key -->
@@ -2417,6 +2411,9 @@ let sessionLogHasMore = false;
 let sessionLogFilter = 'all';
 let sessionLogFatiguePayload = null;
 let sessionDetailCache = {};
+let _todayCheckinSubmitted = false;
+let _todayCheckinExpanded = false;
+let _todayCheckinEntry = null;
 
 function setMobileNavOpen(isOpen) {
   document.body.classList.toggle('mobile-nav-open', !!isOpen);
@@ -2481,6 +2478,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   document.getElementById('ci-date').value = todayStr();
+  document.getElementById('ci-date').max = todayStr();
   ['ci-t','ci-r','ci-sq','ci-sp','ci-spu','ci-spl','ci-ju','ci-jl'].forEach(id => _setCheckinScaleValue(id, 0));
   setMobileNavOpen(false);
   initTrendRangeSelector();
@@ -2542,6 +2540,9 @@ function _renderCheckinReadonly(entry) {
   ];
   box.innerHTML = `
     <div class="alert alert-success">✓ Already logged today — Intensity Load: ${entry.central_stress ?? '—'} | Volume Load: ${entry.peripheral_stress ?? '—'}</div>
+    <div style="display:flex;justify-content:flex-end;align-items:center;margin-top:8px;">
+      <button type="button" class="btn btn-secondary" id="checkin-edit-toggle" onclick="toggleTodayCheckinEditor()" aria-expanded="false">Edit / Backdate</button>
+    </div>
     <div class="checkin-readonly-grid">
       ${rows.map(([label, value]) => `
         <div class="checkin-readonly-item">
@@ -2553,17 +2554,68 @@ function _renderCheckinReadonly(entry) {
   `;
 }
 
+function _setCheckinFormFromEntry(entry) {
+  if (!entry) return;
+  _setCheckinScaleValue('ci-t', entry.tiredness ?? 0);
+  _setCheckinScaleValue('ci-r', entry.perceived_recovery ?? 0);
+  _setCheckinScaleValue('ci-sq', entry.sore_quad_dom ?? 0);
+  _setCheckinScaleValue('ci-sp', entry.sore_posterior ?? 0);
+  _setCheckinScaleValue('ci-spu', entry.sore_upper_push ?? 0);
+  _setCheckinScaleValue('ci-spl', entry.sore_upper_pull ?? 0);
+  _setCheckinScaleValue('ci-ju', entry.joint_upper ?? 0);
+  _setCheckinScaleValue('ci-jl', entry.joint_lower ?? 0);
+}
+
+function toggleTodayCheckinEditor() {
+  if (!_todayCheckinSubmitted) return;
+  const form = document.getElementById('checkin-form');
+  const toggleBtn = document.getElementById('checkin-edit-toggle');
+  const dateInput = document.getElementById('ci-date');
+  const status = document.getElementById('checkin-status');
+  if (!form || !toggleBtn || !dateInput) return;
+
+  _todayCheckinExpanded = !_todayCheckinExpanded;
+  form.style.display = _todayCheckinExpanded ? 'block' : 'none';
+  toggleBtn.setAttribute('aria-expanded', _todayCheckinExpanded ? 'true' : 'false');
+
+  if (_todayCheckinExpanded) {
+    dateInput.value = todayStr();
+    _setCheckinFormFromEntry(_todayCheckinEntry);
+    const btn = document.getElementById('ci-submit');
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Submit Check-in';
+    }
+  } else if (status) {
+    // Collapse without saving: reset editor fields back to today's values.
+    dateInput.value = todayStr();
+    _setCheckinFormFromEntry(_todayCheckinEntry);
+    status.innerHTML = '';
+  }
+}
+
 function _setCheckinTodayVisibility(isSubmitted, entry = null) {
   const form = document.getElementById('checkin-form');
   const readonly = document.getElementById('checkin-readonly');
   const status = document.getElementById('checkin-status');
+  const dateInput = document.getElementById('ci-date');
   if (!form || !readonly) return;
+
+  _todayCheckinSubmitted = !!isSubmitted;
+
   if (isSubmitted) {
+    _todayCheckinEntry = entry || null;
+    _todayCheckinExpanded = false;
     form.style.display = 'none';
     readonly.style.display = 'block';
     _renderCheckinReadonly(entry || {});
+    if (dateInput) dateInput.value = todayStr();
+    if (status) status.innerHTML = '';
     return;
   }
+
+  _todayCheckinEntry = null;
+  _todayCheckinExpanded = true;
   form.style.display = 'block';
   readonly.style.display = 'none';
   readonly.innerHTML = '';
@@ -2862,11 +2914,19 @@ function setStatus(type, msg) {
 document.getElementById('ci-date').addEventListener('change', function () {
   const isToday = this.value === todayStr();
   const btn     = document.getElementById('ci-submit');
+
+  if (_todayCheckinSubmitted) {
+    btn.disabled = false;
+    btn.textContent = isToday ? 'Submit Check-in' : 'Add Past Entry';
+    const st = document.getElementById('checkin-status');
+    if (st.querySelector('.alert-success')) st.innerHTML = '';
+    return;
+  }
+
   if (isToday) {
     btn.textContent = 'Submit Check-in';
     checkTodayReadiness();          // re-lock if today already has an entry
   } else {
-    _setCheckinTodayVisibility(false);
     btn.disabled    = false;
     btn.textContent = 'Add Past Entry';
     // Clear any "already logged today" banner so the form looks open
@@ -2917,10 +2977,16 @@ document.getElementById('checkin-form').addEventListener('submit', async e => {
     if (r.ok) {
       // Reset all check-in fields after any successful submission
       ['ci-t','ci-r','ci-sq','ci-sp','ci-spu','ci-spl','ci-ju','ci-jl'].forEach(id => _setCheckinScaleValue(id, 0));
-      if (isToday) {
+      if (_todayCheckinSubmitted && !isToday) {
+        // Backdated save while today's summary exists: collapse back to
+        // today's canonical read-only values from backend.
+        document.getElementById('ci-date').value = todayStr();
+        await checkTodayReadiness();
+      } else if (isToday) {
+        document.getElementById('ci-date').value = todayStr();
         _setCheckinTodayVisibility(true, {
           ...payload,
-          date: submittedDate,
+          date: todayStr(),
           central_stress: d.central_stress,
           peripheral_stress: d.peripheral_stress,
           perceived_recovery: payload.perceived_recovery,
@@ -4239,14 +4305,9 @@ function _renderTodayCards(data, pendingCount) {
     ? `Recommendation: ${recAdjLabel}`
     : 'Log workouts and complete daily check-ins to build your baseline');
   const stateKey = recV2?.training_state || (hasData ? 'balanced' : 'nodata');
-  const fatigueLine = recV2
-    ? `Fatigue: ${_fmt1(recV2.fatigue_score ?? today.fatigue_score)} · ${recV2.fatigue_tier || '—'}`
-    : `Fatigue: ${_fmt1(today.fatigue_score)} · ${recAdjLabel}`;
-
   document.getElementById('today-state-card').innerHTML = `
     <div class="today-state-label ${_stateClass(stateKey)}">${escHtml(stateLabel)}</div>
     <div class="today-state-detail">${escHtml(stateDetail)}</div>
-    <div class="today-fatigue-line">${escHtml(fatigueLine)}</div>
   `;
 
   const patterns = _safePatternStatus(recV2);
@@ -4317,36 +4378,6 @@ function _renderTodayCards(data, pendingCount) {
     </div>
   `;
 
-  const checkinText = checkinExists ? 'Check-in complete' : 'Check-in pending';
-  const checkinCls = checkinExists ? 'today-footer-ok' : 'today-footer-warn';
-  const pendingText = pendingCount > 0 ? `${pendingCount} pending` : '0 pending';
-  const pendingBadge = pendingCount > 0 ? `<span class="today-badge">${pendingCount}</span>` : '';
-  const syncText = _relativeTimeFromIso(localStorage.getItem('hevy_last_sync_iso'));
-
-  document.getElementById('today-footer-card').innerHTML = `
-    <div class="card-title">Status</div>
-    <div class="today-footer">
-      <button class="today-footer-item" onclick="showLegacyCheckin()" aria-label="Open check-in form">
-        <div class="today-footer-body">
-          <div class="today-footer-label">Check-in</div>
-          <div class="today-footer-value ${checkinCls}">${checkinExists ? '✓ ' : '⚠ '}${checkinText}</div>
-        </div>
-      </button>
-      <button class="today-footer-item" onclick="switchToWorkoutsFromToday()" aria-label="Open pending sessions">
-        <div class="today-footer-body">
-          <div class="today-footer-label">Pending Sessions</div>
-          <div class="today-footer-value">${pendingText}</div>
-        </div>
-        ${pendingBadge}
-      </button>
-      <div class="today-footer-item" aria-label="Last sync status" style="cursor:default;">
-        <div class="today-footer-body">
-          <div class="today-footer-label">Last Sync</div>
-          <div class="today-footer-value">${escHtml(syncText)}</div>
-        </div>
-      </div>
-    </div>
-  `;
 }
 
 function switchToWorkoutsFromToday() {
@@ -4378,17 +4409,13 @@ async function loadTrainingLoadCard() {
   const todayWrap = document.getElementById('today-wrap');
   if (!todayWrap) return;
   try {
-    const [trainingRes, pendingCount] = await Promise.all([
-      ensureTrainingLoadPayload(),
-      _getPendingSessionCount(),
-    ]);
-    _renderTodayCards(trainingRes, pendingCount);
+    const trainingRes = await ensureTrainingLoadPayload();
+    _renderTodayCards(trainingRes, 0);
   } catch {
-    document.getElementById('today-state-card').innerHTML = '<div class="today-state-label today-state-nodata">No Data Yet</div><div class="today-state-detail">Log workouts and complete daily check-ins to build your baseline</div><div class="today-fatigue-line">Fatigue: 0.0 · Low</div>';
+    document.getElementById('today-state-card').innerHTML = '<div class="today-state-label today-state-nodata">No Data Yet</div><div class="today-state-detail">Log workouts and complete daily check-ins to build your baseline</div>';
     document.getElementById('today-pattern-card').innerHTML = '<div class="card-title">Pattern Stress</div><div class="today-pattern-grid">' + ['KNEE','HIP','PUSH','PULL'].map(p => `<div class="today-pattern-cell today-pattern-neutral"><div class="today-pattern-name">${p}</div><div class="today-pattern-days">Never loaded</div><div class="today-dots"><span class="today-dot today-dot-filled"></span><span class="today-dot"></span><span class="today-dot"></span><span class="today-dot"></span><span class="today-dot"></span></div><div class="today-pattern-level">Moderate</div></div>`).join('') + '</div>';
     const jointCard = document.getElementById('today-joint-card'); if (jointCard) { jointCard.style.display = 'none'; jointCard.innerHTML = ''; }
     document.getElementById('today-metrics-card').innerHTML = '<div class="card-title">Load Summary</div><div class="today-metric-row"><div class="today-metric"><div class="today-metric-label">Fatigue (ATL)</div><div class="today-metric-value">0.0</div></div><div class="today-metric"><div class="today-metric-label">Fitness (CTL)</div><div class="today-metric-value">0.0</div></div><div class="today-metric"><div class="today-metric-label">Form (TSB)</div><div class="today-metric-value">0.0</div></div></div>';
-    document.getElementById('today-footer-card').innerHTML = '<div class="card-title">Status</div><div class="today-footer"><button class="today-footer-item" onclick="showLegacyCheckin()"><div class="today-footer-body"><div class="today-footer-label">Check-in</div><div class="today-footer-value today-footer-warn">⚠ Check-in pending</div></div></button><button class="today-footer-item" onclick="switchToWorkoutsFromToday()"><div class="today-footer-body"><div class="today-footer-label">Pending Sessions</div><div class="today-footer-value">0 pending</div></div></button><div class="today-footer-item" style="cursor:default;"><div class="today-footer-body"><div class="today-footer-label">Last Sync</div><div class="today-footer-value">Sync time unavailable</div></div></div></div>';
   }
 }
 

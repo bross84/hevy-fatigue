@@ -26,6 +26,12 @@ Last updated: 2026-04-23
 	- Session Log with filtering, fatigue annotation, expandable detail views, and inline per-row edit
 	- Session row panels hardened: Edit and Show Details are now mutually exclusive per row
 	- Session Log default page now loads 50 rows, with API-backed Load More pagination
+- Today page behavior updates completed:
+	- Recommendation card now shows only training-state label and TSB-driven detail text (fatigue score/tier line removed)
+	- Status card removed entirely (CHECK-IN / PENDING SESSIONS / LAST SYNC tiles removed)
+	- Submitted-today check-ins now render as collapsed read-only summary with `Edit / Backdate` toggle
+	- Toggle expands/collapses full form without saving; collapse resets form fields back to today's saved values
+	- Check-in date picker now capped at today (future dates blocked) while still allowing past-date backfill
 - Settings tab updates completed:
 	- Session Processing section now includes both conditioning load scale and auto-verify confidence threshold
 	- Auto-verify threshold input is populated from `/api/settings/v2` and uses placeholder `0.87`
@@ -71,10 +77,12 @@ Last updated: 2026-04-23
 - Check-in UX checks: PASS for
 	- first-card placement
 	- pending immediate visibility
-	- submitted collapse/read-only switch
+	- submitted collapse/read-only summary with `Edit / Backdate` toggle
+	- collapse without save resets editor fields to today's canonical values
 	- no dropdowns
 	- all 8 fields and group headers
 	- endpoint direction labels and non-interactive endpoint text
+	- date picker max bound set to today (past-date backfill preserved)
 	- mobile 375px width, no overflow, 44px touch targets, full-width submit
 	- backdated date submission behavior
 - Workouts/session-processing backend gate script: PASS for
@@ -123,6 +131,10 @@ Last updated: 2026-04-23
 - Settings layout fix: PASS
 	- explicit two-column grouping matches intended UX
 	- mobile collapse remains single-column under responsive breakpoint
+- Today recommendation/status cleanup: PASS
+	- no rendered fatigue/tier line on recommendation card
+	- no Status card markup or render path remains
+	- removed dead `.today-fatigue-line` CSS definition
 
 ## 5) Open Items / Next Backlog
 
