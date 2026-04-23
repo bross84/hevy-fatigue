@@ -44,7 +44,7 @@ def _encrypt(plaintext: str) -> str:
 def _decrypt(ciphertext: str) -> str:
     return _get_fernet().decrypt(ciphertext.encode()).decode()
 from rpe_table import get_set_central_stress, get_set_peripheral_stress, seed_rpe_table
-from importer import import_hevy_data
+from importer import import_hevy_data, reclassify_existing_sessions
 
 app = FastAPI(title="Hevy Fatigue Monitor")
 
@@ -111,6 +111,10 @@ class PatternSensitivityInput(BaseModel):
 class SessionProcessingInput(BaseModel):
     conditioning_stress_scaling_factor: float = Field(29.0, gt=0.0, le=200.0)
     auto_verify_confidence_threshold: float = Field(0.95, ge=0.50, le=1.00)
+
+
+class SessionReclassificationInput(BaseModel):
+    force_all: bool = False
 
 class MappingUpdate(BaseModel):
     pct_quad_dom: float = Field(ge=0.0, le=1.0)
@@ -763,6 +767,18 @@ def save_session_processing(data: SessionProcessingInput, db: Session = Depends(
 def save_conditioning_load_scale(data: SessionProcessingInput, db: Session = Depends(get_db)):
     """Back-compat alias that now updates the full session-processing settings payload."""
     return save_session_processing(data, db)
+
+
+@app.post("/api/settings/v2/reclassify-sessions")
+def reclassify_sessions(data: SessionReclassificationInput, db: Session = Depends(get_db)):
+    result = reclassify_existing_sessions(db=db, force_all=bool(data.force_all))
+    return {
+        "message": (
+            f"{result['reclassified_sessions']} sessions reclassified, "
+            f"{result['skipped_verified_sessions']} verified sessions skipped"
+        ),
+        **result,
+    }
 
 # ── Training Load (ATL / CTL / TSB) ──────────────────────────────────────────
 

@@ -2032,7 +2032,7 @@ tbody tr:hover td { background: var(--row-hover); }
     </div>
   </div>
 
-  <div class="card settings-card" style="margin-top:14px;">
+  <div class="card settings-card">
     <div class="card-title">Training State Thresholds</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
       Adjust these if your training state label doesn't match how you actually feel. Tune based on your typical ATL/CTL values.
@@ -2062,7 +2062,7 @@ tbody tr:hover td { background: var(--row-hover); }
     <div class="settings-result" id="tsb-result" style="margin-top:10px;"></div>
   </div>
 
-  <div class="card settings-card" style="margin-top:14px;">
+  <div class="card settings-card">
     <div class="card-title">Pattern Sensitivity</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
       Controls when a movement pattern is flagged as stressed or available. Lower the stressed threshold to flag patterns more aggressively, raise it to require more load before flagging.
@@ -2081,7 +2081,7 @@ tbody tr:hover td { background: var(--row-hover); }
     <div class="settings-result" id="pattern-result" style="margin-top:10px;"></div>
   </div>
 
-  <div class="card settings-card" style="margin-top:14px;">
+  <div class="card settings-card">
     <div class="card-title">Session Processing</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
       Normalizes conditioning session stress relative to strength sessions. Increase if conditioning feels underweighted in your fatigue score, decrease if overweighted. Default 29.
@@ -2100,10 +2100,17 @@ tbody tr:hover td { background: var(--row-hover); }
     </div>
 
     <button class="btn btn-primary" id="btn-save-session-processing" onclick="saveSessionProcessingSettings()">Save Session Processing</button>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+      <button class="btn btn-secondary" id="btn-reclassify-sessions" onclick="reclassifySessions(false)">Reclassify Sessions</button>
+      <button class="btn btn-secondary" id="btn-force-reclassify-sessions" onclick="reclassifySessions(true)" style="border-color:var(--danger);color:var(--danger);">Force Reclassify All</button>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin:10px 0 0;line-height:1.6;">
+      Reclassify existing sessions locally using the current title keyword and exercise analysis rules. This does not call the Hevy API or use the sync cooldown path.
+    </p>
     <div class="settings-result" id="conditioning-result" style="margin-top:10px;"></div>
   </div>
 
-  <div class="card settings-card" style="margin-top:14px;">
+  <div class="card settings-card">
     <div class="card-title">Hevy Sync</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
       Pull the latest workouts from Hevy into the local database.
@@ -2713,6 +2720,40 @@ async function saveSessionProcessingSettings() {
   } finally {
     btn.disabled = false;
     btn.textContent = 'Save Session Processing';
+  }
+}
+
+async function reclassifySessions(forceAll) {
+  if (forceAll) {
+    const confirmed = window.confirm('Force reclassify all sessions? This will overwrite verified session modality classification fields.');
+    if (!confirmed) return;
+  }
+
+  const btn = document.getElementById(forceAll ? 'btn-force-reclassify-sessions' : 'btn-reclassify-sessions');
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = forceAll ? 'Reclassifying All…' : 'Reclassifying…';
+
+  try {
+    const r = await fetch('/api/settings/v2/reclassify-sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ force_all: !!forceAll }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Reclassification failed.');
+
+    _setSectionResult('conditioning-result', `✓ ${d.message}`, true);
+    sessionDetailCache = {};
+    await Promise.all([
+      loadSessionVerificationQueue(),
+      loadSessionLog(),
+    ]);
+  } catch (e) {
+    _setSectionResult('conditioning-result', '✗ ' + e.message, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalLabel;
   }
 }
 

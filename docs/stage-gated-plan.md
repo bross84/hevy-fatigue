@@ -573,6 +573,46 @@ Gate tests:
 	- Gate 6: case-insensitive matching verified
 	- Aggregate result: `TITLE_MODALITY_GATES PASS`
 
+	### Post-Stage 7.5 Local Session Reclassification + Settings Spacing Repair (completed before commit)
+
+	Implemented changes:
+	- Added DB-only session reclassification path in `importer.py` that:
+		- reads existing `workout_sessions`
+		- reads stored `workout_logs` for each session
+		- rebuilds exercise payloads from stored data
+		- reruns current title-first modality inference plus existing exercise-analysis fallback
+		- updates `modality`, `modality_confidence`, and `modality_note`
+	- Added `POST /api/settings/v2/reclassify-sessions` in `main.py`.
+	- Default reclassification behavior:
+		- updates `pending` sessions only
+		- skips `verified` sessions and reports skip count
+	- Added explicit force-all behavior:
+		- allows verified sessions to be overwritten only when user explicitly requests full reclassification
+	- Added Session Processing UI actions in `static/index.html`:
+		- `Reclassify Sessions`
+		- `Force Reclassify All`
+		- force-all path requires confirmation
+	- Reclassification completion now refreshes both session surfaces:
+		- verification queue
+		- session log
+	- No Hevy sync/API path is used during local reclassification.
+	- Repaired Settings page spacing regression in `static/index.html` by removing inline top-margin overrides from Settings cards so spacing returns to existing card/grid spacing tokens.
+
+	Validation evidence (passed):
+	- Backend reclassification gate validated:
+		- pending session title-match reclassification
+		- pending session exercise-fallback reclassification
+		- verified sessions skipped during normal run
+		- force-all run updates previously verified session
+		- result summary counts are correct
+		- Hevy import path is not called
+		- aggregate result: `RECLASSIFY_GATES_BACKEND PASS`
+	- UI/code checks verified:
+		- `Reclassify Sessions` button present in Session Processing
+		- `Force Reclassify All` option present with confirmation
+		- completion path refreshes `loadSessionVerificationQueue()` and `loadSessionLog()`
+	- Settings spacing repair verified by removing per-card inline `margin-top:14px` overrides so section spacing is controlled by existing shared layout rules.
+
 ## Decisions Locked
 
 - Full-body via existing percentage fields (no `is_full_body` column).

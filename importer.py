@@ -1,7 +1,9 @@
+from collections import defaultdict
+
 from database import SessionLocal, WorkoutLog, WorkoutSession, ExerciseMapping, init_db
 from hevy_client import HevyClient
 from rpe_table import calculate_e1rm, seed_rpe_table
-from exercise_classifier import ensure_exercise_mapped
+from exercise_classifier import classify_exercise, ensure_exercise_mapped
 from datetime import datetime, timezone
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
@@ -129,6 +131,98 @@ def _infer_modality(workout_title, exercises, conditioning_cache):
         conditioning_cache=conditioning_cache,
     )
     return modality, confidence, None
+
+
+def _build_exercises_from_logs(workout_logs):
+    exercises_by_title = defaultdict(list)
+    for log_row in workout_logs:
+        title = log_row.exercise_title
+        if not title:
+            continue
+        exercises_by_title[title].append({
+            "type": "normal",
+            "reps": log_row.reps,
+        })
+
+    return [
+        {"title": title, "sets": sets}
+        for title, sets in exercises_by_title.items()
+    ]
+
+
+def _resolve_conditioning_from_current_classifier(exercise_title, db, mapping_cache):
+    if exercise_title in mapping_cache:
+        return mapping_cache[exercise_title]
+
+    mapping = db.query(ExerciseMapping).filter(
+        ExerciseMapping.exercise_title == exercise_title
+    ).first()
+
+    if mapping and mapping.source == "user":
+        is_conditioning = bool(mapping.is_conditioning)
+    else:
+        is_conditioning = bool(classify_exercise(exercise_title)["is_conditioning"])
+
+    mapping_cache[exercise_title] = is_conditioning
+    return is_conditioning
+
+
+def reclassify_existing_sessions(db, force_all=False):
+    init_db()
+    session_query = db.query(WorkoutSession).order_by(WorkoutSession.workout_date.desc(), WorkoutSession.start_time.desc())
+    session_rows = session_query.all()
+
+    workout_ids = [row.hevy_workout_id for row in session_rows]
+    workout_logs = []
+    if workout_ids:
+        workout_logs = (
+            db.query(WorkoutLog)
+            .filter(WorkoutLog.workout_id.in_(workout_ids))
+            .order_by(WorkoutLog.workout_id.asc(), WorkoutLog.exercise_title.asc(), WorkoutLog.set_number.asc())
+            .all()
+        )
+
+    logs_by_workout_id = defaultdict(list)
+    for log_row in workout_logs:
+        logs_by_workout_id[log_row.workout_id].append(log_row)
+
+    conditioning_cache = {}
+    reclassified_count = 0
+    skipped_verified_count = 0
+
+    for session_row in session_rows:
+        if session_row.verification_status == "verified" and not force_all:
+            skipped_verified_count += 1
+            continue
+
+        session_logs = logs_by_workout_id.get(session_row.hevy_workout_id, [])
+        exercises = _build_exercises_from_logs(session_logs)
+        for exercise in exercises:
+            title = exercise.get("title")
+            if not title:
+                continue
+            conditioning_cache[title] = _resolve_conditioning_from_current_classifier(
+                title,
+                db,
+                conditioning_cache,
+            )
+
+        modality, confidence, note = _infer_modality(
+            workout_title=session_row.workout_title,
+            exercises=exercises,
+            conditioning_cache=conditioning_cache,
+        )
+        session_row.modality = modality
+        session_row.modality_confidence = confidence
+        session_row.modality_note = note
+        session_row.updated_at = datetime.utcnow()
+        reclassified_count += 1
+
+    db.commit()
+    return {
+        "reclassified_sessions": reclassified_count,
+        "skipped_verified_sessions": skipped_verified_count,
+    }
 
 
 def _resolve_verification(modality, confidence, duration_minutes, auto_verify_confidence_threshold=0.95):

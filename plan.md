@@ -29,6 +29,8 @@ Last updated: 2026-04-22
 - Settings tab updates completed:
 	- Session Processing section now includes both conditioning load scale and auto-verify confidence threshold
 	- Auto-verify threshold input is populated from `/api/settings/v2` and uses placeholder `0.95`
+	- Session Processing now includes local reclassification actions for existing sessions without using Hevy sync
+	- Settings section spacing restored to use existing card/grid spacing tokens after inline margin regression
 - Import pipeline updates completed:
 	- Session modality now uses two-layer detection: title keyword pass first, then existing exercise-level fallback
 	- Mixed title matches are flagged with a session note and reduced confidence to force manual review
@@ -80,6 +82,12 @@ Last updated: 2026-04-22
 	- `Morning Workout` (no title keywords) -> falls through to existing exercise-level inference unchanged
 	- `Hypertrophy Upper` -> hypertrophy at confidence `0.95`
 	- case-insensitive title matching
+- Local session reclassification gate script: PASS for
+	- pending sessions reclassified from current stored workout data using current classifier rules
+	- verified sessions skipped during normal reclassification runs
+	- force-all reclassification updates verified sessions only when explicitly requested
+	- result summary counts returned as expected
+	- no Hevy API import/sync path invoked during reclassification
 
 ## 5) Open Items / Next Backlog
 
