@@ -504,11 +504,11 @@ Gate tests:
 	- Confirmed and reused shared `_toggleSessionSrpe(...)` behavior for both:
 		- verification queue cards
 		- inline edit forms
-	- Raised auto-verify threshold policy from `0.80` to `0.90` for strength/hypertrophy auto-verification.
+	- Raised auto-verify threshold policy from `0.80` to `0.90` for strength/hypertrophy auto-verification (later superseded to `0.87` in Post-Stage 7.6/7.7).
 	- Added configurable session-processing setting in `app_settings`:
-		- `auto_verify_confidence_threshold` (default `0.90`, valid `0.50..1.00`)
+		- `auto_verify_confidence_threshold` (default `0.90` at this stage, valid `0.50..1.00`; later superseded to `0.87`)
 	- Updated importer verification logic in `importer.py`:
-		- `_resolve_verification(..., auto_verify_confidence_threshold=0.90)`
+		- `_resolve_verification(..., auto_verify_confidence_threshold=0.90)` at this stage (later superseded to `0.87`)
 		- strength/hypertrophy auto-verify only when confidence >= configured threshold
 		- conditioning/cardio always pending regardless of confidence
 	- Updated sync execution path in `main.py` so new syncs immediately honor current settings:
@@ -534,8 +534,8 @@ Gate tests:
 		- verification path still promoting pending sessions when `verify=true`
 		- pagination parameter behavior (`limit`/`offset`)
 		- auto-verify policy gates:
-			- confidence < 0.95 -> pending for strength/hypertrophy
-			- confidence >= 0.95 -> auto-verified for strength/hypertrophy
+			- confidence < configured threshold -> pending for strength/hypertrophy
+			- confidence >= configured threshold -> auto-verified for strength/hypertrophy
 			- conditioning/cardio always pending
 	- Frontend wiring verified in code for:
 		- dual refresh after queue verification
@@ -562,7 +562,7 @@ Gate tests:
 		- falls through to prior exercise-level set/rep analysis unchanged
 	- Added `WorkoutSession.modality_note` persistence field and startup-safe schema migration for existing SQLite databases.
 	- Exposed `modality_note` in workout session API list/detail/update responses.
-	- Session-processing default now aligned to `0.90`.
+	- Session-processing default aligned to `0.90` at this stage (later superseded to `0.87`).
 
 	Validation evidence (passed):
 	- Gate 1: `CC4.1.2 METCON` -> conditioning, confidence `0.95`
@@ -626,24 +626,54 @@ Gate tests:
 		- `tsb-slightly-fatigued` <- `tsb_threshold_slightly_fatigued`
 	- Confirmed Settings hydration trigger remains on tab activation:
 		- `activateTab('settings')` -> `loadSettingsTab()`
-	- Rolled auto-verify default baseline back to `0.90`:
+	- Rolled auto-verify default baseline to `0.87`:
 		- backend default constant in `main.py`
-		- startup seed behavior now preserves existing user-configured values and only seeds missing values
-		- importer default argument baselines aligned to `0.90`
-		- Session Processing input placeholder aligned to `0.90`
+		- startup migration now upgrades legacy stored `0.90` and `0.95` values to `0.87`
+		- startup seed behavior still preserves user-configured values outside migrated legacy defaults and seeds missing values
+		- importer default argument baselines aligned to `0.87`
+		- Session Processing input placeholder aligned to `0.87`
 
 	Validation evidence (passed):
 	- Settings TSB gate validated:
 		- save custom thresholds (`40`, `15`, `-20`, `-50`)
 		- reopen-equivalent fetch returns saved values
 		- refresh-equivalent fetch via fresh DB session returns saved values
-		- auto-verify default baseline verified at `0.90`
+		- auto-verify default baseline verified at `0.87`
 		- aggregate result: `SETTINGS_TSB_GATES_BACKEND PASS`
 	- Settings container layout correction validated:
 		- explicit two-column grid areas enforce intended grouping
 		- left column contains: Hevy API Key, Pattern Sensitivity, Hevy Sync
 		- right column contains: Training State Thresholds, Session Processing
 		- responsive fallback still collapses to single-column on narrow viewports
+
+	### Post-Stage 7.7 Title Abbreviation Codes + Mixed Plus Rule (completed before commit)
+
+	Implemented changes:
+	- Extended title keyword sets in `importer.py` with naming-convention abbreviation codes:
+		- strength: ` ST`
+		- hypertrophy: ` HYP`
+		- conditioning: ` CON`
+		- cardio: ` CAR` (separate `CARDIO_TITLE_KEYWORDS` list)
+	- Added `strongman` to conditioning title keywords.
+	- Kept case-insensitive matching by lowercasing title and keyword lists.
+	- Added mixed-session override rule in title inference:
+		- if title contains `+` and at least one modality keyword/code is matched, return confidence `0.70` with mixed-session note
+		- dominant modality in this rule is chosen by earliest keyword position in title
+	- Kept no-match fallthrough path unchanged:
+		- title inference returns no result and existing exercise-level analysis decides modality/confidence.
+
+	Validation evidence (passed):
+	- `CC4.1.1(A) ST` -> `strength`, confidence `0.95`, auto-verified at threshold `0.87`
+	- `CC4.1.1(A) HYP` -> `hypertrophy`, confidence `0.95`, auto-verified at threshold `0.87`
+	- `CC4.1.1(A) ST + CON` -> mixed-session note present, confidence `0.70`, pending queue
+	- `CC4.1.1(A) HYP + CON` -> mixed-session note present, confidence `0.70`, pending queue
+	- `STRICT PRESS` -> no false-positive ` ST` match, falls through
+	- `STRONGMAN Medley` -> `conditioning`, confidence `0.95`
+	- `METCON` -> `conditioning`, confidence `0.95`, pending queue
+	- `CC4.1.1(A)` -> no title match, falls through to exercise analysis unchanged
+	- Case-insensitive matching validated across mixed-case titles
+	- Startup migration check passed for stored `0.90` and `0.95` values -> `0.87`
+	- Aggregate result: `ALL_GATES_PASS`
 
 ## Decisions Locked
 

@@ -11,14 +11,21 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 CONDITIONING_TITLE_KEYWORDS = [
     "metcon", "wod", "amrap", "emom", "hiit",
     "conditioning", "cardio", "crossfit", "circuit",
+    " con", "strongman",
 ]
 
 STRENGTH_TITLE_KEYWORDS = [
     "me upper", "me lower", "max effort",
+    " st",
 ]
 
 HYPERTROPHY_TITLE_KEYWORDS = [
     "hypertrophy", "hyp", "bodybuilding",
+    " hyp",
+]
+
+CARDIO_TITLE_KEYWORDS = [
+    " car",
 ]
 
 _MIXED_SESSION_NOTE = "Mixed session detected - consider splitting by modality"
@@ -98,15 +105,33 @@ def _infer_modality_from_exercises(workout_title, exercises, conditioning_cache)
 
 def _infer_modality_from_title(workout_title):
     title = (workout_title or "").lower()
-    modality_matches = {
-        "conditioning": sum(1 for kw in CONDITIONING_TITLE_KEYWORDS if kw in title),
-        "strength": sum(1 for kw in STRENGTH_TITLE_KEYWORDS if kw in title),
-        "hypertrophy": sum(1 for kw in HYPERTROPHY_TITLE_KEYWORDS if kw in title),
-    }
+    modality_order = [
+        ("conditioning", CONDITIONING_TITLE_KEYWORDS),
+        ("strength", STRENGTH_TITLE_KEYWORDS),
+        ("hypertrophy", HYPERTROPHY_TITLE_KEYWORDS),
+        ("cardio", CARDIO_TITLE_KEYWORDS),
+    ]
+    first_match_order = []
+    modality_matches = {}
+    for modality, keywords in modality_order:
+        indices = []
+        for kw in keywords:
+            idx = title.find(kw)
+            if idx != -1:
+                indices.append(idx)
+        if indices:
+            first_match_order.append((min(indices), modality))
+            modality_matches[modality] = len(indices)
+        else:
+            modality_matches[modality] = 0
 
     active = [modality for modality, count in modality_matches.items() if count > 0]
     if not active:
         return None, None, None
+
+    if "+" in title:
+        dominant = min(first_match_order, key=lambda m: m[0])[1]
+        return dominant, 0.70, _MIXED_SESSION_NOTE
 
     if len(active) == 1:
         return active[0], 0.95, None
@@ -225,7 +250,7 @@ def reclassify_existing_sessions(db, force_all=False):
     }
 
 
-def _resolve_verification(modality, confidence, duration_minutes, auto_verify_confidence_threshold=0.90):
+def _resolve_verification(modality, confidence, duration_minutes, auto_verify_confidence_threshold=0.87):
     if duration_minutes is None:
         return "pending", None
 
@@ -234,7 +259,7 @@ def _resolve_verification(modality, confidence, duration_minutes, auto_verify_co
 
     return "pending", None
 
-def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshold: float = 0.90):
+def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshold: float = 0.87):
     init_db()  # Ensure tables exist before we try to use them
     client = HevyClient(api_key=api_key)
     db = SessionLocal()

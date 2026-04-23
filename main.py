@@ -110,7 +110,7 @@ class PatternSensitivityInput(BaseModel):
 
 class SessionProcessingInput(BaseModel):
     conditioning_stress_scaling_factor: float = Field(29.0, gt=0.0, le=200.0)
-    auto_verify_confidence_threshold: float = Field(0.95, ge=0.50, le=1.00)
+    auto_verify_confidence_threshold: float = Field(0.87, ge=0.50, le=1.00)
 
 
 class SessionReclassificationInput(BaseModel):
@@ -323,7 +323,7 @@ def _get_db_api_key(db: Session) -> str | None:
         return legacy_plaintext
 
 _CONDITIONING_SCALING_DEFAULT = 29.0
-_AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT = 0.90
+_AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT = 0.87
 
 _V2_SETTINGS_DEFAULTS = {
     "v2_threshold_stressed": 0.75,
@@ -399,7 +399,13 @@ def _seed_and_migrate_session_processing_settings(db: Session) -> None:
     raw = _get_setting_value(db, key)
     if raw is None:
         _set_setting_value(db, key, str(_AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT))
-    # Existing user-configured values are preserved.
+    else:
+        try:
+            stored = float(raw)
+        except (TypeError, ValueError):
+            stored = None
+        if stored in {0.90, 0.95}:
+            _set_setting_value(db, key, str(_AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT))
 
 def _get_conditioning_scaling_factor(db: Session) -> float:
     """

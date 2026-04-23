@@ -1,6 +1,6 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-04-22
+Last updated: 2026-04-23
 
 ## 1) Current Product State
 
@@ -28,7 +28,7 @@ Last updated: 2026-04-22
 	- Session Log default page now loads 50 rows, with API-backed Load More pagination
 - Settings tab updates completed:
 	- Session Processing section now includes both conditioning load scale and auto-verify confidence threshold
-	- Auto-verify threshold input is populated from `/api/settings/v2` and uses placeholder `0.90`
+	- Auto-verify threshold input is populated from `/api/settings/v2` and uses placeholder `0.87`
 	- Session Processing now includes local reclassification actions for existing sessions without using Hevy sync
 	- Settings section spacing restored to use existing card/grid spacing tokens after inline margin regression
 	- Settings container now uses explicit two-column card placement:
@@ -38,6 +38,8 @@ Last updated: 2026-04-22
 	- Training State Thresholds fields rehydrate from saved `app_settings` values on each Settings tab open
 - Import pipeline updates completed:
 	- Session modality now uses two-layer detection: title keyword pass first, then existing exercise-level fallback
+	- Title keyword sets include abbreviation codes (` ST`, ` HYP`, ` CON`, ` CAR`) and `strongman`
+	- `+` in title with any modality keyword/code forces mixed handling (`0.70` + mixed-session note), with dominant modality chosen by first keyword position
 	- Mixed title matches are flagged with a session note and reduced confidence to force manual review
 
 ## 3) Check-In UX (Latest Overhaul)
@@ -78,15 +80,20 @@ Last updated: 2026-04-22
 	- pagination `limit`/`offset` behavior
 	- auto-verify policy checks (strength/hypertrophy thresholding, conditioning/cardio always pending)
 - Session processing default/migration updates: PASS
-	- runtime default aligned to `0.90`
-	- startup seeding preserves existing user values and only seeds missing `auto_verify_confidence_threshold` with `0.90`
+	- runtime default aligned to `0.87`
+	- startup migration updates legacy stored `0.90` and `0.95` values to `0.87`
+	- startup seeding still fills missing `auto_verify_confidence_threshold` with `0.87`
 - Title modality detection gate script: PASS for
-	- `CC4.1.2 METCON` -> conditioning at confidence `0.95`
-	- `CC4.1.1 PP/PU + WOD` -> conditioning at confidence `0.95`
-	- `ME Lower + METCON` -> mixed-title handling with conditioning dominant, confidence `0.70`, mixed-session note present
-	- `Morning Workout` (no title keywords) -> falls through to existing exercise-level inference unchanged
-	- `Hypertrophy Upper` -> hypertrophy at confidence `0.95`
+	- `CC4.1.1(A) ST` -> strength at confidence `0.95` (auto-verifies at threshold `0.87`)
+	- `CC4.1.1(A) HYP` -> hypertrophy at confidence `0.95` (auto-verifies at threshold `0.87`)
+	- `CC4.1.1(A) ST + CON` -> mixed handling with confidence `0.70`, mixed-session note present, pending queue
+	- `CC4.1.1(A) HYP + CON` -> mixed handling with confidence `0.70`, mixed-session note present, pending queue
+	- `STRICT PRESS` -> no ` ST` false-positive match (falls through)
+	- `STRONGMAN Medley` -> conditioning at confidence `0.95`
+	- `METCON` -> conditioning at confidence `0.95` and remains pending
+	- `CC4.1.1(A)` (no code) -> falls through to existing exercise-level inference unchanged
 	- case-insensitive title matching
+	- legacy threshold values `0.90` and `0.95` migrated to `0.87` on startup
 - Local session reclassification gate script: PASS for
 	- pending sessions reclassified from current stored workout data using current classifier rules
 	- verified sessions skipped during normal reclassification runs
@@ -97,7 +104,7 @@ Last updated: 2026-04-22
 	- custom TSB thresholds saved (`40`, `15`, `-20`, `-50`)
 	- settings payload re-read (tab reopen equivalent) returns saved values, not defaults
 	- fresh DB session re-read (page refresh equivalent) returns saved values, not defaults
-	- default auto-verify threshold baseline confirmed at `0.90`
+	- default auto-verify threshold baseline confirmed at `0.87`
 - Settings layout fix: PASS
 	- explicit two-column grouping matches intended UX
 	- mobile collapse remains single-column under responsive breakpoint
