@@ -31,6 +31,9 @@ Last updated: 2026-04-22
 	- Auto-verify threshold input is populated from `/api/settings/v2` and uses placeholder `0.90`
 	- Session Processing now includes local reclassification actions for existing sessions without using Hevy sync
 	- Settings section spacing restored to use existing card/grid spacing tokens after inline margin regression
+	- Settings container now uses explicit two-column card placement:
+		- left column: Hevy API Key, Pattern Sensitivity, Hevy Sync
+		- right column: Training State Thresholds, Session Processing
 	- Settings tab load flow now always fetches `/api/settings/v2` values even if API-key metadata fetch fails
 	- Training State Thresholds fields rehydrate from saved `app_settings` values on each Settings tab open
 - Import pipeline updates completed:
@@ -95,6 +98,9 @@ Last updated: 2026-04-22
 	- settings payload re-read (tab reopen equivalent) returns saved values, not defaults
 	- fresh DB session re-read (page refresh equivalent) returns saved values, not defaults
 	- default auto-verify threshold baseline confirmed at `0.90`
+- Settings layout fix: PASS
+	- explicit two-column grouping matches intended UX
+	- mobile collapse remains single-column under responsive breakpoint
 
 ## 5) Open Items / Next Backlog
 

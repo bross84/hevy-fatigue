@@ -639,6 +639,11 @@ Gate tests:
 		- refresh-equivalent fetch via fresh DB session returns saved values
 		- auto-verify default baseline verified at `0.90`
 		- aggregate result: `SETTINGS_TSB_GATES_BACKEND PASS`
+	- Settings container layout correction validated:
+		- explicit two-column grid areas enforce intended grouping
+		- left column contains: Hevy API Key, Pattern Sensitivity, Hevy Sync
+		- right column contains: Training State Thresholds, Session Processing
+		- responsive fallback still collapses to single-column on narrow viewports
 
 ## Decisions Locked
 

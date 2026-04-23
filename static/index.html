@@ -1464,12 +1464,21 @@ tbody tr:hover td { background: var(--row-hover); }
   grid-template-columns: 1fr 1fr;
   gap: 14px;
   align-items: start;
+  grid-template-areas:
+    "api training"
+    "pattern session"
+    "sync session";
 }
 #tab-settings .settings-card {
   max-width: none;
   margin-top: 0 !important;
   margin-bottom: 0;
 }
+#tab-settings .settings-card-api { grid-area: api; }
+#tab-settings .settings-card-training { grid-area: training; }
+#tab-settings .settings-card-pattern { grid-area: pattern; }
+#tab-settings .settings-card-session { grid-area: session; }
+#tab-settings .settings-card-sync { grid-area: sync; }
 .settings-key-row { display: flex; gap: 8px; align-items: stretch; }
 .settings-key-row input {
   flex: 1;
@@ -1508,6 +1517,7 @@ tbody tr:hover td { background: var(--row-hover); }
 @media (max-width: 900px) {
   .tab-content#tab-settings.active {
     grid-template-columns: 1fr;
+    grid-template-areas: none;
   }
 }
 
@@ -2007,7 +2017,7 @@ tbody tr:hover td { background: var(--row-hover); }
 
 <!-- ══════════════ SETTINGS TAB ══════════════ -->
 <section id="tab-settings" class="tab-content">
-  <div class="card settings-card">
+  <div class="card settings-card settings-card-api">
     <div class="card-title">Settings</div>
 
     <div style="margin-bottom:6px;font-weight:600;font-size:13px;">Hevy API Key</div>
@@ -2032,7 +2042,7 @@ tbody tr:hover td { background: var(--row-hover); }
     </div>
   </div>
 
-  <div class="card settings-card">
+  <div class="card settings-card settings-card-training">
     <div class="card-title">Training State Thresholds</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
       Adjust these if your training state label doesn't match how you actually feel. Tune based on your typical ATL/CTL values.
@@ -2062,7 +2072,7 @@ tbody tr:hover td { background: var(--row-hover); }
     <div class="settings-result" id="tsb-result" style="margin-top:10px;"></div>
   </div>
 
-  <div class="card settings-card">
+  <div class="card settings-card settings-card-pattern">
     <div class="card-title">Pattern Sensitivity</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
       Controls when a movement pattern is flagged as stressed or available. Lower the stressed threshold to flag patterns more aggressively, raise it to require more load before flagging.
@@ -2081,7 +2091,7 @@ tbody tr:hover td { background: var(--row-hover); }
     <div class="settings-result" id="pattern-result" style="margin-top:10px;"></div>
   </div>
 
-  <div class="card settings-card">
+  <div class="card settings-card settings-card-session">
     <div class="card-title">Session Processing</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
       Normalizes conditioning session stress relative to strength sessions. Increase if conditioning feels underweighted in your fatigue score, decrease if overweighted. Default 29.
@@ -2110,7 +2120,7 @@ tbody tr:hover td { background: var(--row-hover); }
     <div class="settings-result" id="conditioning-result" style="margin-top:10px;"></div>
   </div>
 
-  <div class="card settings-card">
+  <div class="card settings-card settings-card-sync">
     <div class="card-title">Hevy Sync</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
       Pull the latest workouts from Hevy into the local database.
