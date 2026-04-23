@@ -1,4 +1,5 @@
 from collections import defaultdict
+import re
 
 from database import SessionLocal, WorkoutLog, WorkoutSession, ExerciseMapping, init_db
 from hevy_client import HevyClient
@@ -29,6 +30,24 @@ CARDIO_TITLE_KEYWORDS = [
 ]
 
 _MIXED_SESSION_NOTE = "Mixed session detected - consider splitting by modality"
+
+_SRPE_TITLE_TAG_PATTERN = re.compile(r"@(?P<value>\d+(?:\.\d+)?)")
+
+
+def _extract_srpe_from_title(workout_title):
+    """Extract first valid sRPE tag (@N or @N.N, 0..10) from title."""
+    if not workout_title:
+        return None
+    match = _SRPE_TITLE_TAG_PATTERN.search(workout_title)
+    if not match:
+        return None
+    try:
+        srpe = float(match.group("value"))
+    except (TypeError, ValueError):
+        return None
+    if 0.0 <= srpe <= 10.0:
+        return srpe
+    return None
 
 
 def _parse_hevy_datetime(raw_value):
@@ -126,6 +145,12 @@ def _infer_modality_from_title(workout_title):
             modality_matches[modality] = 0
 
     active = [modality for modality, count in modality_matches.items() if count > 0]
+
+    # A valid @sRPE title tag is treated as a conditioning signal when no
+    # explicit modality keywords/codes are present.
+    if _extract_srpe_from_title(workout_title) is not None and not active:
+        return "conditioning", 0.95, None
+
     if not active:
         return None, None, None
 
@@ -250,9 +275,24 @@ def reclassify_existing_sessions(db, force_all=False):
     }
 
 
-def _resolve_verification(modality, confidence, duration_minutes, auto_verify_confidence_threshold=0.87):
+def _resolve_verification(
+    modality,
+    confidence,
+    duration_minutes,
+    auto_verify_confidence_threshold=0.87,
+    srpe=None,
+    srpe_from_title=False,
+):
     if duration_minutes is None:
         return "pending", None
+
+    if (
+        modality in {"conditioning", "cardio"}
+        and srpe is not None
+        and srpe_from_title
+        and confidence >= auto_verify_confidence_threshold
+    ):
+        return "verified", datetime.utcnow()
 
     if modality in {"strength", "hypertrophy"} and confidence >= auto_verify_confidence_threshold:
         return "verified", datetime.utcnow()
@@ -321,12 +361,15 @@ def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshol
                     exercises=exercises,
                     conditioning_cache=exercise_conditioning_cache,
                 )
+                srpe_from_title = _extract_srpe_from_title(workout_title)
                 duration_minutes = _compute_duration_minutes(start_dt, end_dt)
                 verification_status, verified_at = _resolve_verification(
                     modality=modality,
                     confidence=modality_confidence,
                     duration_minutes=duration_minutes,
                     auto_verify_confidence_threshold=auto_verify_confidence_threshold,
+                    srpe=srpe_from_title,
+                    srpe_from_title=srpe_from_title is not None,
                 )
 
                 session_stmt = sqlite_insert(WorkoutSession).values(
@@ -341,6 +384,7 @@ def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshol
                     modality_note=modality_note,
                     verification_status=verification_status,
                     verified_at=verified_at,
+                    srpe=srpe_from_title,
                     updated_at=datetime.utcnow(),
                 ).on_conflict_do_update(
                     index_elements=[WorkoutSession.hevy_workout_id],
@@ -355,6 +399,7 @@ def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshol
                         "modality_note": modality_note,
                         "verification_status": verification_status,
                         "verified_at": verified_at,
+                        "srpe": srpe_from_title,
                         "updated_at": datetime.utcnow(),
                     },
                 )

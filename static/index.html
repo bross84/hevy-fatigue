@@ -3800,7 +3800,8 @@ async function loadSessionVerificationQueue() {
     }
 
     wrap.innerHTML = `<div class="verify-list">${sessions.map(s => {
-      const title = escHtml(s.workout_title || 'Untitled workout');
+      const displayTitle = (s.workout_title || 'Untitled workout').replace(/@(\d+(?:\.\d+)?)/g, '').trim() || 'Untitled workout';
+      const title = escHtml(displayTitle);
       const needsDuration = s.needs_manual_duration || !Number.isFinite(Number(s.duration_minutes));
       return `<div class="verify-item" data-session-id="${escHtml(String(s.hevy_workout_id))}">
         <div class="verify-head">

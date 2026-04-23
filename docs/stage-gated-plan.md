@@ -675,6 +675,36 @@ Gate tests:
 	- Startup migration check passed for stored `0.90` and `0.95` values -> `0.87`
 	- Aggregate result: `ALL_GATES_PASS`
 
+	### Post-Stage 7.8 sRPE Title-Tag Import + Conditional Auto-Verify (completed before commit)
+
+	Implemented changes:
+	- Added title sRPE parsing in `importer.py` for pattern `@N` or `@N.N` where `N` is `0..10`.
+	- Import path now writes parsed value into `workout_sessions.srpe` (insert + upsert paths).
+	- Added title-only conditioning signal:
+		- when a valid `@N` tag exists and no modality keywords/codes are matched, title inference returns `conditioning` with confidence `0.95` before exercise analysis.
+	- Updated verification behavior in import path:
+		- strength/hypertrophy auto-verify behavior remains threshold-based.
+		- conditioning/cardio sessions are now eligible for auto-verify only when:
+			- confidence `>= auto_verify_confidence_threshold`
+			- parsed `srpe` is present
+			- `srpe` came from title tag
+	- Updated Session Verification Queue title display in `static/index.html`:
+		- strips `@N` / `@N.N` from rendered card title for readability
+		- does not alter stored `workout_title` in DB.
+
+	Validation evidence (passed):
+	- `CC4.1.6 CON @7` -> `conditioning`, `srpe=7.0`, auto-verified
+	- `CC4.1.6 METCON @8` -> `conditioning`, `srpe=8.0`, auto-verified
+	- `Saturday WOD @6.5` -> `conditioning`, `srpe=6.5`, auto-verified
+	- `CC4.1.6 METCON` (no tag) -> `srpe=null`, pending queue behavior unchanged
+	- `@11` invalid range ignored (no sRPE parsed)
+	- `@abc` invalid format ignored (no sRPE parsed)
+	- Verification card display title strips sRPE tag while preserving stored title
+	- Case-insensitive keyword matching remains intact alongside sRPE parsing
+	- `CC4.1.1(A) ST @7` remains strength-classified (sRPE parsing does not override ST)
+	- `CC4.1.6 @7` (tag only) -> `conditioning`, `srpe=7.0`, auto-verified
+	- Aggregate result: `SRPE_TITLE_GATES_PASS`
+
 ## Decisions Locked
 
 - Full-body via existing percentage fields (no `is_full_body` column).
