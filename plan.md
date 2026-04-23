@@ -29,7 +29,8 @@ Last updated: 2026-04-23
 - Today page behavior updates completed:
 	- Recommendation card now shows only training-state label and TSB-driven detail text (fatigue score/tier line removed)
 	- Status card removed entirely (CHECK-IN / PENDING SESSIONS / LAST SYNC tiles removed)
-	- Submitted-today check-ins now render as collapsed read-only summary with `Edit / Backdate` toggle
+	- Submitted-today check-ins now render as collapsed minimal state with `Edit / Backdate` toggle
+	- Collapsed submitted state shows only success banner + `Edit / Backdate` button (no read-only values grid)
 	- Toggle expands/collapses full form without saving; collapse resets form fields back to today's saved values
 	- Check-in date picker now capped at today (future dates blocked) while still allowing past-date backfill
 - Settings tab updates completed:
@@ -58,7 +59,8 @@ Last updated: 2026-04-23
 - Form now renders immediately when today is pending; no click required.
 - When today is already submitted:
 	- form auto-hides
-	- read-only submitted-values panel is shown
+	- collapsed minimal submitted panel is shown (banner + `Edit / Backdate` only)
+	- no read-only values grid is shown in either collapsed or expanded modes
 - Check-in controls replaced with inline 0-4 button groups for all 8 fields:
 	- tiredness, recovery
 	- quad/knee, hip/posterior, upper push, upper pull
@@ -77,7 +79,8 @@ Last updated: 2026-04-23
 - Check-in UX checks: PASS for
 	- first-card placement
 	- pending immediate visibility
-	- submitted collapse/read-only summary with `Edit / Backdate` toggle
+	- submitted collapse showing only banner + `Edit / Backdate` toggle
+	- no read-only values grid rendered at any point in submitted mode
 	- collapse without save resets editor fields to today's canonical values
 	- no dropdowns
 	- all 8 fields and group headers

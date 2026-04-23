@@ -714,9 +714,13 @@ Gate tests:
 	- Removed Today Status card entirely:
 		- removed CHECK-IN / PENDING SESSIONS / LAST SYNC tile card from markup and render paths.
 	- Updated submitted-check-in interaction model:
-		- when today's check-in exists, show collapsed read-only summary card
+		- when today's check-in exists, show collapsed minimal submitted card
 		- add `Edit / Backdate` toggle that expands/collapses full form
 		- expanded form always shows date picker and defaults it to today.
+	- Submitted-state display simplification finalized:
+		- collapsed state renders only success banner + `Edit / Backdate` button
+		- removed submitted-values read-only grid and related CSS entirely
+		- no read-only values grid is shown in any submitted-state path.
 	- Collapse-without-save behavior hardened:
 		- collapsing editor resets all fields back to today's saved values (no unsaved draft retained).
 	- Backdated save while today's summary exists:
@@ -730,6 +734,8 @@ Gate tests:
 	- Recommendation card no longer renders fatigue/tier line.
 	- Status card removed from Today markup and render fallback path.
 	- Submitted mode shows collapsed summary + `Edit / Backdate` toggle.
+	- Submitted mode collapsed content is limited to banner + toggle only.
+	- No read-only values grid rendered in submitted mode.
 	- Toggle collapse restores today's saved values and clears transient status.
 	- Backdated submit from expanded submitted-mode re-fetches today's entry via `/api/readiness/today`.
 	- Date picker enforces max=today.

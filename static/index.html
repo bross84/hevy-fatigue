@@ -518,27 +518,6 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
   border-color: color-mix(in srgb, var(--accent) 36%, var(--border));
   box-shadow: 0 1px 3px var(--btn-shadow);
 }
-.checkin-readonly-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 10px;
-}
-.checkin-readonly-item {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg);
-  padding: 8px;
-}
-.checkin-readonly-label {
-  font-size: 11px;
-  color: var(--muted);
-}
-.checkin-readonly-value {
-  font-size: 16px;
-  font-weight: 700;
-  margin-top: 2px;
-}
 
 /* ── Forms ───────────────────────────── */
 .form-row { margin-bottom: 13px; }
@@ -1561,7 +1540,6 @@ tbody tr:hover td { background: var(--row-hover); }
     gap: 6px;
   }
   .checkin-scale-endpoint { font-size: 10px; }
-  .checkin-readonly-grid { grid-template-columns: 1fr; }
 
   /* ── Horizontal scroll for tables on small screens ── */
   .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -2527,29 +2505,10 @@ function _setCheckinScaleValue(fieldId, value) {
 function _renderCheckinReadonly(entry) {
   const box = document.getElementById('checkin-readonly');
   if (!box || !entry) return;
-  const rows = [
-    ['Date', entry.date || todayStr()],
-    ['Tiredness', Number(entry.tiredness || 0)],
-    ['Recovery', Number(entry.perceived_recovery || 0)],
-    ['Quad / Knee', Number(entry.sore_quad_dom || 0)],
-    ['Hip / Posterior', Number(entry.sore_posterior || 0)],
-    ['Upper Push', Number(entry.sore_upper_push || 0)],
-    ['Upper Pull', Number(entry.sore_upper_pull || 0)],
-    ['Upper Joint', Number(entry.joint_upper || 0)],
-    ['Lower Joint', Number(entry.joint_lower || 0)],
-  ];
   box.innerHTML = `
     <div class="alert alert-success">✓ Already logged today — Intensity Load: ${entry.central_stress ?? '—'} | Volume Load: ${entry.peripheral_stress ?? '—'}</div>
     <div style="display:flex;justify-content:flex-end;align-items:center;margin-top:8px;">
       <button type="button" class="btn btn-secondary" id="checkin-edit-toggle" onclick="toggleTodayCheckinEditor()" aria-expanded="false">Edit / Backdate</button>
-    </div>
-    <div class="checkin-readonly-grid">
-      ${rows.map(([label, value]) => `
-        <div class="checkin-readonly-item">
-          <div class="checkin-readonly-label">${escHtml(String(label))}</div>
-          <div class="checkin-readonly-value">${escHtml(String(value))}</div>
-        </div>
-      `).join('')}
     </div>
   `;
 }
