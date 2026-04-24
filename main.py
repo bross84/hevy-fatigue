@@ -1740,13 +1740,21 @@ def get_workout_sessions(
     status: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
+    state_date: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     """List workout sessions for review and verification workflows."""
     limit = max(1, min(int(limit), 200))
     offset = max(0, int(offset))
 
+    if state_date:
+        try:
+            since = date_type.fromisoformat(state_date)
+        except ValueError:
+            since = date_type.today() - timedelta(days=max(1, days) - 1)
+    else:
     since = date_type.today() - timedelta(days=max(1, days) - 1)
+
     q = db.query(WorkoutSession).filter(WorkoutSession.workout_date >= since)
 
     if status:

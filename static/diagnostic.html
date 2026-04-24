@@ -215,7 +215,7 @@
     /* Section 3: Raw Numbers */
     .raw-numbers {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 2rem;
     }
     
@@ -331,16 +331,19 @@
       }
     }
     
-    async function fetchSessionsList(days = 7) {
-      try {
-        const resp = await fetch(`/api/workout-sessions?limit=100&days=${days}`);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        return await resp.json();
-      } catch (err) {
-        console.error('Error fetching sessions list:', err);
-        throw new Error(`Failed to load sessions: ${err.message}`);
-      }
-    }
+async function fetchSessionsList(days) {
+  try {
+    const d = new Date();
+    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate() - days + 1);
+    const startStr = `${start.getFullYear()}-${String(start.getMonth()+1).padStart(2,'0')}-${String(start.getDate()).padStart(2,'0')}`;
+    const resp = await fetch(`/api/workout-sessions?limit=100&start_date=${startStr}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    return await resp.json();
+  } catch (err) {
+    console.error('Error fetching sessions list:', err);
+    throw new Error(`Failed to load sessions: ${err.message}`);
+  }
+}
     
     async function fetchSessionDetail(sessionId) {
       try {
