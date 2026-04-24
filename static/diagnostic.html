@@ -334,7 +334,7 @@
 async function fetchSessionsList(days) {
   try {
     const d = new Date();
-    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate() - days + 1);
+    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate() - days);
     const startStr = `${start.getFullYear()}-${String(start.getMonth()+1).padStart(2,'0')}-${String(start.getDate()).padStart(2,'0')}`;
     const resp = await fetch(`/api/workout-sessions?limit=100&start_date=${startStr}`);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
