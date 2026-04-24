@@ -38,6 +38,7 @@ Last updated: 2026-04-23
 	- Collapsed submitted state shows only success banner + `Edit / Backdate` button (no read-only values grid)
 	- Toggle expands/collapses full form without saving; collapse resets form fields back to today's saved values
 	- Check-in date picker now capped at today (future dates blocked) while still allowing past-date backfill
+	- `todayStr()` now uses local date parts (`getFullYear/getMonth/getDate`) instead of UTC `toISOString()`, preventing timezone drift in submitted-state detection
 - Settings tab updates completed:
 	- Session Processing section now includes both conditioning load scale and auto-verify confidence threshold
 	- Auto-verify threshold input is populated from `/api/settings/v2` and uses placeholder `0.87`

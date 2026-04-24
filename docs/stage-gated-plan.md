@@ -780,6 +780,19 @@ Gate tests:
 	- No references remain to `stressChart`, `renderChart`, `renderPatternChart`, `patternCache`, `activePattern`, `baselineDays`, or `stressHistory`.
 	- Trend tab lifecycle (tab activate, re-render on resize, re-render on selector change) stable.
 
+	### Post-Stage 7.11 — Local-Time `todayStr()` Alignment Fix
+
+	Implemented changes:
+	- Updated frontend `todayStr()` in `static/index.html` to build `YYYY-MM-DD` from local date parts (`getFullYear/getMonth/getDate`) instead of UTC `toISOString()`.
+	- This aligns frontend date comparisons with browser date-input local-date semantics and prevents UTC/local day-boundary mismatches in today submitted-state detection.
+	- Verified backend `/api/readiness/today` in `main.py` queries `DailyReadiness.date == date_type.today()`, which uses server-local date semantics.
+
+	Validation evidence (passed):
+	- `todayStr()` now returns local-date string format matching browser date input behavior.
+	- Existing comparisons that rely on `todayStr()` now inherit local-date alignment without additional code changes.
+	- Backend readiness endpoint remains unchanged and already uses `date_type.today()`.
+	- Static diagnostics clean after patch.
+
 ## Decisions Locked
 
 - Full-body via existing percentage fields (no `is_full_body` column).
