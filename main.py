@@ -1747,13 +1747,13 @@ def get_workout_sessions(
     limit = max(1, min(int(limit), 200))
     offset = max(0, int(offset))
 
-    if state_date:
+    if start_date:
         try:
-            since = date_type.fromisoformat(state_date)
+            since = date_type.fromisoformat(start_date)
         except ValueError:
             since = date_type.today() - timedelta(days=max(1, days) - 1)
     else:
-    since = date_type.today() - timedelta(days=max(1, days) - 1)
+        since = date_type.today() - timedelta(days=max(1, days) - 1)
 
     q = db.query(WorkoutSession).filter(WorkoutSession.workout_date >= since)
 
