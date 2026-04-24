@@ -509,9 +509,9 @@
       }
       const baseline28DayAvg = volume28DayTotal / 28;
       
-      // Calculate ratio
-      const ratio = baseline28DayAvg > 0 ? (volume7DayTotal / baseline28DayAvg) * 100 : 0;
-      const ratioLabel = ratio > 100 ? 'ABOVE baseline' : 'BELOW baseline';
+      // Calculate objective load score (0-10)
+      const sevenDayAvgDaily = volume7DayTotal / 7;
+      const objectiveScore = Math.min(10, Math.max(0, baseline28DayAvg > 0 ? (sevenDayAvgDaily / baseline28DayAvg) * 5 : 0));
       
       html += `
         <div class="volume-section">
@@ -540,9 +540,9 @@
               <div class="summary-note">lbs/day</div>
             </div>
             <div class="summary-box">
-              <div class="summary-label">Ratio</div>
-              <div class="summary-value">${Math.round(ratio)}%</div>
-              <div class="summary-note">${ratioLabel}</div>
+              <div class="summary-label">Objective Load Score</div>
+              <div class="summary-value">${objectiveScore.toFixed(1)}</div>
+              <div class="summary-note">0-10</div>
             </div>
           </div>
         </div>
@@ -565,7 +565,8 @@
         volume28DayTotal += session._volumeLbs || 0;
       }
       const baseline28DayAvg = volume28DayTotal / 28;
-      const ratio = baseline28DayAvg > 0 ? Math.round((volume7DayTotal / baseline28DayAvg) * 100) : 0;
+      const sevenDayAvgDaily = volume7DayTotal / 7;
+      const objectiveScore = Math.min(10, Math.max(0, baseline28DayAvg > 0 ? (sevenDayAvgDaily / baseline28DayAvg) * 5 : 0));
       
       return `
         <div class="section">
@@ -576,8 +577,8 @@
               <div class="raw-number">${fatigueNum}</div>
             </div>
             <div class="raw-box">
-              <div class="raw-label">Volume Ratio</div>
-              <div class="raw-number">${ratio}%</div>
+              <div class="raw-label">Objective Load Score</div>
+              <div class="raw-number">${objectiveScore.toFixed(1)}</div>
             </div>
           </div>
         </div>
