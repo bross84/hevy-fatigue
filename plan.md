@@ -16,8 +16,13 @@ Last updated: 2026-04-23
 - Trend view is now the home for chart diagnostics:
 	- ATL/CTL/TSB trend chart
 	- pattern ATL trend chart
-	- relocated legacy Training Stress chart (with existing pattern/baseline controls)
-- Legacy dashboard chart/table blocks removed from check-in area:
+	- Training Stress (Legacy) chart removed entirely (requirement 2.3)
+	- Chart window behavior fixed per requirement 2.1:
+		- All Trend charts now display a fixed 30-day date range ending today
+		- Time Range selector (3 Day/7 Day/14 Day labels) controls chart smoothing only via trailing moving average windows
+		- Date axis/x-axis labels remain constant (same 30-day span) regardless of selector choice
+		- Trend tooltips now read plotted (smoothed) dataset values so tooltip numbers match line values
+	- Legacy dashboard chart/table blocks removed from check-in area:
 	- removed orphan `tsbZoneChart` markup
 	- removed legacy `tl-wrap` card
 	- removed legacy recent workouts summary table

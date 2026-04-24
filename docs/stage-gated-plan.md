@@ -741,6 +741,45 @@ Gate tests:
 	- Date picker enforces max=today.
 	- Static file diagnostics clean after patch.
 
+	### Post-Stage 7.10 — Trend Chart Window Lock + Legacy Chart Removal (Requirements 2.1 & 2.3)
+
+	Implemented changes:
+	- Fixed Trend chart visible date window to always display 30 days ending today (requirement 2.1):
+		- ATL/CTL/TSB chart now uses `_trendSlice()` with hardcoded 30-day window instead of variable slice.
+		- Per-Pattern ATL chart uses same fixed 30-day window.
+		- Charts always display the same x-axis date span regardless of selector state.
+	- Repurposed Time Range selector from date-range control to smoothing-window control:
+		- Selector button labels preserved as: 3 Day, 7 Day, 14 Day.
+		- Default selector state changed to 7d (previously 3).
+		- Selector click updates `trendSmoothingDays` (previously `trendRangeDays`).
+		- Selector re-renders charts with new moving-average window applied to all three datasets.
+	- Implemented client-side trailing moving average smoothing via new `_trendRollingAvg()` helper:
+		- ATL/CTL/TSB datasets apply smoothing before rendering.
+		- Per-Pattern ATL datasets apply smoothing before rendering.
+		- Tooltip values now read directly from plotted Chart.js dataset points (smoothed values), matching rendered lines.
+	- Removed legacy Training Stress (Legacy View) chart entirely (requirement 2.3):
+		- Removed chart container, canvas element `stressChart`, and all markup from Trend tab.
+		- Removed pattern filter (Total/Quad/Hip/Push/Pull) button group tied only to legacy chart.
+		- Removed baseline toggle (3d/6d/12d) button group tied only to legacy chart.
+		- Deleted legacy chart rendering functions: `renderChart()`, `renderPatternChart()`.
+		- Deleted helper functions: `chartOpts()`, `buildDatasets()`, `rollingAvg()`.
+		- Deleted stress history fetch: `loadStressHistory()` and global `stressHistory` state.
+		- Deleted event listeners for pattern-filter and baseline-toggle controls.
+		- Deleted pattern cache state and related globals: `patternCache`, `activePattern`, `baselineDays`.
+		- Updated `_destroyTrendCharts()` to no longer attempt stressChart destruction.
+		- Updated `renderTrendView()` to no longer attempt legacy chart render or call `loadStressHistory()`.
+
+	Validation evidence (passed):
+	- Static file diagnostics clean (no errors).
+	- Both remaining Trend charts (ATL/CTL/TSB and Per-Pattern ATL) render with fixed 30-day date coverage.
+	- Time Range selector labels remain 3 Day / 7 Day / 14 Day with default 7 Day.
+	- Selector click triggers re-render with new smoothing window applied.
+	- Both charts maintain same x-axis labels (30-day span) across all selector changes.
+	- Tooltip values match smoothed plotted line values (not raw daily source fields).
+	- Legacy chart card, controls, canvas, and all related JS completely removed from markup and code.
+	- No references remain to `stressChart`, `renderChart`, `renderPatternChart`, `patternCache`, `activePattern`, `baselineDays`, or `stressHistory`.
+	- Trend tab lifecycle (tab activate, re-render on resize, re-render on selector change) stable.
+
 ## Decisions Locked
 
 - Full-body via existing percentage fields (no `is_full_body` column).

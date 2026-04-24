@@ -1556,7 +1556,6 @@ tbody tr:hover td { background: var(--row-hover); }
   #ex-count { margin-left: 0 !important; align-self: flex-end; }
 
   /* ── Chart shorter on mobile ── */
-  #stressChart { max-height: 200px; }
 
   /* ── Tooltip: show above with enough room ── */
   .tip-icon::after { max-width: 200px; }
@@ -1845,9 +1844,9 @@ tbody tr:hover td { background: var(--row-hover); }
     <div class="trend-chart-card">
       <div class="card-title" style="margin-bottom:10px;">Time Range</div>
       <div class="trend-range" id="trend-range">
-        <button class="btn btn-secondary active" data-range="3">3 Days</button>
-        <button class="btn btn-secondary" data-range="7">7 Days</button>
-        <button class="btn btn-secondary" data-range="14">14 Days</button>
+        <button class="btn btn-secondary" data-range="3">3 Day</button>
+        <button class="btn btn-secondary active" data-range="7">7 Day</button>
+        <button class="btn btn-secondary" data-range="14">14 Day</button>
       </div>
     </div>
 
@@ -1865,45 +1864,6 @@ tbody tr:hover td { background: var(--row-hover); }
         <canvas id="trend-pattern-chart"></canvas>
       </div>
       <div class="trend-note" id="trend-pattern-note" style="display:none;">Pattern data unavailable for this date range.</div>
-    </div>
-
-    <div class="trend-chart-card" id="trend-stress-card">
-      <div class="card-title" style="margin-bottom:8px;">Training Stress (Legacy View)</div>
-      <div class="trend-note" style="margin-bottom:10px;">Relocated from the legacy check-in panel for trend-side diagnostics.</div>
-      <div class="chart-header">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <div class="btn-group" id="pattern-filter">
-            <button class="active" data-pattern="total">Total</button>
-            <button data-pattern="quad_dom">Quad</button>
-            <button data-pattern="posterior">Hip</button>
-            <button data-pattern="upper_push">Push</button>
-            <button data-pattern="upper_pull">Pull</button>
-          </div>
-          <div class="btn-group" id="baseline-toggle">
-            <button data-days="3">3d</button>
-            <button class="active" data-days="6">6d</button>
-            <button data-days="12">12d</button>
-          </div>
-        </div>
-      </div>
-      <div style="position:relative;height:260px;">
-        <canvas id="stressChart"></canvas>
-      </div>
-      <div id="chart-loading" style="display:none;" class="loading-wrap">
-        <span class="spinner"></span> Fetching pattern data…
-      </div>
-      <div class="stress-legend" style="display:flex;gap:18px;margin-top:10px;font-size:12px;color:var(--muted);">
-        <span class="stress-legend-item" style="display:inline-flex;align-items:center;gap:5px;">
-          <span style="width:16px;height:2px;background:var(--accent);display:inline-block;border-radius:1px;"></span>
-          Intensity Load
-          <span class="tip-icon" data-tip="How hard you trained. Heavy sets close to your max drive this number up fast. Think of it as nervous system fatigue — the kind that makes you feel strong but drained.">i</span>
-        </span>
-        <span class="stress-legend-item" style="display:inline-flex;align-items:center;gap:5px;">
-          <span style="width:16px;height:2px;background:var(--posterior);display:inline-block;border-radius:1px;"></span>
-          Volume Load
-          <span class="tip-icon" data-tip="How much total work you did. Adds up with every set and rep regardless of how heavy. Think of it as muscle fatigue — the kind that makes you sore and tired the next day.">i</span>
-        </span>
-      </div>
     </div>
 
     <div class="trend-chart-card" id="trend-empty" style="display:none;">
@@ -2326,11 +2286,6 @@ function applyTheme(pref) {
 
   // Rebuild charts with new colors after CSS vars settle
   requestAnimationFrame(() => {
-    patternCache = {};
-    document.querySelectorAll('#pattern-filter button').forEach(b =>
-      b.classList.toggle('active', b.dataset.pattern === 'total')
-    );
-    activePattern = 'total';
     if (document.getElementById('tab-trend')?.classList.contains('active')) {
       renderTrendView();
     }
@@ -2343,11 +2298,6 @@ window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', ()
 });
 
 // ═══ State ════════════════════════════════════════════
-let stressHistory  = [];
-let patternCache   = {};
-let activePattern  = 'total';
-let baselineDays   = 6;
-let stressChart    = null;
 let exercises      = [];
 
 // ── Chart resize handling ─────────────────────────────
@@ -2381,7 +2331,7 @@ let _trainingLoadPayload = null;
 let _trainingLoadFetchPromise = null;
 let trendMainChart = null;
 let trendPatternChart = null;
-let trendRangeDays = 3;
+let trendSmoothingDays = 7;
 let sessionLogRows = [];
 const SESSION_LOG_PAGE_SIZE = 50;
 let sessionLogOffset = 0;
@@ -2472,7 +2422,7 @@ function initTrendRangeSelector() {
   rangeEl.addEventListener('click', e => {
     const btn = e.target.closest('button[data-range]');
     if (!btn) return;
-    trendRangeDays = Number(btn.dataset.range || 3);
+    trendSmoothingDays = Number(btn.dataset.range || 7);
     rangeEl.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
     renderTrendView();
   });
@@ -3009,8 +2959,6 @@ async function runSync({ silent = false } = {}) {
         localStorage.setItem('hevy_last_sync_iso', new Date().toISOString());
         _trainingLoadPayload = null;
         // Refresh Today and Trend data surfaces
-        stressHistory = [];
-        patternCache = {};
         loadTrainingLoadCard();
         if (document.getElementById('tab-trend')?.classList.contains('active')) {
           renderTrendView();
@@ -3034,130 +2982,6 @@ async function runSync({ silent = false } = {}) {
     }
   }
 }
-
-// ═══ Stress history ═══════════════════════════════════
-async function loadStressHistory() {
-  if (stressHistory.length) return stressHistory;
-  try {
-    const r = await fetch('/api/stress/history?days=60');
-    stressHistory = await r.json();
-  } catch { stressHistory = []; }
-  return stressHistory;
-}
-
-function rollingAvg(vals, win) {
-  return vals.map((_, i) => {
-    const sl = vals.slice(Math.max(0, i - win + 1), i + 1);
-    return +(sl.reduce((a, b) => a + b, 0) / sl.length).toFixed(3);
-  });
-}
-
-// ═══ Chart ════════════════════════════════════════════
-function chartOpts() {
-  const c = themeColors();
-  return {
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: { duration: 250 },
-    interaction: { mode: 'index', intersect: false },
-    plugins: {
-      legend: { labels: { color: c.muted, font: { size: 11 }, boxWidth: 16, usePointStyle: true } },
-      tooltip: {
-        backgroundColor: c.card,
-        borderColor: c.border,
-        borderWidth: 1,
-        titleColor: c.text,
-        bodyColor: c.muted,
-        padding: 10,
-      }
-    },
-    scales: {
-      x: { ticks: { color: c.muted, font: { size: 10 }, maxTicksLimit: 10 }, grid: { color: c.border } },
-      y: { ticks: { color: c.muted, font: { size: 10 } }, grid: { color: c.border }, beginAtZero: true }
-    }
-  };
-}
-
-function buildDatasets(labels, cVals, pVals, cColor, pColor) {
-  return {
-    labels,
-    datasets: [
-      { label: 'Intensity Load',    data: cVals, borderColor: cColor, backgroundColor: cColor+'22', borderWidth: 2, tension: 0.35, pointRadius: 3, pointHoverRadius: 6 },
-      { label: 'Volume Load', data: pVals, borderColor: pColor, backgroundColor: pColor+'22', borderWidth: 2, tension: 0.35, pointRadius: 3, pointHoverRadius: 6 },
-      { label: `${baselineDays}d Intensity Avg`,    data: rollingAvg(cVals, baselineDays), borderColor: cColor, borderWidth: 1.5, borderDash: [5,4], pointRadius: 0, tension: 0.35 },
-      { label: `${baselineDays}d Volume Avg`, data: rollingAvg(pVals, baselineDays), borderColor: pColor, borderWidth: 1.5, borderDash: [5,4], pointRadius: 0, tension: 0.35 },
-    ]
-  };
-}
-
-function renderChart() {
-  const chartEl = document.getElementById('stressChart');
-  if (!chartEl) return;
-  const c = themeColors();
-  const ctx = chartEl.getContext('2d');
-  const data = buildDatasets(
-    stressHistory.map(d => d.date),
-    stressHistory.map(d => d.central),
-    stressHistory.map(d => d.peripheral),
-    c.accent, c.posterior
-  );
-  if (stressChart) stressChart.destroy();
-  stressChart = new Chart(ctx, { type: 'line', data, options: chartOpts() });
-}
-
-function renderPatternChart(key) {
-  const chartEl = document.getElementById('stressChart');
-  if (!chartEl) return;
-  const c = themeColors();
-  const colors = { quad_dom: c.quad, posterior: c.posterior, upper_push: c.push, upper_pull: c.pull };
-  const col = colors[key] || c.accent;
-  const pd  = patternCache[key];
-  if (!pd || !pd.length) {
-    renderChart();
-    return;
-  }
-  const data = buildDatasets(pd.map(d => d.date), pd.map(d => d.central), pd.map(d => d.peripheral), col, col+'bb');
-  const ctx = chartEl.getContext('2d');
-  if (stressChart) stressChart.destroy();
-  stressChart = new Chart(ctx, { type: 'line', data, options: chartOpts() });
-}
-
-// ═══ Pattern filter ═══════════════════════════════════
-document.getElementById('pattern-filter').addEventListener('click', async e => {
-  const btn = e.target.closest('button');
-  if (!btn) return;
-  document.querySelectorAll('#pattern-filter button').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  activePattern = btn.dataset.pattern;
-  if (activePattern === 'total') { renderChart(); return; }
-
-  if (!patternCache[activePattern]) {
-    document.getElementById('chart-loading').style.display = 'block';
-    document.getElementById('stressChart').style.opacity = '0.3';
-    const results = await Promise.all(
-      stressHistory.map(d => fetch(`/api/stress/patterns/${d.date}`).then(r => r.json()).catch(() => null))
-    );
-    patternCache[activePattern] = results.filter(Boolean).map(r => ({
-      date:       r.date,
-      central:    r.patterns[activePattern]?.central    ?? 0,
-      peripheral: r.patterns[activePattern]?.peripheral ?? 0,
-    }));
-    document.getElementById('chart-loading').style.display = 'none';
-    document.getElementById('stressChart').style.opacity = '1';
-  }
-  renderPatternChart(activePattern);
-});
-
-// ═══ Baseline toggle ══════════════════════════════════
-document.getElementById('baseline-toggle').addEventListener('click', e => {
-  const btn = e.target.closest('button');
-  if (!btn) return;
-  document.querySelectorAll('#baseline-toggle button').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  baselineDays = +btn.dataset.days;
-  patternCache = {};
-  if (activePattern === 'total') renderChart(); else renderPatternChart(activePattern);
-});
 
 // ═══ Log tab ══════════════════════════════════════════
 
@@ -4424,8 +4248,17 @@ function _resolveStateLabel(item, thresholds) {
 
 function _trendSlice(history, days) {
   if (!Array.isArray(history) || !history.length) return [];
-  if (history.length <= days) return history;
-  return history.slice(history.length - days);
+  if (history.length <= 30) return history;
+  return history.slice(history.length - 30);
+}
+
+function _trendRollingAvg(values, windowDays) {
+  if (!Array.isArray(values) || windowDays <= 0) return values;
+  return values.map((_, i) => {
+    const start = Math.max(0, i - windowDays + 1);
+    const slice = values.slice(start, i + 1);
+    return +(slice.reduce((a, b) => a + b, 0) / slice.length).toFixed(3);
+  });
 }
 
 function _destroyTrendCharts() {
@@ -4436,10 +4269,6 @@ function _destroyTrendCharts() {
   if (trendPatternChart) {
     trendPatternChart.destroy();
     trendPatternChart = null;
-  }
-  if (stressChart) {
-    stressChart.destroy();
-    stressChart = null;
   }
 }
 
@@ -4478,6 +4307,12 @@ function _renderTrendMainChart(history, thresholds) {
   const c = themeColors();
   const ctx = document.getElementById('trend-main-chart').getContext('2d');
   const labels = history.map(h => _dateLabel(h.date));
+  const atlRaw = history.map(h => Number(h.atl || 0));
+  const ctlRaw = history.map(h => Number(h.ctl || 0));
+  const tsbRaw = history.map(h => Number(h.tsb || 0));
+  const atlSmoothed = _trendRollingAvg(atlRaw, trendSmoothingDays);
+  const ctlSmoothed = _trendRollingAvg(ctlRaw, trendSmoothingDays);
+  const tsbSmoothed = _trendRollingAvg(tsbRaw, trendSmoothingDays);
 
   trendMainChart = new Chart(ctx, {
     type: 'line',
@@ -4486,7 +4321,7 @@ function _renderTrendMainChart(history, thresholds) {
       datasets: [
         {
           label: 'Fatigue',
-          data: history.map(h => Number(h.atl || 0)),
+          data: atlSmoothed,
           borderColor: c.posterior,
           backgroundColor: c.posterior + '33',
           pointRadius: 2,
@@ -4496,7 +4331,7 @@ function _renderTrendMainChart(history, thresholds) {
         },
         {
           label: 'Fitness',
-          data: history.map(h => Number(h.ctl || 0)),
+          data: ctlSmoothed,
           borderColor: c.accent,
           backgroundColor: c.accent + '33',
           pointRadius: 2,
@@ -4506,7 +4341,7 @@ function _renderTrendMainChart(history, thresholds) {
         },
         {
           label: 'Form',
-          data: history.map(h => Number(h.tsb || 0)),
+          data: tsbSmoothed,
           borderColor: c.success,
           backgroundColor: c.success + '33',
           pointRadius: 2,
@@ -4545,11 +4380,10 @@ function _renderTrendMainChart(history, thresholds) {
             },
             label(ctxItem) {
               if (ctxItem.dataset.label === '__zero__') return null;
-              const idx = ctxItem.dataIndex;
-              const item = history[idx] || {};
-              if (ctxItem.dataset.label === 'Fatigue') return `Fatigue: ${_fmt1(item.atl)}`;
-              if (ctxItem.dataset.label === 'Fitness') return `Fitness: ${_fmt1(item.ctl)}`;
-              return `Form: ${_fmt1(item.tsb)}`;
+              const plotted = Number(ctxItem.parsed?.y ?? 0);
+              if (ctxItem.dataset.label === 'Fatigue') return `Fatigue: ${_fmt1(plotted)}`;
+              if (ctxItem.dataset.label === 'Fitness') return `Fitness: ${_fmt1(plotted)}`;
+              return `Form: ${_fmt1(plotted)}`;
             },
             afterBody(items) {
               const idx = items?.[0]?.dataIndex ?? 0;
@@ -4566,6 +4400,14 @@ function _renderTrendPatternChart(history) {
   const c = themeColors();
   const ctx = document.getElementById('trend-pattern-chart').getContext('2d');
   const labels = history.map(h => _dateLabel(h.date));
+  const kneeRaw = history.map(h => Number(h.pattern_loads?.knee?.atl || 0));
+  const hipRaw = history.map(h => Number(h.pattern_loads?.hip?.atl || 0));
+  const pushRaw = history.map(h => Number(h.pattern_loads?.push?.atl || 0));
+  const pullRaw = history.map(h => Number(h.pattern_loads?.pull?.atl || 0));
+  const kneeSmoothed = _trendRollingAvg(kneeRaw, trendSmoothingDays);
+  const hipSmoothed = _trendRollingAvg(hipRaw, trendSmoothingDays);
+  const pushSmoothed = _trendRollingAvg(pushRaw, trendSmoothingDays);
+  const pullSmoothed = _trendRollingAvg(pullRaw, trendSmoothingDays);
 
   trendPatternChart = new Chart(ctx, {
     type: 'line',
@@ -4574,7 +4416,7 @@ function _renderTrendPatternChart(history) {
       datasets: [
         {
           label: 'Knee',
-          data: history.map(h => Number(h.pattern_loads?.knee?.atl || 0)),
+          data: kneeSmoothed,
           borderColor: c.quad,
           backgroundColor: c.quad + '33',
           pointRadius: 2,
@@ -4584,7 +4426,7 @@ function _renderTrendPatternChart(history) {
         },
         {
           label: 'Hip',
-          data: history.map(h => Number(h.pattern_loads?.hip?.atl || 0)),
+          data: hipSmoothed,
           borderColor: c.posterior,
           backgroundColor: c.posterior + '33',
           pointRadius: 2,
@@ -4594,7 +4436,7 @@ function _renderTrendPatternChart(history) {
         },
         {
           label: 'Push',
-          data: history.map(h => Number(h.pattern_loads?.push?.atl || 0)),
+          data: pushSmoothed,
           borderColor: c.push,
           backgroundColor: c.push + '33',
           pointRadius: 2,
@@ -4604,7 +4446,7 @@ function _renderTrendPatternChart(history) {
         },
         {
           label: 'Pull',
-          data: history.map(h => Number(h.pattern_loads?.pull?.atl || 0)),
+          data: pullSmoothed,
           borderColor: c.pull,
           backgroundColor: c.pull + '33',
           pointRadius: 2,
@@ -4626,12 +4468,11 @@ function _renderTrendPatternChart(history) {
               return _dateLabel(history[idx].date);
             },
             label(ctxItem) {
-              const idx = ctxItem.dataIndex;
-              const item = history[idx] || {};
-              if (ctxItem.dataset.label === 'Knee') return `Knee: ${_fmt1(item.pattern_loads?.knee?.atl || 0)}`;
-              if (ctxItem.dataset.label === 'Hip') return `Hip: ${_fmt1(item.pattern_loads?.hip?.atl || 0)}`;
-              if (ctxItem.dataset.label === 'Push') return `Push: ${_fmt1(item.pattern_loads?.push?.atl || 0)}`;
-              return `Pull: ${_fmt1(item.pattern_loads?.pull?.atl || 0)}`;
+              const plotted = Number(ctxItem.parsed?.y ?? 0);
+              if (ctxItem.dataset.label === 'Knee') return `Knee: ${_fmt1(plotted)}`;
+              if (ctxItem.dataset.label === 'Hip') return `Hip: ${_fmt1(plotted)}`;
+              if (ctxItem.dataset.label === 'Push') return `Push: ${_fmt1(plotted)}`;
+              return `Pull: ${_fmt1(plotted)}`;
             },
           },
         },
@@ -4646,16 +4487,13 @@ async function renderTrendView() {
   const patternCard = document.getElementById('trend-pattern-card');
   const patternWrap = document.getElementById('trend-pattern-wrap');
   const patternNote = document.getElementById('trend-pattern-note');
-  const stressCard = document.getElementById('trend-stress-card');
-  const chartLoading = document.getElementById('chart-loading');
-  if (!emptyEl || !mainWrap || !patternCard || !patternWrap || !patternNote || !stressCard) return;
+  if (!emptyEl || !mainWrap || !patternCard || !patternWrap || !patternNote) return;
 
   try {
     const [payload] = await Promise.all([
       ensureTrainingLoadPayload(),
-      loadStressHistory(),
     ]);
-    const history = _trendSlice(payload?.history || [], trendRangeDays);
+    const history = _trendSlice(payload?.history || [], 30);
 
     _destroyTrendCharts();
 
@@ -4663,14 +4501,12 @@ async function renderTrendView() {
       emptyEl.style.display = 'block';
       mainWrap.style.display = 'none';
       patternCard.style.display = 'none';
-      stressCard.style.display = 'none';
       return;
     }
 
     emptyEl.style.display = 'none';
     mainWrap.style.display = 'block';
     patternCard.style.display = 'block';
-    stressCard.style.display = 'block';
 
     _renderTrendMainChart(history, payload?.thresholds || {});
 
@@ -4683,20 +4519,11 @@ async function renderTrendView() {
       patternNote.style.display = 'none';
       _renderTrendPatternChart(history);
     }
-
-    if (activePattern === 'total') {
-      renderChart();
-    } else if (patternCache[activePattern]) {
-      renderPatternChart(activePattern);
-    } else {
-      renderChart();
-    }
   } catch {
     _destroyTrendCharts();
     emptyEl.style.display = 'block';
     mainWrap.style.display = 'none';
     patternCard.style.display = 'none';
-    stressCard.style.display = 'none';
   }
 }
 
@@ -4728,7 +4555,6 @@ async function saveMapping() {
         // Merge updated fields back; preserve use_count / last_used from local state
         exercises[idx] = { ...exercises[idx], ...updated };
       }
-      patternCache = {};
       closeModal();
       renderExTable();
     } else {
