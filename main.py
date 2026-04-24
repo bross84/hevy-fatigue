@@ -1740,7 +1740,7 @@ def get_workout_sessions(
     status: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
-    state_date: Optional[str] = None,
+    start_date: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     """List workout sessions for review and verification workflows."""
