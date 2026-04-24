@@ -780,15 +780,19 @@ Gate tests:
 	- No references remain to `stressChart`, `renderChart`, `renderPatternChart`, `patternCache`, `activePattern`, `baselineDays`, or `stressHistory`.
 	- Trend tab lifecycle (tab activate, re-render on resize, re-render on selector change) stable.
 
-	### Post-Stage 7.11 — Local-Time `todayStr()` Alignment Fix
+	### Post-Stage 7.11 — Local-Time `todayStr()` + Dashboard Tab Readiness Refresh
 
 	Implemented changes:
 	- Updated frontend `todayStr()` in `static/index.html` to build `YYYY-MM-DD` from local date parts (`getFullYear/getMonth/getDate`) instead of UTC `toISOString()`.
 	- This aligns frontend date comparisons with browser date-input local-date semantics and prevents UTC/local day-boundary mismatches in today submitted-state detection.
 	- Verified backend `/api/readiness/today` in `main.py` queries `DailyReadiness.date == date_type.today()`, which uses server-local date semantics.
+	- Added `checkTodayReadiness()` call inside `activateTab()` for the dashboard tab alongside the existing `loadTrainingLoadCard()` call.
+	- This ensures submitted-state is evaluated every time the user navigates to the dashboard tab, not only on the initial DOMContentLoaded.
+	- Verified `ci-date` value and max are set before `checkTodayReadiness()` is called in DOMContentLoaded; ordering is correct.
 
 	Validation evidence (passed):
 	- `todayStr()` now returns local-date string format matching browser date input behavior.
+	- `checkTodayReadiness()` is now invoked on every dashboard tab switch.
 	- Existing comparisons that rely on `todayStr()` now inherit local-date alignment without additional code changes.
 	- Backend readiness endpoint remains unchanged and already uses `date_type.today()`.
 	- Static diagnostics clean after patch.

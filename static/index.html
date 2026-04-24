@@ -2356,7 +2356,7 @@ function activateTab(tabName) {
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
   document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
   document.getElementById('tab-' + tabName).classList.add('active');
-  if (tabName === 'dashboard')                           loadTrainingLoadCard();
+  if (tabName === 'dashboard') { loadTrainingLoadCard(); checkTodayReadiness(); }
   if (tabName === 'trend')                               activateTrendTab();
   if (tabName === 'exercises' && exercises.length === 0) loadExercises();
   if (tabName === 'workouts'  && !workoutsLoaded)        loadWorkouts();
