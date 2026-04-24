@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnostics</title>
+  <link rel="icon" href="/resources/favicon.png" type="image/png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    /* Theme tokens (dark) */
+    :root {
+      --bg: #2e282a;
+      --card: #3d3638;
+      --border: #524c4e;
+      --text: #f3f8f2;
+      --muted: #a09498;
+      --accent: #5da9e9;
+      --danger: #ef3e36;
+    }
+    
+    html { overflow-x: auto; }
+    body {
+      width: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    header {
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    
+    .header-meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    
+    .header-meta a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    
+    .header-meta a:hover {
+      text-decoration: underline;
+    }
+    
+    .section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--accent);
+    }
+    
+    /* Section 1: Subjective Fatigue */
+    .fatigue-score {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    
+    .fatigue-details {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      font-size: 13px;
+    }
+    
+    .detail-label {
+      color: var(--muted);
+      flex: 1;
+    }
+    
+    .detail-value {
+      font-weight: 600;
+      text-align: right;
+    }
+    
+    .score-box {
+      background: rgba(93, 169, 233, 0.1);
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      padding: 1rem;
+      text-align: center;
+    }
+    
+    .score-label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .score-number {
+      font-size: 48px;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      color: var(--accent);
+    }
+    
+    .score-range {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 0.5rem;
+    }
+    
+    /* Section 2: 7-Day Volume */
+    .volume-section {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    
+    th {
+      text-align: left;
+      padding: 0.75rem 0.5rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+    }
+    
+    td {
+      padding: 0.75rem 0.5rem;
+      border-bottom: 1px solid rgba(82, 76, 78, 0.5);
+    }
+    
+    tr:last-child td {
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .volume-value {
+      font-family: 'Courier New', monospace;
+      text-align: right;
+      font-weight: 600;
+    }
+    
+    .volume-summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    
+    .summary-box {
+      background: rgba(93, 169, 233, 0.1);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1rem;
+      text-align: center;
+    }
+    
+    .summary-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+    
+    .summary-value {
+      font-size: 24px;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      color: var(--accent);
+    }
+    
+    .summary-note {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+    
+    /* Section 3: Raw Numbers */
+    .raw-numbers {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+    
+    .raw-box {
+      text-align: center;
+    }
+    
+    .raw-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+    }
+    
+    .raw-number {
+      font-size: 56px;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      color: var(--accent);
+    }
+    
+    /* Error & Loading States */
+    .error {
+      background: rgba(239, 62, 54, 0.1);
+      border: 1px solid var(--danger);
+      border-radius: 4px;
+      padding: 1rem;
+      color: var(--text);
+      font-size: 13px;
+    }
+    
+    .placeholder {
+      color: var(--muted);
+      font-size: 13px;
+      padding: 1rem;
+      text-align: center;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+    
+    .loading {
+      color: var(--muted);
+      font-style: italic;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .fatigue-score {
+        grid-template-columns: 1fr;
+      }
+      
+      .volume-summary {
+        grid-template-columns: 1fr;
+      }
+      
+      .raw-numbers {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+      }
+      
+      .score-number {
+        font-size: 36px;
+      }
+      
+      .raw-number {
+        font-size: 42px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Diagnostics</h1>
+      <div class="header-meta">
+        <span id="last-updated"></span>
+        <span> · </span>
+        <a href="/">Back to Dashboard</a>
+        <span> · </span>
+        <button id="refresh-btn" style="
+          background: var(--accent);
+          color: var(--bg);
+          border: none;
+          border-radius: 3px;
+          padding: 0.25rem 0.75rem;
+          font-size: 12px;
+          cursor: pointer;
+          font-weight: 600;
+        ">Refresh</button>
+      </div>
+    </header>
+    
+    <div id="diagnostics">
+      <div class="placeholder loading">Loading diagnostics...</div>
+    </div>
+  </div>
+
+  <script>
+    // ═══════════════════════════════════════════════════════
+    // FETCH HELPERS
+    // ═══════════════════════════════════════════════════════
+    
+    async function fetchTodayCheckin() {
+      try {
+        const resp = await fetch('/api/readiness/today');
+        if (resp.status === 404) return null;
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        return await resp.json();
+      } catch (err) {
+        console.error('Error fetching check-in:', err);
+        throw new Error(`Failed to load check-in: ${err.message}`);
+      }
+    }
+    
+    async function fetchSessionsList(days = 7) {
+      try {
+        const resp = await fetch(`/api/workout-sessions?limit=100&days=${days}`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        return await resp.json();
+      } catch (err) {
+        console.error('Error fetching sessions list:', err);
+        throw new Error(`Failed to load sessions: ${err.message}`);
+      }
+    }
+    
+    async function fetchSessionDetail(sessionId) {
+      try {
+        const resp = await fetch(`/api/workout-sessions/${sessionId}`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        return await resp.json();
+      } catch (err) {
+        console.error(`Error fetching session detail for ${sessionId}:`, err);
+        return null;
+      }
+    }
+    
+    // ═══════════════════════════════════════════════════════
+    // CALCULATION HELPERS
+    // ═══════════════════════════════════════════════════════
+    
+    function computeSubjectiveFatigue(checkinOrNull) {
+      if (!checkinOrNull) {
+        return {
+          score: null,
+          components: null,
+          reason: 'No check-in recorded for today'
+        };
+      }
+      
+      const tiredness = (checkinOrNull.tiredness || 0) / 4;
+      const recovery = (checkinOrNull.perceived_recovery || 0) / 4;
+      const soreness = (
+        (checkinOrNull.sore_quad_dom || 0) +
+        (checkinOrNull.sore_posterior || 0) +
+        (checkinOrNull.sore_upper_push || 0) +
+        (checkinOrNull.sore_upper_pull || 0)
+      ) / 16;
+      
+      const normalized = 0.45 * tiredness + 0.30 * recovery + 0.25 * soreness;
+      const score0to10 = Math.round(normalized * 10 * 100) / 100;
+      
+      return {
+        score: score0to10,
+        components: {
+          tiredness: checkinOrNull.tiredness || 0,
+          recovery: checkinOrNull.perceived_recovery || 0,
+          quad_soreness: checkinOrNull.sore_quad_dom || 0,
+          posterior_soreness: checkinOrNull.sore_posterior || 0,
+          push_soreness: checkinOrNull.sore_upper_push || 0,
+          pull_soreness: checkinOrNull.sore_upper_pull || 0
+        }
+      };
+    }
+    
+    function computeSessionVolume(sessionDetail) {
+      if (!sessionDetail || !sessionDetail.sets || sessionDetail.sets.length === 0) {
+        return 0;
+      }
+      
+      return sessionDetail.sets.reduce((sum, set) => {
+        if (
+          set.weight_lbs !== null &&
+          set.weight_lbs !== undefined &&
+          set.reps !== null &&
+          set.reps !== undefined &&
+          set.reps > 0
+        ) {
+          return sum + (set.weight_lbs * set.reps);
+        }
+        return sum;
+      }, 0);
+    }
+    
+    // ═══════════════════════════════════════════════════════
+    // RENDER HELPERS
+    // ═══════════════════════════════════════════════════════
+    
+    function formatDate(dateStr) {
+      const d = new Date(dateStr + 'T00:00:00');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${year}-${month}-${day}`;
+    }
+    
+    function renderError(message) {
+      return `<div class="error">${message}</div>`;
+    }
+    
+    function renderSection1(checkin, fatigue) {
+      let html = '<div class="section"><div class="section-title">Subjective Fatigue</div>';
+      
+      if (fatigue.score === null) {
+        html += `<div class="placeholder">${fatigue.reason}</div>`;
+      } else {
+        const comp = fatigue.components;
+        html += `
+          <div class="fatigue-score">
+            <div class="fatigue-details">
+              <div class="detail-row">
+                <span class="detail-label">Tiredness</span>
+                <span class="detail-value">${comp.tiredness}/4</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Perceived Recovery</span>
+                <span class="detail-value">${comp.recovery}/4</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Soreness (Quad)</span>
+                <span class="detail-value">${comp.quad_soreness}/4</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Soreness (Posterior)</span>
+                <span class="detail-value">${comp.posterior_soreness}/4</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Soreness (Push)</span>
+                <span class="detail-value">${comp.push_soreness}/4</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Soreness (Pull)</span>
+                <span class="detail-value">${comp.pull_soreness}/4</span>
+              </div>
+            </div>
+            <div class="score-box">
+              <div class="score-label">Fatigue Score</div>
+              <div class="score-number">${fatigue.score}</div>
+              <div class="score-range">0 – 10</div>
+            </div>
+          </div>
+        `;
+      }
+      
+      html += '</div>';
+      return html;
+    }
+    
+    function renderSection2(sessions7Day, sessions28Day) {
+      let html = '<div class="section"><div class="section-title">7-Day Rolling Volume</div>';
+      
+      if (!sessions7Day || sessions7Day.length === 0) {
+        html += '<div class="placeholder">No workouts logged in the last 7 days</div>';
+        html += '</div>';
+        return html;
+      }
+      
+      // Calculate 7-day volume
+      let volume7DayTotal = 0;
+      let sessionRows = '';
+      
+      for (const session of sessions7Day) {
+        const volLbs = session._volumeLbs || 0;
+        volume7DayTotal += volLbs;
+        const dateStr = formatDate(session.workout_date);
+        const title = session.workout_title || '(Untitled)';
+        sessionRows += `
+          <tr>
+            <td>${dateStr}</td>
+            <td>${title}</td>
+            <td class="volume-value">${Math.round(volLbs).toLocaleString()}</td>
+          </tr>
+        `;
+      }
+      
+      // Calculate 28-day baseline
+      let volume28DayTotal = 0;
+      for (const session of sessions28Day) {
+        const volLbs = session._volumeLbs || 0;
+        volume28DayTotal += volLbs;
+      }
+      const baseline28DayAvg = volume28DayTotal / 28;
+      
+      // Calculate ratio
+      const ratio = baseline28DayAvg > 0 ? (volume7DayTotal / baseline28DayAvg) * 100 : 0;
+      const ratioLabel = ratio > 100 ? 'ABOVE baseline' : 'BELOW baseline';
+      
+      html += `
+        <div class="volume-section">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Session</th>
+                <th style="text-align: right;">Volume (lbs)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${sessionRows}
+            </tbody>
+          </table>
+          
+          <div class="volume-summary">
+            <div class="summary-box">
+              <div class="summary-label">7-Day Total</div>
+              <div class="summary-value">${Math.round(volume7DayTotal).toLocaleString()}</div>
+              <div class="summary-note">lbs</div>
+            </div>
+            <div class="summary-box">
+              <div class="summary-label">28-Day Avg</div>
+              <div class="summary-value">${Math.round(baseline28DayAvg).toLocaleString()}</div>
+              <div class="summary-note">lbs/day</div>
+            </div>
+            <div class="summary-box">
+              <div class="summary-label">Ratio</div>
+              <div class="summary-value">${Math.round(ratio)}%</div>
+              <div class="summary-note">${ratioLabel}</div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      html += '</div>';
+      return html;
+    }
+    
+    function renderSection3(fatigue, sessions7Day, sessions28Day) {
+      let fatigueNum = fatigue.score !== null ? fatigue.score : '—';
+      
+      let volume7DayTotal = 0;
+      for (const session of sessions7Day) {
+        volume7DayTotal += session._volumeLbs || 0;
+      }
+      
+      let volume28DayTotal = 0;
+      for (const session of sessions28Day) {
+        volume28DayTotal += session._volumeLbs || 0;
+      }
+      const baseline28DayAvg = volume28DayTotal / 28;
+      const ratio = baseline28DayAvg > 0 ? Math.round((volume7DayTotal / baseline28DayAvg) * 100) : 0;
+      
+      return `
+        <div class="section">
+          <div class="section-title">Raw Numbers</div>
+          <div class="raw-numbers">
+            <div class="raw-box">
+              <div class="raw-label">Subjective Fatigue</div>
+              <div class="raw-number">${fatigueNum}</div>
+            </div>
+            <div class="raw-box">
+              <div class="raw-label">Volume Ratio</div>
+              <div class="raw-number">${ratio}%</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    // ═══════════════════════════════════════════════════════
+    // MAIN LOAD & RENDER
+    // ═══════════════════════════════════════════════════════
+    
+    async function loadAndRender() {
+      const container = document.getElementById('diagnostics');
+      
+      try {
+        // Fetch check-in and sessions lists in parallel
+        const [checkin, sessions7, sessions28] = await Promise.all([
+          fetchTodayCheckin(),
+          fetchSessionsList(7),
+          fetchSessionsList(28)
+        ]);
+        
+        // Fetch full session details for 7-day sessions
+        const sessionDetails7 = await Promise.all(
+          sessions7.map(s => fetchSessionDetail(s.hevy_workout_id))
+        );
+        
+        // Fetch full session details for 28-day sessions
+        const sessionDetails28 = await Promise.all(
+          sessions28.map(s => fetchSessionDetail(s.hevy_workout_id))
+        );
+        
+        // Enrich sessions with volume data
+        for (let i = 0; i < sessions7.length; i++) {
+          sessions7[i]._volumeLbs = computeSessionVolume(sessionDetails7[i]);
+        }
+        for (let i = 0; i < sessions28.length; i++) {
+          sessions28[i]._volumeLbs = computeSessionVolume(sessionDetails28[i]);
+        }
+        
+        // Compute fatigue
+        const fatigue = computeSubjectiveFatigue(checkin);
+        
+        // Render all sections
+        let html = '';
+        html += renderSection1(checkin, fatigue);
+        html += renderSection2(sessions7, sessions28);
+        html += renderSection3(fatigue, sessions7, sessions28);
+        
+        container.innerHTML = html;
+        
+        // Update timestamp
+        const now = new Date();
+        const timeStr = now.toLocaleString();
+        document.getElementById('last-updated').textContent = `Updated ${timeStr}`;
+        
+      } catch (err) {
+        console.error('Load error:', err);
+        container.innerHTML = renderError(err.message);
+      }
+    }
+    
+    // ═══════════════════════════════════════════════════════
+    // INITIALIZATION
+    // ═══════════════════════════════════════════════════════
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      loadAndRender();
+      
+      document.getElementById('refresh-btn').addEventListener('click', () => {
+        document.getElementById('diagnostics').innerHTML = '<div class="placeholder loading">Loading diagnostics...</div>';
+        loadAndRender();
+      });
+    });
+  </script>
+</body>
+</html>
