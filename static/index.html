@@ -1704,9 +1704,9 @@ tbody tr:hover td { background: var(--row-hover); }
         </div>
 
         <div class="checkin-scale-field">
-          <div class="checkin-scale-title">Recovery</div>
+          <div class="checkin-scale-title">Fatigue</div>
           <div class="checkin-scale-row">
-            <span class="checkin-scale-endpoint" data-short="P">Poor</span>
+            <span class="checkin-scale-endpoint" data-short="F">Fresh</span>
             <div class="checkin-scale-buttons" data-ci-field="ci-r">
               <button type="button" class="active" data-ci-field="ci-r" data-value="0">0</button>
               <button type="button" data-ci-field="ci-r" data-value="1">1</button>
@@ -1714,7 +1714,7 @@ tbody tr:hover td { background: var(--row-hover); }
               <button type="button" data-ci-field="ci-r" data-value="3">3</button>
               <button type="button" data-ci-field="ci-r" data-value="4">4</button>
             </div>
-            <span class="checkin-scale-endpoint" data-short="F">Full</span>
+            <span class="checkin-scale-endpoint" data-short="EF">Fatigued</span>
           </div>
           <input type="hidden" id="ci-r" value="0">
         </div>
@@ -2238,7 +2238,7 @@ tbody tr:hover td { background: var(--row-hover); }
       <input type="range" min="0" max="4" value="0" id="le-t" oninput="syncNum('le-t','lv-t')">
     </div>
     <div class="form-row">
-      <div class="form-label">Recovery (0 Fully Recovered → 4 Beat Up)<input type="number" class="val-input" id="lv-r" min="0" max="4" value="0" oninput="syncRange('lv-r','le-r')"></div>
+      <div class="form-label">Fatigue (0 Fresh → 4 Extremely Fatigued)<input type="number" class="val-input" id="lv-r" min="0" max="4" value="0" oninput="syncRange('lv-r','le-r')"></div>
       <input type="range" min="0" max="4" value="0" id="le-r" oninput="syncNum('le-r','lv-r')">
     </div>
 
