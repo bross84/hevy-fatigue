@@ -395,8 +395,8 @@ async function fetchSessionsList(days) {
     }
     
     function computeSessionVolume(session, sessionDetail) {
-      if (!session || !sessionDetail) {
-        return 0;
+      if (!sessionDetail || !sessionDetail.summary) return 0;
+        return sessionDetail.summary.volume || 0;
       }
       
       const modality = session.modality || 'strength';
