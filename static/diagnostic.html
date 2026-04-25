@@ -394,23 +394,54 @@ async function fetchSessionsList(days) {
       };
     }
     
-    function computeSessionVolume(sessionDetail) {
-      if (!sessionDetail || !sessionDetail.sets || sessionDetail.sets.length === 0) {
+    function computeSessionVolume(session, sessionDetail) {
+      if (!session || !sessionDetail) {
         return 0;
       }
       
-      return sessionDetail.sets.reduce((sum, set) => {
-        if (
-          set.weight_lbs !== null &&
-          set.weight_lbs !== undefined &&
-          set.reps !== null &&
-          set.reps !== undefined &&
-          set.reps > 0
-        ) {
-          return sum + (set.weight_lbs * set.reps);
+      const modality = session.modality || 'strength';
+      
+      // Track 1: Strength/Hypertrophy
+      if (modality === 'strength' || modality === 'hypertrophy') {
+        if (!sessionDetail.sets || sessionDetail.sets.length === 0) {
+          return 0;
         }
-        return sum;
-      }, 0);
+        
+        return sessionDetail.sets.reduce((sum, set) => {
+          if (
+            set.weight_lbs !== null &&
+            set.weight_lbs !== undefined &&
+            set.reps !== null &&
+            set.reps !== undefined &&
+            set.reps > 0
+          ) {
+            return sum + (set.weight_lbs * set.reps);
+          }
+          return sum;
+        }, 0);
+      }
+      
+      // Track 2: Conditioning/Cardio
+      if (modality === 'conditioning' || modality === 'cardio') {
+        const srpe = session.srpe;
+        const durationMinutes = session.duration_minutes;
+        
+        if (
+          srpe !== null &&
+          srpe !== undefined &&
+          durationMinutes !== null &&
+          durationMinutes !== undefined &&
+          durationMinutes > 0
+        ) {
+          return srpe * durationMinutes * 10;
+        }
+        
+        // Missing data for conditioning session
+        return 0;
+      }
+      
+      // Unknown modality
+      return 0;
     }
     
     // ═══════════════════════════════════════════════════════
@@ -624,10 +655,10 @@ async function fetchSessionsList(days) {
         
         // Enrich sessions with volume data
         for (let i = 0; i < sessions7.length; i++) {
-          sessions7[i]._volumeLbs = computeSessionVolume(sessionDetails7[i]);
+          sessions7[i]._volumeLbs = computeSessionVolume(sessions7[i], sessionDetails7[i]);
         }
         for (let i = 0; i < sessions28.length; i++) {
-          sessions28[i]._volumeLbs = computeSessionVolume(sessionDetails28[i]);
+          sessions28[i]._volumeLbs = computeSessionVolume(sessions28[i], sessionDetails28[i]);
         }
         
         // Compute fatigue
