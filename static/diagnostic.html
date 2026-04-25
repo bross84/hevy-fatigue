@@ -398,29 +398,6 @@ async function fetchSessionsList(days) {
       if (!sessionDetail || !sessionDetail.summary) return 0;
         return sessionDetail.summary.volume || 0;
       }
-      
-      // Track 2: Conditioning/Cardio
-      if (modality === 'conditioning' || modality === 'cardio') {
-        const srpe = session.srpe;
-        const durationMinutes = session.duration_minutes;
-        
-        if (
-          srpe !== null &&
-          srpe !== undefined &&
-          durationMinutes !== null &&
-          durationMinutes !== undefined &&
-          durationMinutes > 0
-        ) {
-          return srpe * durationMinutes * 10;
-        }
-        
-        // Missing data for conditioning session
-        return 0;
-      }
-      
-      // Unknown modality
-      return 0;
-    }
     
     // ═══════════════════════════════════════════════════════
     // RENDER HELPERS
