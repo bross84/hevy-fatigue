@@ -496,7 +496,7 @@ async function fetchSessionsList(days) {
         const volLbs = session._volumeLbs || 0;
         volume28DayTotal += volLbs;
       }
-      const baseline28DayAvg = volume28DayTotal / 180;
+      const baseline28DayAvg = volume28DayTotal / 26;
       
       // Calculate objective load score (0-10)
       const sevenDayAvgDaily = volume7DayTotal / 7;
@@ -526,7 +526,7 @@ async function fetchSessionsList(days) {
             <div class="summary-box">
               <div class="summary-label">6mo Avg</div>
               <div class="summary-value">${Math.round(baseline28DayAvg).toLocaleString()}</div>
-              <div class="summary-note">lbs/day</div>
+              <div class="summary-note">lbs/week</div>
             </div>
             <div class="summary-box">
               <div class="summary-label">Objective Load Score</div>
@@ -553,7 +553,7 @@ async function fetchSessionsList(days) {
       for (const session of sessions28Day) {
         volume28DayTotal += session._volumeLbs || 0;
       }
-      const baseline28DayAvg = volume28DayTotal / 180;
+      const baseline28DayAvg = volume28DayTotal / 26;
       const sevenDayAvgDaily = volume7DayTotal / 7;
       const objectiveScore = Math.min(10, Math.max(0, baseline28DayAvg > 0 ? (sevenDayAvgDaily / baseline28DayAvg) * 5 : 0));
       const combinedScore = fatigue.score !== null
