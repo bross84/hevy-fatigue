@@ -399,28 +399,6 @@ async function fetchSessionsList(days) {
         return sessionDetail.summary.volume || 0;
       }
       
-      const modality = session.modality || 'strength';
-      
-      // Track 1: Strength/Hypertrophy
-      if (modality === 'strength' || modality === 'hypertrophy') {
-        if (!sessionDetail.sets || sessionDetail.sets.length === 0) {
-          return 0;
-        }
-        
-        return sessionDetail.sets.reduce((sum, set) => {
-          if (
-            set.weight_lbs !== null &&
-            set.weight_lbs !== undefined &&
-            set.reps !== null &&
-            set.reps !== undefined &&
-            set.reps > 0
-          ) {
-            return sum + (set.weight_lbs * set.reps);
-          }
-          return sum;
-        }, 0);
-      }
-      
       // Track 2: Conditioning/Cardio
       if (modality === 'conditioning' || modality === 'cardio') {
         const srpe = session.srpe;
