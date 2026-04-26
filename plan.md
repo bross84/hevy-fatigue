@@ -1,6 +1,6 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-04-23
+Last updated: 2026-04-25
 
 ## 1) Current Product State
 
@@ -13,6 +13,10 @@ Last updated: 2026-04-23
 ## 2) Frontend Status (Stage 7 Progress)
 
 - Today, Trend, Workouts, Exercises, Log, Settings tabs are active in single-page `static/index.html`.
+- Diagnostics page AI panel script fixes completed in `static/diagnostic.html`:
+	- readiness context prompt is now built only after async data load completes inside `loadAndRender()`
+	- refresh button handler now closes before `ai-input` listeners are attached, preventing delayed or duplicate listener registration
+	- AI assistant JS block indentation normalized to 4-space style to match surrounding script formatting
 - Trend view is now the home for chart diagnostics:
 	- ATL/CTL/TSB trend chart
 	- pattern ATL trend chart
