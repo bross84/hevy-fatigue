@@ -1,6 +1,6 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-04-25
+Last updated: 2026-04-26
 
 ## 1) Current Product State
 
@@ -17,6 +17,7 @@ Last updated: 2026-04-25
 	- readiness context prompt is now built only after async data load completes inside `loadAndRender()`
 	- refresh button handler now closes before `ai-input` listeners are attached, preventing delayed or duplicate listener registration
 	- AI assistant JS block indentation normalized to 4-space style to match surrounding script formatting
+	- AI assistant now renders markdown: `marked.js` (9.1.6) added via CDN; assistant message bubbles use `marked.parse()` instead of `escapeHtml()`; user message bubbles retain `escapeHtml()` for XSS safety
 - Trend view is now the home for chart diagnostics:
 	- ATL/CTL/TSB trend chart
 	- pattern ATL trend chart

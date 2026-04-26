@@ -10,12 +10,12 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
-## Latest Maintenance Update (2026-04-25)
+## Latest Maintenance Update (2026-04-26)
 
-- `static/diagnostic.html` AI diagnostics script corrected:
-	- moved readiness context creation (`buildSystemPrompt` + preview update) into `loadAndRender()` after render/timestamp updates so loaded values are in scope
-	- fixed `DOMContentLoaded` handler brace structure so `ai-input` auto-resize and Enter-to-send listeners are attached once at startup (not nested under refresh)
-	- normalized AI assistant JS block indentation to 4 spaces for consistency with surrounding file style
+- `static/diagnostic.html` AI assistant markdown rendering added:
+	- `marked.js` 9.1.6 loaded via CDN `<script>` in `<head>`
+	- assistant message bubbles (initial render and streaming updates) now use `marked.parse()` for markdown formatting
+	- user message bubbles retain `escapeHtml()` for XSS safety
 
 ## Dependency Order
 

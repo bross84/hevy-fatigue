@@ -313,6 +313,7 @@
       }
     }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 </head>
 <body>
   <div class="container">
@@ -767,7 +768,7 @@ async function fetchSessionsList(days) {
       wrapper.className = `ai-msg ${role}`;
       wrapper.innerHTML = `
         <div class="ai-msg-label">${role === 'user' ? 'You' : 'Assistant'}</div>
-        <div class="ai-msg-bubble${streaming ? ' streaming' : ''}">${escapeHtml(content)}</div>
+        <div class="ai-msg-bubble${streaming ? ' streaming' : ''}">${role === 'user' ? escapeHtml(content) : marked.parse(content)}</div>
       `;
       container.appendChild(wrapper);
       container.scrollTop = container.scrollHeight;
@@ -847,7 +848,7 @@ async function fetchSessionsList(days) {
               const delta = parsed.choices?.[0]?.delta?.content || '';
               if (delta) {
                 fullContent += delta;
-                bubbleEl.innerHTML = escapeHtml(fullContent);
+                bubbleEl.innerHTML = marked.parse(fullContent);
                 document.getElementById('ai-messages').scrollTop = document.getElementById('ai-messages').scrollHeight;
               }
             } catch (_) { /* skip malformed SSE chunks */ }
