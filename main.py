@@ -1132,6 +1132,38 @@ def _session_volume(session_id: str, db: Session) -> float:
     return sum((log.weight_lbs or 0.0) * (log.reps or 0) for log in logs)
 
 
+def _objective_score_for_date(target_date: date_type, db: Session) -> float:
+    seven_day_start = target_date - timedelta(days=6)
+    six_month_start = target_date - timedelta(days=179)
+
+    seven_day_sessions = (
+        db.query(WorkoutSession)
+        .filter(
+            WorkoutSession.workout_date >= seven_day_start,
+            WorkoutSession.workout_date <= target_date,
+        )
+        .all()
+    )
+    six_month_sessions = (
+        db.query(WorkoutSession)
+        .filter(
+            WorkoutSession.workout_date >= six_month_start,
+            WorkoutSession.workout_date <= target_date,
+        )
+        .all()
+    )
+
+    seven_day_volume = sum(_session_volume(session.hevy_workout_id, db) for session in seven_day_sessions)
+    six_month_volume = sum(_session_volume(session.hevy_workout_id, db) for session in six_month_sessions)
+    six_month_weekly_avg = six_month_volume / 26 if six_month_volume > 0 else 0
+
+    return round(_clamp(
+        (seven_day_volume / six_month_weekly_avg * 5) if six_month_weekly_avg > 0 else 0,
+        0.0,
+        10.0,
+    ), 2)
+
+
 def _combined_recommendation(combined_score: float) -> tuple[str, str, str]:
     if combined_score <= 3.0:
         return "large_increase", "Large Increase", "Low fatigue - push hard and increase training load"
@@ -1720,6 +1752,46 @@ def get_readiness_history(days: int = 30, db: Session = Depends(get_db)):
         }
         for r in rows
     ]
+
+
+@app.get("/api/readiness/combined-history")
+def get_readiness_combined_history(days: int = 7, db: Session = Depends(get_db)):
+    """Return fixed daily combined-readiness history for the Today trend chart."""
+    days = max(1, int(days))
+    today = date_type.today()
+    from_date = today - timedelta(days=days - 1)
+
+    readiness_rows = (
+        db.query(DailyReadiness)
+        .filter(
+            DailyReadiness.date >= from_date,
+            DailyReadiness.date <= today,
+        )
+        .order_by(DailyReadiness.date)
+        .all()
+    )
+    readiness_by_date = {row.date: row for row in readiness_rows}
+
+    results = []
+    current = from_date
+    while current <= today:
+        checkin = readiness_by_date.get(current)
+        objective_score = _objective_score_for_date(current, db)
+        subjective_score = round(_subjective_fatigue(checkin) * 10.0, 2) if checkin else None
+        combined_score = (
+            round((0.80 * subjective_score) + (0.20 * objective_score), 2)
+            if subjective_score is not None
+            else None
+        )
+        results.append({
+            "date": str(current),
+            "combined_score": combined_score,
+            "subjective_score": subjective_score,
+            "objective_score": objective_score,
+        })
+        current += timedelta(days=1)
+
+    return results
 
 
 # NOTE: /api/stress/history must be defined BEFORE /api/stress/{target_date}

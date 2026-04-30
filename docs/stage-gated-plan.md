@@ -873,6 +873,45 @@ Gate tests:
 	- Static diagnostics checks: no errors in `static/diagnostic.html` and `static/index.html`.
 	- Full live endpoint/runtime verification remains pending in an environment with project dependencies installed.
 
+	### Post-Stage 7.15 — Nav Active Class + Settings Grid Mobile Fix
+
+	Implemented changes:
+	- Removed hardcoded `active` class from both Today `nav-tab` buttons in `static/index.html`:
+		- desktop `.nav-tabs` and mobile `.mobile-drawer-nav` Today buttons no longer carry `active` in HTML
+		- runtime `activateTab()` already sets the `active` class dynamically; no JS changes needed
+	- Fixed invalid CSS in `@media (max-width: 900px)` block for `.tab-content#tab-settings.active`:
+		- removed `grid-template-areas: none` (invalid value; was breaking Settings card layout on mobile)
+		- added `grid-area: auto` resets for all five `.settings-card-*` children so cards stack in DOM order under the single-column breakpoint
+
+	Validation evidence:
+	- Both fixes are purely HTML/CSS; no JS or Python changes.
+	- Static diagnostics check: no errors in `static/index.html`.
+
+	### Post-Stage 7.16 — Remove TSB Settings Card + Add 7-Day Readiness Trend
+
+	Implemented changes:
+	- Updated `static/index.html` Settings tab:
+		- removed the obsolete `Training State Thresholds` card entirely
+		- removed frontend references to `tsb-underloaded`, `tsb-slightly-fresh`, `tsb-balanced`, `tsb-slightly-fatigued`, `btn-save-tsb`, `tsb-result`, and `saveTrainingStateThresholds()`
+		- rebalanced desktop Settings layout to named areas `api pattern` / `session sync`
+		- mobile `grid-area: auto` reset now targets only the remaining cards: api, pattern, session, sync
+	- Added `GET /api/readiness/combined-history` in `main.py`:
+		- returns exactly `days` ordered entries from oldest to newest
+		- computes `objective_score` per target date from the 7-day window ending on that date versus the 180-day baseline ending on that date
+		- computes `subjective_score` via `_subjective_fatigue() * 10` only when a check-in exists that day
+		- returns `subjective_score: null` and `combined_score: null` for missing-check-in days while still returning `objective_score`
+	- Added Today `7-Day Readiness Trend` card in `static/index.html`:
+		- placed below the recommendation card and above the pattern grid
+		- fetches `/api/readiness/combined-history?days=7` through a dedicated cache helper alongside `loadTrainingLoadCard()`
+		- renders a Chart.js line with point markers, null gaps, short weekday labels, y-axis `0..10`, and five horizontal readiness-zone color bands
+		- redraws through the same Today refresh path and on theme changes
+
+	Validation evidence:
+	- `main.py` and `static/index.html` report no errors.
+	- Targeted search confirms zero remaining frontend references to the removed TSB settings identifiers.
+	- Desktop Settings layout and Today-card placement verified in the browser.
+	- Full served-app runtime validation and real mobile-browser rendering remain pending outside the current file:// browser context.
+
 ## Decisions Locked
 
 - Full-body via existing percentage fields (no `is_full_body` column).

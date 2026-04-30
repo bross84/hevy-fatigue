@@ -23,6 +23,27 @@
   --card:         #3d3638;
   --border:       #524c4e;
   --text:         #f3f8f2;
+.today-chart-wrap {
+  position: relative;
+  width: 100%;
+  min-height: 240px;
+}
+.today-chart-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.today-chart-empty {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--muted);
+  padding: 12px;
+  line-height: 1.5;
+}
   --muted:        #a09498;
   --accent:       #5da9e9;
   --quad:         #5da9e9;
@@ -33,6 +54,7 @@
   --decrease-band:#f0ad5c;
   --success:      #4db870;
   --warn:         #eca72c;
+  .today-chart-wrap { min-height: 210px; }
   --accent-sub:   rgba(93,169,233,.13);
   --row-hover:    rgba(255,255,255,.03);
   --btn-shadow:   rgba(0,0,0,.45);
@@ -43,9 +65,8 @@
 [data-theme="light"] {
   --bg:           #e1dee3;
   --card:         #f5f3f6;
-  --border:       #c5c0c8;
-  --text:         #40476d;
-  --muted:        #6e6e85;
+    "api pattern"
+    "session sync";
   --accent:       #058ed9;
   --quad:         #058ed9;
   --posterior:    #b9314f;
@@ -53,7 +74,6 @@
   --pull:         #6b3fa0;
   --danger:       #b9314f;
   --decrease-band:#e7a24a;
-  --success:      #1a7a3c;
   --warn:         #9a6e00;
   --accent-sub:   rgba(5,142,217,.13);
   --row-hover:    rgba(0,0,0,.04);
@@ -62,7 +82,6 @@
 }
 
 /* ── Base ─────────────────────────────── */
-html {
   overflow-x: auto;
 }
 body {
@@ -1482,9 +1501,8 @@ tbody tr:hover td { background: var(--row-hover); }
   gap: 14px;
   align-items: start;
   grid-template-areas:
-    "api training"
-    "pattern session"
-    "sync session";
+    "api pattern"
+    "session sync";
 }
 #tab-settings .settings-card {
   max-width: none;
@@ -1492,7 +1510,6 @@ tbody tr:hover td { background: var(--row-hover); }
   margin-bottom: 0;
 }
 #tab-settings .settings-card-api { grid-area: api; }
-#tab-settings .settings-card-training { grid-area: training; }
 #tab-settings .settings-card-pattern { grid-area: pattern; }
 #tab-settings .settings-card-session { grid-area: session; }
 #tab-settings .settings-card-sync { grid-area: sync; }
@@ -1549,8 +1566,11 @@ tbody tr:hover td { background: var(--row-hover); }
 @media (max-width: 900px) {
   .tab-content#tab-settings.active {
     grid-template-columns: 1fr;
-    grid-template-areas: none;
   }
+  #tab-settings .settings-card-api,
+  #tab-settings .settings-card-pattern,
+  #tab-settings .settings-card-session,
+  #tab-settings .settings-card-sync { grid-area: auto; }
 }
 
 /* ── Log tab: soreness pattern cell ── */
@@ -1701,7 +1721,7 @@ tbody tr:hover td { background: var(--row-hover); }
   <button class="mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-nav-drawer">☰</button>
   <div class="logo"><img class="logo-icon" src="/resources/favicon.png" alt="Hevy Fatigue icon">HEVY FATIGUE</div>
   <div class="nav-tabs">
-    <button class="nav-tab active" data-tab="dashboard">Today</button>
+    <button class="nav-tab" data-tab="dashboard">Today</button>
     <button class="nav-tab" data-tab="trend">Trend</button>
     <button class="nav-tab" data-tab="workouts">Workouts</button>
     <button class="nav-tab" data-tab="exercises">Exercises</button>
@@ -1720,7 +1740,7 @@ tbody tr:hover td { background: var(--row-hover); }
 <div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
 <aside class="mobile-nav-drawer" id="mobile-nav-drawer" aria-label="Mobile navigation" aria-hidden="true">
   <div class="mobile-drawer-nav">
-    <button class="nav-tab active" data-tab="dashboard">Today</button>
+    <button class="nav-tab" data-tab="dashboard">Today</button>
     <button class="nav-tab" data-tab="trend">Trend</button>
     <button class="nav-tab" data-tab="workouts">Workouts</button>
     <button class="nav-tab" data-tab="exercises">Exercises</button>
@@ -1883,6 +1903,7 @@ tbody tr:hover td { background: var(--row-hover); }
       </form>
     </div>
     <div class="today-card" id="today-state-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
+    <div class="today-card" id="today-readiness-trend-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
     <div class="today-card" id="today-pattern-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
     <div class="today-card" id="today-joint-card" style="display:none;"></div>
     <div class="today-card" id="today-metrics-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
@@ -2030,36 +2051,6 @@ tbody tr:hover td { background: var(--row-hover); }
       machine except to make requests to the official Hevy API.<br><br>
       Find your key at <strong>hevy.com → Settings → Developer</strong>.
     </div>
-  </div>
-
-  <div class="card settings-card settings-card-training">
-    <div class="card-title">Training State Thresholds</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
-      Adjust these if your training state label doesn't match how you actually feel. Tune based on your typical ATL/CTL values.
-    </p>
-    <div style="font-size:12px;color:var(--muted);margin:-2px 0 12px 0;line-height:1.6;">
-      Adjust these to match your personal ATL/CTL scale
-    </div>
-    <div class="settings-grid-2" style="margin-bottom:10px;">
-      <div class="form-row" style="margin-bottom:0;">
-        <div class="form-label">Underloaded threshold</div>
-        <input type="number" id="tsb-underloaded" min="-50" max="50" step="0.1">
-      </div>
-      <div class="form-row" style="margin-bottom:0;">
-        <div class="form-label">Slightly Fresh threshold</div>
-        <input type="number" id="tsb-slightly-fresh" min="-50" max="50" step="0.1">
-      </div>
-      <div class="form-row" style="margin-bottom:0;">
-        <div class="form-label">Balanced threshold</div>
-        <input type="number" id="tsb-balanced" min="-50" max="50" step="0.1">
-      </div>
-      <div class="form-row" style="margin-bottom:0;">
-        <div class="form-label">Slightly Fatigued threshold</div>
-        <input type="number" id="tsb-slightly-fatigued" min="-50" max="50" step="0.1">
-      </div>
-    </div>
-    <button class="btn btn-primary" id="btn-save-tsb" onclick="saveTrainingStateThresholds()">Save Training State Thresholds</button>
-    <div class="settings-result" id="tsb-result" style="margin-top:10px;"></div>
   </div>
 
   <div class="card settings-card settings-card-pattern">
@@ -2348,6 +2339,9 @@ function applyTheme(pref) {
 
   // Rebuild charts with new colors after CSS vars settle
   requestAnimationFrame(() => {
+    if (document.getElementById('tab-dashboard')?.classList.contains('active')) {
+      loadTrainingLoadCard();
+    }
     if (document.getElementById('tab-trend')?.classList.contains('active')) {
       renderTrendView();
     }
@@ -2391,8 +2385,11 @@ let exSort         = 'alpha';
 let _tlThresholds  = null;
 let _trainingLoadPayload = null;
 let _trainingLoadFetchPromise = null;
+let _readinessCombinedHistoryPayload = null;
+let _readinessCombinedHistoryFetchPromise = null;
 let trendMainChart = null;
 let trendPatternChart = null;
+let todayReadinessChart = null;
 let trendSmoothingDays = 7;
 let sessionLogRows = [];
 const SESSION_LOG_PAGE_SIZE = 50;
@@ -2659,51 +2656,16 @@ async function loadV2Settings() {
     const d = await r.json();
     if (!r.ok) throw new Error(d.detail || 'Failed to load v2 settings.');
 
-    document.getElementById('tsb-underloaded').value = d.tsb_threshold_underloaded;
-    document.getElementById('tsb-slightly-fresh').value = d.tsb_threshold_slightly_fresh;
-    document.getElementById('tsb-balanced').value = d.tsb_threshold_balanced;
-    document.getElementById('tsb-slightly-fatigued').value = d.tsb_threshold_slightly_fatigued;
     document.getElementById('pattern-stressed').value = d.v2_threshold_stressed;
     document.getElementById('pattern-neutral').value = d.v2_threshold_neutral;
     document.getElementById('conditioning-scale').value = d.conditioning_stress_scaling_factor;
     document.getElementById('auto-verify-threshold').value = d.auto_verify_confidence_threshold;
 
-    _setSectionResult('tsb-result', '', null);
     _setSectionResult('pattern-result', '', null);
     _setSectionResult('conditioning-result', '', null);
   } catch (e) {
-    _setSectionResult('tsb-result', '✗ ' + e.message, false);
-  }
-}
-
-async function saveTrainingStateThresholds() {
-  const btn = document.getElementById('btn-save-tsb');
-  btn.disabled = true;
-  btn.textContent = 'Saving…';
-  try {
-    const payload = {
-      tsb_threshold_underloaded: +document.getElementById('tsb-underloaded').value,
-      tsb_threshold_slightly_fresh: +document.getElementById('tsb-slightly-fresh').value,
-      tsb_threshold_balanced: +document.getElementById('tsb-balanced').value,
-      tsb_threshold_slightly_fatigued: +document.getElementById('tsb-slightly-fatigued').value,
-    };
-
-    const r = await fetch('/api/settings/v2/training-state', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.detail || 'Save failed.');
-    _setSectionResult('tsb-result', '✓ Training state thresholds saved.', true);
-    _trainingLoadPayload = null;
-    loadTrainingLoadCard();
-    if (logLoaded) { logLoaded = false; loadLog(); }
-  } catch (e) {
-    _setSectionResult('tsb-result', '✗ ' + e.message, false);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Save Training State Thresholds';
+    _setSectionResult('pattern-result', '✗ ' + e.message, false);
+    _setSectionResult('conditioning-result', '', null);
   }
 }
 
@@ -2724,7 +2686,7 @@ async function savePatternSensitivity() {
     const d = await r.json();
     if (!r.ok) throw new Error(d.detail || 'Save failed.');
     _setSectionResult('pattern-result', '✓ Pattern sensitivity saved.', true);
-    _trainingLoadPayload = null;
+    invalidateTodayCaches();
     loadTrainingLoadCard();
     if (logLoaded) { logLoaded = false; loadLog(); }
   } catch (e) {
@@ -2752,7 +2714,7 @@ async function saveSessionProcessingSettings() {
     const d = await r.json();
     if (!r.ok) throw new Error(d.detail || 'Save failed.');
     _setSectionResult('conditioning-result', '✓ Session processing settings saved.', true);
-    _trainingLoadPayload = null;
+    invalidateTodayCaches();
     loadTrainingLoadCard();
     if (logLoaded) { logLoaded = false; loadLog(); }
   } catch (e) {
@@ -2971,7 +2933,7 @@ document.getElementById('checkin-form').addEventListener('submit', async e => {
         });
         btn.disabled    = true;
         btn.textContent = 'Already logged today';
-        _trainingLoadPayload = null;
+        invalidateTodayCaches();
         loadTrainingLoadCard();
       } else {
         setStatus('success', `✓ Added entry for ${submittedDate} — Intensity Load: ${d.central_stress} | Volume Load: ${d.peripheral_stress}`);
@@ -3025,7 +2987,7 @@ async function runSync({ silent = false } = {}) {
           : '✓ Already up to date — no new sets found.';
         statusEl.innerHTML = `<div class="alert alert-success">${msg}</div>`;
         localStorage.setItem('hevy_last_sync_iso', new Date().toISOString());
-        _trainingLoadPayload = null;
+        invalidateTodayCaches();
         // Refresh Today and Trend data surfaces
         loadTrainingLoadCard();
         if (document.getElementById('tab-trend')?.classList.contains('active')) {
@@ -4282,10 +4244,16 @@ async function loadTrainingLoadCard() {
   const todayWrap = document.getElementById('today-wrap');
   if (!todayWrap) return;
   try {
-    const trainingRes = await ensureTrainingLoadPayload();
+    const [trainingRes, readinessHistory] = await Promise.all([
+      ensureTrainingLoadPayload(),
+      ensureReadinessCombinedHistoryPayload(),
+    ]);
     _renderTodayCards(trainingRes, 0);
+    renderTodayReadinessChart(readinessHistory);
   } catch {
+    _destroyTodayReadinessChart();
     document.getElementById('today-state-card').innerHTML = '<div class="today-state-label today-state-nodata">No Data Yet</div><div class="today-state-detail">Log workouts and complete daily check-ins to build your baseline</div>';
+    document.getElementById('today-readiness-trend-card').innerHTML = '<div class="card-title">7-Day Readiness Trend</div><div class="today-chart-empty">Combined readiness history is unavailable right now.</div>';
     document.getElementById('today-pattern-card').innerHTML = '<div class="card-title">Pattern Stress</div><div class="today-pattern-grid">' + ['KNEE','HIP','PUSH','PULL'].map(p => `<div class="today-pattern-cell today-pattern-neutral"><div class="today-pattern-name">${p}</div><div class="today-pattern-days">Never loaded</div><div class="today-dots"><span class="today-dot today-dot-filled"></span><span class="today-dot"></span><span class="today-dot"></span><span class="today-dot"></span><span class="today-dot"></span></div><div class="today-pattern-level">Moderate</div></div>`).join('') + '</div>';
     const jointCard = document.getElementById('today-joint-card'); if (jointCard) { jointCard.style.display = 'none'; jointCard.innerHTML = ''; }
     document.getElementById('today-metrics-card').innerHTML = '<div class="card-title">Load Summary</div><div class="today-metric-row"><div class="today-metric"><div class="today-metric-label">Fatigue (ATL)</div><div class="today-metric-value">0.0</div></div><div class="today-metric"><div class="today-metric-label">Fitness (CTL)</div><div class="today-metric-value">0.0</div></div><div class="today-metric"><div class="today-metric-label">Form (TSB)</div><div class="today-metric-value">0.0</div></div></div>';
@@ -4313,13 +4281,162 @@ async function ensureTrainingLoadPayload() {
   return _trainingLoadFetchPromise;
 }
 
+async function ensureReadinessCombinedHistoryPayload() {
+  if (_readinessCombinedHistoryPayload) return _readinessCombinedHistoryPayload;
+  if (_readinessCombinedHistoryFetchPromise) return _readinessCombinedHistoryFetchPromise;
+
+  _readinessCombinedHistoryFetchPromise = fetch('/api/readiness/combined-history?days=7')
+    .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+    .then(({ ok, data }) => {
+      if (!ok) throw new Error(data?.detail || 'Failed to load readiness history.');
+      _readinessCombinedHistoryPayload = Array.isArray(data) ? data : [];
+      return _readinessCombinedHistoryPayload;
+    })
+    .finally(() => {
+      _readinessCombinedHistoryFetchPromise = null;
+    });
+
+  return _readinessCombinedHistoryFetchPromise;
+}
+
 function activateTrendTab() {
   renderTrendView();
+}
+
+function invalidateTodayCaches() {
+  _trainingLoadPayload = null;
+  _readinessCombinedHistoryPayload = null;
+}
+
+function _weekdayLabel(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString(undefined, { weekday: 'short' });
 }
 
 function _dateLabel(iso) {
   const d = new Date(iso + 'T00:00:00');
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function _destroyTodayReadinessChart() {
+  if (todayReadinessChart) {
+    todayReadinessChart.destroy();
+    todayReadinessChart = null;
+  }
+}
+
+function _todayReadinessBandsPlugin() {
+  return {
+    id: 'todayReadinessBands',
+    beforeDatasetsDraw(chart) {
+      const { ctx, chartArea, scales } = chart;
+      if (!chartArea || !scales?.y) return;
+      const bands = [
+        { from: 0.0, to: 3.0, color: 'rgba(75, 145, 220, 0.14)' },
+        { from: 3.0, to: 4.0, color: 'rgba(75, 184, 180, 0.12)' },
+        { from: 4.0, to: 6.0, color: 'rgba(77, 184, 112, 0.10)' },
+        { from: 6.0, to: 6.5, color: 'rgba(214, 164, 75, 0.14)' },
+        { from: 6.5, to: 10.0, color: 'rgba(239, 62, 54, 0.12)' },
+      ];
+      ctx.save();
+      for (const band of bands) {
+        const top = scales.y.getPixelForValue(band.to);
+        const bottom = scales.y.getPixelForValue(band.from);
+        ctx.fillStyle = band.color;
+        ctx.fillRect(chartArea.left, top, chartArea.right - chartArea.left, bottom - top);
+      }
+      ctx.restore();
+    },
+  };
+}
+
+function renderTodayReadinessChart(history) {
+  const card = document.getElementById('today-readiness-trend-card');
+  if (!card) return;
+
+  if (!Array.isArray(history) || !history.length) {
+    _destroyTodayReadinessChart();
+    card.innerHTML = '<div class="card-title">7-Day Readiness Trend</div><div class="today-chart-empty">No readiness trend data yet.</div>';
+    return;
+  }
+
+  card.innerHTML = `
+    <div class="card-title">7-Day Readiness Trend</div>
+    <div class="today-chart-wrap"><canvas id="today-readiness-chart"></canvas></div>
+    <div class="today-chart-note">Combined score uses the 80/20 subjective and objective weighting. Missing check-ins render as gaps.</div>
+  `;
+
+  const c = themeColors();
+  const ctx = document.getElementById('today-readiness-chart').getContext('2d');
+  const labels = history.map(item => _weekdayLabel(item.date));
+  const points = history.map(item => item.combined_score == null ? null : Number(item.combined_score));
+  _destroyTodayReadinessChart();
+
+  todayReadinessChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Combined score',
+          data: points,
+          borderColor: c.accent,
+          backgroundColor: c.accent + '33',
+          pointBackgroundColor: c.accent,
+          pointBorderColor: c.card,
+          pointBorderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointHitRadius: 12,
+          borderWidth: 2.5,
+          tension: 0.35,
+          spanGaps: false,
+        },
+      ],
+    },
+    options: {
+      ..._trendChartBaseOptions(),
+      plugins: {
+        ..._trendChartBaseOptions().plugins,
+        legend: { display: false },
+        tooltip: {
+          ..._trendChartBaseOptions().plugins.tooltip,
+          callbacks: {
+            title(items) {
+              const idx = items?.[0]?.dataIndex ?? 0;
+              return _dateLabel(history[idx].date);
+            },
+            label(ctxItem) {
+              if (ctxItem.parsed?.y == null) return 'Combined: no check-in';
+              return `Combined: ${Number(ctxItem.parsed.y).toFixed(1)}`;
+            },
+            afterBody(items) {
+              const idx = items?.[0]?.dataIndex ?? 0;
+              const day = history[idx] || {};
+              return [
+                `Objective: ${Number(day.objective_score ?? 0).toFixed(1)}`,
+                `Subjective: ${day.subjective_score == null ? 'none' : Number(day.subjective_score).toFixed(1)}`,
+              ];
+            },
+          },
+        },
+      },
+      scales: {
+        ..._trendChartBaseOptions().scales,
+        x: {
+          ..._trendChartBaseOptions().scales.x,
+          ticks: { ..._trendChartBaseOptions().scales.x.ticks, maxTicksLimit: 7 },
+        },
+        y: {
+          ..._trendChartBaseOptions().scales.y,
+          min: 0,
+          max: 10,
+          ticks: { ..._trendChartBaseOptions().scales.y.ticks, stepSize: 1 },
+        },
+      },
+    },
+    plugins: [_todayReadinessBandsPlugin()],
+  });
 }
 
 function _resolveStateLabel(item, thresholds) {

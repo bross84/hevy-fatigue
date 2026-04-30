@@ -1,6 +1,6 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-04-30
+Last updated: 2026-04-30 (patch)
 
 ## 1) Current Product State
 
@@ -179,6 +179,23 @@ Last updated: 2026-04-30
 	- Snapshot objective/load volume calculations use `_session_volume()` helper for both 7-day and 180-day windows
 	- Python syntax validation passed for `importer.py` and `main.py`; static diagnostics report clean for touched HTML files
 	- Full live endpoint/runtime validation remains pending in a local environment with app dependencies installed
+- Nav active class hardcode fix: DONE
+	- Removed hardcoded `active` class from desktop `.nav-tabs` Today button and mobile `.mobile-drawer-nav` Today button in `static/index.html`
+	- Runtime `activateTab()` already manages the `active` class; no JS changes needed
+- Settings grid mobile fix: DONE
+	- Removed invalid `grid-template-areas: none` from `@media (max-width: 900px)` block in `static/index.html`
+	- Added `grid-area: auto` resets for all 5 `.settings-card-*` children within the same breakpoint so cards stack in DOM order
+- TSB Settings card removal: DONE
+	- Removed obsolete `Training State Thresholds` card from `static/index.html`
+	- Removed frontend-only JS support for `saveTrainingStateThresholds()`, the four TSB inputs, and `tsb-result`
+	- Rebalanced desktop Settings grid to `api/pattern` then `session/sync`; mobile reset now applies only to remaining Settings cards
+- 7-day readiness trend: PARTIAL VALIDATION
+	- Added `GET /api/readiness/combined-history` in `main.py` returning fixed day-by-day history with `date`, `objective_score`, `subjective_score`, and `combined_score`
+	- Historical no-check-in days now return `objective_score` plus `subjective_score=null` and `combined_score=null`
+	- Added Today-tab `7-Day Readiness Trend` Chart.js card in `static/index.html` below the recommendation card and above the pattern grid
+	- Chart uses null gaps, short weekday labels, y-axis `0..10`, and five readiness-zone background bands
+	- Syntax/static validation passed for `main.py` and `static/index.html`; desktop Settings layout and Today card placement verified in-browser
+	- Full live API/runtime verification and true sub-900px browser rendering remain pending in an environment with the app served normally
 
 ## 5) Open Items / Next Backlog
 
