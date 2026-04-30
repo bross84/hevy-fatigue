@@ -17,6 +17,15 @@ This document locks implementation to strict stage gates and dependency order.
 	- assistant message bubbles (initial render and streaming updates) now use `marked.parse()` for markdown formatting
 	- user message bubbles retain `escapeHtml()` for XSS safety
 
+## Latest Maintenance Update (2026-04-29)
+
+- Today recommendation state switched from TSB-driven labels to a combined-score model in `/api/training-load`:
+	- `combined_score = 0.80 * subjective_score + 0.20 * objective_score`
+	- `subjective_score` comes from readiness check-in with fallback `5.0`
+	- `objective_score` comes from 7-day session volume against 6-month weekly average volume
+- `today.recommendation_v2` now exposes `subjective_score`, `objective_score`, and `combined_score` for frontend display.
+- Today recommendation card now renders the three score tiles under the training-state detail line.
+
 ## Dependency Order
 
 1. Stage 1 (COMPLETE)
@@ -803,6 +812,27 @@ Gate tests:
 	- Existing comparisons that rely on `todayStr()` now inherit local-date alignment without additional code changes.
 	- Backend readiness endpoint remains unchanged and already uses `date_type.today()`.
 	- Static diagnostics clean after patch.
+
+	### Post-Stage 7.12 — Combined Score Recommendation Model Switch
+
+	Implemented changes:
+	- Added objective load scoring in `main.py` for `/api/training-load`:
+		- queries `WorkoutSession` rows from the trailing 7-day and 180-day windows
+		- derives per-session volume from `WorkoutLog` rows using `WorkoutLog.workout_id == WorkoutSession.hevy_workout_id`
+		- computes `objective_score` from 7-day volume versus 26-week average weekly volume, clamped to `0..10`
+	- Added `_combined_recommendation()` in `main.py` with five states:
+		- `large_increase`, `increase`, `continue`, `decrease`, `large_decrease`
+	- Reworked `_build_recommendation_v2(...)` so `training_state`, `training_state_label`, and `training_state_detail` now come from `combined_score`, not TSB thresholds.
+	- Preserved non-state `recommendation_v2` fields including `pattern_status`, `joint_advisory`, `tsb`, `fatigue_score`, and threshold metadata.
+	- Added `subjective_score`, `objective_score`, and `combined_score` to `today.recommendation_v2`.
+	- Updated Today recommendation card rendering in `static/index.html`:
+		- added three score tiles under the state detail line
+		- updated headline color mapping to the new five combined-score states.
+
+	Validation evidence:
+	- `main.py` syntax validated via `python -m py_compile`.
+	- Static diagnostics clean after `static/index.html` patch.
+	- Full local route execution is still pending in an environment with project dependencies installed; the currently configured interpreter does not include FastAPI.
 
 ## Decisions Locked
 

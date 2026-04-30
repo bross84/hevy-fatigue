@@ -242,17 +242,47 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
   letter-spacing: .2px;
   word-break: break-word;
 }
-.today-state-underloaded { color: var(--success); }
-.today-state-slightly_fresh { color: color-mix(in srgb, var(--success) 72%, white); }
-.today-state-balanced { color: var(--text); }
-.today-state-slightly_fatigued { color: var(--warn); }
-.today-state-fatigued { color: var(--danger); }
+.today-state-large_increase { color: var(--success); }
+.today-state-increase { color: color-mix(in srgb, var(--success) 72%, white); }
+.today-state-continue { color: var(--text); }
+.today-state-decrease { color: var(--warn); }
+.today-state-large_decrease { color: var(--danger); }
 .today-state-nodata { color: var(--muted); }
 .today-state-detail {
   margin-top: 7px;
   font-size: 14px;
   color: var(--muted);
   line-height: 1.45;
+}
+.today-scores-row {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.today-score {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  background: color-mix(in srgb, var(--card) 82%, black 18%);
+  min-width: 0;
+}
+.today-score-combined {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: color-mix(in srgb, var(--accent-sub) 65%, var(--card));
+}
+.today-score-label {
+  font-size: 11px;
+  letter-spacing: .7px;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+}
+.today-score-value {
+  margin-top: 5px;
+  font-size: 21px;
+  line-height: 1;
+  font-weight: 800;
 }
 .today-pattern-grid {
   display: grid;
@@ -3995,7 +4025,7 @@ function _relativeTimeFromIso(iso) {
 
 function _stateClass(state) {
   const k = (state || 'nodata').toLowerCase();
-  if (['underloaded','slightly_fresh','balanced','slightly_fatigued','fatigued'].includes(k)) {
+  if (['large_increase','increase','continue','decrease','large_decrease'].includes(k)) {
     return `today-state-${k}`;
   }
   return 'today-state-nodata';
@@ -4093,10 +4123,30 @@ function _renderTodayCards(data, pendingCount) {
   const stateDetail = recV2?.training_state_detail || (hasData
     ? `Recommendation: ${recAdjLabel}`
     : 'Log workouts and complete daily check-ins to build your baseline');
-  const stateKey = recV2?.training_state || (hasData ? 'balanced' : 'nodata');
+  const stateKey = recV2?.training_state || (hasData ? 'continue' : 'nodata');
+  const subjScore = recV2?.subjective_score ?? null;
+  const objScore = recV2?.objective_score ?? null;
+  const combScore = recV2?.combined_score ?? null;
+  const scoresHtml = (subjScore !== null && objScore !== null) ? `
+    <div class="today-scores-row">
+      <div class="today-score">
+        <div class="today-score-label">Subjective</div>
+        <div class="today-score-value">${Number(subjScore).toFixed(1)}</div>
+      </div>
+      <div class="today-score">
+        <div class="today-score-label">Objective</div>
+        <div class="today-score-value">${Number(objScore).toFixed(1)}</div>
+      </div>
+      <div class="today-score today-score-combined">
+        <div class="today-score-label">Combined</div>
+        <div class="today-score-value">${Number(combScore ?? 0).toFixed(1)}</div>
+      </div>
+    </div>
+  ` : '';
   document.getElementById('today-state-card').innerHTML = `
     <div class="today-state-label ${_stateClass(stateKey)}">${escHtml(stateLabel)}</div>
     <div class="today-state-detail">${escHtml(stateDetail)}</div>
+    ${scoresHtml}
   `;
 
   const patterns = _safePatternStatus(recV2);

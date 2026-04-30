@@ -1,10 +1,13 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-04-26
+Last updated: 2026-04-29
 
 ## 1) Current Product State
 
-- Subjective-first fatigue model remains primary recommendation driver.
+- Today recommendation state now uses a combined score model:
+	- `combined_score = 0.80 * subjective_score + 0.20 * objective_score`
+	- `subjective_score` comes from the daily check-in (fallback `5.0` when missing)
+	- `objective_score` comes from 7-day session volume versus 6-month weekly average volume
 - Fatigue score now excludes joint values:
 	- `0.45 * tiredness + 0.30 * recovery + 0.25 * soreness`
 - Joint health contributes through `recommendation_v2.joint_advisory` (upper/lower advisory and warning states), not through fatigue score weighting.
@@ -37,7 +40,7 @@ Last updated: 2026-04-26
 	- Session row panels hardened: Edit and Show Details are now mutually exclusive per row
 	- Session Log default page now loads 50 rows, with API-backed Load More pagination
 - Today page behavior updates completed:
-	- Recommendation card now shows only training-state label and TSB-driven detail text (fatigue score/tier line removed)
+	- Recommendation card now shows combined-score-driven training-state label/detail text plus Subjective / Objective / Combined score tiles
 	- Status card removed entirely (CHECK-IN / PENDING SESSIONS / LAST SYNC tiles removed)
 	- Submitted-today check-ins now render as collapsed minimal state with `Edit / Backdate` toggle
 	- Collapsed submitted state shows only success banner + `Edit / Backdate` button (no read-only values grid)
@@ -150,6 +153,11 @@ Last updated: 2026-04-26
 	- no rendered fatigue/tier line on recommendation card
 	- no Status card markup or render path remains
 	- removed dead `.today-fatigue-line` CSS definition
+- Combined-score Today recommendation switch: PARTIAL VALIDATION
+	- backend recommendation state now comes from combined-score thresholds instead of TSB thresholds
+	- Today recommendation card renders Subjective / Objective / Combined score tiles from `recommendation_v2`
+	- `main.py` syntax validated with `py_compile`
+	- full local route execution remains blocked in the currently configured Python interpreter because it does not have FastAPI installed
 
 ## 5) Open Items / Next Backlog
 
@@ -172,5 +180,5 @@ Priority B
 
 Use this when you come back:
 
-"Read plan.md first. Continue from Priority A validation with real data. Preserve the new Today-first check-in flow, Trend-owned charts, and current subjective-first fatigue language."
+"Read plan.md first. Continue from Priority A validation with real data. Preserve the new Today-first check-in flow, Trend-owned charts, and combined-score Today recommendation model."
 

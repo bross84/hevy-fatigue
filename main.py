@@ -1123,6 +1123,27 @@ def _resolve_training_state(tsb: float, tsb_thresholds: dict) -> tuple[str, str,
     return "fatigued", "Fatigued", "Fatigue significantly elevated - recovery is the priority"
 
 
+def _session_volume(session_id: str, db: Session) -> float:
+    logs = (
+        db.query(WorkoutLog)
+        .filter(WorkoutLog.workout_id == session_id)
+        .all()
+    )
+    return sum((log.weight_lbs or 0.0) * (log.reps or 0) for log in logs)
+
+
+def _combined_recommendation(combined_score: float) -> tuple[str, str, str]:
+    if combined_score <= 3.0:
+        return "large_increase", "Large Increase", "Low fatigue - push hard and increase training load"
+    if combined_score <= 4.0:
+        return "increase", "Increase", "Below baseline - good time to add volume or intensity"
+    if combined_score <= 6.0:
+        return "continue", "Continue", "Training load well managed - maintain current approach"
+    if combined_score <= 6.5:
+        return "decrease", "Decrease", "Fatigue elevated - reduce volume or intensity today"
+    return "large_decrease", "Large Decrease", "High fatigue - rest or very light activity only"
+
+
 def _resolve_fatigue_tier(fatigue_score: float) -> tuple[str, str]:
     for threshold, label, detail in FATIGUE_TIERS:
         if fatigue_score >= threshold:
@@ -1245,7 +1266,7 @@ def _resolve_joint_advisory(joint_upper: int, joint_lower: int) -> dict:
     }
 
 
-def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness | None, calibration: dict | None = None, db: Session | None = None, today_date: date_type | None = None, today_tsb: float = 0.0, fatigue_score: float = 0.0) -> dict:
+def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness | None, calibration: dict | None = None, db: Session | None = None, today_date: date_type | None = None, today_tsb: float = 0.0, fatigue_score: float = 0.0, subjective_score: float = 5.0, objective_score: float = 0.0, combined_score: float = 0.0) -> dict:
     """
     Stage 6 recommendation engine using pattern ATL/CTL/TSB and same-day soreness.
     Produces a pattern-aware recommendation without implying hidden physiology.
@@ -1279,7 +1300,7 @@ def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness 
             "state": state,
         }
 
-    training_state, training_state_label, training_state_detail = _resolve_training_state(float(today_tsb), tsb_thresholds)
+    training_state, training_state_label, training_state_detail = _combined_recommendation(float(combined_score))
     fatigue_tier, fatigue_tier_detail = _resolve_fatigue_tier(float(fatigue_score))
 
     ref_today = today_date or date_type.today()
@@ -1304,6 +1325,9 @@ def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness 
         "training_state": training_state,
         "training_state_label": training_state_label,
         "training_state_detail": training_state_detail,
+        "combined_score": round(float(combined_score), 2),
+        "objective_score": round(float(objective_score), 2),
+        "subjective_score": round(float(subjective_score), 2),
         "tsb": round(float(today_tsb), 3),
         "fatigue_score": round(float(fatigue_score), 2),
         "fatigue_tier": fatigue_tier,
@@ -1359,6 +1383,28 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
         fatigue_score = round(_clamp(5.0 + training_mod, 0.0, 10.0), 2)
         score_source = "training_fallback"
 
+    seven_day_sessions = (
+        db.query(WorkoutSession)
+        .filter(WorkoutSession.workout_date >= date_type.today() - timedelta(days=7))
+        .all()
+    )
+    six_month_sessions = (
+        db.query(WorkoutSession)
+        .filter(WorkoutSession.workout_date >= date_type.today() - timedelta(days=180))
+        .all()
+    )
+    seven_day_volume = sum(_session_volume(session.hevy_workout_id, db) for session in seven_day_sessions)
+    six_month_volume = sum(_session_volume(session.hevy_workout_id, db) for session in six_month_sessions)
+    six_month_weekly_avg = six_month_volume / 26 if six_month_volume > 0 else 0
+
+    objective_score = round(_clamp(
+        (seven_day_volume / six_month_weekly_avg * 5) if six_month_weekly_avg > 0 else 0,
+        0.0,
+        10.0,
+    ), 2)
+    subjective_score = round(subj * 10, 2) if checkin else 5.0
+    combined_score = round((0.80 * subjective_score) + (0.20 * objective_score), 2)
+
     calibration = _get_calibration_settings(db)
     thresholds = _resolve_recommendation_thresholds(db, calibration)
     fatigue_rec = _fatigue_recommendation(fatigue_score, thresholds)
@@ -1370,6 +1416,9 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
         date_type.today(),
         today.get("tsb", 0.0),
         fatigue_score,
+        subjective_score,
+        objective_score,
+        combined_score,
     )
 
     # Enrich history items with fatigue_score and recommendation_adjusted.
