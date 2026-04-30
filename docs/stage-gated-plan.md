@@ -826,8 +826,11 @@ Gate tests:
 	- Preserved non-state `recommendation_v2` fields including `pattern_status`, `joint_advisory`, `tsb`, `fatigue_score`, and threshold metadata.
 	- Added `subjective_score`, `objective_score`, and `combined_score` to `today.recommendation_v2`.
 	- Updated Today recommendation card rendering in `static/index.html`:
-		- added three score tiles under the state detail line
+		- added three score tiles (Subjective, Objective, Combined) under the state detail line
+		- added formula explainer below score tiles: `Combined = (Subjective × 80%) + (Objective Load × 20%)`
 		- updated headline color mapping to the new five combined-score states.
+	- Added pattern explainer text below the pattern grid in `static/index.html`:
+		- describes the 7-day verified-session basis and the four movement patterns (Knee, Hip, Push, Pull)
 
 	Validation evidence:
 	- `main.py` syntax validated via `python -m py_compile`.

@@ -156,6 +156,8 @@ Last updated: 2026-04-29
 - Combined-score Today recommendation switch: PARTIAL VALIDATION
 	- backend recommendation state now comes from combined-score thresholds instead of TSB thresholds
 	- Today recommendation card renders Subjective / Objective / Combined score tiles from `recommendation_v2`
+	- formula explainer line added below score tiles: `Combined = (Subjective × 80%) + (Objective Load × 20%)`
+	- pattern explainer text added below pattern grid describing the 7-day verified-session basis
 	- `main.py` syntax validated with `py_compile`
 	- full local route execution remains blocked in the currently configured Python interpreter because it does not have FastAPI installed
 

@@ -284,6 +284,19 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
   line-height: 1;
   font-weight: 800;
 }
+.today-score-explainer {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  opacity: 0.6;
+  text-align: center;
+  line-height: 1.4;
+}
+.today-pattern-explainer {
+  margin-top: 10px;
+  font-size: 0.75rem;
+  opacity: 0.6;
+  line-height: 1.4;
+}
 .today-pattern-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4142,6 +4155,7 @@ function _renderTodayCards(data, pendingCount) {
         <div class="today-score-value">${Number(combScore ?? 0).toFixed(1)}</div>
       </div>
     </div>
+    <div class="today-score-explainer">Combined = (Subjective &times; 80%) + (Objective Load &times; 20%)</div>
   ` : '';
   document.getElementById('today-state-card').innerHTML = `
     <div class="today-state-label ${_stateClass(stateKey)}">${escHtml(stateLabel)}</div>
@@ -4168,6 +4182,7 @@ function _renderTodayCards(data, pendingCount) {
     <div class="card-title">Pattern Stress</div>
     <div class="today-pattern-grid">${grid}</div>
     ${!checkinExists ? '<div class="today-grid-note">No check-in today - pattern signals based on training load only</div>' : ''}
+    <div class="today-pattern-explainer">Pattern stress scores are based on recent training load distribution across movement patterns &mdash; Knee, Hip, Push, and Pull &mdash; calculated from your last 7 days of verified sessions relative to your personal baseline.</div>
   `;
 
   const jointCard = document.getElementById('today-joint-card');
