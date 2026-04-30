@@ -4088,10 +4088,10 @@ function _safePatternStatus(r2) {
     const v = r2.pattern_status[p] || {};
     out[p] = {
       status: v.status || 'neutral',
-      stress_level_label: v.stress_level_label || 'Moderate',
+      dots_filled: Math.max(1, Math.min(5, Number(v.dots_filled || 1))),
+      stress_level_label: v.stress_level_label || ['Fresh','Min. Stress','Normal Stress','Moderate Stress','High Stress'][Math.max(1,Math.min(5,Number(v.dots_filled||1)))-1],
       combined_signal: Number(v.combined_signal || 0),
       days_since_loaded: v.days_since_loaded == null ? null : Number(v.days_since_loaded),
-      dots_filled: Math.max(1, Math.min(5, Number(v.dots_filled || 1))),
       dots_total: 5,
     };
   });

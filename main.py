@@ -1163,12 +1163,9 @@ def _dots_filled(combined_signal: float) -> int:
     return 1
 
 
-def _stress_level_label(status: str) -> str:
-    if status == "stressed":
-        return "High"
-    if status == "neutral":
-        return "Moderate"
-    return "Fresh"
+def _stress_level_label(dots: int) -> str:
+    labels = {1: "Fresh", 2: "Min. Stress", 3: "Normal Stress", 4: "Moderate Stress", 5: "High Stress"}
+    return labels.get(dots, "Normal Stress")
 
 
 def _pattern_last_loaded_dates(db: Session, today: date_type) -> dict:
@@ -1312,12 +1309,13 @@ def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness 
     pattern_status = {}
     for p in _PATTERN_KEYS:
         state = pattern_rows[p]["state"]
+        dots = _dots_filled(pattern_rows[p]["combined_signal"])
         pattern_status[p] = {
             "status": state,
-            "stress_level_label": _stress_level_label(state),
+            "stress_level_label": _stress_level_label(dots),
             "combined_signal": pattern_rows[p]["combined_signal"],
             "days_since_loaded": _days_since_loaded(p, last_loaded_dates, ref_today),
-            "dots_filled": _dots_filled(pattern_rows[p]["combined_signal"]),
+            "dots_filled": dots,
             "dots_total": 5,
         }
 

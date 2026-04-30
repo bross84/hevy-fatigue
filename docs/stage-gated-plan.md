@@ -832,6 +832,15 @@ Gate tests:
 	- Added pattern explainer text below the pattern grid in `static/index.html`:
 		- describes the 7-day verified-session basis and the four movement patterns (Knee, Hip, Push, Pull)
 
+	### Post-Stage 7.13 — Pattern Dot Stress Label Fix
+
+	Implemented changes:
+	- Fixed `_stress_level_label()` in `main.py` to accept `dots_filled` (int 1–5) instead of a 3-state status string.
+		- Old: `available→Fresh`, `neutral→Moderate`, `stressed→High`
+		- New: `1→Fresh`, `2→Min. Stress`, `3→Normal Stress`, `4→Moderate Stress`, `5→High Stress`
+	- Updated call site in `_build_recommendation_v2()` to compute `dots` first, pass to both `_stress_level_label(dots)` and `dots_filled` field.
+	- Updated JS fallback label in `_safePatternStatus()` in `static/index.html` to derive from `dots_filled` using the same 5-label array.
+
 	Validation evidence:
 	- `main.py` syntax validated via `python -m py_compile`.
 	- Static diagnostics clean after `static/index.html` patch.

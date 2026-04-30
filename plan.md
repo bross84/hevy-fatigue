@@ -158,6 +158,9 @@ Last updated: 2026-04-29
 	- Today recommendation card renders Subjective / Objective / Combined score tiles from `recommendation_v2`
 	- formula explainer line added below score tiles: `Combined = (Subjective × 80%) + (Objective Load × 20%)`
 	- pattern explainer text added below pattern grid describing the 7-day verified-session basis
+- Pattern dot stress label fix: DONE
+	- `_stress_level_label()` in `main.py` switched from 3-bucket status string to 5-point `dots_filled` int: `1→Fresh`, `2→Min. Stress`, `3→Normal Stress`, `4→Moderate Stress`, `5→High Stress`
+	- JS fallback label in `static/index.html` updated to derive from `dots_filled` using same 5-label array
 	- `main.py` syntax validated with `py_compile`
 	- full local route execution remains blocked in the currently configured Python interpreter because it does not have FastAPI installed
 
