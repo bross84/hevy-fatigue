@@ -1496,6 +1496,21 @@ tbody tr:hover td { background: var(--row-hover); }
 #tab-settings .settings-card-pattern { grid-area: pattern; }
 #tab-settings .settings-card-session { grid-area: session; }
 #tab-settings .settings-card-sync { grid-area: sync; }
+.settings-diagnostics-link {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+.settings-diagnostics-link a {
+  color: var(--muted);
+  text-decoration: none;
+}
+.settings-diagnostics-link a:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
 .settings-key-row { display: flex; gap: 8px; align-items: stretch; }
 .settings-key-row input {
   flex: 1;
@@ -2103,6 +2118,10 @@ tbody tr:hover td { background: var(--row-hover); }
     </p>
     <div id="sync-status" style="margin-bottom:10px;"></div>
     <button class="btn btn-secondary" id="sync-btn" onclick="runSync()" style="width:100%;">⟳ Sync Now</button>
+  </div>
+
+  <div class="settings-diagnostics-link">
+    <a href="/static/diagnostic.html">View engine diagnostics →</a>
   </div>
 </section>
 

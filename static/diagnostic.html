@@ -385,6 +385,17 @@
         throw new Error(`Failed to load check-in: ${err.message}`);
       }
     }
+
+    async function fetchDiagnosticsSnapshot() {
+      try {
+        const resp = await fetch('/api/diagnostics/snapshot');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        return await resp.json();
+      } catch (err) {
+        console.error('Error fetching diagnostics snapshot:', err);
+        throw new Error(`Failed to load diagnostics snapshot: ${err.message}`);
+      }
+    }
     
 async function fetchSessionsList(days) {
   try {
@@ -635,6 +646,147 @@ async function fetchSessionsList(days) {
         </div>
       `;
     }
+
+    function _fmtNumber(value, decimals = 2) {
+      if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+      return Number(value).toFixed(decimals);
+    }
+
+    function _fmtVolume(value) {
+      if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+      return `${Math.round(Number(value)).toLocaleString()} lbs`;
+    }
+
+    function _fmtDateCompact(dateStr) {
+      if (!dateStr) return '—';
+      return formatDate(dateStr);
+    }
+
+    function renderEngineSnapshot(snapshot) {
+      const subj = snapshot?.subjective_breakdown || {};
+      const obj = snapshot?.objective_breakdown || {};
+      const combined = snapshot?.combined_score || {};
+      const load = snapshot?.training_load || {};
+      const joint = snapshot?.joint_advisory || {};
+      const sessions = Array.isArray(snapshot?.last_10_session_classifications)
+        ? snapshot.last_10_session_classifications
+        : [];
+
+      const subjScore = combined?.subjective_score;
+      const objScore = combined?.objective_score;
+      const combinedScore = combined?.combined_score;
+      const noCheckinNote = !snapshot?.checkin_exists
+        ? '<div class="placeholder" style="margin-bottom:1rem;">No check-in recorded today. Subjective input fields are unavailable; engine is using neutral fallback for subjective score.</div>'
+        : '';
+
+      const checkinRaw = subj?.raw || {};
+      const sorenessRaw = checkinRaw?.soreness || {};
+      const sorenessTotal = checkinRaw?.soreness_total;
+      const jointStateUpper = joint?.state?.upper || {};
+      const jointStateLower = joint?.state?.lower || {};
+
+      const scoreRows = `
+        <div class="detail-row"><span class="detail-label">Subjective</span><span class="detail-value">((0.45 × ${_fmtNumber((checkinRaw?.tiredness ?? 0) / 4, 2)}) + (0.30 × ${_fmtNumber((checkinRaw?.perceived_recovery ?? 0) / 4, 2)}) + (0.25 × ${_fmtNumber((sorenessTotal ?? 0) / 16, 2)})) × 10 = ${_fmtNumber(subj?.subjective_score_from_checkin, 2)}</span></div>
+        <div class="detail-row"><span class="detail-label">Objective</span><span class="detail-value">(${_fmtNumber(obj?.ratio, 3)} × 5.00) = ${_fmtNumber(obj?.objective_score, 2)}</span></div>
+        <div class="detail-row"><span class="detail-label">Combined</span><span class="detail-value">(0.80 × ${_fmtNumber(subjScore, 2)}) + (0.20 × ${_fmtNumber(objScore, 2)}) = ${_fmtNumber(combinedScore, 2)}</span></div>
+      `;
+
+      const checkinTable = `
+        <table>
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th style="text-align:right;">Value</th>
+              <th style="text-align:right;">Weighted Contribution</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Tiredness</td><td class="volume-value">${checkinRaw?.tiredness ?? '—'}/4</td><td class="volume-value">${_fmtNumber(subj?.weighted_contributions?.tiredness, 3)}</td></tr>
+            <tr><td>Perceived Recovery</td><td class="volume-value">${checkinRaw?.perceived_recovery ?? '—'}/4</td><td class="volume-value">${_fmtNumber(subj?.weighted_contributions?.perceived_recovery, 3)}</td></tr>
+            <tr><td>Soreness Avg</td><td class="volume-value">${_fmtNumber(checkinRaw?.soreness_avg, 3)}/4</td><td class="volume-value">${_fmtNumber(subj?.weighted_contributions?.soreness_avg, 3)}</td></tr>
+            <tr><td>Quad Soreness</td><td class="volume-value">${sorenessRaw?.sore_quad_dom ?? '—'}/4</td><td class="volume-value">—</td></tr>
+            <tr><td>Posterior Soreness</td><td class="volume-value">${sorenessRaw?.sore_posterior ?? '—'}/4</td><td class="volume-value">—</td></tr>
+            <tr><td>Push Soreness</td><td class="volume-value">${sorenessRaw?.sore_upper_push ?? '—'}/4</td><td class="volume-value">—</td></tr>
+            <tr><td>Pull Soreness</td><td class="volume-value">${sorenessRaw?.sore_upper_pull ?? '—'}/4</td><td class="volume-value">—</td></tr>
+          </tbody>
+        </table>
+      `;
+
+      const sessionsRows = sessions.length
+        ? sessions.map(s => `
+            <tr>
+              <td>${_fmtDateCompact(s.workout_date)}</td>
+              <td>${s.workout_title || '(Untitled)'}</td>
+              <td>${s.modality || '—'}</td>
+              <td class="volume-value">${_fmtNumber(s.modality_confidence, 2)}</td>
+              <td class="volume-value">${s.srpe ?? '—'}</td>
+              <td>${s.verification_status || '—'}</td>
+            </tr>
+          `).join('')
+        : '<tr><td colspan="6" class="placeholder">No sessions available</td></tr>';
+
+      return `
+        <div class="section">
+          <div class="section-title">Engine Snapshot</div>
+          ${noCheckinNote}
+
+          <div class="section-title" style="font-size:14px;margin-top:0.5rem;">Score Breakdown</div>
+          ${scoreRows}
+
+          <div class="section-title" style="font-size:14px;margin-top:1rem;">Check-in Inputs</div>
+          ${checkinTable}
+
+          <div class="section-title" style="font-size:14px;margin-top:1rem;">Volume Baseline</div>
+          <div class="volume-summary">
+            <div class="summary-box">
+              <div class="summary-label">7-Day Load Volume</div>
+              <div class="summary-value" style="font-size:20px;">${_fmtVolume(obj?.seven_day_load_volume)}</div>
+            </div>
+            <div class="summary-box">
+              <div class="summary-label">6-Month Weekly Avg</div>
+              <div class="summary-value" style="font-size:20px;">${_fmtVolume(obj?.six_month_weekly_avg_load_volume)}</div>
+            </div>
+            <div class="summary-box">
+              <div class="summary-label">Ratio</div>
+              <div class="summary-value" style="font-size:20px;">${_fmtNumber(obj?.ratio, 3)}</div>
+            </div>
+          </div>
+
+          <div class="section-title" style="font-size:14px;margin-top:1rem;">Training Load</div>
+          <div class="detail-row"><span class="detail-label">ATL</span><span class="detail-value">${_fmtNumber(load?.atl, 2)}</span></div>
+          <div class="detail-row"><span class="detail-label">CTL</span><span class="detail-value">${_fmtNumber(load?.ctl, 2)}</span></div>
+          <div class="detail-row"><span class="detail-label">TSB</span><span class="detail-value">${_fmtNumber(load?.tsb, 2)}</span></div>
+
+          <div class="section-title" style="font-size:14px;margin-top:1rem;">Joint Advisory</div>
+          <div class="detail-row"><span class="detail-label">Raw Upper / Lower</span><span class="detail-value">${joint?.raw?.upper ?? '—'} / ${joint?.raw?.lower ?? '—'}</span></div>
+          <div class="detail-row"><span class="detail-label">Upper State</span><span class="detail-value">${jointStateUpper.level || 'none'}${jointStateUpper.label ? ` · ${jointStateUpper.label}` : ''}</span></div>
+          <div class="detail-row"><span class="detail-label">Lower State</span><span class="detail-value">${jointStateLower.level || 'none'}${jointStateLower.label ? ` · ${jointStateLower.label}` : ''}</span></div>
+
+          <div class="section-title" style="font-size:14px;margin-top:1rem;">TSB Thresholds</div>
+          <div class="detail-row"><span class="detail-label">Underloaded</span><span class="detail-value">${_fmtNumber(snapshot?.tsb_thresholds?.underloaded, 2)}</span></div>
+          <div class="detail-row"><span class="detail-label">Slightly Fresh</span><span class="detail-value">${_fmtNumber(snapshot?.tsb_thresholds?.slightly_fresh, 2)}</span></div>
+          <div class="detail-row"><span class="detail-label">Balanced</span><span class="detail-value">${_fmtNumber(snapshot?.tsb_thresholds?.balanced, 2)}</span></div>
+          <div class="detail-row"><span class="detail-label">Slightly Fatigued</span><span class="detail-value">${_fmtNumber(snapshot?.tsb_thresholds?.slightly_fatigued, 2)}</span></div>
+
+          <div class="section-title" style="font-size:14px;margin-top:1rem;">Last 10 Sessions</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Title</th>
+                <th>Modality</th>
+                <th style="text-align:right;">Confidence</th>
+                <th style="text-align:right;">sRPE</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${sessionsRows}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
     
     // ═══════════════════════════════════════════════════════
     // MAIN LOAD & RENDER
@@ -644,39 +796,9 @@ async function fetchSessionsList(days) {
       const container = document.getElementById('diagnostics');
       
       try {
-        // Fetch check-in and sessions lists in parallel
-        const [checkin, sessions7, sessions28] = await Promise.all([
-          fetchTodayCheckin(),
-          fetchSessionsList(7),
-          fetchSessionsList(180)
-        ]);
-        
-        // Fetch full session details for 7-day sessions
-        const sessionDetails7 = await Promise.all(
-          sessions7.map(s => fetchSessionDetail(s.hevy_workout_id))
-        );
-        
-        // Fetch full session details for 28-day sessions
-        const sessionDetails28 = await Promise.all(
-          sessions28.map(s => fetchSessionDetail(s.hevy_workout_id))
-        );
-        
-        // Enrich sessions with volume data
-        for (let i = 0; i < sessions7.length; i++) {
-          sessions7[i]._volumeLbs = computeSessionVolume(sessions7[i], sessionDetails7[i]);
-        }
-        for (let i = 0; i < sessions28.length; i++) {
-          sessions28[i]._volumeLbs = computeSessionVolume(sessions28[i], sessionDetails28[i]);
-        }
-        
-        // Compute fatigue
-        const fatigue = computeSubjectiveFatigue(checkin);
-        
-        // Render all sections
+        const snapshot = await fetchDiagnosticsSnapshot();
         let html = '';
-        html += renderSection1(checkin, fatigue);
-        html += renderSection2(sessions7, sessions28);
-        html += renderSection3(fatigue, sessions7, sessions28);
+        html += renderEngineSnapshot(snapshot);
         
         container.innerHTML = html;
         
@@ -685,7 +807,16 @@ async function fetchSessionsList(days) {
         const timeStr = now.toLocaleString();
         document.getElementById('last-updated').textContent = `Updated ${timeStr}`;
 
-        readinessContext = buildSystemPrompt(checkin, fatigue, sessions7);
+        readinessContext = [
+          'You are a strength and conditioning coach assistant. Use the engine snapshot values directly.',
+          `Date: ${snapshot.date}`,
+          `Check-in exists: ${snapshot.checkin_exists ? 'yes' : 'no'}`,
+          `Subjective score: ${snapshot.combined_score?.subjective_score ?? 'n/a'}`,
+          `Objective score: ${snapshot.combined_score?.objective_score ?? 'n/a'}`,
+          `Combined score: ${snapshot.combined_score?.combined_score ?? 'n/a'}`,
+          `ATL/CTL/TSB: ${snapshot.training_load?.atl ?? 'n/a'} / ${snapshot.training_load?.ctl ?? 'n/a'} / ${snapshot.training_load?.tsb ?? 'n/a'}`,
+          `Joint advisory upper/lower: ${snapshot.joint_advisory?.state?.upper?.level || 'none'} / ${snapshot.joint_advisory?.state?.lower?.level || 'none'}`,
+        ].join('\n');
         setContextPreview(readinessContext);
         
       } catch (err) {

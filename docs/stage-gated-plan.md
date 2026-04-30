@@ -846,6 +846,33 @@ Gate tests:
 	- Static diagnostics clean after `static/index.html` patch.
 	- Full local route execution is still pending in an environment with project dependencies installed; the currently configured interpreter does not include FastAPI.
 
+	### Post-Stage 7.14 — Verified Session Sync Guard + Diagnostics Engine Snapshot
+
+	Implemented changes:
+	- Fixed sync/reclassification overwrite bug in `importer.py` (`import_hevy_data`):
+		- before `WorkoutSession` upsert, query existing row by `hevy_workout_id`
+		- if existing row is `verification_status == "verified"`, use metadata-only conflict update
+		- metadata-only update now sets only: `workout_date`, `workout_title`, `start_time`, `end_time`, `duration_minutes`, `updated_at`
+		- preserved fields for verified rows: `modality`, `modality_confidence`, `modality_note`, `verification_status`, `verified_at`, `srpe`
+		- new or pending rows still use full upsert behavior (classification fields continue updating)
+	- Added `GET /api/diagnostics/snapshot` in `main.py`:
+		- returns grouped snapshot payload for subjective/objective/combined breakdowns, raw ATL/CTL/TSB, TSB thresholds, joint advisory, and last 10 session classifications
+		- reuses existing helpers from training-load flow, including `_subjective_fatigue`, `_training_modifier`, `_build_recommendation_v2`, and `_session_volume`
+		- objective/load volume uses `_session_volume()` for all 7-day and 180-day volume aggregation (no inline weight×reps reimplementation)
+		- returns `200` with null-safe fields when check-in data is unavailable
+	- Updated `static/diagnostic.html`:
+		- added `Engine Snapshot` section above S&C Assistant panel
+		- loads `/api/diagnostics/snapshot` on page load
+		- renders required groups: Score Breakdown formulas with substituted values, Check-in Inputs, Volume Baseline, Training Load, Joint Advisory, TSB Thresholds, Last 10 Sessions
+		- added neutral no-check-in placeholder state while preserving non-check-in diagnostics
+	- Updated `static/index.html` Settings tab:
+		- added subtle footer text link `View engine diagnostics →` to `/static/diagnostic.html`
+
+	Validation evidence:
+	- Syntax checks: no errors in `importer.py` and `main.py`.
+	- Static diagnostics checks: no errors in `static/diagnostic.html` and `static/index.html`.
+	- Full live endpoint/runtime verification remains pending in an environment with project dependencies installed.
+
 ## Decisions Locked
 
 - Full-body via existing percentage fields (no `is_full_body` column).

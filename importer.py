@@ -372,37 +372,70 @@ def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshol
                     srpe_from_title=srpe_from_title is not None,
                 )
 
-                session_stmt = sqlite_insert(WorkoutSession).values(
-                    hevy_workout_id=workout_id,
-                    workout_date=workout_date,
-                    workout_title=workout_title,
-                    start_time=start_dt,
-                    end_time=end_dt,
-                    duration_minutes=duration_minutes,
-                    modality=modality,
-                    modality_confidence=modality_confidence,
-                    modality_note=modality_note,
-                    verification_status=verification_status,
-                    verified_at=verified_at,
-                    srpe=srpe_from_title,
-                    updated_at=datetime.utcnow(),
-                ).on_conflict_do_update(
-                    index_elements=[WorkoutSession.hevy_workout_id],
-                    set_={
-                        "workout_date": workout_date,
-                        "workout_title": workout_title,
-                        "start_time": start_dt,
-                        "end_time": end_dt,
-                        "duration_minutes": duration_minutes,
-                        "modality": modality,
-                        "modality_confidence": modality_confidence,
-                        "modality_note": modality_note,
-                        "verification_status": verification_status,
-                        "verified_at": verified_at,
-                        "srpe": srpe_from_title,
-                        "updated_at": datetime.utcnow(),
-                    },
+                existing_session = (
+                    db.query(WorkoutSession)
+                    .filter(WorkoutSession.hevy_workout_id == workout_id)
+                    .first()
                 )
+
+                if existing_session and existing_session.verification_status == "verified":
+                    session_stmt = sqlite_insert(WorkoutSession).values(
+                        hevy_workout_id=workout_id,
+                        workout_date=workout_date,
+                        workout_title=workout_title,
+                        start_time=start_dt,
+                        end_time=end_dt,
+                        duration_minutes=duration_minutes,
+                        modality=existing_session.modality,
+                        modality_confidence=existing_session.modality_confidence,
+                        modality_note=existing_session.modality_note,
+                        verification_status=existing_session.verification_status,
+                        verified_at=existing_session.verified_at,
+                        srpe=existing_session.srpe,
+                        updated_at=datetime.utcnow(),
+                    ).on_conflict_do_update(
+                        index_elements=[WorkoutSession.hevy_workout_id],
+                        set_={
+                            "workout_date": workout_date,
+                            "workout_title": workout_title,
+                            "start_time": start_dt,
+                            "end_time": end_dt,
+                            "duration_minutes": duration_minutes,
+                            "updated_at": datetime.utcnow(),
+                        },
+                    )
+                else:
+                    session_stmt = sqlite_insert(WorkoutSession).values(
+                        hevy_workout_id=workout_id,
+                        workout_date=workout_date,
+                        workout_title=workout_title,
+                        start_time=start_dt,
+                        end_time=end_dt,
+                        duration_minutes=duration_minutes,
+                        modality=modality,
+                        modality_confidence=modality_confidence,
+                        modality_note=modality_note,
+                        verification_status=verification_status,
+                        verified_at=verified_at,
+                        srpe=srpe_from_title,
+                        updated_at=datetime.utcnow(),
+                    ).on_conflict_do_update(
+                        index_elements=[WorkoutSession.hevy_workout_id],
+                        set_={
+                            "workout_date": workout_date,
+                            "workout_title": workout_title,
+                            "start_time": start_dt,
+                            "end_time": end_dt,
+                            "duration_minutes": duration_minutes,
+                            "modality": modality,
+                            "modality_confidence": modality_confidence,
+                            "modality_note": modality_note,
+                            "verification_status": verification_status,
+                            "verified_at": verified_at,
+                            "srpe": srpe_from_title,
+                            "updated_at": datetime.utcnow(),
+                        },
+                    )
                 db.execute(session_stmt)
 
                 for exercise in exercises:

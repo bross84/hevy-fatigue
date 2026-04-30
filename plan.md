@@ -1,6 +1,6 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-04-29
+Last updated: 2026-04-30
 
 ## 1) Current Product State
 
@@ -58,6 +58,14 @@ Last updated: 2026-04-29
 		- right column: Training State Thresholds, Session Processing
 	- Settings tab load flow now always fetches `/api/settings/v2` values even if API-key metadata fetch fails
 	- Training State Thresholds fields rehydrate from saved `app_settings` values on each Settings tab open
+	- Added subtle Settings footer link to diagnostics page: `View engine diagnostics →` (small, low-contrast text, no button styling)
+- Diagnostics page engine snapshot updates completed:
+	- Added backend endpoint `GET /api/diagnostics/snapshot` in `main.py`
+	- Endpoint returns grouped snapshot payload for subjective/objective/combined score breakdowns, ATL/CTL/TSB, TSB thresholds, joint advisory (raw + current state), and last 10 session classifications
+	- Objective/load volume in snapshot reuses `_session_volume()` for 7-day and 180-day aggregations (no inline `weight × reps` reimplementation)
+	- Added `Engine Snapshot` section in `static/diagnostic.html` above S&C Assistant panel
+	- Engine Snapshot renders grouped blocks: Score Breakdown formulas, Check-in Inputs, Volume Baseline, Training Load, Joint Advisory, TSB Thresholds, Last 10 Sessions
+	- No-check-in-today state now renders a neutral placeholder while keeping available non-check-in diagnostics visible
 - Import pipeline updates completed:
 	- Session modality now uses two-layer detection: title keyword pass first, then existing exercise-level fallback
 	- Title keyword sets include abbreviation codes (` ST`, ` HYP`, ` CON`, ` CAR`) and `strongman`
@@ -67,6 +75,7 @@ Last updated: 2026-04-29
 	- Valid sRPE title tag is a conditioning signal when no other modality keyword/code is present (`conditioning`, confidence `0.95`)
 	- Conditioning/Cardio sessions can auto-verify when confidence `>= 0.87` only if sRPE came from title tag
 	- Mixed title matches are flagged with a session note and reduced confidence to force manual review
+	- Sync/reclassification guard added in `importer.py`: existing `verified` sessions now use metadata-only upsert updates (date/title/time/duration/updated_at) and preserve classification fields (`modality`, `modality_confidence`, `modality_note`, `verification_status`, `verified_at`, `srpe`)
 
 ## 3) Check-In UX (Latest Overhaul)
 
@@ -163,6 +172,13 @@ Last updated: 2026-04-29
 	- JS fallback label in `static/index.html` updated to derive from `dots_filled` using same 5-label array
 	- `main.py` syntax validated with `py_compile`
 	- full local route execution remains blocked in the currently configured Python interpreter because it does not have FastAPI installed
+- Diagnostics snapshot + importer verified-session sync guard: PARTIAL VALIDATION
+	- `importer.py` now checks for existing session by `hevy_workout_id` before upsert
+	- Existing `verification_status == verified` sessions are protected from reclassification on sync
+	- New endpoint `GET /api/diagnostics/snapshot` added and wired to diagnostics UI
+	- Snapshot objective/load volume calculations use `_session_volume()` helper for both 7-day and 180-day windows
+	- Python syntax validation passed for `importer.py` and `main.py`; static diagnostics report clean for touched HTML files
+	- Full live endpoint/runtime validation remains pending in a local environment with app dependencies installed
 
 ## 5) Open Items / Next Backlog
 

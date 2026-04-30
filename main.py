@@ -1491,6 +1491,208 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
     }
 
 
+@app.get("/api/diagnostics/snapshot")
+def get_diagnostics_snapshot(db: Session = Depends(get_db)):
+    today_date = date_type.today()
+    history, _, _ = _compute_training_load(60, db)
+    today = history[-1] if history else {
+        "date": str(today_date),
+        "atl": 0.0,
+        "ctl": 0.0,
+        "tsb": 0.0,
+        "stress": 0.0,
+        "pattern_loads": {},
+    }
+
+    training_mod = _training_modifier(history)
+    checkin = db.query(DailyReadiness).filter(DailyReadiness.date == today_date).first()
+
+    tiredness_raw = checkin.tiredness if checkin else None
+    recovery_raw = checkin.perceived_recovery if checkin else None
+    soreness_components = {
+        "sore_quad_dom": checkin.sore_quad_dom if checkin else None,
+        "sore_posterior": checkin.sore_posterior if checkin else None,
+        "sore_upper_push": checkin.sore_upper_push if checkin else None,
+        "sore_upper_pull": checkin.sore_upper_pull if checkin else None,
+    }
+    soreness_total_raw = (
+        (
+            (checkin.sore_quad_dom or 0)
+            + (checkin.sore_posterior or 0)
+            + (checkin.sore_upper_push or 0)
+            + (checkin.sore_upper_pull or 0)
+        )
+        if checkin
+        else None
+    )
+    soreness_avg_raw = (
+        (
+            (checkin.sore_quad_dom or 0)
+            + (checkin.sore_posterior or 0)
+            + (checkin.sore_upper_push or 0)
+            + (checkin.sore_upper_pull or 0)
+        ) / 4.0
+        if checkin
+        else None
+    )
+
+    if checkin:
+        tiredness_contribution = round(0.45 * ((checkin.tiredness or 0) / 4.0) * 10.0, 3)
+        recovery_contribution = round(0.30 * ((checkin.perceived_recovery or 0) / 4.0) * 10.0, 3)
+        soreness_contribution = round(
+            0.25
+            * (
+                (
+                    (checkin.sore_quad_dom or 0)
+                    + (checkin.sore_posterior or 0)
+                    + (checkin.sore_upper_push or 0)
+                    + (checkin.sore_upper_pull or 0)
+                ) / 16.0
+            )
+            * 10.0,
+            3,
+        )
+        subjective_score_from_checkin = round(_subjective_fatigue(checkin) * 10.0, 2)
+    else:
+        tiredness_contribution = None
+        recovery_contribution = None
+        soreness_contribution = None
+        subjective_score_from_checkin = None
+
+    seven_day_sessions = (
+        db.query(WorkoutSession)
+        .filter(WorkoutSession.workout_date >= today_date - timedelta(days=7))
+        .all()
+    )
+    six_month_sessions = (
+        db.query(WorkoutSession)
+        .filter(WorkoutSession.workout_date >= today_date - timedelta(days=180))
+        .all()
+    )
+
+    seven_day_load_volume = round(
+        sum(_session_volume(session.hevy_workout_id, db) for session in seven_day_sessions),
+        2,
+    )
+    six_month_load_volume = round(
+        sum(_session_volume(session.hevy_workout_id, db) for session in six_month_sessions),
+        2,
+    )
+    six_month_weekly_avg_load_volume = round((six_month_load_volume / 26.0) if six_month_load_volume > 0 else 0.0, 2)
+
+    objective_ratio = (
+        round(seven_day_load_volume / six_month_weekly_avg_load_volume, 4)
+        if six_month_weekly_avg_load_volume > 0
+        else None
+    )
+    objective_score = round(
+        _clamp((objective_ratio * 5.0) if objective_ratio is not None else 0.0, 0.0, 10.0),
+        2,
+    )
+
+    subjective_score_effective = round(subjective_score_from_checkin if checkin else 5.0, 2)
+    combined_score = round((0.80 * subjective_score_effective) + (0.20 * objective_score), 2)
+
+    fatigue_score = round(
+        _clamp(
+            (subjective_score_from_checkin if checkin else 5.0) + training_mod,
+            0.0,
+            10.0,
+        ),
+        2,
+    )
+
+    calibration = _get_calibration_settings(db)
+    thresholds = _resolve_recommendation_thresholds(db, calibration)
+    recommendation_v2 = _build_recommendation_v2(
+        today.get("pattern_loads", {}),
+        checkin,
+        calibration,
+        db,
+        today_date,
+        today.get("tsb", 0.0),
+        fatigue_score,
+        subjective_score_effective,
+        objective_score,
+        combined_score,
+    )
+
+    recent_sessions = (
+        db.query(WorkoutSession)
+        .order_by(WorkoutSession.workout_date.desc(), WorkoutSession.start_time.desc())
+        .limit(10)
+        .all()
+    )
+
+    return {
+        "date": str(today_date),
+        "checkin_exists": bool(checkin),
+        "score_source": "subjective_plus_training" if checkin else "training_fallback",
+        "subjective_breakdown": {
+            "formula": "((0.45 × tiredness/4) + (0.30 × perceived_recovery/4) + (0.25 × soreness_total/16)) × 10",
+            "raw": {
+                "tiredness": tiredness_raw,
+                "perceived_recovery": recovery_raw,
+                "soreness": soreness_components,
+                "soreness_total": soreness_total_raw,
+                "soreness_avg": round(soreness_avg_raw, 3) if soreness_avg_raw is not None else None,
+                "joint_upper": checkin.joint_upper if checkin else None,
+                "joint_lower": checkin.joint_lower if checkin else None,
+            },
+            "weighted_contributions": {
+                "tiredness": tiredness_contribution,
+                "perceived_recovery": recovery_contribution,
+                "soreness_avg": soreness_contribution,
+            },
+            "subjective_score_from_checkin": subjective_score_from_checkin,
+            "subjective_score_effective": subjective_score_effective,
+        },
+        "objective_breakdown": {
+            "seven_day_load_volume": seven_day_load_volume,
+            "six_month_weekly_avg_load_volume": six_month_weekly_avg_load_volume,
+            "ratio": objective_ratio,
+            "objective_score": objective_score,
+        },
+        "combined_score": {
+            "subjective_score": subjective_score_effective,
+            "objective_score": objective_score,
+            "subjective_weight": 0.80,
+            "objective_weight": 0.20,
+            "combined_score": combined_score,
+        },
+        "training_load": {
+            "atl": round(float(today.get("atl", 0.0) or 0.0), 2),
+            "ctl": round(float(today.get("ctl", 0.0) or 0.0), 2),
+            "tsb": round(float(today.get("tsb", 0.0) or 0.0), 2),
+        },
+        "tsb_thresholds": {
+            "underloaded": calibration.get("tsb_threshold_underloaded", _CALIBRATION_DEFAULTS["tsb_threshold_underloaded"]),
+            "slightly_fresh": calibration.get("tsb_threshold_slightly_fresh", _CALIBRATION_DEFAULTS["tsb_threshold_slightly_fresh"]),
+            "balanced": calibration.get("tsb_threshold_balanced", _CALIBRATION_DEFAULTS["tsb_threshold_balanced"]),
+            "slightly_fatigued": calibration.get("tsb_threshold_slightly_fatigued", _CALIBRATION_DEFAULTS["tsb_threshold_slightly_fatigued"]),
+        },
+        "joint_advisory": {
+            "raw": {
+                "upper": checkin.joint_upper if checkin else None,
+                "lower": checkin.joint_lower if checkin else None,
+            },
+            "state": recommendation_v2.get("joint_advisory", {"upper": None, "lower": None}),
+        },
+        "last_10_session_classifications": [
+            {
+                "workout_date": str(s.workout_date) if s.workout_date else None,
+                "workout_title": s.workout_title,
+                "modality": s.modality,
+                "modality_confidence": s.modality_confidence,
+                "modality_note": s.modality_note,
+                "srpe": s.srpe,
+                "verification_status": s.verification_status,
+            }
+            for s in recent_sessions
+        ],
+    }
+
+
 # ── Readiness history ─────────────────────────────────────────────────────────
 
 @app.get("/api/readiness/history")
