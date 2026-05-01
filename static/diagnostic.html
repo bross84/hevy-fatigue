@@ -289,6 +289,31 @@
     .ai-status { font-size: 11px; color: var(--muted); min-height: 16px; }
     .ai-status.error { color: var(--danger); }
     
+    /* Settings sections (pattern sensitivity + session processing) */
+    .diag-settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    @media (max-width: 640px) { .diag-settings-grid { grid-template-columns: 1fr; } }
+    .diag-form-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .diag-input {
+      width: 100%; padding: 7px 10px; border-radius: 4px;
+      border: 1px solid var(--border); background: var(--bg); color: var(--text);
+      font-size: 13px;
+    }
+    .diag-input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+    .diag-helper { font-size: 12px; color: var(--muted); line-height: 1.6; margin-bottom: 12px; }
+    .diag-btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .diag-btn {
+      padding: 7px 14px; border-radius: 4px; border: 1px solid var(--border);
+      background: none; color: var(--text); font-size: 13px; cursor: pointer;
+    }
+    .diag-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .diag-btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+    .diag-btn.primary:hover { opacity: 0.88; }
+    .diag-btn.danger { border-color: var(--danger); color: var(--danger); }
+    .diag-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .diag-result { display: none; margin-top: 10px; padding: 7px 12px; border-radius: 4px; font-size: 13px; }
+    .diag-result.ok  { background: rgba(77,184,112,.12); color: #4db870; }
+    .diag-result.err { background: rgba(239,62,54,.10); color: var(--danger); }
+
     /* Responsive */
     @media (max-width: 768px) {
       .fatigue-score {
@@ -340,6 +365,46 @@
     <div id="diagnostics">
       <div class="placeholder loading">Loading diagnostics...</div>
     </div>
+
+    <!-- Pattern Sensitivity -->
+    <div class="section" style="margin-top: 1.5rem;">
+      <div class="section-title">Pattern Sensitivity</div>
+      <p class="diag-helper">Controls how sensitive the pattern dots on your Today page are to changes in your training load. Lower values react to smaller shifts in your weekly volume; higher values only flag significant changes.</p>
+      <div class="diag-settings-grid">
+        <div>
+          <div class="diag-form-label">Stressed Threshold</div>
+          <input type="number" id="diag-pattern-stressed" class="diag-input" min="0" max="1" step="0.01">
+        </div>
+        <div>
+          <div class="diag-form-label">Neutral Threshold</div>
+          <input type="number" id="diag-pattern-neutral" class="diag-input" min="0" max="1" step="0.01">
+        </div>
+      </div>
+      <div class="diag-btn-row">
+        <button class="diag-btn primary" id="diag-btn-save-pattern" onclick="diagSavePatternSensitivity()">Save Pattern Sensitivity</button>
+      </div>
+      <div class="diag-result" id="diag-pattern-result"></div>
+    </div>
+
+    <!-- Session Processing -->
+    <div class="section" style="margin-top: 1.5rem;">
+      <div class="section-title">Session Processing</div>
+      <p class="diag-helper">When importing from Hevy, sessions classified above this confidence level are automatically verified and skip the manual review queue. Lower = more auto-verified. Higher = more manual review.</p>
+      <div>
+        <div class="diag-form-label">Auto-Verify Confidence Threshold</div>
+        <input type="number" id="diag-auto-verify-threshold" class="diag-input" min="0.5" max="1" step="0.05" placeholder="0.87" style="max-width: 200px;">
+      </div>
+      <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);">
+        <p class="diag-helper" style="margin-bottom: 8px;">Re-runs session classification on existing sessions using current classifier rules, without triggering a Hevy sync. Use this after changing title keywords or modality rules.</p>
+        <div class="diag-btn-row">
+          <button class="diag-btn primary" id="diag-btn-save-session" onclick="diagSaveSessionProcessing()">Save Session Processing</button>
+          <button class="diag-btn" id="diag-btn-reclassify" onclick="diagReclassifySessions(false)">Reclassify Sessions</button>
+          <button class="diag-btn danger" id="diag-btn-force-reclassify" onclick="diagReclassifySessions(true)">Force Reclassify All</button>
+        </div>
+      </div>
+      <div class="diag-result" id="diag-session-result"></div>
+    </div>
+
     <div class="section" style="margin-top: 1.5rem;">
       <div class="section-title">S&amp;C Assistant</div>
       <div class="ai-section">
@@ -802,7 +867,8 @@ async function fetchSessionsList(days) {
         
         container.innerHTML = html;
         
-        // Update timestamp
+        // Load settings inputs
+        await diagLoadV2Settings();
         const now = new Date();
         const timeStr = now.toLocaleString();
         document.getElementById('last-updated').textContent = `Updated ${timeStr}`;
@@ -999,6 +1065,100 @@ async function fetchSessionsList(days) {
       }
     }
     
+    // ═══════════════════════════════════════════════════════
+    // SETTINGS — Pattern Sensitivity & Session Processing
+    // ═══════════════════════════════════════════════════════
+
+    function _diagSetResult(id, msg, ok) {
+      const el = document.getElementById(id);
+      if (!msg) { el.style.display = 'none'; return; }
+      el.textContent = msg;
+      el.className = 'diag-result ' + (ok ? 'ok' : 'err');
+      el.style.display = 'block';
+    }
+
+    async function diagLoadV2Settings() {
+      try {
+        const r = await fetch('/api/settings/v2');
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.detail || 'Failed to load settings.');
+        document.getElementById('diag-pattern-stressed').value = d.v2_threshold_stressed;
+        document.getElementById('diag-pattern-neutral').value = d.v2_threshold_neutral;
+        document.getElementById('diag-auto-verify-threshold').value = d.auto_verify_confidence_threshold;
+      } catch (e) {
+        _diagSetResult('diag-pattern-result', '✗ Could not load settings: ' + e.message, false);
+      }
+    }
+
+    async function diagSavePatternSensitivity() {
+      const btn = document.getElementById('diag-btn-save-pattern');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      try {
+        const payload = {
+          v2_threshold_stressed: +document.getElementById('diag-pattern-stressed').value,
+          v2_threshold_neutral: +document.getElementById('diag-pattern-neutral').value,
+        };
+        const r = await fetch('/api/settings/v2/pattern-sensitivity', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.detail || 'Save failed.');
+        _diagSetResult('diag-pattern-result', '✓ Pattern sensitivity saved.', true);
+      } catch (e) {
+        _diagSetResult('diag-pattern-result', '✗ ' + e.message, false);
+      } finally {
+        btn.disabled = false; btn.textContent = 'Save Pattern Sensitivity';
+      }
+    }
+
+    async function diagSaveSessionProcessing() {
+      const btn = document.getElementById('diag-btn-save-session');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      try {
+        const payload = {
+          auto_verify_confidence_threshold: +document.getElementById('diag-auto-verify-threshold').value,
+        };
+        const r = await fetch('/api/settings/v2/session-processing', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.detail || 'Save failed.');
+        _diagSetResult('diag-session-result', '✓ Session processing settings saved.', true);
+      } catch (e) {
+        _diagSetResult('diag-session-result', '✗ ' + e.message, false);
+      } finally {
+        btn.disabled = false; btn.textContent = 'Save Session Processing';
+      }
+    }
+
+    async function diagReclassifySessions(forceAll) {
+      if (forceAll) {
+        if (!window.confirm('Force reclassify all sessions? This will overwrite verified session modality classification fields.')) return;
+      }
+      const btnId = forceAll ? 'diag-btn-force-reclassify' : 'diag-btn-reclassify';
+      const btn = document.getElementById(btnId);
+      const origLabel = btn.textContent;
+      btn.disabled = true; btn.textContent = forceAll ? 'Reclassifying All…' : 'Reclassifying…';
+      try {
+        const r = await fetch('/api/settings/v2/reclassify-sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ force_all: !!forceAll }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.detail || 'Reclassification failed.');
+        _diagSetResult('diag-session-result', `✓ ${d.message}`, true);
+      } catch (e) {
+        _diagSetResult('diag-session-result', '✗ ' + e.message, false);
+      } finally {
+        btn.disabled = false; btn.textContent = origLabel;
+      }
+    }
+
     // ═══════════════════════════════════════════════════════
     // INITIALIZATION
     // ═══════════════════════════════════════════════════════

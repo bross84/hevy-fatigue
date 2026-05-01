@@ -1,6 +1,6 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-04-30 (patch)
+Last updated: 2026-05-01 (Settings refactor + diagnostics migration)
 
 ## 1) Current Product State
 
@@ -59,6 +59,16 @@ Last updated: 2026-04-30 (patch)
 	- Settings tab load flow now always fetches `/api/settings/v2` values even if API-key metadata fetch fails
 	- Training State Thresholds fields rehydrate from saved `app_settings` values on each Settings tab open
 	- Added subtle Settings footer link to diagnostics page: `View engine diagnostics →` (small, low-contrast text, no button styling)
+- Settings tab refactored to 3-card layout (2026-05-01):
+	- Removed Pattern Sensitivity card from Settings tab; controls migrated to `static/diagnostic.html`
+	- Removed Session Processing card from Settings tab; controls migrated to `static/diagnostic.html`
+	- Settings desktop grid updated to `"api sync" / "diagnostics diagnostics"` (2-col top, full-width bottom)
+	- Replaced `View engine diagnostics →` text link with a full-width card: title "Engine Diagnostics & Tweaks", explainer, and accent-coloured CTA button
+	- `loadV2Settings()`, `savePatternSensitivity()`, `saveSessionProcessingSettings()`, `reclassifySessions()` removed from `static/index.html`
+- Diagnostics page settings sections added (2026-05-01):
+	- Added Pattern Sensitivity section to `static/diagnostic.html` with Stressed/Neutral threshold inputs, save button, and result feedback
+	- Added Session Processing section to `static/diagnostic.html` with Auto-Verify Confidence Threshold input, pending and force reclassification buttons, and result feedback
+	- `diagLoadV2Settings()` wired into `loadAndRender()` so inputs populate on page load and Refresh
 - Diagnostics page engine snapshot updates completed:
 	- Added backend endpoint `GET /api/diagnostics/snapshot` in `main.py`
 	- Endpoint returns grouped snapshot payload for subjective/objective/combined score breakdowns, ATL/CTL/TSB, TSB thresholds, joint advisory (raw + current state), and last 10 session classifications

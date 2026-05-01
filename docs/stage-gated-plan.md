@@ -41,7 +41,19 @@ This document locks implementation to strict stage gates and dependency order.
 	- replaced five readiness-zone band colors with higher-contrast rgba values; current palette uses deep navy / cyan / green / amber / red bands
 	- set readiness chart x/y gridlines to `rgba(128,128,128,0.15)` for improved visibility in both light and dark themes
 
-## Dependency Order
+## Latest Maintenance Update (2026-05-01)
+
+- Settings tab refactored to 3-card layout in `static/index.html`:
+	- Pattern Sensitivity card removed; controls migrated to `static/diagnostic.html`
+	- Session Processing card removed; controls migrated to `static/diagnostic.html`
+	- Desktop grid-template-areas updated to `"api sync" / "diagnostics diagnostics"`
+	- Mobile media query updated to reset `api`, `sync`, and `diagnostics` areas only
+	- `View engine diagnostics →` text link replaced with a full-width `settings-card-diagnostics` card with accent-colour CTA button
+	- Removed JS: `loadV2Settings()`, `savePatternSensitivity()`, `saveSessionProcessingSettings()`, `reclassifySessions()` from `static/index.html`
+- Diagnostics page settings controls added to `static/diagnostic.html`:
+	- Pattern Sensitivity section: Stressed/Neutral threshold inputs, save button, result feedback
+	- Session Processing section: Auto-Verify Confidence Threshold input, pending + force reclassify buttons, result feedback
+	- `diagLoadV2Settings()` called from `loadAndRender()` — inputs populate on page load and Refresh
 
 1. Stage 1 (COMPLETE)
 2. Stage 2 (COMPLETE)

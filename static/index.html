@@ -1506,8 +1506,8 @@ tbody tr:hover td { background: var(--row-hover); }
   gap: 14px;
   align-items: start;
   grid-template-areas:
-    "api pattern"
-    "session sync";
+    "api sync"
+    "diagnostics diagnostics";
 }
 #tab-settings .settings-card {
   max-width: none;
@@ -1515,24 +1515,20 @@ tbody tr:hover td { background: var(--row-hover); }
   margin-bottom: 0;
 }
 #tab-settings .settings-card-api { grid-area: api; }
-#tab-settings .settings-card-pattern { grid-area: pattern; }
-#tab-settings .settings-card-session { grid-area: session; }
 #tab-settings .settings-card-sync { grid-area: sync; }
-.settings-diagnostics-link {
-  grid-column: 1 / -1;
-  margin-top: 6px;
-  text-align: center;
-  font-size: 12px;
-  color: var(--muted);
-}
-.settings-diagnostics-link a {
-  color: var(--muted);
+#tab-settings .settings-card-diagnostics { grid-area: diagnostics; }
+.settings-diag-body { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 16px; }
+.settings-diag-cta {
+  display: inline-block;
+  padding: 8px 16px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
   text-decoration: none;
 }
-.settings-diagnostics-link a:hover {
-  color: var(--text);
-  text-decoration: underline;
-}
+.settings-diag-cta:hover { opacity: 0.88; }
 .settings-key-row { display: flex; gap: 8px; align-items: stretch; }
 .settings-key-row input {
   flex: 1;
@@ -1579,9 +1575,8 @@ tbody tr:hover td { background: var(--row-hover); }
     width: 100%;
   }
   #tab-settings .settings-card-api,
-  #tab-settings .settings-card-pattern,
-  #tab-settings .settings-card-session,
-  #tab-settings .settings-card-sync { grid-area: auto; }
+  #tab-settings .settings-card-sync,
+  #tab-settings .settings-card-diagnostics { grid-area: auto; }
 }
 
 /* ── Log tab: soreness pattern cell ── */
@@ -2064,54 +2059,6 @@ tbody tr:hover td { background: var(--row-hover); }
     </div>
   </div>
 
-  <div class="card settings-card settings-card-pattern">
-    <div class="card-title">Pattern Sensitivity</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
-      Controls when a movement pattern is flagged as stressed or available. Lower the stressed threshold to flag patterns more aggressively, raise it to require more load before flagging.
-    </p>
-    <div class="settings-grid-2" style="margin-bottom:10px;">
-      <div class="form-row" style="margin-bottom:0;">
-        <div class="form-label">Stressed threshold</div>
-        <input type="number" id="pattern-stressed" min="0" max="1" step="0.01">
-      </div>
-      <div class="form-row" style="margin-bottom:0;">
-        <div class="form-label">Neutral threshold</div>
-        <input type="number" id="pattern-neutral" min="0" max="1" step="0.01">
-      </div>
-    </div>
-    <button class="btn btn-primary" id="btn-save-pattern" onclick="savePatternSensitivity()">Save Pattern Sensitivity</button>
-    <div class="settings-result" id="pattern-result" style="margin-top:10px;"></div>
-  </div>
-
-  <div class="card settings-card settings-card-session">
-    <div class="card-title">Session Processing</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
-      Normalizes conditioning session stress relative to strength sessions. Increase if conditioning feels underweighted in your fatigue score, decrease if overweighted. Default 29.
-    </p>
-    <div class="form-row" style="margin-bottom:10px;">
-      <div class="form-label">Conditioning stress scaling factor</div>
-      <input type="number" id="conditioning-scale" min="0.1" max="200" step="0.1">
-    </div>
-
-    <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
-      Minimum confidence required to automatically verify a Strength or Hypertrophy session. Conditioning and Cardio always require manual verification regardless of this setting.
-    </p>
-    <div class="form-row" style="margin-bottom:10px;">
-      <div class="form-label">Auto-Verify Confidence Threshold</div>
-      <input type="number" id="auto-verify-threshold" min="0.5" max="1" step="0.05" placeholder="0.87">
-    </div>
-
-    <button class="btn btn-primary" id="btn-save-session-processing" onclick="saveSessionProcessingSettings()">Save Session Processing</button>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
-      <button class="btn btn-secondary" id="btn-reclassify-sessions" onclick="reclassifySessions(false)">Reclassify Sessions</button>
-      <button class="btn btn-secondary" id="btn-force-reclassify-sessions" onclick="reclassifySessions(true)" style="border-color:var(--danger);color:var(--danger);">Force Reclassify All</button>
-    </div>
-    <p style="font-size:13px;color:var(--muted);margin:10px 0 0;line-height:1.6;">
-      Reclassify existing sessions locally using the current title keyword and exercise analysis rules. This does not call the Hevy API or use the sync cooldown path.
-    </p>
-    <div class="settings-result" id="conditioning-result" style="margin-top:10px;"></div>
-  </div>
-
   <div class="card settings-card settings-card-sync">
     <div class="card-title">Hevy Sync</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
@@ -2122,8 +2069,10 @@ tbody tr:hover td { background: var(--row-hover); }
     <button class="btn btn-secondary" id="sync-btn" onclick="runSync()" style="width:100%;">⟳ Sync Now</button>
   </div>
 
-  <div class="settings-diagnostics-link">
-    <a href="/static/diagnostic.html">View engine diagnostics →</a>
+  <div class="card settings-card settings-card-diagnostics">
+    <div class="card-title">Engine Diagnostics &amp; Tweaks</div>
+    <p class="settings-diag-body">The diagnostics page shows how your scores are calculated, the raw numbers behind your Today recommendation, and settings for fine-tuning how the engine classifies and patterns your training data.</p>
+    <a class="settings-diag-cta" href="/static/diagnostic.html">Open Engine Diagnostics →</a>
   </div>
 </section>
 
@@ -2637,7 +2586,6 @@ async function loadSettingsTab() {
   } catch (e) {
     document.getElementById('api-key-current').textContent = 'Could not load settings.';
   }
-  await loadV2Settings();
 }
 
 function toggleKeyVisibility() {
@@ -2659,115 +2607,6 @@ function _setSectionResult(id, msg, ok) {
   el.textContent = msg;
   el.className = 'settings-result ' + (ok ? 'ok' : 'error');
   el.style.display = 'block';
-}
-
-async function loadV2Settings() {
-  try {
-    const r = await fetch('/api/settings/v2');
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.detail || 'Failed to load v2 settings.');
-
-    document.getElementById('pattern-stressed').value = d.v2_threshold_stressed;
-    document.getElementById('pattern-neutral').value = d.v2_threshold_neutral;
-    document.getElementById('conditioning-scale').value = d.conditioning_stress_scaling_factor;
-    document.getElementById('auto-verify-threshold').value = d.auto_verify_confidence_threshold;
-
-    _setSectionResult('pattern-result', '', null);
-    _setSectionResult('conditioning-result', '', null);
-  } catch (e) {
-    _setSectionResult('pattern-result', '✗ ' + e.message, false);
-    _setSectionResult('conditioning-result', '', null);
-  }
-}
-
-async function savePatternSensitivity() {
-  const btn = document.getElementById('btn-save-pattern');
-  btn.disabled = true;
-  btn.textContent = 'Saving…';
-  try {
-    const payload = {
-      v2_threshold_stressed: +document.getElementById('pattern-stressed').value,
-      v2_threshold_neutral: +document.getElementById('pattern-neutral').value,
-    };
-    const r = await fetch('/api/settings/v2/pattern-sensitivity', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.detail || 'Save failed.');
-    _setSectionResult('pattern-result', '✓ Pattern sensitivity saved.', true);
-    invalidateTodayCaches();
-    loadTrainingLoadCard();
-    if (logLoaded) { logLoaded = false; loadLog(); }
-  } catch (e) {
-    _setSectionResult('pattern-result', '✗ ' + e.message, false);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Save Pattern Sensitivity';
-  }
-}
-
-async function saveSessionProcessingSettings() {
-  const btn = document.getElementById('btn-save-session-processing');
-  btn.disabled = true;
-  btn.textContent = 'Saving…';
-  try {
-    const payload = {
-      conditioning_stress_scaling_factor: +document.getElementById('conditioning-scale').value,
-      auto_verify_confidence_threshold: +document.getElementById('auto-verify-threshold').value,
-    };
-    const r = await fetch('/api/settings/v2/session-processing', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.detail || 'Save failed.');
-    _setSectionResult('conditioning-result', '✓ Session processing settings saved.', true);
-    invalidateTodayCaches();
-    loadTrainingLoadCard();
-    if (logLoaded) { logLoaded = false; loadLog(); }
-  } catch (e) {
-    _setSectionResult('conditioning-result', '✗ ' + e.message, false);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Save Session Processing';
-  }
-}
-
-async function reclassifySessions(forceAll) {
-  if (forceAll) {
-    const confirmed = window.confirm('Force reclassify all sessions? This will overwrite verified session modality classification fields.');
-    if (!confirmed) return;
-  }
-
-  const btn = document.getElementById(forceAll ? 'btn-force-reclassify-sessions' : 'btn-reclassify-sessions');
-  const originalLabel = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = forceAll ? 'Reclassifying All…' : 'Reclassifying…';
-
-  try {
-    const r = await fetch('/api/settings/v2/reclassify-sessions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ force_all: !!forceAll }),
-    });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.detail || 'Reclassification failed.');
-
-    _setSectionResult('conditioning-result', `✓ ${d.message}`, true);
-    sessionDetailCache = {};
-    await Promise.all([
-      loadSessionVerificationQueue(),
-      loadSessionLog(),
-    ]);
-  } catch (e) {
-    _setSectionResult('conditioning-result', '✗ ' + e.message, false);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = originalLabel;
-  }
 }
 
 async function saveApiKey() {
