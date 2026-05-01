@@ -1,6 +1,6 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-02 (Movement Trend feature)
+Last updated: 2026-05-01 (Movement Trend redesign)
 
 ## 1) Current Product State
 
@@ -35,17 +35,21 @@ Last updated: 2026-05-02 (Movement Trend feature)
 	- removed legacy `tl-wrap` card
 	- removed legacy recent workouts summary table
 - Log tab: Rec column removed from session log table (column header + cells stripped).
-- Movement Trend feature added to Workouts tab (2026-05-02):
-	- New backend endpoint `GET /api/movements/search?q=` — returns up to 20 distinct `exercise_title` matches (case-insensitive LIKE, min 2 chars)
-	- New backend endpoint `GET /api/movements/weekly-trend?exercise=&weeks=` — returns per-week `weekly_volume`, `avg_weight`, `set_count` for verified sessions only; supports `weeks=8|12|26`
-	- Both endpoints added before the static file mount in `main.py`
-	- Frontend: new Movement Trend card in Workouts tab between the Verification Queue and Session Log cards
-	- Card contains: 8/12/26 week selector (`.btn-group`), debounced search input with autocomplete dropdown (300 ms debounce, close-on-outside-click via `document.addEventListener('click')`), clear button, placeholder/loading/chart states
-	- Chart: Chart.js dual-axis bar+line combo — bars for weekly volume (left Y), line for avg weight (right Y), `spanGaps: false` for missing weeks, theme-aware colors via `themeColors()`
-	- `applyTheme()` hook: rebuilds chart when Workouts tab is active and `mvtLastData` is non-null
-	- `_mvtInitHandlers()` called from `DOMContentLoaded`; idempotent guard via `data-mvtBound` attribute removed in favor of single call pattern
-	- Brace balance audit passed: delta 0
-
+- Movement Trend redesigned in Workouts tab (2026-05-01):
+	- Card remains between Session Verification Queue and Session Log
+	- Search row uses placeholder `Search movements...` + clear button and 300 ms debounced autocomplete (`/api/movements/search?q=`)
+	- Controls now use two toggle groups on one row:
+		- Metric: `e1RM`, `Top Set`, `Avg Weight`, `Volume`
+		- Window: `8W`, `6M`, `1Y`, `All`
+	- Endpoint routing by metric:
+		- `e1RM`/`Top Set`/`Avg Weight` -> `/api/movements/session-trend?exercise=&window=`
+		- `Volume` -> `/api/movements/volume-trend?exercise=&window=`
+	- Chart rebuilt as single line chart with markers (`spanGaps: false`), sparse x-axis labels (`maxTicksLimit: 6`), and y-axis metric label
+	- Y-axis auto-range now applies dynamic 10% padding around finite values
+	- Theme redraw retained in `applyTheme()` while Workouts tab is active and movement data is loaded
+	- Outside-click dropdown close integrated into existing document click listener using `event.target.closest()` without changing mobile-nav behavior
+	- Handler binding is idempotent (`mvtHandlersBound` guard) to prevent duplicate listeners
+	- Static diagnostics pass on `static/index.html`: no errors
 	- Session Log with filtering, fatigue annotation, expandable detail views, and inline per-row edit
 	- Session row panels hardened: Edit and Show Details are now mutually exclusive per row
 	- Session Log default page now loads 50 rows, with API-backed Load More pagination

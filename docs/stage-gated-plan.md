@@ -971,6 +971,43 @@ Gate tests:
         - Log tab Rec column removed (prior task, same session).
         - Full live browser validation pending in a served-app environment.
 
+	### Post-Stage 7.18 — Movement Trend redesign (UI + client data flow)
+
+	Implemented changes:
+	- Replaced the entire Movement Trend implementation in `static/index.html` (HTML, CSS, and JS) while keeping the card between Session Verification Queue and Session Log in Workouts.
+	- Updated card structure:
+		- title: `Movement Trend`
+		- search input (`Search movements...`) with clear button
+		- two toggle groups on one wrapping row:
+			- Metric: `e1RM`, `Top Set`, `Avg Weight`, `Volume`
+			- Window: `8W`, `6M`, `1Y`, `All`
+		- chart canvas area + empty placeholder + loading spinner
+	- Search and selection behavior:
+		- 300 ms debounce, minimum 2 characters
+		- autocomplete endpoint remains `/api/movements/search?q=`
+		- dropdown selection sets movement, closes dropdown, and loads chart
+		- clear resets movement state, chart instance, dropdown, and placeholder message
+		- outside-click dropdown close merged into existing document click listener using `event.target.closest('#mvt-search-wrap')`
+	- Metric/window endpoint routing changed in client:
+		- `e1RM` / `Top Set` / `Avg Weight` -> `/api/movements/session-trend?exercise=&window=`
+		- `Volume` -> `/api/movements/volume-trend?exercise=&window=`
+	- Chart rendering changed to single line series with markers:
+		- `spanGaps: false`
+		- x-axis `maxTicksLimit: 6` with short month/day labels
+		- y-axis title uses selected metric name
+		- y-axis auto-range applies 10% dynamic padding
+		- line + points use `--accent`; point border uses `--card`
+		- legend disabled; tooltip shows date + metric label + value
+	- Lifecycle hardening:
+		- prior chart destroyed before each rebuild
+		- redraw on theme changes retained when Workouts tab is active and cached movement data exists
+		- handler setup made idempotent via `mvtHandlersBound`
+
+	Validation evidence:
+	- Static diagnostics pass: `static/index.html` reports no errors.
+	- Search confirms old week-selector wiring removed (`mvt-week-selector` / `data-weeks` absent).
+	- New endpoint wiring present in `static/index.html`: `/api/movements/session-trend` and `/api/movements/volume-trend`.
+
 ## Decisions Locked
 
 - Full-body via existing percentage fields (no `is_full_body` column).
