@@ -43,6 +43,9 @@
 [data-theme="light"] {
   --bg:           #e1dee3;
   --card:         #f5f3f6;
+  --border:       #c8c4ca;
+  --text:         #2e2830;
+  --muted:        #7a6e7c;
   --accent:       #058ed9;
   --quad:         #058ed9;
   --posterior:    #b9314f;
@@ -50,6 +53,7 @@
   --pull:         #6b3fa0;
   --danger:       #b9314f;
   --decrease-band:#e7a24a;
+  --success:      #1a7a3c;
   --warn:         #9a6e00;
   --accent-sub:   rgba(5,142,217,.13);
   --row-hover:    rgba(0,0,0,.04);
@@ -4333,11 +4337,11 @@ function _todayReadinessBandsPlugin() {
       const { ctx, chartArea, scales } = chart;
       if (!chartArea || !scales?.y) return;
       const bands = [
-        { from: 0.0, to: 3.0, color: 'rgba(75, 145, 220, 0.14)' },
-        { from: 3.0, to: 4.0, color: 'rgba(75, 184, 180, 0.12)' },
-        { from: 4.0, to: 6.0, color: 'rgba(77, 184, 112, 0.10)' },
-        { from: 6.0, to: 6.5, color: 'rgba(214, 164, 75, 0.14)' },
-        { from: 6.5, to: 10.0, color: 'rgba(239, 62, 54, 0.12)' },
+        { from: 0.0, to: 3.0, color: 'rgba(58, 130, 220, 0.22)' },
+        { from: 3.0, to: 4.0, color: 'rgba(56, 176, 140, 0.20)' },
+        { from: 4.0, to: 6.0, color: 'rgba(77, 184, 112, 0.18)' },
+        { from: 6.0, to: 6.5, color: 'rgba(214, 148, 50, 0.26)' },
+        { from: 6.5, to: 10.0, color: 'rgba(220, 60, 54, 0.22)' },
       ];
       ctx.save();
       for (const band of bands) {
@@ -4426,12 +4430,14 @@ function renderTodayReadinessChart(history) {
         ..._trendChartBaseOptions().scales,
         x: {
           ..._trendChartBaseOptions().scales.x,
+          grid: { color: 'rgba(128,128,128,0.15)' },
           ticks: { ..._trendChartBaseOptions().scales.x.ticks, maxTicksLimit: 7 },
         },
         y: {
           ..._trendChartBaseOptions().scales.y,
           min: 0,
           max: 10,
+          grid: { color: 'rgba(128,128,128,0.15)' },
           ticks: { ..._trendChartBaseOptions().scales.y.ticks, stepSize: 1 },
         },
       },
