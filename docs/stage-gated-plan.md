@@ -26,6 +26,18 @@ This document locks implementation to strict stage gates and dependency order.
 - `today.recommendation_v2` now exposes `subjective_score`, `objective_score`, and `combined_score` for frontend display.
 - Today recommendation card now renders the three score tiles under the training-state detail line.
 
+## Latest Maintenance Update (2026-04-30)
+
+- Fixed CSS corruption in `static/index.html` introduced during Settings grid rebalancing:
+	- removed stray `grid-template-areas` string literals from the `[data-theme="light"]` variable block
+	- restored missing `html { ... }` wrapper in the Base section
+	- removed misplaced `.today-chart-*` rules from the dark theme token block and restored them to normal CSS scope
+	- moved mobile `.today-chart-wrap` sizing override back under a proper media query
+- Verified style-block structural integrity:
+	- brace count balanced
+	- brace depth never negative
+	- static diagnostics clean for `static/index.html`
+
 ## Dependency Order
 
 1. Stage 1 (COMPLETE)

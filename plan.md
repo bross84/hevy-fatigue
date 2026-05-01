@@ -185,6 +185,11 @@ Last updated: 2026-04-30 (patch)
 - Settings grid mobile fix: DONE
 	- Removed invalid `grid-template-areas: none` from `@media (max-width: 900px)` block in `static/index.html`
 	- Added `grid-area: auto` resets for all 5 `.settings-card-*` children within the same breakpoint so cards stack in DOM order
+- Settings CSS corruption hotfix: DONE
+	- Removed stray `grid-template-areas` string literals that were incorrectly inserted into the `[data-theme="light"]` variable block
+	- Restored missing `html { ... }` wrapper in the Base CSS section
+	- Removed misplaced `.today-chart-*` rules that were accidentally injected inside the dark theme token block and relocated those rules to the Today section
+	- Restored mobile `.today-chart-wrap` sizing rule under a proper media query block
 - TSB Settings card removal: DONE
 	- Removed obsolete `Training State Thresholds` card from `static/index.html`
 	- Removed frontend-only JS support for `saveTrainingStateThresholds()`, the four TSB inputs, and `tsb-result`
@@ -196,6 +201,10 @@ Last updated: 2026-04-30 (patch)
 	- Chart uses null gaps, short weekday labels, y-axis `0..10`, and five readiness-zone background bands
 	- Syntax/static validation passed for `main.py` and `static/index.html`; desktop Settings layout and Today card placement verified in-browser
 	- Full live API/runtime verification and true sub-900px browser rendering remain pending in an environment with the app served normally
+- CSS corruption repair verification: DONE
+	- `<style>` block brace audit passed: opening and closing braces are equal and running depth never goes negative
+	- Static diagnostics pass for `static/index.html` reports no errors
+	- Runtime style check confirms body font stack and theme colors now apply from CSS instead of fallback defaults
 
 ## 5) Open Items / Next Backlog
 
