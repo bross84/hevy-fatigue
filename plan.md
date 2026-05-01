@@ -1,6 +1,6 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-01 (Settings refactor + diagnostics migration)
+Last updated: 2026-05-02 (Movement Trend feature)
 
 ## 1) Current Product State
 
@@ -34,8 +34,18 @@ Last updated: 2026-05-01 (Settings refactor + diagnostics migration)
 	- removed orphan `tsbZoneChart` markup
 	- removed legacy `tl-wrap` card
 	- removed legacy recent workouts summary table
-- Workouts tab migration completed:
-	- Session Verification Queue retained
+- Log tab: Rec column removed from session log table (column header + cells stripped).
+- Movement Trend feature added to Workouts tab (2026-05-02):
+	- New backend endpoint `GET /api/movements/search?q=` — returns up to 20 distinct `exercise_title` matches (case-insensitive LIKE, min 2 chars)
+	- New backend endpoint `GET /api/movements/weekly-trend?exercise=&weeks=` — returns per-week `weekly_volume`, `avg_weight`, `set_count` for verified sessions only; supports `weeks=8|12|26`
+	- Both endpoints added before the static file mount in `main.py`
+	- Frontend: new Movement Trend card in Workouts tab between the Verification Queue and Session Log cards
+	- Card contains: 8/12/26 week selector (`.btn-group`), debounced search input with autocomplete dropdown (300 ms debounce, close-on-outside-click via `document.addEventListener('click')`), clear button, placeholder/loading/chart states
+	- Chart: Chart.js dual-axis bar+line combo — bars for weekly volume (left Y), line for avg weight (right Y), `spanGaps: false` for missing weeks, theme-aware colors via `themeColors()`
+	- `applyTheme()` hook: rebuilds chart when Workouts tab is active and `mvtLastData` is non-null
+	- `_mvtInitHandlers()` called from `DOMContentLoaded`; idempotent guard via `data-mvtBound` attribute removed in favor of single call pattern
+	- Brace balance audit passed: delta 0
+
 	- Session Log with filtering, fatigue annotation, expandable detail views, and inline per-row edit
 	- Session row panels hardened: Edit and Show Details are now mutually exclusive per row
 	- Session Log default page now loads 50 rows, with API-backed Load More pagination
@@ -222,6 +232,7 @@ Last updated: 2026-05-01 (Settings refactor + diagnostics migration)
 
 Priority A
 
+- Movement Trend live validation: browser click-through with real populated data (search → select → chart renders, week toggle reloads, clear resets, theme toggle rebuilds chart).
 - Manual visual QA on real populated workout/check-in data for Trend and Session Log realism (including inline row edit, mutual exclusion of row panels, and verified/pending filters).
 - Confirm final spacing/typography rhythm in Today card stack after check-in overhaul.
 - Run cross-device pass (Safari iOS + Chrome Android) for check-in button groups and endpoint labels.
@@ -239,5 +250,5 @@ Priority B
 
 Use this when you come back:
 
-"Read plan.md first. Continue from Priority A validation with real data. Preserve the new Today-first check-in flow, Trend-owned charts, and combined-score Today recommendation model."
+"Read plan.md first. Movement Trend feature is complete (backend + frontend). Continue from Priority A validation with real data. Preserve the new Today-first check-in flow, Trend-owned charts, and combined-score Today recommendation model."
 

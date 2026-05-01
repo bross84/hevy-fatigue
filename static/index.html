@@ -1579,6 +1579,62 @@ tbody tr:hover td { background: var(--row-hover); }
   #tab-settings .settings-card-diagnostics { grid-area: auto; }
 }
 
+/* ── Movement Trend card ── */
+.mvt-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.mvt-clear-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mvt-clear-btn:hover { color: var(--text); border-color: var(--accent); }
+.mvt-dropdown {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  width: 280px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.2);
+  z-index: 200;
+  max-height: 220px;
+  overflow-y: auto;
+  display: none;
+}
+.mvt-dropdown-item {
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+.mvt-dropdown-item:last-child { border-bottom: none; }
+.mvt-dropdown-item:hover { background: var(--bg); }
+.mvt-placeholder {
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
 /* ── Log tab: soreness pattern cell ── */
 .sore-cell { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
 .sore-cell span { font-size: 12px; }
@@ -1964,6 +2020,27 @@ tbody tr:hover td { background: var(--row-hover); }
     <div id="session-verify-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
   </div>
 
+  <div class="card" id="movement-trend-card">
+    <div class="chart-header" style="margin-bottom:12px;">
+      <div class="card-title" style="margin-bottom:0;">Movement Trend</div>
+      <div class="btn-group" id="mvt-week-selector">
+        <button data-weeks="8">8 weeks</button>
+        <button data-weeks="12" class="active">12 weeks</button>
+        <button data-weeks="26">26 weeks</button>
+      </div>
+    </div>
+    <div class="mvt-search-wrap" id="mvt-search-wrap">
+      <input type="text" class="search-input" id="mvt-search-input" placeholder="Search movements…" autocomplete="off" style="flex:1;width:auto;">
+      <button class="mvt-clear-btn" id="mvt-clear-btn" title="Clear">×</button>
+      <div class="mvt-dropdown" id="mvt-dropdown"></div>
+    </div>
+    <div id="mvt-placeholder" class="mvt-placeholder">Search for a movement to see its weekly trend</div>
+    <div class="loading-wrap" id="mvt-loading" style="display:none;"><span class="spinner"></span></div>
+    <div class="trend-chart-wrap" id="mvt-chart-wrap" style="display:none;">
+      <canvas id="mvt-chart"></canvas>
+    </div>
+  </div>
+
   <div class="card">
     <div class="card-title">Session Log</div>
     <div id="session-log-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
@@ -2305,6 +2382,9 @@ function applyTheme(pref) {
     if (document.getElementById('tab-trend')?.classList.contains('active')) {
       renderTrendView();
     }
+    if (document.getElementById('tab-workouts')?.classList.contains('active') && mvtChart && mvtLastData) {
+      _mvtRenderChart(mvtLastData);
+    }
   });
 }
 
@@ -2358,6 +2438,12 @@ let sessionLogHasMore = false;
 let sessionLogFilter = 'all';
 let sessionLogFatiguePayload = null;
 let sessionDetailCache = {};
+let mvtSelectedMovement = null;
+let mvtWeeks = 12;
+let mvtSearchTimer = null;
+let mvtChart = null;
+let mvtSearchSeq = 0;
+let mvtLastData = null;
 let _todayCheckinSubmitted = false;
 let _todayCheckinExpanded = false;
 let _todayCheckinEntry = null;
@@ -2402,6 +2488,11 @@ document.addEventListener('click', e => {
   if (e.target.closest('.mobile-drawer-nav .nav-tab')) {
     setMobileNavOpen(false);
   }
+  // Close movement trend dropdown on outside click
+  if (!e.target.closest('#mvt-search-wrap')) {
+    const dd = document.getElementById('mvt-dropdown');
+    if (dd) dd.style.display = 'none';
+  }
 });
 
 // Theme toggle clicks
@@ -2429,6 +2520,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   ['ci-t','ci-r','ci-sq','ci-sp','ci-spu','ci-spl','ci-ju','ci-jl'].forEach(id => _setCheckinScaleValue(id, 0));
   setMobileNavOpen(false);
   initTrendRangeSelector();
+  _mvtInitHandlers();
   checkTodayReadiness();
   loadTrainingLoadCard();
 });
@@ -2899,7 +2991,6 @@ async function loadLog() {
     wrap.innerHTML = `<div class="table-scroll"><table>
       <thead><tr>
         <th>Date</th>
-        <th>Rec</th>
         <th>Fatigue</th>
         <th>Tired</th>
         <th>Recovery</th>
@@ -2914,7 +3005,6 @@ async function loadLog() {
         const trendWindow = entries.slice(i, i + 7).map(x => x.fatigue_score).reverse();
         return `<tr>
         <td style="white-space:nowrap;">${e.date}</td>
-        <td><span class="rec-pill ${rec.cls}" style="margin-top:0;padding:3px 10px;font-size:12px;">${rec.label}</span></td>
         <td><span class="fatigue-cell"><span style="font-weight:600;">${fatigueVal}</span>${_sparkline(trendWindow)}</span></td>
         <td><span class="sev-badge sev-${e.tiredness}">${e.tiredness}</span></td>
         <td><span class="sev-badge sev-${e.perceived_recovery}">${e.perceived_recovery}</span></td>
@@ -3026,6 +3116,195 @@ async function deleteLogEntry() {
     statusEl.style.color = 'var(--danger)';
     statusEl.textContent = `Delete failed: ${err.message}`;
   }
+}
+
+// ═══ Movement Trend ═══════════════════════════════════
+function _destroyMvtChart() {
+  if (mvtChart) { mvtChart.destroy(); mvtChart = null; }
+}
+
+function _mvtSetState(state) {
+  // state: 'placeholder' | 'loading' | 'chart'
+  document.getElementById('mvt-placeholder').style.display = state === 'placeholder' ? '' : 'none';
+  document.getElementById('mvt-loading').style.display     = state === 'loading'     ? 'flex' : 'none';
+  document.getElementById('mvt-chart-wrap').style.display  = state === 'chart'       ? '' : 'none';
+}
+
+async function _mvtSearch(q) {
+  const seq = ++mvtSearchSeq;
+  if (q.trim().length < 2) {
+    document.getElementById('mvt-dropdown').style.display = 'none';
+    return;
+  }
+  try {
+    const r = await fetch(`/api/movements/search?q=${encodeURIComponent(q)}`);
+    if (seq !== mvtSearchSeq) return;
+    const d = await r.json();
+    _mvtRenderDropdown(d.results || []);
+  } catch (_) {
+    if (seq !== mvtSearchSeq) return;
+    document.getElementById('mvt-dropdown').style.display = 'none';
+  }
+}
+
+function _mvtRenderDropdown(results) {
+  const dd = document.getElementById('mvt-dropdown');
+  if (!results.length) { dd.style.display = 'none'; return; }
+  dd.innerHTML = results.map(r =>
+    `<div class="mvt-dropdown-item" data-title="${escHtml(r)}">${escHtml(r)}</div>`
+  ).join('');
+  dd.style.display = 'block';
+}
+
+function _mvtSelectMovement(title) {
+  mvtSelectedMovement = title;
+  document.getElementById('mvt-search-input').value = title;
+  document.getElementById('mvt-dropdown').style.display = 'none';
+  _mvtLoadTrend();
+}
+
+function _mvtClear() {
+  mvtSelectedMovement = null;
+  mvtLastData = null;
+  document.getElementById('mvt-search-input').value = '';
+  document.getElementById('mvt-dropdown').style.display = 'none';
+  _destroyMvtChart();
+  _mvtSetState('placeholder');
+  document.getElementById('mvt-placeholder').textContent = 'Search for a movement to see its weekly trend';
+}
+
+async function _mvtLoadTrend() {
+  if (!mvtSelectedMovement) return;
+  _destroyMvtChart();
+  _mvtSetState('loading');
+  try {
+    const url = `/api/movements/weekly-trend?exercise=${encodeURIComponent(mvtSelectedMovement)}&weeks=${mvtWeeks}`;
+    const r = await fetch(url);
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      throw new Error(d.detail || r.statusText);
+    }
+    const data = await r.json();
+    mvtLastData = data;
+    _mvtRenderChart(data);
+    _mvtSetState('chart');
+  } catch (err) {
+    _mvtSetState('placeholder');
+    document.getElementById('mvt-placeholder').textContent = `Could not load trend: ${err.message}`;
+  }
+}
+
+function _mvtRenderChart(data) {
+  _destroyMvtChart();
+  const c = themeColors();
+  const ctx = document.getElementById('mvt-chart').getContext('2d');
+
+  const labels = data.map(w => {
+    const [y, m, d] = w.week_start.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  });
+  const volumes    = data.map(w => w.weekly_volume);
+  const avgWeights = data.map(w => w.avg_weight);  // nulls preserved → spanGaps: false skips
+
+  mvtChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Volume (lbs)',
+          data: volumes,
+          backgroundColor: c.accent + '99',
+          borderColor: c.accent,
+          borderWidth: 1,
+          yAxisID: 'yVolume',
+          order: 2,
+        },
+        {
+          type: 'line',
+          label: 'Avg Weight (lbs)',
+          data: avgWeights,
+          borderColor: c.success,
+          backgroundColor: c.success + '33',
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          borderWidth: 2,
+          tension: 0.3,
+          spanGaps: false,
+          yAxisID: 'yWeight',
+          order: 1,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: c.muted, font: { size: 11 } } },
+        tooltip: {
+          backgroundColor: c.card,
+          borderColor: c.border,
+          borderWidth: 1,
+          titleColor: c.text,
+          bodyColor: c.muted,
+          padding: 10,
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: c.muted, font: { size: 10 }, maxTicksLimit: 14 },
+          grid: { color: 'rgba(128,128,128,0.08)' },
+        },
+        yVolume: {
+          type: 'linear',
+          position: 'left',
+          title: { display: true, text: 'Volume (lbs)', color: c.muted, font: { size: 10 } },
+          ticks: { color: c.muted, font: { size: 10 } },
+          grid: { color: 'rgba(128,128,128,0.08)' },
+        },
+        yWeight: {
+          type: 'linear',
+          position: 'right',
+          title: { display: true, text: 'Avg Weight (lbs)', color: c.muted, font: { size: 10 } },
+          ticks: { color: c.muted, font: { size: 10 } },
+          grid: { drawOnChartArea: false },
+        },
+      },
+    },
+  });
+}
+
+function _mvtInitHandlers() {
+  const input = document.getElementById('mvt-search-input');
+  if (!input) return;
+
+  input.addEventListener('input', () => {
+    clearTimeout(mvtSearchTimer);
+    const val = input.value;
+    mvtSearchTimer = setTimeout(() => _mvtSearch(val), 300);
+  });
+
+  document.getElementById('mvt-dropdown').addEventListener('click', e => {
+    const item = e.target.closest('.mvt-dropdown-item');
+    if (item) _mvtSelectMovement(item.dataset.title);
+  });
+
+  document.getElementById('mvt-clear-btn').addEventListener('click', () => _mvtClear());
+
+  document.getElementById('mvt-week-selector').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-weeks]');
+    if (!btn) return;
+    const w = parseInt(btn.dataset.weeks, 10);
+    if (w === mvtWeeks) return;
+    mvtWeeks = w;
+    document.querySelectorAll('#mvt-week-selector button').forEach(b =>
+      b.classList.toggle('active', parseInt(b.dataset.weeks, 10) === mvtWeeks)
+    );
+    if (mvtSelectedMovement) _mvtLoadTrend();
+  });
 }
 
 // ═══ Workouts tab ═════════════════════════════════════

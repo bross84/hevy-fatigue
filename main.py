@@ -2483,6 +2483,91 @@ def update_exercise_mapping(
         "is_reviewed": mapping.is_reviewed,
     }
 
+# ── Movement analytics ────────────────────────────────────────────────────────
+
+@app.get("/api/movements/search")
+def search_movements(q: str = "", db: Session = Depends(get_db)):
+    """Return up to 20 distinct exercise titles containing the search string."""
+    q_stripped = q.strip()
+    if len(q_stripped) < 2:
+        return {"results": []}
+    rows = (
+        db.query(WorkoutLog.exercise_title)
+        .filter(WorkoutLog.exercise_title.ilike(f"%{q_stripped}%"))
+        .distinct()
+        .order_by(WorkoutLog.exercise_title)
+        .limit(20)
+        .all()
+    )
+    return {"results": [r[0] for r in rows if r[0]]}
+
+
+@app.get("/api/movements/weekly-trend")
+def movements_weekly_trend(
+    exercise: str = "",
+    weeks: int = 12,
+    db: Session = Depends(get_db),
+):
+    """Return per-week volume/avg-weight/set-count for a given exercise (verified sessions only)."""
+    exercise_stripped = exercise.strip()
+    if not exercise_stripped:
+        raise HTTPException(status_code=400, detail="exercise parameter is required.")
+    if weeks not in (8, 12, 26):
+        raise HTTPException(status_code=400, detail="weeks must be 8, 12, or 26.")
+
+    # Build trailing N week buckets (Monday starts), oldest first
+    today = date_type.today()
+    current_monday = today - timedelta(days=today.weekday())
+    week_starts = [current_monday - timedelta(weeks=i) for i in range(weeks - 1, -1, -1)]
+
+    range_start = week_starts[0]
+    range_end = current_monday + timedelta(days=6)  # Sunday of current week
+
+    # Query WorkoutLog joined to WorkoutSession (verified only)
+    rows = (
+        db.query(WorkoutLog)
+        .join(WorkoutSession, WorkoutLog.workout_id == WorkoutSession.hevy_workout_id)
+        .filter(
+            func.lower(WorkoutLog.exercise_title) == exercise_stripped.lower(),
+            WorkoutSession.verification_status == "verified",
+            WorkoutLog.date >= range_start,
+            WorkoutLog.date <= range_end,
+        )
+        .all()
+    )
+
+    # Group by Monday-start week in Python
+    from collections import defaultdict
+    weekly: dict = defaultdict(list)
+    for row in rows:
+        row_monday = row.date - timedelta(days=row.date.weekday())
+        weekly[str(row_monday)].append(row)
+
+    # Build exactly N rows in chronological order, zero-filling missing weeks
+    result = []
+    for ws in week_starts:
+        ws_str = str(ws)
+        week_rows = weekly.get(ws_str, [])
+        if week_rows:
+            total_volume = sum(float(r.weight_lbs or 0) * int(r.reps or 0) for r in week_rows)
+            weights = [float(r.weight_lbs) for r in week_rows if r.weight_lbs is not None]
+            avg_w = round(sum(weights) / len(weights), 1) if weights else None
+            result.append({
+                "week_start": ws_str,
+                "weekly_volume": round(total_volume, 1),
+                "avg_weight": avg_w,
+                "set_count": len(week_rows),
+            })
+        else:
+            result.append({
+                "week_start": ws_str,
+                "weekly_volume": 0,
+                "avg_weight": None,
+                "set_count": 0,
+            })
+    return result
+
+
 # --- Static files (mounted AFTER all API routes) ---
 if os.path.isdir(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

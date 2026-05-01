@@ -939,6 +939,38 @@ Gate tests:
 	- Desktop Settings layout and Today-card placement verified in the browser.
 	- Full served-app runtime validation and real mobile-browser rendering remain pending outside the current file:// browser context.
 
+        ### Post-Stage 7.17 — Movement Trend feature
+
+        Implemented changes:
+        - Added `GET /api/movements/search?q=` in `main.py`:
+                - returns `{"results": [...]}` with up to 20 distinct `exercise_title` matches
+                - case-insensitive LIKE filter, min 2 characters required, blank query returns empty list
+        - Added `GET /api/movements/weekly-trend?exercise=&weeks=` in `main.py`:
+                - returns one entry per week for the requested window (8, 12, or 26 weeks)
+                - joins `WorkoutLog` to `WorkoutSession` on `workout_id == hevy_workout_id`
+                - filters to `verification_status == "verified"` sessions only
+                - per-week fields: `week_start` (ISO date of Monday), `weekly_volume`, `avg_weight` (nullable), `set_count`
+                - missing weeks return zero volume and null avg_weight
+                - Python-side Monday grouping (`date - timedelta(days=date.weekday())`) avoids SQLite ISO week edge cases
+                - both endpoints inserted before the static file mount in `main.py`
+        - Added Movement Trend card to Workouts tab in `static/index.html`:
+                - card placed between Session Verification Queue and Session Log cards
+                - 8/12/26 week selector using `.btn-group`
+                - search input with 300 ms debounced autocomplete calling `/api/movements/search`
+                - autocomplete dropdown (`.mvt-dropdown`) with click-to-select and close-on-outside-click via `document.addEventListener('click')`
+                - clear (`×`) button resets selection, dropdown, and chart
+                - three states: placeholder text, `.loading-wrap` spinner, `.trend-chart-wrap` canvas
+                - Chart.js dual-axis bar+line combo: bars = weekly volume (left Y), line = avg weight with `spanGaps: false` (right Y)
+                - theme-aware colors via `themeColors()`; chart rebuilds in `applyTheme()` RAF block when Workouts tab is active and `mvtLastData` is non-null
+                - `_mvtInitHandlers()` called once from `DOMContentLoaded`
+                - six new state variables: `mvtSelectedMovement`, `mvtWeeks`, `mvtSearchTimer`, `mvtChart`, `mvtSearchSeq`, `mvtLastData`
+
+        Validation evidence:
+        - Brace balance audit of `static/index.html`: open == close, delta 0.
+        - Symbol presence check: all 12 new identifiers confirmed present at expected counts.
+        - Log tab Rec column removed (prior task, same session).
+        - Full live browser validation pending in a served-app environment.
+
 ## Decisions Locked
 
 - Full-body via existing percentage fields (no `is_full_body` column).
