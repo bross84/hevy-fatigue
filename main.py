@@ -43,7 +43,7 @@ def _encrypt(plaintext: str) -> str:
 
 def _decrypt(ciphertext: str) -> str:
     return _get_fernet().decrypt(ciphertext.encode()).decode()
-from rpe_table import get_set_central_stress, get_set_peripheral_stress, seed_rpe_table
+from rpe_table import get_set_central_stress, get_set_peripheral_stress, seed_rpe_table, calculate_e1rm
 from importer import import_hevy_data, reclassify_existing_sessions
 
 app = FastAPI(title="Hevy Fatigue Monitor")
@@ -2502,69 +2502,126 @@ def search_movements(q: str = "", db: Session = Depends(get_db)):
     return {"results": [r[0] for r in rows if r[0]]}
 
 
-@app.get("/api/movements/weekly-trend")
-def movements_weekly_trend(
+def _movements_window_start(window: str):
+    days_by_window = {
+        "8w": 56,
+        "6m": 180,
+        "1y": 365,
+    }
+    if window == "all":
+        return None
+    days = days_by_window.get(window)
+    if days is None:
+        raise HTTPException(status_code=400, detail="window must be one of: 8w, 6m, 1y, all.")
+    return date_type.today() - timedelta(days=days)
+
+
+@app.get("/api/movements/session-trend")
+def movements_session_trend(
     exercise: str = "",
-    weeks: int = 12,
+    window: str = "6m",
     db: Session = Depends(get_db),
 ):
-    """Return per-week volume/avg-weight/set-count for a given exercise (verified sessions only)."""
+    """Return per-session top-set, avg-weight, and best e1RM for a movement (verified sessions only)."""
     exercise_stripped = exercise.strip()
     if not exercise_stripped:
         raise HTTPException(status_code=400, detail="exercise parameter is required.")
-    if weeks not in (8, 12, 26):
-        raise HTTPException(status_code=400, detail="weeks must be 8, 12, or 26.")
+    window_stripped = window.strip().lower()
+    range_start = _movements_window_start(window_stripped)
 
-    # Build trailing N week buckets (Monday starts), oldest first
-    today = date_type.today()
-    current_monday = today - timedelta(days=today.weekday())
-    week_starts = [current_monday - timedelta(weeks=i) for i in range(weeks - 1, -1, -1)]
-
-    range_start = week_starts[0]
-    range_end = current_monday + timedelta(days=6)  # Sunday of current week
-
-    # Query WorkoutLog joined to WorkoutSession (verified only)
-    rows = (
-        db.query(WorkoutLog)
+    query = (
+        db.query(WorkoutLog, WorkoutSession)
         .join(WorkoutSession, WorkoutLog.workout_id == WorkoutSession.hevy_workout_id)
         .filter(
             func.lower(WorkoutLog.exercise_title) == exercise_stripped.lower(),
             WorkoutSession.verification_status == "verified",
-            WorkoutLog.date >= range_start,
-            WorkoutLog.date <= range_end,
         )
-        .all()
+        .order_by(WorkoutSession.workout_date.asc(), WorkoutSession.hevy_workout_id.asc(), WorkoutLog.set_number.asc())
     )
+    if range_start is not None:
+        query = query.filter(WorkoutSession.workout_date >= range_start)
 
-    # Group by Monday-start week in Python
+    rows = query.all()
+
     from collections import defaultdict
-    weekly: dict = defaultdict(list)
-    for row in rows:
-        row_monday = row.date - timedelta(days=row.date.weekday())
-        weekly[str(row_monday)].append(row)
+    session_sets = defaultdict(list)
+    session_dates = {}
+    for log_row, session_row in rows:
+        sid = session_row.hevy_workout_id
+        session_sets[sid].append(log_row)
+        session_dates[sid] = session_row.workout_date
 
-    # Build exactly N rows in chronological order, zero-filling missing weeks
     result = []
-    for ws in week_starts:
-        ws_str = str(ws)
-        week_rows = weekly.get(ws_str, [])
-        if week_rows:
-            total_volume = sum(float(r.weight_lbs or 0) * int(r.reps or 0) for r in week_rows)
-            weights = [float(r.weight_lbs) for r in week_rows if r.weight_lbs is not None]
-            avg_w = round(sum(weights) / len(weights), 1) if weights else None
-            result.append({
-                "week_start": ws_str,
-                "weekly_volume": round(total_volume, 1),
-                "avg_weight": avg_w,
-                "set_count": len(week_rows),
-            })
-        else:
-            result.append({
-                "week_start": ws_str,
-                "weekly_volume": 0,
-                "avg_weight": None,
-                "set_count": 0,
-            })
+    for sid in sorted(session_sets.keys(), key=lambda s: (session_dates[s], s)):
+        set_rows = session_sets[sid]
+        weights = [float(r.weight_lbs) for r in set_rows if r.weight_lbs is not None]
+        top_set = round(max(weights), 1) if weights else None
+        avg_weight = round(sum(weights) / len(weights), 1) if weights else None
+
+        best_e1rm = None
+        for r in set_rows:
+            e1 = calculate_e1rm(
+                weight=r.weight_lbs,
+                reps=r.reps,
+                rpe=r.rpe,
+                rir=r.rir,
+            )
+            if e1 is None:
+                continue
+            if best_e1rm is None or e1 > best_e1rm:
+                best_e1rm = e1
+
+        result.append({
+            "session_date": str(session_dates[sid]),
+            "top_set": top_set,
+            "avg_weight": avg_weight,
+            "e1rm": round(best_e1rm, 1) if best_e1rm is not None else None,
+        })
+
+    return result
+
+
+@app.get("/api/movements/volume-trend")
+def movements_volume_trend(
+    exercise: str = "",
+    window: str = "6m",
+    db: Session = Depends(get_db),
+):
+    """Return per-week volume for a movement grouped by Monday-start ISO week (verified sessions only)."""
+    exercise_stripped = exercise.strip()
+    if not exercise_stripped:
+        raise HTTPException(status_code=400, detail="exercise parameter is required.")
+    window_stripped = window.strip().lower()
+    range_start = _movements_window_start(window_stripped)
+
+    query = (
+        db.query(WorkoutLog, WorkoutSession)
+        .join(WorkoutSession, WorkoutLog.workout_id == WorkoutSession.hevy_workout_id)
+        .filter(
+            func.lower(WorkoutLog.exercise_title) == exercise_stripped.lower(),
+            WorkoutSession.verification_status == "verified",
+        )
+        .order_by(WorkoutSession.workout_date.asc(), WorkoutLog.set_number.asc())
+    )
+    if range_start is not None:
+        query = query.filter(WorkoutSession.workout_date >= range_start)
+
+    rows = query.all()
+
+    from collections import defaultdict
+    weekly_volume = defaultdict(float)
+    for log_row, session_row in rows:
+        ws = session_row.workout_date - timedelta(days=session_row.workout_date.weekday())
+        weekly_volume[ws] += float(log_row.weight_lbs or 0) * int(log_row.reps or 0)
+
+    result = [
+        {
+            "week_start": str(ws),
+            "weekly_volume": round(weekly_volume[ws], 1),
+        }
+        for ws in sorted(weekly_volume.keys())
+    ]
+
     return result
 
 

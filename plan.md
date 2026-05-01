@@ -1,6 +1,6 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-01 (Movement Trend redesign)
+Last updated: 2026-05-01 (Movement endpoints replaced + trend redesign + importer fix)
 
 ## 1) Current Product State
 
@@ -36,6 +36,15 @@ Last updated: 2026-05-01 (Movement Trend redesign)
 	- removed legacy recent workouts summary table
 - Log tab: Rec column removed from session log table (column header + cells stripped).
 - Movement Trend redesigned in Workouts tab (2026-05-01):
+	- Backend movement trend endpoints now aligned to redesigned client contract in `main.py`:
+		- added `GET /api/movements/session-trend?exercise=&window=`
+		- added `GET /api/movements/volume-trend?exercise=&window=`
+		- removed legacy `GET /api/movements/weekly-trend`
+		- window validation: `8w|6m|1y|all` (default `6m`)
+		- session-trend returns per-session `session_date`, `top_set`, `avg_weight`, `e1rm` for verified sessions
+		- volume-trend returns Monday-start weekly `week_start`, `weekly_volume` for verified sessions
+		- session `e1rm` uses best set-level value from `calculate_e1rm(weight, reps, rpe, rir)`
+		- syntax validation: `python -m py_compile main.py` passed
 	- Card remains between Session Verification Queue and Session Log
 	- Search row uses placeholder `Search movements...` + clear button and 300 ms debounced autocomplete (`/api/movements/search?q=`)
 	- Controls now use two toggle groups on one row:
@@ -100,6 +109,11 @@ Last updated: 2026-05-01 (Movement Trend redesign)
 	- Conditioning/Cardio sessions can auto-verify when confidence `>= 0.87` only if sRPE came from title tag
 	- Mixed title matches are flagged with a session note and reduced confidence to force manual review
 	- Sync/reclassification guard added in `importer.py`: existing `verified` sessions now use metadata-only upsert updates (date/title/time/duration/updated_at) and preserve classification fields (`modality`, `modality_confidence`, `modality_note`, `verification_status`, `verified_at`, `srpe`)
+	- WorkoutLog conflict policy updated in `importer.py` for set rows:
+		- changed set insert from `on_conflict_do_nothing()` to `on_conflict_do_update()` on unique key (`workout_id`, `exercise_id`, `set_number`)
+		- on conflict, only `exercise_title` and `workout_title` are updated so Hevy title renames propagate
+		- all training data fields remain unchanged on conflict (`weight_lbs`, `reps`, `rpe`, `rir`, `estimated_1rm`, `is_conditioning`)
+		- syntax validation: `python -m py_compile importer.py` passed
 
 ## 3) Check-In UX (Latest Overhaul)
 

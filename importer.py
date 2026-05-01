@@ -467,7 +467,8 @@ def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshol
                             db=db
                         )
 
-                        # Insert and silently skip if this set already exists
+                        # Upsert set rows: preserve training data fields but allow title renames
+                        # from Hevy to propagate to existing stored sets.
                         stmt = sqlite_insert(WorkoutLog).values(
                             date=workout_date,
                             workout_id=workout_id,
@@ -481,7 +482,17 @@ def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshol
                             rir=rir,
                             estimated_1rm=e1rm,
                             is_conditioning=is_conditioning,
-                        ).on_conflict_do_nothing()
+                        ).on_conflict_do_update(
+                            index_elements=[
+                                WorkoutLog.workout_id,
+                                WorkoutLog.exercise_id,
+                                WorkoutLog.set_number,
+                            ],
+                            set_={
+                                "exercise_title": title,
+                                "workout_title": workout_title,
+                            },
+                        )
                         result = db.execute(stmt)
                         if result.rowcount:
                             total_added += 1

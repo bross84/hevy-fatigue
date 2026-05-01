@@ -1008,6 +1008,42 @@ Gate tests:
 	- Search confirms old week-selector wiring removed (`mvt-week-selector` / `data-weeks` absent).
 	- New endpoint wiring present in `static/index.html`: `/api/movements/session-trend` and `/api/movements/volume-trend`.
 
+	### Post-Stage 7.19 — WorkoutLog title-upsert conflict fix
+
+	Implemented changes:
+	- Updated set-level insert behavior in `importer.py` for `WorkoutLog` rows.
+	- Replaced `on_conflict_do_nothing()` with `on_conflict_do_update()` using the existing unique set key:
+		- `workout_id`, `exercise_id`, `set_number`
+	- Conflict update now modifies only title fields:
+		- `exercise_title`
+		- `workout_title`
+	- All other set fields remain unchanged on conflict:
+		- `weight_lbs`, `reps`, `rpe`, `rir`, `estimated_1rm`, `is_conditioning`
+
+	Validation evidence:
+	- Syntax check passed: `python -m py_compile importer.py`.
+
+	### Post-Stage 7.20 — Movement endpoint contract replacement in main.py
+
+	Implemented changes:
+	- Kept `GET /api/movements/search` unchanged.
+	- Removed legacy `GET /api/movements/weekly-trend` route.
+	- Added `GET /api/movements/session-trend`:
+		- params: `exercise` (required), `window` (`8w|6m|1y|all`, default `6m`)
+		- filters: verified sessions only, case-insensitive exact movement title match
+		- date filter by `WorkoutSession.workout_date` based on window
+		- output rows per session: `session_date`, `top_set`, `avg_weight`, `e1rm`
+		- `e1rm` uses max set-level `calculate_e1rm(weight, reps, rpe, rir)` per session
+	- Added `GET /api/movements/volume-trend`:
+		- params: `exercise` (required), `window` (`8w|6m|1y|all`, default `6m`)
+		- filters: verified sessions only, case-insensitive exact movement title match
+		- groups by Monday-start ISO week from `WorkoutSession.workout_date`
+		- output rows: `week_start`, `weekly_volume`
+
+	Validation evidence:
+	- Route scan confirms `session-trend` and `volume-trend` are present and `weekly-trend` is absent.
+	- Syntax check passed: `python -m py_compile main.py`.
+
 ## Decisions Locked
 
 - Full-body via existing percentage fields (no `is_full_body` column).
