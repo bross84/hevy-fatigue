@@ -38,7 +38,7 @@ This document locks implementation to strict stage gates and dependency order.
 	- brace depth never negative
 	- static diagnostics clean for `static/index.html`
 - Updated 7-Day Readiness Trend visual contrast in `static/index.html`:
-	- replaced five readiness-zone band colors with higher-contrast rgba values
+	- replaced five readiness-zone band colors with higher-contrast rgba values; current palette uses deep navy / cyan / green / amber / red bands
 	- set readiness chart x/y gridlines to `rgba(128,128,128,0.15)` for improved visibility in both light and dark themes
 
 ## Dependency Order

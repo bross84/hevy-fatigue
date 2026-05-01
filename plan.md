@@ -199,7 +199,7 @@ Last updated: 2026-04-30 (patch)
 	- Historical no-check-in days now return `objective_score` plus `subjective_score=null` and `combined_score=null`
 	- Added Today-tab `7-Day Readiness Trend` Chart.js card in `static/index.html` below the recommendation card and above the pattern grid
 	- Chart uses null gaps, short weekday labels, y-axis `0..10`, and five readiness-zone background bands
-	- Updated readiness-zone band fills for stronger contrast and clearer state separation
+	- Updated readiness-zone band fills for stronger contrast and clearer state separation; current palette uses deep navy / cyan / green / amber / red bands
 	- Updated readiness chart x/y gridline color to `rgba(128,128,128,0.15)` for light/dark visibility parity
 	- Syntax/static validation passed for `main.py` and `static/index.html`; desktop Settings layout and Today card placement verified in-browser
 	- Full live API/runtime verification and true sub-900px browser rendering remain pending in an environment with the app served normally
