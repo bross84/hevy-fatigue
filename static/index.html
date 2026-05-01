@@ -1571,6 +1571,12 @@ tbody tr:hover td { background: var(--row-hover); }
 @media (max-width: 900px) {
   .tab-content#tab-settings.active {
     grid-template-columns: 1fr;
+    grid-template-areas: none;
+    grid-template-rows: auto;
+  }
+  #tab-settings .settings-card {
+    max-width: none;
+    width: 100%;
   }
   #tab-settings .settings-card-api,
   #tab-settings .settings-card-pattern,
