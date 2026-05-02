@@ -1,6 +1,6 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-02 (Canonical exercise overrides implemented)
+Last updated: 2026-05-02 (Dedup gate script added)
 
 ## 1) Current Product State
 
@@ -145,6 +145,12 @@ Last updated: 2026-05-02 (Canonical exercise overrides implemented)
 	- New `canonical_gate.py` validates canonical CRUD endpoints against running local app
 	- Script simulates importer path with controlled fake-Hevy payload to verify set-title substitution deterministically
 	- Outputs PASS/FAIL per gate and summary with exit code
+- Dedup gate script added (2026-05-02):
+	- New `dedup_gate.py` validates dedup/index protections against SQLite DB + running local API sync path
+	- Gate 1 checks index existence for `uq_workout_logs_set` in `sqlite_master`
+	- Gate 2 checks duplicate natural-key groups `(workout_id, exercise_id, set_number)` are zero
+	- Gate 3 records row counts before/after `POST /api/sync` with `/api/sync/status` polling and enforces `delta <= 10`
+	- Prints PASS/FAIL per gate with final summary and exits non-zero on failure
 - Import pipeline updates completed:
 	- Session modality now uses two-layer detection: title keyword pass first, then existing exercise-level fallback
 	- Title keyword sets include abbreviation codes (` ST`, ` HYP`, ` CON`, ` CAR`) and `strongman`
@@ -313,6 +319,9 @@ Last updated: 2026-05-02 (Canonical exercise overrides implemented)
 	- Canonical CRUD route checks passed via local handler/runtime test
 	- `canonical_gate.py` execution result: `SUMMARY: 6 passed, 0 failed`
 	- Syntax/error checks passed for touched files: `database.py`, `importer.py`, `main.py`, `static/index.html`, `canonical_gate.py`
+- Dedup gate validation: PARTIAL
+	- Syntax check passed: `python -m py_compile dedup_gate.py`
+	- Runtime gate execution against `/data/hevy_fatigue.db` pending environment-specific DB path availability
 
 ## 5) Open Items / Next Backlog
 

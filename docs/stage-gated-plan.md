@@ -1144,6 +1144,20 @@ Gate tests:
 	- Static/code diagnostics report no errors for touched files:
 		- `database.py`, `importer.py`, `main.py`, `static/index.html`, `canonical_gate.py`
 
+	### Post-Stage 7.24 — Dedup gate script for workout_logs protections
+
+	Implemented changes:
+	- Added `dedup_gate.py` as a standalone gate script.
+	- Script targets DB + sync behavior with three gates:
+		- Gate 1: verifies `uq_workout_logs_set` exists in `sqlite_master`.
+		- Gate 2: verifies zero duplicate groups for `(workout_id, exercise_id, set_number)`.
+		- Gate 3: checks row-count growth after `POST /api/sync` using `/api/sync/status` polling and enforces `after <= before + 10`.
+	- Script prints PASS/FAIL per gate, emits final summary, and exits non-zero on failure.
+
+	Validation evidence:
+	- Syntax check passed: `python -m py_compile dedup_gate.py`.
+	- Full runtime gate execution depends on DB path `/data/hevy_fatigue.db` being available in the executing environment.
+
 ## Decisions Locked
 
 - Full-body via existing percentage fields (no `is_full_body` column).
