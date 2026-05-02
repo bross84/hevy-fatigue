@@ -1,6 +1,6 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-01 (Movement endpoints replaced + trend redesign + importer fix)
+Last updated: 2026-05-01 (Exercise rename tool + movement/importer fixes)
 
 ## 1) Current Product State
 
@@ -98,6 +98,22 @@ Last updated: 2026-05-01 (Movement endpoints replaced + trend redesign + importe
 	- Objective/load volume in snapshot reuses `_session_volume()` for 7-day and 180-day aggregations (no inline `weight × reps` reimplementation)
 	- Added `Engine Snapshot` section in `static/diagnostic.html` above S&C Assistant panel
 	- Engine Snapshot renders grouped blocks: Score Breakdown formulas, Check-in Inputs, Volume Baseline, Training Load, Joint Advisory, TSB Thresholds, Last 10 Sessions
+	- Added Exercise Rename Tool to Engine Snapshot in `static/diagnostic.html`:
+		- helper text explains use for Hevy title changes and local historical updates
+		- inputs: Current title (old), New title
+		- action button: Rename Exercise
+		- result states:
+			- success: `Renamed X sets. Mapping updated: yes/no.`
+			- not found: `No sets found matching that title.`
+			- error: displays backend error message
+	- Added backend endpoint `POST /api/exercises/rename` in `main.py`:
+		- body: `{ old_title, new_title }`
+		- validates trimmed non-empty values and rejects unchanged rename target
+		- transaction updates `WorkoutLog.exercise_title` (case-insensitive old-title match)
+		- transaction updates `ExerciseMapping.exercise_title` when a mapping row exists
+		- returns `{ updated_sets, mapping_updated }`
+		- returns 404 when no WorkoutLog rows match old title
+		- syntax validation: `python -m py_compile main.py` passed
 	- No-check-in-today state now renders a neutral placeholder while keeping available non-check-in diagnostics visible
 - Import pipeline updates completed:
 	- Session modality now uses two-layer detection: title keyword pass first, then existing exercise-level fallback

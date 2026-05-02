@@ -1044,6 +1044,30 @@ Gate tests:
 	- Route scan confirms `session-trend` and `volume-trend` are present and `weekly-trend` is absent.
 	- Syntax check passed: `python -m py_compile main.py`.
 
+	### Post-Stage 7.21 — Exercise rename endpoint + Diagnostics UI tool
+
+	Implemented changes:
+	- Added `POST /api/exercises/rename` in `main.py` with JSON body `{ old_title, new_title }`.
+	- Validation:
+		- both fields required after trimming
+		- reject same-title rename (`old_title == new_title`, case-insensitive)
+	- Single transaction behavior:
+		- updates `WorkoutLog.exercise_title` where old title matches case-insensitively
+		- updates `ExerciseMapping.exercise_title` where old title matches case-insensitively
+		- skips mapping update silently when no mapping exists
+	- Response contract:
+		- success: `{ updated_sets, mapping_updated }`
+		- 404 when no `WorkoutLog` rows match old title
+	- Updated `static/diagnostic.html` Engine Snapshot section with `Exercise Rename Tool` UI:
+		- helper text, old/new title inputs, `Rename Exercise` button
+		- success message: `Renamed X sets. Mapping updated: yes/no.`
+		- 404 message: `No sets found matching that title.`
+		- error path shows backend error message
+
+	Validation evidence:
+	- Syntax check passed: `python -m py_compile main.py`.
+	- Static diagnostics pass: `static/diagnostic.html` reports no errors.
+
 ## Decisions Locked
 
 - Full-body via existing percentage fields (no `is_full_body` column).

@@ -138,6 +138,11 @@ class SessionStatusUpdate(BaseModel):
     duration_minutes: Optional[int] = Field(None, ge=1, le=480)
     srpe: Optional[float] = Field(None, ge=0.0, le=10.0)
 
+
+class ExerciseRenameInput(BaseModel):
+    old_title: str
+    new_title: str
+
 # --- Stress Calculators ---
 def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
     """
@@ -2482,6 +2487,52 @@ def update_exercise_mapping(
         "source": mapping.source,
         "is_reviewed": mapping.is_reviewed,
     }
+
+
+@app.post("/api/exercises/rename")
+def rename_exercise_title(data: ExerciseRenameInput, db: Session = Depends(get_db)):
+    """Rename an exercise across WorkoutLog rows and ExerciseMapping in one transaction."""
+    old_title = data.old_title.strip()
+    new_title = data.new_title.strip()
+
+    if not old_title or not new_title:
+        raise HTTPException(status_code=400, detail="old_title and new_title are required.")
+    if old_title.lower() == new_title.lower():
+        raise HTTPException(status_code=400, detail="old_title and new_title must be different.")
+
+    old_title_lc = old_title.lower()
+
+    try:
+        updated_sets = (
+            db.query(WorkoutLog)
+            .filter(func.lower(WorkoutLog.exercise_title) == old_title_lc)
+            .update({WorkoutLog.exercise_title: new_title}, synchronize_session=False)
+        )
+
+        if updated_sets == 0:
+            db.rollback()
+            raise HTTPException(status_code=404, detail="No sets found matching that title.")
+
+        mapping_updated = False
+        mapping_row = (
+            db.query(ExerciseMapping)
+            .filter(func.lower(ExerciseMapping.exercise_title) == old_title_lc)
+            .first()
+        )
+        if mapping_row:
+            mapping_row.exercise_title = new_title
+            mapping_updated = True
+
+        db.commit()
+        return {
+            "updated_sets": updated_sets,
+            "mapping_updated": mapping_updated,
+        }
+    except HTTPException:
+        raise
+    except Exception:
+        db.rollback()
+        raise
 
 # ── Movement analytics ────────────────────────────────────────────────────────
 

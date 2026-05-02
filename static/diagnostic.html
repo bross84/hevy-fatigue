@@ -849,6 +849,25 @@ async function fetchSessionsList(days) {
               ${sessionsRows}
             </tbody>
           </table>
+
+          <div class="section-title" style="font-size:14px;margin-top:1rem;">Exercise Rename Tool</div>
+          <p class="diag-helper" style="margin-bottom:10px;">
+            Use this to rename an exercise across all historical sets and the exercise mapping table. Use when an exercise title changes in Hevy and historical sets need to be updated locally.
+          </p>
+          <div class="diag-settings-grid">
+            <div>
+              <div class="diag-form-label">Current title (old)</div>
+              <input type="text" id="diag-rename-old-title" class="diag-input" placeholder="e.g. Bench Press">
+            </div>
+            <div>
+              <div class="diag-form-label">New title</div>
+              <input type="text" id="diag-rename-new-title" class="diag-input" placeholder="e.g. Barbell Bench Press">
+            </div>
+          </div>
+          <div class="diag-btn-row" style="margin-top:2px;">
+            <button class="diag-btn primary" id="diag-btn-rename-exercise" onclick="diagRenameExercise()">Rename Exercise</button>
+          </div>
+          <div class="diag-result" id="diag-rename-result"></div>
         </div>
       `;
     }
@@ -1156,6 +1175,53 @@ async function fetchSessionsList(days) {
         _diagSetResult('diag-session-result', '✗ ' + e.message, false);
       } finally {
         btn.disabled = false; btn.textContent = origLabel;
+      }
+    }
+
+    async function diagRenameExercise() {
+      const btn = document.getElementById('diag-btn-rename-exercise');
+      const oldInput = document.getElementById('diag-rename-old-title');
+      const newInput = document.getElementById('diag-rename-new-title');
+      if (!btn || !oldInput || !newInput) return;
+
+      const oldTitle = oldInput.value.trim();
+      const newTitle = newInput.value.trim();
+
+      if (!oldTitle || !newTitle) {
+        _diagSetResult('diag-rename-result', 'Both titles are required.', false);
+        return;
+      }
+
+      const origText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Renaming…';
+
+      try {
+        const r = await fetch('/api/exercises/rename', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ old_title: oldTitle, new_title: newTitle }),
+        });
+        const d = await r.json().catch(() => ({}));
+
+        if (!r.ok) {
+          if (r.status === 404) {
+            _diagSetResult('diag-rename-result', 'No sets found matching that title.', false);
+            return;
+          }
+          throw new Error(d.detail || 'Rename failed.');
+        }
+
+        _diagSetResult(
+          'diag-rename-result',
+          `Renamed ${d.updated_sets} sets. Mapping updated: ${d.mapping_updated ? 'yes' : 'no'}.`,
+          true,
+        );
+      } catch (e) {
+        _diagSetResult('diag-rename-result', e.message, false);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = origText;
       }
     }
 
