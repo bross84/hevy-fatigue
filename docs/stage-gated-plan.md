@@ -1068,6 +1068,33 @@ Gate tests:
 	- Syntax check passed: `python -m py_compile main.py`.
 	- Static diagnostics pass: `static/diagnostic.html` reports no errors.
 
+	### Post-Stage 7.22 — Exercise Rename UI moved to Exercises tab
+
+	Implemented changes:
+	- Added a new `Rename Exercise` card to `static/index.html` in the Exercises tab, placed above `Exercise Movement Mappings`.
+	- Card content includes:
+		- helper text for Hevy title-change use case
+		- `Current title` autocomplete input using `/api/movements/search?q=`
+		- `New title` text input
+		- accent-styled `Rename Exercise` button
+		- inline result area for success/error feedback
+	- Client behavior implemented in `static/index.html`:
+		- 300 ms debounced search, min 2 characters
+		- autocomplete dropdown uses existing `.mvt-dropdown` and `.mvt-dropdown-item` styles
+		- selecting a dropdown option fills current title and closes dropdown
+		- submit posts `{ old_title, new_title }` to `/api/exercises/rename`
+		- messages:
+			- success: `Renamed X sets. Mapping updated: yes/no.`
+			- 404: `No sets found matching that title.`
+			- other error: backend detail message
+		- clearing Current title clears both inputs and result area
+		- outside-click dropdown close merged into existing document click listener (no extra global listener)
+		- idempotent event binding via `exRenameHandlersBound`
+	- Removed the `Exercise Rename Tool` section and its JS handler from `static/diagnostic.html`.
+
+	Validation evidence:
+	- Static diagnostics pass: `static/index.html` and `static/diagnostic.html` report no errors.
+
 ## Decisions Locked
 
 - Full-body via existing percentage fields (no `is_full_body` column).

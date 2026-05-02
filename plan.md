@@ -1,6 +1,6 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-01 (Exercise rename tool + movement/importer fixes)
+Last updated: 2026-05-01 (Exercise rename moved to Exercises tab)
 
 ## 1) Current Product State
 
@@ -98,14 +98,16 @@ Last updated: 2026-05-01 (Exercise rename tool + movement/importer fixes)
 	- Objective/load volume in snapshot reuses `_session_volume()` for 7-day and 180-day aggregations (no inline `weight × reps` reimplementation)
 	- Added `Engine Snapshot` section in `static/diagnostic.html` above S&C Assistant panel
 	- Engine Snapshot renders grouped blocks: Score Breakdown formulas, Check-in Inputs, Volume Baseline, Training Load, Joint Advisory, TSB Thresholds, Last 10 Sessions
-	- Added Exercise Rename Tool to Engine Snapshot in `static/diagnostic.html`:
-		- helper text explains use for Hevy title changes and local historical updates
-		- inputs: Current title (old), New title
-		- action button: Rename Exercise
-		- result states:
-			- success: `Renamed X sets. Mapping updated: yes/no.`
-			- not found: `No sets found matching that title.`
-			- error: displays backend error message
+	- Exercise Rename Tool moved out of diagnostics and into the Exercises tab in `static/index.html`:
+		- new `Rename Exercise` card above Exercise Movement Mappings
+		- helper text: `Use this when an exercise title changes in Hevy. Updates all historical sets and the exercise mapping table.`
+		- Current title now uses debounced autocomplete (`/api/movements/search?q=`, min 2 chars, 300 ms)
+		- New title remains free-text input
+		- submit posts to `POST /api/exercises/rename` and surfaces exact success/404/backend-detail messages
+		- clearing Current title clears both inputs and result area
+		- outside-click close for dropdown integrated into existing document click listener
+		- handler setup is idempotent (`exRenameHandlersBound` guard)
+	- Removed Exercise Rename Tool UI and JS handler from `static/diagnostic.html`
 	- Added backend endpoint `POST /api/exercises/rename` in `main.py`:
 		- body: `{ old_title, new_title }`
 		- validates trimmed non-empty values and rejects unchanged rename target
@@ -114,6 +116,7 @@ Last updated: 2026-05-01 (Exercise rename tool + movement/importer fixes)
 		- returns `{ updated_sets, mapping_updated }`
 		- returns 404 when no WorkoutLog rows match old title
 		- syntax validation: `python -m py_compile main.py` passed
+		- static diagnostics: `static/index.html` and `static/diagnostic.html` report no errors
 	- No-check-in-today state now renders a neutral placeholder while keeping available non-check-in diagnostics visible
 - Import pipeline updates completed:
 	- Session modality now uses two-layer detection: title keyword pass first, then existing exercise-level fallback

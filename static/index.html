@@ -2102,6 +2102,24 @@ tbody tr:hover td { background: var(--row-hover); }
 
 <!-- ══════════════ EXERCISES TAB ══════════════ -->
 <section id="tab-exercises" class="tab-content">
+  <div class="card" id="ex-rename-card">
+    <div class="card-title">Rename Exercise</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px;">
+      Use this when an exercise title changes in Hevy. Updates all historical sets and the exercise mapping table.
+    </div>
+    <div class="mvt-search-wrap" id="ex-rename-search-wrap" style="margin-bottom:10px;">
+      <input type="text" class="search-input" id="ex-rename-old-title" placeholder="Current title" autocomplete="off" style="width:100%;">
+      <div class="mvt-dropdown" id="ex-rename-dropdown" style="right:0;"></div>
+    </div>
+    <div style="margin-bottom:10px;">
+      <input type="text" class="search-input" id="ex-rename-new-title" placeholder="New title" autocomplete="off" style="width:100%;">
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button id="ex-rename-btn" style="background:var(--accent);color:var(--bg);border:1px solid var(--accent);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;">Rename Exercise</button>
+      <span id="ex-rename-result" style="font-size:12px;color:var(--muted);"></span>
+    </div>
+  </div>
+
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
       <div class="card-title" style="margin-bottom:0;">Exercise Movement Mappings</div>
@@ -2498,6 +2516,9 @@ let mvtChart = null;
 let mvtSearchReqId = 0;
 let mvtLastData = null;
 let mvtHandlersBound = false;
+let exRenameSearchTimer = null;
+let exRenameSearchReqId = 0;
+let exRenameHandlersBound = false;
 let _todayCheckinSubmitted = false;
 let _todayCheckinExpanded = false;
 let _todayCheckinEntry = null;
@@ -2546,6 +2567,10 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#mvt-search-wrap')) {
     _mvtCloseDropdown();
   }
+  // Close exercise rename dropdown on outside click
+  if (!e.target.closest('#ex-rename-search-wrap')) {
+    _exRenameCloseDropdown();
+  }
 });
 
 // Theme toggle clicks
@@ -2574,6 +2599,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setMobileNavOpen(false);
   initTrendRangeSelector();
   _mvtInitHandlers();
+  _exRenameInitHandlers();
   checkTodayReadiness();
   loadTrainingLoadCard();
 });
@@ -4163,6 +4189,137 @@ document.getElementById('ex-sort').addEventListener('click', e => {
   document.querySelectorAll('#ex-sort button').forEach(b => b.classList.toggle('active', b === btn));
   renderExTable();
 });
+
+function _exRenameSetResult(msg, ok = null) {
+  const el = document.getElementById('ex-rename-result');
+  if (!el) return;
+  el.textContent = msg || '';
+  if (!msg) {
+    el.style.color = 'var(--muted)';
+    return;
+  }
+  if (ok === true) el.style.color = 'var(--success)';
+  else if (ok === false) el.style.color = 'var(--danger)';
+  else el.style.color = 'var(--muted)';
+}
+
+function _exRenameCloseDropdown() {
+  const dd = document.getElementById('ex-rename-dropdown');
+  if (dd) dd.style.display = 'none';
+}
+
+function _exRenameRenderDropdown(results) {
+  const dd = document.getElementById('ex-rename-dropdown');
+  if (!dd) return;
+  if (!results.length) {
+    _exRenameCloseDropdown();
+    return;
+  }
+  dd.innerHTML = results.map(r =>
+    `<div class="mvt-dropdown-item" data-title="${escHtml(r)}">${escHtml(r)}</div>`
+  ).join('');
+  dd.style.display = 'block';
+}
+
+async function _exRenameSearch(q) {
+  const reqId = ++exRenameSearchReqId;
+  if (q.trim().length < 2) {
+    _exRenameCloseDropdown();
+    return;
+  }
+  try {
+    const r = await fetch(`/api/movements/search?q=${encodeURIComponent(q)}`);
+    if (reqId !== exRenameSearchReqId) return;
+    const d = await r.json();
+    _exRenameRenderDropdown(d.results || []);
+  } catch (_) {
+    if (reqId !== exRenameSearchReqId) return;
+    _exRenameCloseDropdown();
+  }
+}
+
+function _exRenameClearAll() {
+  const oldInput = document.getElementById('ex-rename-old-title');
+  const newInput = document.getElementById('ex-rename-new-title');
+  if (oldInput) oldInput.value = '';
+  if (newInput) newInput.value = '';
+  _exRenameSetResult('');
+  _exRenameCloseDropdown();
+}
+
+async function _exRenameSubmit() {
+  const oldInput = document.getElementById('ex-rename-old-title');
+  const newInput = document.getElementById('ex-rename-new-title');
+  const btn = document.getElementById('ex-rename-btn');
+  if (!oldInput || !newInput || !btn) return;
+
+  const oldTitle = oldInput.value.trim();
+  const newTitle = newInput.value.trim();
+  if (!oldTitle || !newTitle) {
+    _exRenameSetResult('Both titles are required.', false);
+    return;
+  }
+
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Renaming...';
+  try {
+    const r = await fetch('/api/exercises/rename', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ old_title: oldTitle, new_title: newTitle }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      if (r.status === 404) {
+        _exRenameSetResult('No sets found matching that title.', false);
+        return;
+      }
+      _exRenameSetResult(d.detail || 'Rename failed.', false);
+      return;
+    }
+
+    _exRenameSetResult(`Renamed ${d.updated_sets} sets. Mapping updated: ${d.mapping_updated ? 'yes' : 'no'}.`, true);
+  } catch (e) {
+    _exRenameSetResult(e.message || 'Rename failed.', false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = origText;
+  }
+}
+
+function _exRenameInitHandlers() {
+  const oldInput = document.getElementById('ex-rename-old-title');
+  const newInput = document.getElementById('ex-rename-new-title');
+  const btn = document.getElementById('ex-rename-btn');
+  const dd = document.getElementById('ex-rename-dropdown');
+  if (!oldInput || !newInput || !btn || !dd || exRenameHandlersBound) return;
+  exRenameHandlersBound = true;
+
+  oldInput.addEventListener('input', () => {
+    clearTimeout(exRenameSearchTimer);
+    const val = oldInput.value;
+    if (!val.trim()) {
+      _exRenameClearAll();
+      return;
+    }
+    if (val.trim().length < 2) {
+      exRenameSearchReqId += 1;
+      _exRenameCloseDropdown();
+      return;
+    }
+    exRenameSearchTimer = setTimeout(() => _exRenameSearch(val), 300);
+  });
+
+  dd.addEventListener('click', e => {
+    const item = e.target.closest('.mvt-dropdown-item');
+    if (!item) return;
+    oldInput.value = item.dataset.title || '';
+    _exRenameCloseDropdown();
+  });
+
+  btn.addEventListener('click', () => _exRenameSubmit());
+}
 
 // ═══ Modal ════════════════════════════════════════════
 function openModal(ex) {
