@@ -1,6 +1,6 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-02 (Dedup gate script added)
+Last updated: 2026-05-02 (Dedup index migration fixed)
 
 ## 1) Current Product State
 
@@ -151,6 +151,11 @@ Last updated: 2026-05-02 (Dedup gate script added)
 	- Gate 2 checks duplicate natural-key groups `(workout_id, exercise_id, set_number)` are zero
 	- Gate 3 records row counts before/after `POST /api/sync` with `/api/sync/status` polling and enforces `delta <= 10`
 	- Prints PASS/FAIL per gate with final summary and exits non-zero on failure
+- Dedup DB migration fix applied (2026-05-02):
+	- Root cause: `init_db()` never created index name `uq_workout_logs_set`; model-level `UniqueConstraint` (`uq_workout_set`) did not satisfy gate check
+	- `database.py:init_db()` now runs startup dedup on `(workout_id, exercise_id, set_number)` keeping earliest `id`
+	- `database.py:init_db()` now executes `CREATE UNIQUE INDEX IF NOT EXISTS uq_workout_logs_set ON workout_logs (workout_id, exercise_id, set_number)`
+	- Migration is idempotent and enforces hard DB-level uniqueness independent of importer behavior
 - Import pipeline updates completed:
 	- Session modality now uses two-layer detection: title keyword pass first, then existing exercise-level fallback
 	- Title keyword sets include abbreviation codes (` ST`, ` HYP`, ` CON`, ` CAR`) and `strongman`
@@ -322,6 +327,8 @@ Last updated: 2026-05-02 (Dedup gate script added)
 - Dedup gate validation: PARTIAL
 	- Syntax check passed: `python -m py_compile dedup_gate.py`
 	- Runtime gate execution against `/data/hevy_fatigue.db` pending environment-specific DB path availability
+- Dedup index migration fix: PASS
+	- `python -m py_compile database.py` passed after `init_db()` migration update
 
 ## 5) Open Items / Next Backlog
 

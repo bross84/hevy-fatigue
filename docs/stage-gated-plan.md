@@ -1158,6 +1158,22 @@ Gate tests:
 	- Syntax check passed: `python -m py_compile dedup_gate.py`.
 	- Full runtime gate execution depends on DB path `/data/hevy_fatigue.db` being available in the executing environment.
 
+	### Post-Stage 7.25 — Fix startup migration for hard dedup index
+
+	Issue found:
+	- Gate 1 failure (`uq_workout_logs_set` missing) traced to `database.py:init_db()` not creating that explicit index.
+	- Existing model-level unique constraint (`uq_workout_set`) did not satisfy gate logic checking `sqlite_master` for index name `uq_workout_logs_set`.
+
+	Implemented fix:
+	- Updated `database.py:init_db()` to run startup dedup for `workout_logs` on `(workout_id, exercise_id, set_number)`.
+	- Dedup keeps earliest row (`MIN(id)`) and deletes remaining duplicates before index creation.
+	- Added explicit idempotent migration step:
+		- `CREATE UNIQUE INDEX IF NOT EXISTS uq_workout_logs_set ON workout_logs (workout_id, exercise_id, set_number)`
+	- This enforces a hard DB-level uniqueness guarantee independent of importer conflict logic.
+
+	Validation evidence:
+	- `python -m py_compile database.py` passed.
+
 ## Decisions Locked
 
 - Full-body via existing percentage fields (no `is_full_body` column).

@@ -164,6 +164,40 @@ def init_db():
         if "modality_note" not in col_names:
             conn.execute(text("ALTER TABLE workout_sessions ADD COLUMN modality_note VARCHAR"))
             conn.commit()
+
+        # Ensure workout_logs has a hard unique index on natural set identity.
+        # Existing deployments may contain duplicates from earlier versions, so
+        # dedup first to guarantee index creation succeeds.
+        conn.execute(
+            text(
+                """
+                DELETE FROM workout_logs
+                WHERE id IN (
+                    SELECT wl.id
+                    FROM workout_logs wl
+                    JOIN (
+                        SELECT workout_id, exercise_id, set_number, MIN(id) AS keep_id
+                        FROM workout_logs
+                        GROUP BY workout_id, exercise_id, set_number
+                        HAVING COUNT(*) > 1
+                    ) d
+                      ON wl.workout_id = d.workout_id
+                     AND wl.exercise_id = d.exercise_id
+                     AND wl.set_number = d.set_number
+                    WHERE wl.id <> d.keep_id
+                )
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS uq_workout_logs_set
+                ON workout_logs (workout_id, exercise_id, set_number)
+                """
+            )
+        )
+        conn.commit()
     # app_settings table is created by create_all above (new installs and existing DBs)
 if __name__ == "__main__":
     init_db()
