@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date as date_type, timedelta, datetime
@@ -11,7 +12,7 @@ from cryptography.fernet import Fernet
 import os
 import threading
 
-from database import SessionLocal, DailyReadiness, WorkoutLog, WorkoutSession, ExerciseMapping, AppSetting, init_db
+from database import SessionLocal, DailyReadiness, WorkoutLog, WorkoutSession, ExerciseMapping, ExerciseCanonical, AppSetting, init_db
 
 # ── Encryption ────────────────────────────────────────────────────────────────
 # A Fernet key is generated once and stored in the Docker volume at /data/app.key.
@@ -142,6 +143,11 @@ class SessionStatusUpdate(BaseModel):
 class ExerciseRenameInput(BaseModel):
     old_title: str
     new_title: str
+
+
+class ExerciseCanonicalInput(BaseModel):
+    exercise_id: str
+    canonical_title: str
 
 # --- Stress Calculators ---
 def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
@@ -2586,6 +2592,95 @@ def rename_exercise_title(data: ExerciseRenameInput, db: Session = Depends(get_d
     except Exception:
         db.rollback()
         raise
+
+
+@app.get("/api/exercises/canonical")
+def get_exercise_canonical_rows(db: Session = Depends(get_db)):
+    latest_log_subquery = (
+        db.query(
+            WorkoutLog.exercise_id.label("exercise_id"),
+            WorkoutLog.exercise_title.label("latest_hevy_title"),
+            func.row_number().over(
+                partition_by=WorkoutLog.exercise_id,
+                order_by=(WorkoutLog.date.desc(), WorkoutLog.id.desc()),
+            ).label("row_num"),
+        )
+        .filter(WorkoutLog.exercise_id.isnot(None))
+        .subquery()
+    )
+
+    rows = (
+        db.query(
+            ExerciseCanonical.exercise_id,
+            ExerciseCanonical.canonical_title,
+            ExerciseCanonical.created_at,
+            ExerciseCanonical.updated_at,
+            latest_log_subquery.c.latest_hevy_title,
+        )
+        .outerjoin(
+            latest_log_subquery,
+            (latest_log_subquery.c.exercise_id == ExerciseCanonical.exercise_id)
+            & (latest_log_subquery.c.row_num == 1),
+        )
+        .order_by(ExerciseCanonical.canonical_title.asc(), ExerciseCanonical.exercise_id.asc())
+        .all()
+    )
+
+    return [
+        {
+            "exercise_id": row.exercise_id,
+            "canonical_title": row.canonical_title,
+            "latest_hevy_title": row.latest_hevy_title,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+        }
+        for row in rows
+    ]
+
+
+@app.post("/api/exercises/canonical")
+def save_exercise_canonical(data: ExerciseCanonicalInput, db: Session = Depends(get_db)):
+    exercise_id = data.exercise_id.strip()
+    canonical_title = data.canonical_title.strip()
+
+    if not exercise_id or not canonical_title:
+        raise HTTPException(status_code=400, detail="exercise_id and canonical_title are required.")
+
+    now = datetime.utcnow()
+    stmt = sqlite_insert(ExerciseCanonical).values(
+        exercise_id=exercise_id,
+        canonical_title=canonical_title,
+        created_at=now,
+        updated_at=now,
+    ).on_conflict_do_update(
+        index_elements=[ExerciseCanonical.exercise_id],
+        set_={
+            "canonical_title": canonical_title,
+            "updated_at": now,
+        },
+    )
+    db.execute(stmt)
+    db.commit()
+
+    row = db.query(ExerciseCanonical).filter(ExerciseCanonical.exercise_id == exercise_id).first()
+    return {
+        "exercise_id": row.exercise_id,
+        "canonical_title": row.canonical_title,
+        "created_at": row.created_at,
+        "updated_at": row.updated_at,
+    }
+
+
+@app.delete("/api/exercises/canonical/{exercise_id}")
+def delete_exercise_canonical(exercise_id: str, db: Session = Depends(get_db)):
+    exercise_id_stripped = exercise_id.strip()
+    row = db.query(ExerciseCanonical).filter(ExerciseCanonical.exercise_id == exercise_id_stripped).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Exercise canonical entry not found.")
+
+    db.delete(row)
+    db.commit()
+    return {"deleted": True}
 
 # ── Movement analytics ────────────────────────────────────────────────────────
 

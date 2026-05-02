@@ -1084,6 +1084,34 @@ tbody tr:hover td { background: var(--row-hover); }
   padding: 18px 12px;
 }
 
+.exercise-canonical-empty {
+  color: var(--muted);
+  padding: 14px 4px 2px;
+}
+
+.exercise-canonical-placeholder {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.exercise-canonical-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.exercise-canonical-edit-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.exercise-canonical-status {
+  font-size: 12px;
+  min-height: 18px;
+}
+
 .session-detail-wrap {
   margin-top: 12px;
   padding-top: 12px;
@@ -2102,6 +2130,14 @@ tbody tr:hover td { background: var(--row-hover); }
 
 <!-- ══════════════ EXERCISES TAB ══════════════ -->
 <section id="tab-exercises" class="tab-content">
+  <div class="card" id="ex-canonical-card">
+    <div class="card-title">Exercise Name Overrides</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px;">
+      Lock an exercise to a specific name. Overrides what Hevy sends on every sync.
+    </div>
+    <div id="ex-canonical-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
+  </div>
+
   <div class="card" id="ex-rename-card">
     <div class="card-title">Rename Exercise</div>
     <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px;">
@@ -2465,6 +2501,8 @@ window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', ()
 
 // ═══ State ════════════════════════════════════════════
 let exercises      = [];
+let exerciseCanonicalRows = [];
+let exerciseCanonicalEditingId = null;
 
 // ── Chart resize handling ─────────────────────────────
 // window.resize + setTimeout has a race condition: the CSS grid layout may
@@ -2538,7 +2576,7 @@ function activateTab(tabName) {
   document.getElementById('tab-' + tabName).classList.add('active');
   if (tabName === 'dashboard') { loadTrainingLoadCard(); checkTodayReadiness(); }
   if (tabName === 'trend')                               activateTrendTab();
-  if (tabName === 'exercises' && exercises.length === 0) loadExercises();
+  if (tabName === 'exercises')                           { loadExerciseCanonical(); if (exercises.length === 0) loadExercises(); }
   if (tabName === 'workouts'  && !workoutsLoaded)        loadWorkouts();
   if (tabName === 'log'       && !logLoaded)             loadLog();
   if (tabName === 'settings')                            loadSettingsTab();
@@ -4095,6 +4133,130 @@ function toggleExInfo() {
 }
 
 // ═══ Exercises tab ════════════════════════════════════
+async function loadExerciseCanonical() {
+  const wrap = document.getElementById('ex-canonical-wrap');
+  if (!wrap) return;
+
+  wrap.innerHTML = '<div class="loading-wrap"><span class="spinner"></span> Loading name overrides…</div>';
+
+  try {
+    const r = await fetch('/api/exercises/canonical');
+    const rows = await r.json();
+    if (!r.ok) throw new Error(rows.detail || 'Failed to load name overrides.');
+    exerciseCanonicalRows = Array.isArray(rows) ? rows : [];
+    if (!exerciseCanonicalRows.some(row => row.exercise_id === exerciseCanonicalEditingId)) {
+      exerciseCanonicalEditingId = null;
+    }
+    renderExerciseCanonicalTable();
+  } catch (e) {
+    wrap.innerHTML = `<div style="color:var(--danger)">Failed to load name overrides: ${escHtml(e.message || '')}</div>`;
+  }
+}
+
+function _exerciseCanonicalNameCell(row) {
+  if (exerciseCanonicalEditingId !== row.exercise_id) {
+    return `<span>${escHtml(row.canonical_title || '')}</span>`;
+  }
+  return `
+    <div class="exercise-canonical-edit">
+      <input
+        type="text"
+        class="search-input ex-canonical-input"
+        data-exercise-id="${escHtml(row.exercise_id)}"
+        value="${escHtml(row.canonical_title || '')}"
+        autocomplete="off"
+      >
+      <div class="exercise-canonical-status"></div>
+    </div>
+  `;
+}
+
+function _exerciseCanonicalActionCell(row) {
+  if (exerciseCanonicalEditingId !== row.exercise_id) {
+    return `<button class="btn btn-sm btn-secondary" data-exercise-id="${escHtml(row.exercise_id)}" onclick="editExerciseCanonical(this.dataset.exerciseId)">Edit</button>`;
+  }
+  return `
+    <div class="exercise-canonical-edit-actions">
+      <button class="btn btn-primary" style="width:auto;padding:8px 12px;" data-exercise-id="${escHtml(row.exercise_id)}" onclick="saveExerciseCanonical(this.dataset.exerciseId)">Save</button>
+      <button class="btn btn-secondary" style="width:auto;padding:8px 12px;" onclick="cancelExerciseCanonicalEdit()">Cancel</button>
+    </div>
+  `;
+}
+
+function renderExerciseCanonicalTable() {
+  const wrap = document.getElementById('ex-canonical-wrap');
+  if (!wrap) return;
+
+  if (!exerciseCanonicalRows.length) {
+    wrap.innerHTML = '<div class="exercise-canonical-empty">No overrides set. Exercises use names from Hevy.</div>';
+    return;
+  }
+
+  wrap.innerHTML = `<div class="table-scroll"><table>
+    <thead><tr>
+      <th>Hevy Title</th>
+      <th>Your Name</th>
+      <th>Action</th>
+    </tr></thead>
+    <tbody>
+      ${exerciseCanonicalRows.map(row => `
+        <tr data-exercise-id="${escHtml(row.exercise_id)}">
+          <td>
+            ${row.latest_hevy_title
+              ? escHtml(row.latest_hevy_title)
+              : '<span class="exercise-canonical-placeholder">No Hevy title seen yet</span>'}
+          </td>
+          <td>${_exerciseCanonicalNameCell(row)}</td>
+          <td>${_exerciseCanonicalActionCell(row)}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+function editExerciseCanonical(exerciseId) {
+  exerciseCanonicalEditingId = exerciseId;
+  renderExerciseCanonicalTable();
+}
+
+function cancelExerciseCanonicalEdit() {
+  exerciseCanonicalEditingId = null;
+  renderExerciseCanonicalTable();
+}
+
+async function saveExerciseCanonical(exerciseId) {
+  const row = document.querySelector(`#ex-canonical-wrap tr[data-exercise-id="${CSS.escape(exerciseId)}"]`);
+  if (!row) return;
+  const input = row.querySelector('.ex-canonical-input');
+  const statusEl = row.querySelector('.exercise-canonical-status');
+  const saveBtn = row.querySelector('.btn.btn-primary');
+  if (!input || !statusEl || !saveBtn) return;
+
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = 'Saving…';
+  saveBtn.disabled = true;
+
+  try {
+    const r = await fetch('/api/exercises/canonical', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        exercise_id: exerciseId,
+        canonical_title: input.value,
+      }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Save failed.');
+    exerciseCanonicalEditingId = null;
+    await loadExerciseCanonical();
+  } catch (e) {
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = e.message || 'Save failed.';
+  } finally {
+    saveBtn.disabled = false;
+  }
+}
+
 async function loadExercises() {
   try {
     const r = await fetch('/api/exercises/mappings');

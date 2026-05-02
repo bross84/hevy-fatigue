@@ -1,7 +1,7 @@
 from collections import defaultdict
 import re
 
-from database import SessionLocal, WorkoutLog, WorkoutSession, ExerciseMapping, init_db
+from database import SessionLocal, WorkoutLog, WorkoutSession, ExerciseMapping, ExerciseCanonical, init_db
 from hevy_client import HevyClient
 from rpe_table import calculate_e1rm, seed_rpe_table
 from exercise_classifier import classify_exercise, ensure_exercise_mapped
@@ -306,6 +306,12 @@ def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshol
     try:
         seed_rpe_table(db)  # Seed RPE chart if not already done
 
+        exercise_canonical_map = {
+            row.exercise_id: row.canonical_title
+            for row in db.query(ExerciseCanonical).all()
+            if row.exercise_id
+        }
+
         if not client.test_connection():
             print("❌ Could not connect to Hevy API. Check your API key.")
             return {"new_sets": 0, "error": "Could not connect to Hevy API. Check your API key."}
@@ -439,10 +445,10 @@ def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshol
                 db.execute(session_stmt)
 
                 for exercise in exercises:
-                    title = exercise.get('title')
                     exercise_id = exercise.get('exercise_template_id')
+                    title = exercise_canonical_map.get(exercise_id, exercise.get('title'))
 
-                    is_conditioning = exercise_conditioning_cache.get(title, False)
+                    is_conditioning = exercise_conditioning_cache.get(exercise.get('title'), False)
 
                     for set_data in exercise.get('sets', []):
                         if set_data.get('type') == 'warmup':

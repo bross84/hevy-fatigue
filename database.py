@@ -135,10 +135,30 @@ class WorkoutSession(Base):
             f"modality={self.modality} status={self.verification_status}>"
         )
 
+
+# --- TABLE 7: Canonical Exercise Titles ---
+class ExerciseCanonical(Base):
+    __tablename__ = "exercise_canonical"
+
+    exercise_id = Column(String, primary_key=True)
+    canonical_title = Column(String, nullable=False)
+    created_at = Column(DateTime, default=dt_datetime.utcnow)
+    updated_at = Column(DateTime, default=dt_datetime.utcnow, onupdate=dt_datetime.utcnow)
+
+    def __repr__(self):
+        return f"<ExerciseCanonical exercise_id={self.exercise_id} canonical_title={self.canonical_title}>"
+
 # This part actually creates the file and tables when you run the script
 def init_db():
     Base.metadata.create_all(bind=engine)
     with engine.connect() as conn:
+        exercise_canonical_exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='exercise_canonical'")
+        ).first()
+        if not exercise_canonical_exists:
+            Base.metadata.tables["exercise_canonical"].create(bind=conn)
+            conn.commit()
+
         cols = conn.execute(text("PRAGMA table_info(workout_sessions)")).fetchall()
         col_names = {row[1] for row in cols}
         if "modality_note" not in col_names:

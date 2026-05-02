@@ -1106,6 +1106,44 @@ Gate tests:
 	Validation evidence:
 	- Static diagnostics pass: `static/index.html` and `static/diagnostic.html` report no errors.
 
+	### Post-Stage 7.23 — Canonical exercise title overrides (DB + importer + API + UI + gate)
+
+	Implemented changes:
+	- Added `ExerciseCanonical` model in `database.py`:
+		- `exercise_id` (PK), `canonical_title` (not null), `created_at`, `updated_at`
+	- Added startup-safe table creation in `database.py:init_db()`:
+		- sqlite table-existence check for `exercise_canonical`
+		- creates table when missing (idempotent)
+	- Updated `importer.py` set-write path:
+		- loads all `exercise_canonical` rows once per sync into dict keyed by `exercise_id`
+		- substitutes canonical title before `WorkoutLog` write when mapping exists
+		- preserves existing behavior when mapping missing (API title unchanged)
+	- Added canonical CRUD endpoints in `main.py` (before static mounts):
+		- `GET /api/exercises/canonical`
+		- `POST /api/exercises/canonical`
+		- `DELETE /api/exercises/canonical/{exercise_id}`
+		- GET includes `latest_hevy_title` from most-recent `workout_logs` row per `exercise_id`
+	- Updated Exercises tab in `static/index.html`:
+		- added `Exercise Name Overrides` card above `Rename Exercise`
+		- loads overrides on each Exercises-tab activation
+		- table columns: `Hevy Title | Your Name | Action`
+		- inline Edit/Save posts to `POST /api/exercises/canonical` and reloads rows
+		- empty state: `No overrides set. Exercises use names from Hevy.`
+	- Added new gate script `canonical_gate.py`:
+		- validates canonical CRUD endpoints against running local app
+		- simulates importer with controlled fake-Hevy payload to verify canonical write-through in `workout_logs`
+		- prints PASS/FAIL per gate and final summary
+
+	Validation evidence (passed):
+	- `database.py` bootstrap check confirmed `exercise_canonical` table exists with expected columns.
+	- Focused runtime validation confirmed importer stores canonical title for matching `exercise_id`.
+	- API validation confirmed create/list/upsert/delete behavior for canonical rows.
+	- `canonical_gate.py` run output:
+		- PASS Gate 1..6
+		- `SUMMARY: 6 passed, 0 failed`
+	- Static/code diagnostics report no errors for touched files:
+		- `database.py`, `importer.py`, `main.py`, `static/index.html`, `canonical_gate.py`
+
 ## Decisions Locked
 
 - Full-body via existing percentage fields (no `is_full_body` column).

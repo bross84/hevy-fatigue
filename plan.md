@@ -1,6 +1,6 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-01 (Backfill sessions admin endpoint added)
+Last updated: 2026-05-02 (Canonical exercise overrides implemented)
 
 ## 1) Current Product State
 
@@ -118,6 +118,33 @@ Last updated: 2026-05-01 (Backfill sessions admin endpoint added)
 		- syntax validation: `python -m py_compile main.py` passed
 		- static diagnostics: `static/index.html` and `static/diagnostic.html` report no errors
 	- No-check-in-today state now renders a neutral placeholder while keeping available non-check-in diagnostics visible
+- Exercise canonical-title stack implemented (2026-05-02):
+	- Added `ExerciseCanonical` model/table in `database.py` with fields:
+		- `exercise_id` (PK)
+		- `canonical_title` (not null)
+		- `created_at`, `updated_at`
+	- Startup-safe schema creation added in `database.py:init_db()`:
+		- explicit sqlite table-existence check for `exercise_canonical`
+		- creates table when missing (idempotent alongside `Base.metadata.create_all`)
+	- Import canonical substitution added in `importer.py`:
+		- preloads `exercise_canonical` once per sync into dict keyed by `exercise_id`
+		- set-level write path uses canonical title when mapping exists
+		- falls back to Hevy API title unchanged when mapping missing
+	- Canonical API endpoints added in `main.py` before static mounts:
+		- `GET /api/exercises/canonical`
+		- `POST /api/exercises/canonical`
+		- `DELETE /api/exercises/canonical/{exercise_id}`
+		- GET joins canonical rows with most-recent `workout_logs.exercise_title` per `exercise_id` (nullable)
+	- Exercises tab UI updated in `static/index.html`:
+		- Added `Exercise Name Overrides` card above `Rename Exercise`
+		- card loads from `GET /api/exercises/canonical` on each Exercises-tab activation
+		- table columns: `Hevy Title | Your Name | Action`
+		- inline Edit/Save flow posts to `POST /api/exercises/canonical` and refreshes rows
+		- empty state copy: `No overrides set. Exercises use names from Hevy.`
+- Canonical gate script added (2026-05-02):
+	- New `canonical_gate.py` validates canonical CRUD endpoints against running local app
+	- Script simulates importer path with controlled fake-Hevy payload to verify set-title substitution deterministically
+	- Outputs PASS/FAIL per gate and summary with exit code
 - Import pipeline updates completed:
 	- Session modality now uses two-layer detection: title keyword pass first, then existing exercise-level fallback
 	- Title keyword sets include abbreviation codes (` ST`, ` HYP`, ` CON`, ` CAR`) and `strongman`
@@ -280,6 +307,12 @@ Last updated: 2026-05-01 (Backfill sessions admin endpoint added)
 	- `<style>` block brace audit passed: opening and closing braces are equal and running depth never goes negative
 	- Static diagnostics pass for `static/index.html` reports no errors
 	- Runtime style check confirms body font stack and theme colors now apply from CSS instead of fallback defaults
+- Canonical stack validation: PASS
+	- `database.py` bootstrap check confirms `exercise_canonical` exists with requested columns and PK/nullability shape
+	- Focused runtime check confirms importer stores canonical title in `workout_logs` when canonical mapping exists
+	- Canonical CRUD route checks passed via local handler/runtime test
+	- `canonical_gate.py` execution result: `SUMMARY: 6 passed, 0 failed`
+	- Syntax/error checks passed for touched files: `database.py`, `importer.py`, `main.py`, `static/index.html`, `canonical_gate.py`
 
 ## 5) Open Items / Next Backlog
 
