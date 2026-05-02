@@ -1,6 +1,6 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-01 (Exercise rename moved to Exercises tab)
+Last updated: 2026-05-01 (Backfill sessions admin endpoint added)
 
 ## 1) Current Product State
 
@@ -133,6 +133,22 @@ Last updated: 2026-05-01 (Exercise rename moved to Exercises tab)
 		- on conflict, only `exercise_title` and `workout_title` are updated so Hevy title renames propagate
 		- all training data fields remain unchanged on conflict (`weight_lbs`, `reps`, `rpe`, `rir`, `estimated_1rm`, `is_conditioning`)
 		- syntax validation: `python -m py_compile importer.py` passed
+- Admin data-repair endpoint added (2026-05-01):
+	- Added backend endpoint `POST /api/admin/backfill-sessions` in `main.py`
+	- Endpoint backfills missing `workout_sessions` rows for `workout_id` values present in `workout_logs` but absent in `workout_sessions.hevy_workout_id`
+	- For each missing workout id, source row is the earliest `WorkoutLog` record by `(date, id)` for deterministic mapping
+	- Backfilled defaults:
+		- `hevy_workout_id = workout_id`
+		- `workout_date = earliest WorkoutLog.date`
+		- `workout_title = earliest WorkoutLog.workout_title`
+		- `modality = "strength"`
+		- `modality_confidence = 0.0`
+		- `verification_status = "verified"`
+		- `verified_at = datetime.utcnow()`
+		- `start_time/end_time/duration_minutes/srpe = null`
+	- Response contract: `{ "backfilled": N }`
+	- Syntax validation: `python -m py_compile main.py` passed
+	- Runtime verification note: local API start currently blocked in this environment by missing dependency `cryptography` (`ModuleNotFoundError`)
 
 ## 3) Check-In UX (Latest Overhaul)
 

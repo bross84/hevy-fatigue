@@ -41,7 +41,7 @@ This document locks implementation to strict stage gates and dependency order.
 	- replaced five readiness-zone band colors with higher-contrast rgba values; current palette uses deep navy / cyan / green / amber / red bands
 	- set readiness chart x/y gridlines to `rgba(128,128,128,0.15)` for improved visibility in both light and dark themes
 
-## Latest Maintenance Update (2026-05-01)
+## Latest Maintenance Update (2026-05-01, Backfill Sessions)
 
 - Settings tab refactored to 3-card layout in `static/index.html`:
 	- Pattern Sensitivity card removed; controls migrated to `static/diagnostic.html`
@@ -54,6 +54,17 @@ This document locks implementation to strict stage gates and dependency order.
 	- Pattern Sensitivity section: Stressed/Neutral threshold inputs, save button, result feedback
 	- Session Processing section: Auto-Verify Confidence Threshold input, pending + force reclassify buttons, result feedback
 	- `diagLoadV2Settings()` called from `loadAndRender()` — inputs populate on page load and Refresh
+
+## Latest Maintenance Update (2026-05-01)
+
+- Added `POST /api/admin/backfill-sessions` in `main.py` for local data repair:
+	- backfills missing `workout_sessions` rows from `workout_logs` where `workout_id` has no matching `workout_sessions.hevy_workout_id`
+	- uses earliest `WorkoutLog` row per workout (`ORDER BY date, id`) for deterministic `workout_date` and `workout_title`
+	- sets defaults: `modality="strength"`, `modality_confidence=0.0`, `verification_status="verified"`, `verified_at=datetime.utcnow()`, null `start_time/end_time/duration_minutes/srpe`
+	- returns `{ "backfilled": N }`
+- Validation:
+	- `python -m py_compile main.py` passed
+	- live endpoint verification currently blocked in this environment because local app startup fails with `ModuleNotFoundError: No module named 'cryptography'`
 
 1. Stage 1 (COMPLETE)
 2. Stage 2 (COMPLETE)

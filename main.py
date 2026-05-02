@@ -779,6 +779,59 @@ def reclassify_sessions(data: SessionReclassificationInput, db: Session = Depend
         **result,
     }
 
+
+@app.post("/api/admin/backfill-sessions")
+def backfill_sessions_from_logs(db: Session = Depends(get_db)):
+    """Backfill missing WorkoutSession rows from WorkoutLog data."""
+    backfilled = 0
+
+    missing_workout_ids = [
+        row[0]
+        for row in (
+            db.query(WorkoutLog.workout_id)
+            .outerjoin(WorkoutSession, WorkoutSession.hevy_workout_id == WorkoutLog.workout_id)
+            .filter(WorkoutSession.hevy_workout_id.is_(None))
+            .filter(func.trim(WorkoutLog.workout_id) != "")
+            .distinct()
+            .order_by(WorkoutLog.workout_id.asc())
+            .all()
+        )
+    ]
+
+    try:
+        for workout_id in missing_workout_ids:
+            earliest_log = (
+                db.query(WorkoutLog)
+                .filter(WorkoutLog.workout_id == workout_id)
+                .order_by(WorkoutLog.date.asc(), WorkoutLog.id.asc())
+                .first()
+            )
+            if not earliest_log or not earliest_log.date:
+                continue
+
+            db.add(
+                WorkoutSession(
+                    hevy_workout_id=workout_id,
+                    workout_date=earliest_log.date,
+                    workout_title=earliest_log.workout_title,
+                    start_time=None,
+                    end_time=None,
+                    duration_minutes=None,
+                    modality="strength",
+                    modality_confidence=0.0,
+                    verification_status="verified",
+                    verified_at=datetime.utcnow(),
+                    srpe=None,
+                )
+            )
+            backfilled += 1
+
+        db.commit()
+        return {"backfilled": backfilled}
+    except Exception:
+        db.rollback()
+        raise
+
 # ── Training Load (ATL / CTL / TSB) ──────────────────────────────────────────
 
 def _training_stress_included_through(db: Session) -> date_type:
