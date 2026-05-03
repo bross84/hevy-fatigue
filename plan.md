@@ -1,6 +1,6 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-02 (Dedup index migration fixed)
+Last updated: 2026-05-02 (Conflict stack implemented)
 
 ## 1) Current Product State
 
@@ -329,6 +329,16 @@ Last updated: 2026-05-02 (Dedup index migration fixed)
 	- Runtime gate execution against `/data/hevy_fatigue.db` pending environment-specific DB path availability
 - Dedup index migration fix: PASS
 	- `python -m py_compile database.py` passed after `init_db()` migration update
+- Conflict gate script created: SYNTAX PASS
+	- `conflict_gate.py` written with GateRunner, 7 gates, preflight, and cleanup blocks
+	- `python -m py_compile conflict_gate.py` passed with no errors
+	- Runtime execution blocked pending implementation of ExerciseConflict model, importer detection, main.py endpoints, and index.html conflict UI
+- Conflict stack implementation: COMPLETE (syntax validated)
+	- `database.py`: `ExerciseConflict` model added (exercise_id PK, hevy_title, stored_title, detected_at, resolved, resolved_at); `init_db()` migration block creates `exercise_conflicts` table on startup
+	- `importer.py`: preloads `already_flagged` set and `stored_titles` dict per sync; upserts `ExerciseConflict` row when title drifts with no canonical and no existing open flag
+	- `main.py`: `ExerciseConflictResolveInput` Pydantic model; GET `/api/exercises/conflicts`; POST `…/{id}/resolve` (upserts canonical, marks resolved); POST `…/{id}/dismiss` (marks resolved only)
+	- `static/index.html`: Needs Review card (hidden until conflicts exist); nav badge on desktop + mobile exercises buttons; `loadExerciseConflicts()`, `renderExerciseConflictTable()`, `resolveExerciseConflict()`, `dismissExerciseConflict()` JS functions
+	- `python -m py_compile` passed for all touched files; JS brace count balanced (842/842)
 
 ## 5) Open Items / Next Backlog
 

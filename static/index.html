@@ -816,6 +816,7 @@ tbody tr:hover td { background: var(--row-hover); }
 .badge-user       { background: color-mix(in srgb, var(--success) 16%, transparent); color: var(--success); }
 .badge-reviewed   { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
 .badge-unreviewed { background: color-mix(in srgb, var(--danger)  12%, transparent); color: var(--danger); }
+.badge-conflict   { background: var(--danger); color: #fff; border-radius: 10px; font-size: 10px; padding: 1px 5px; }
 
 /* ── Modal ───────────────────────────── */
 .modal-overlay {
@@ -1850,7 +1851,7 @@ tbody tr:hover td { background: var(--row-hover); }
     <button class="nav-tab" data-tab="dashboard">Today</button>
     <button class="nav-tab" data-tab="trend">Trend</button>
     <button class="nav-tab" data-tab="workouts">Workouts</button>
-    <button class="nav-tab" data-tab="exercises">Exercises</button>
+    <button class="nav-tab" data-tab="exercises">Exercises<span id="ex-conflict-badge" class="badge badge-conflict" style="display:none;margin-left:5px;"></span></button>
     <button class="nav-tab" data-tab="log">Log</button>
     <button class="nav-tab" data-tab="settings">Settings</button>
   </div>
@@ -1869,7 +1870,7 @@ tbody tr:hover td { background: var(--row-hover); }
     <button class="nav-tab" data-tab="dashboard">Today</button>
     <button class="nav-tab" data-tab="trend">Trend</button>
     <button class="nav-tab" data-tab="workouts">Workouts</button>
-    <button class="nav-tab" data-tab="exercises">Exercises</button>
+    <button class="nav-tab" data-tab="exercises">Exercises<span id="ex-conflict-badge-mobile" class="badge" style="display:none;margin-left:5px;"></span></button>
     <button class="nav-tab" data-tab="log">Log</button>
     <button class="nav-tab" data-tab="settings">Settings</button>
   </div>
@@ -2130,6 +2131,14 @@ tbody tr:hover td { background: var(--row-hover); }
 
 <!-- ══════════════ EXERCISES TAB ══════════════ -->
 <section id="tab-exercises" class="tab-content">
+  <div class="card" id="ex-conflict-card" style="display:none;">
+    <div class="card-title">Exercise Names — Needs Review</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px;">
+      These exercises have a different name in Hevy than what was previously stored. Set a canonical name to lock it, or dismiss to ignore.
+    </div>
+    <div id="ex-conflict-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
+  </div>
+
   <div class="card" id="ex-canonical-card">
     <div class="card-title">Exercise Name Overrides</div>
     <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px;">
@@ -2503,6 +2512,8 @@ window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', ()
 let exercises      = [];
 let exerciseCanonicalRows = [];
 let exerciseCanonicalEditingId = null;
+let exerciseConflictRows = [];
+let exerciseConflictEditingId = null;
 
 // ── Chart resize handling ─────────────────────────────
 // window.resize + setTimeout has a race condition: the CSS grid layout may
@@ -2576,7 +2587,7 @@ function activateTab(tabName) {
   document.getElementById('tab-' + tabName).classList.add('active');
   if (tabName === 'dashboard') { loadTrainingLoadCard(); checkTodayReadiness(); }
   if (tabName === 'trend')                               activateTrendTab();
-  if (tabName === 'exercises')                           { loadExerciseCanonical(); if (exercises.length === 0) loadExercises(); }
+  if (tabName === 'exercises')                           { loadExerciseConflicts(); loadExerciseCanonical(); if (exercises.length === 0) loadExercises(); }
   if (tabName === 'workouts'  && !workoutsLoaded)        loadWorkouts();
   if (tabName === 'log'       && !logLoaded)             loadLog();
   if (tabName === 'settings')                            loadSettingsTab();
@@ -4133,6 +4144,116 @@ function toggleExInfo() {
 }
 
 // ═══ Exercises tab ════════════════════════════════════
+async function loadExerciseConflicts() {
+  const wrap = document.getElementById('ex-conflict-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="loading-wrap"><span class="spinner"></span> Checking for conflicts…</div>';
+  try {
+    const r = await fetch('/api/exercises/conflicts');
+    const rows = await r.json();
+    if (!r.ok) throw new Error(rows.detail || 'Failed to load conflicts.');
+    exerciseConflictRows = Array.isArray(rows) ? rows : [];
+    exerciseConflictEditingId = null;
+    renderExerciseConflictTable();
+    _updateExConflictBadge();
+  } catch (e) {
+    wrap.innerHTML = `<div style="color:var(--danger)">Failed to load conflicts: ${escHtml(e.message || '')}</div>`;
+  }
+}
+
+function _updateExConflictBadge() {
+  const count = exerciseConflictRows.length;
+  ['ex-conflict-badge', 'ex-conflict-badge-mobile'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (count > 0) {
+      el.textContent = count;
+      el.style.display = 'inline-block';
+    } else {
+      el.style.display = 'none';
+    }
+  });
+  const card = document.getElementById('ex-conflict-card');
+  if (card) card.style.display = count > 0 ? '' : 'none';
+}
+
+function renderExerciseConflictTable() {
+  const wrap = document.getElementById('ex-conflict-wrap');
+  if (!wrap) return;
+  if (!exerciseConflictRows.length) {
+    wrap.innerHTML = '<div class="exercise-canonical-empty">No conflicts detected.</div>';
+    return;
+  }
+  const rows = exerciseConflictRows.map(row => {
+    const isEditing = exerciseConflictEditingId === row.exercise_id;
+    const nameCell = isEditing
+      ? `<input type="text" class="search-input ex-conflict-input" data-exercise-id="${escHtml(row.exercise_id)}" value="${escHtml(row.hevy_title)}" autocomplete="off" style="width:100%;">`
+      : `<span>${escHtml(row.hevy_title)}</span>`;
+    const actionCell = isEditing
+      ? `<div class="exercise-canonical-edit-actions">
+           <button class="btn btn-primary" style="width:auto;padding:8px 12px;" data-exercise-id="${escHtml(row.exercise_id)}" onclick="resolveExerciseConflict(this.dataset.exerciseId)">Set Name</button>
+           <button class="btn btn-secondary" style="width:auto;padding:8px 12px;" onclick="cancelExerciseConflictEdit()">Cancel</button>
+         </div>`
+      : `<div style="display:flex;gap:6px;">
+           <button class="btn btn-sm btn-primary" data-exercise-id="${escHtml(row.exercise_id)}" onclick="editExerciseConflict(this.dataset.exerciseId)">Set Name</button>
+           <button class="btn btn-sm btn-secondary" data-exercise-id="${escHtml(row.exercise_id)}" onclick="dismissExerciseConflict(this.dataset.exerciseId)">Dismiss</button>
+         </div>`;
+    return `<tr>
+      <td>${escHtml(row.stored_title)}</td>
+      <td>${nameCell}</td>
+      <td>${actionCell}</td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<div class="table-scroll"><table>
+    <thead><tr>
+      <th>Stored Name</th>
+      <th>Hevy Name (new)</th>
+      <th>Action</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function editExerciseConflict(exerciseId) {
+  exerciseConflictEditingId = exerciseId;
+  renderExerciseConflictTable();
+}
+
+function cancelExerciseConflictEdit() {
+  exerciseConflictEditingId = null;
+  renderExerciseConflictTable();
+}
+
+async function resolveExerciseConflict(exerciseId) {
+  const input = document.querySelector(`.ex-conflict-input[data-exercise-id="${CSS.escape(exerciseId)}"]`);
+  const canonical_title = input ? input.value.trim() : '';
+  if (!canonical_title) { alert('Please enter a canonical name.'); return; }
+  try {
+    const r = await fetch(`/api/exercises/conflicts/${encodeURIComponent(exerciseId)}/resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ canonical_title }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || 'Failed to resolve conflict.');
+    await loadExerciseConflicts();
+    await loadExerciseCanonical();
+  } catch (e) {
+    alert('Error: ' + (e.message || 'Unknown error'));
+  }
+}
+
+async function dismissExerciseConflict(exerciseId) {
+  try {
+    const r = await fetch(`/api/exercises/conflicts/${encodeURIComponent(exerciseId)}/dismiss`, { method: 'POST' });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || 'Failed to dismiss conflict.');
+    await loadExerciseConflicts();
+  } catch (e) {
+    alert('Error: ' + (e.message || 'Unknown error'));
+  }
+}
+
 async function loadExerciseCanonical() {
   const wrap = document.getElementById('ex-canonical-wrap');
   if (!wrap) return;

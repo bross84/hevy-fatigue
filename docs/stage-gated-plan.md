@@ -1174,6 +1174,52 @@ Gate tests:
 	Validation evidence:
 	- `python -m py_compile database.py` passed.
 
+## Latest Maintenance Update (2026-05-02, Conflict Gate)
+
+- `conflict_gate.py` gate script created and syntax-validated:
+	- GateRunner with 7 gates, preflight checks, and finally-block cleanup
+	- Preflight verifies app reachable, `/api/exercises/conflicts` reachable, `exercise_conflicts` table present
+	- Fixtures: two exercise UUIDs, old/new/canonical title strings, monkeypatched HevyClient (same pattern as `canonical_gate.py`)
+	- Gate 1: seed old_title in workout_logs, import with new_title → confirm conflict row created
+	- Gate 2: confirm workout_logs stores new_title post-import
+	- Gate 3: GET `/api/exercises/conflicts` returns the test conflict
+	- Gate 4: resolve endpoint → canonical upserted, conflict marked resolved
+	- Gate 5: resolved conflict absent from GET
+	- Gate 6: re-import with canonical present → no new conflict created
+	- Gate 7: dismiss endpoint → resolved=True with no canonical write
+	- `python -m py_compile conflict_gate.py` — no errors
+- Conflict stack prerequisites still pending:
+	- `ExerciseConflict` SQLAlchemy model + `init_db()` migration block in `database.py`
+	- Conflict detection logic in `importer.py` (upsert on title drift, skip if already flagged)
+	- Three endpoints in `main.py`: GET `/api/exercises/conflicts`, POST `…/resolve`, POST `…/dismiss`
+	- Conflict review UI in `static/index.html`: Needs Review section, resolve/dismiss actions, nav badge
+
+## Latest Maintenance Update (2026-05-02, Conflict Stack Implementation)
+
+- `ExerciseConflict` model added to `database.py`:
+	- Columns: `exercise_id` (PK), `hevy_title`, `stored_title`, `detected_at`, `resolved` (Bool, default False), `resolved_at` (nullable)
+	- `init_db()` migration block: creates `exercise_conflicts` table on startup if absent
+- Conflict detection added to `importer.py`:
+	- Preloads `already_flagged` set (unresolved conflict exercise IDs) once per sync
+	- Preloads `stored_titles` dict (most-recent `exercise_title` per `exercise_id` from `workout_logs`) via MAX(id) subquery
+	- Per-exercise: if no canonical mapping, not already flagged, stored title differs from Hevy title → `db.merge(ExerciseConflict(...))`
+- Three endpoints added to `main.py`:
+	- `ExerciseConflictResolveInput(BaseModel)` Pydantic model with `canonical_title: str`
+	- `GET /api/exercises/conflicts` → returns unresolved conflicts ordered by `detected_at desc`
+	- `POST /api/exercises/conflicts/{exercise_id}/resolve` → upserts canonical, marks conflict resolved; 422 if empty title, 404 if not found
+	- `POST /api/exercises/conflicts/{exercise_id}/dismiss` → marks resolved=True/resolved_at=now; idempotent; 404 if not found
+- Conflict review UI added to `static/index.html`:
+	- `exerciseConflictRows` and `exerciseConflictEditingId` state vars
+	- Needs Review card (`#ex-conflict-card`) above canonical card; hidden by default via `style="display:none"`
+	- `activateTab` exercises branch now calls `loadExerciseConflicts()` before `loadExerciseCanonical()`
+	- Nav badge spans (`#ex-conflict-badge`, `#ex-conflict-badge-mobile`) with `.badge-conflict` styling on both desktop and mobile exercises buttons
+	- `loadExerciseConflicts()`, `_updateExConflictBadge()`, `renderExerciseConflictTable()`, `editExerciseConflict()`, `cancelExerciseConflictEdit()`, `resolveExerciseConflict()`, `dismissExerciseConflict()` JS functions
+- Validation:
+	- `python -m py_compile database.py` — OK
+	- `python -m py_compile importer.py` — OK
+	- `python -m py_compile main.py` — OK
+	- `static/index.html` JS brace balance: open=842 close=842, `<script>`/`</script>` count balanced 3/3
+
 ## Decisions Locked
 
 - Full-body via existing percentage fields (no `is_full_body` column).

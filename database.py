@@ -148,6 +148,21 @@ class ExerciseCanonical(Base):
     def __repr__(self):
         return f"<ExerciseCanonical exercise_id={self.exercise_id} canonical_title={self.canonical_title}>"
 
+
+class ExerciseConflict(Base):
+    __tablename__ = "exercise_conflicts"
+
+    exercise_id = Column(String, primary_key=True)
+    hevy_title = Column(String, nullable=False)
+    stored_title = Column(String, nullable=False)
+    detected_at = Column(DateTime, default=dt_datetime.utcnow)
+    resolved = Column(Boolean, default=False)
+    resolved_at = Column(DateTime, nullable=True)
+
+    def __repr__(self):
+        return f"<ExerciseConflict exercise_id={self.exercise_id} resolved={self.resolved}>"
+
+
 # This part actually creates the file and tables when you run the script
 def init_db():
     Base.metadata.create_all(bind=engine)
@@ -198,6 +213,14 @@ def init_db():
             )
         )
         conn.commit()
+
+        exercise_conflicts_exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='exercise_conflicts'")
+        ).first()
+        if not exercise_conflicts_exists:
+            Base.metadata.tables["exercise_conflicts"].create(bind=conn)
+            conn.commit()
+
     # app_settings table is created by create_all above (new installs and existing DBs)
 if __name__ == "__main__":
     init_db()

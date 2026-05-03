@@ -12,7 +12,7 @@ from cryptography.fernet import Fernet
 import os
 import threading
 
-from database import SessionLocal, DailyReadiness, WorkoutLog, WorkoutSession, ExerciseMapping, ExerciseCanonical, AppSetting, init_db
+from database import SessionLocal, DailyReadiness, WorkoutLog, WorkoutSession, ExerciseMapping, ExerciseCanonical, ExerciseConflict, AppSetting, init_db
 
 # ── Encryption ────────────────────────────────────────────────────────────────
 # A Fernet key is generated once and stored in the Docker volume at /data/app.key.
@@ -147,6 +147,10 @@ class ExerciseRenameInput(BaseModel):
 
 class ExerciseCanonicalInput(BaseModel):
     exercise_id: str
+    canonical_title: str
+
+
+class ExerciseConflictResolveInput(BaseModel):
     canonical_title: str
 
 # --- Stress Calculators ---
@@ -2681,6 +2685,74 @@ def delete_exercise_canonical(exercise_id: str, db: Session = Depends(get_db)):
     db.delete(row)
     db.commit()
     return {"deleted": True}
+
+
+@app.get("/api/exercises/conflicts")
+def get_exercise_conflicts(db: Session = Depends(get_db)):
+    rows = (
+        db.query(ExerciseConflict)
+        .filter(ExerciseConflict.resolved == False)
+        .order_by(ExerciseConflict.detected_at.desc())
+        .all()
+    )
+    return [
+        {
+            "exercise_id": r.exercise_id,
+            "hevy_title": r.hevy_title,
+            "stored_title": r.stored_title,
+            "detected_at": r.detected_at,
+        }
+        for r in rows
+    ]
+
+
+@app.post("/api/exercises/conflicts/{exercise_id}/resolve")
+def resolve_exercise_conflict(
+    exercise_id: str,
+    data: ExerciseConflictResolveInput,
+    db: Session = Depends(get_db),
+):
+    exercise_id = exercise_id.strip()
+    conflict = db.query(ExerciseConflict).filter(ExerciseConflict.exercise_id == exercise_id).first()
+    if not conflict:
+        raise HTTPException(status_code=404, detail="Conflict not found.")
+
+    canonical_title = data.canonical_title.strip()
+    if not canonical_title:
+        raise HTTPException(status_code=422, detail="canonical_title must not be empty.")
+
+    from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+    from datetime import datetime as _dt
+    stmt = sqlite_insert(ExerciseCanonical).values(
+        exercise_id=exercise_id,
+        canonical_title=canonical_title,
+        created_at=_dt.utcnow(),
+        updated_at=_dt.utcnow(),
+    ).on_conflict_do_update(
+        index_elements=["exercise_id"],
+        set_={"canonical_title": canonical_title, "updated_at": _dt.utcnow()},
+    )
+    db.execute(stmt)
+
+    conflict.resolved = True
+    conflict.resolved_at = _dt.utcnow()
+    db.commit()
+    return {"resolved": True, "canonical_title": canonical_title}
+
+
+@app.post("/api/exercises/conflicts/{exercise_id}/dismiss")
+def dismiss_exercise_conflict(exercise_id: str, db: Session = Depends(get_db)):
+    from datetime import datetime as _dt
+    exercise_id = exercise_id.strip()
+    conflict = db.query(ExerciseConflict).filter(ExerciseConflict.exercise_id == exercise_id).first()
+    if not conflict:
+        raise HTTPException(status_code=404, detail="Conflict not found.")
+
+    conflict.resolved = True
+    conflict.resolved_at = _dt.utcnow()
+    db.commit()
+    return {"dismissed": True}
+
 
 # ── Movement analytics ────────────────────────────────────────────────────────
 
