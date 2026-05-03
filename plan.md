@@ -2,6 +2,53 @@
 
 Last updated: 2026-05-02 (Sync payload + post-sync conflict query refactor)
 
+## Latest Maintenance Update (2026-05-03, Incremental Sync Gate)
+
+- Added `incremental_sync_gate.py` with gate-runner structure aligned to existing gate scripts (`dedup_gate.py`, `conflict_gate.py`).
+- Script includes preflight checks for app reachability and `GET /api/sync/last-sync` availability.
+- Implemented gates:
+	- Gate 1: clears DB `last_sync`, triggers sync, verifies `workout_sessions > 0` and `last_sync` repopulated.
+	- Gate 2: triggers second sync and verifies `last_sync` strictly advanced with unchanged `workout_sessions` count.
+	- Gate 3: simulates delete path by directly removing one workout from `workout_sessions` and `workout_logs`, then verifies both are gone.
+	- Gate 4: verifies canonical title substitution integrity for `exercise_canonical` rows, with SKIP when no canonical entries exist.
+	- Gate 5: verifies `last_sync` strictly advances after another sync.
+- CLI args: `--base-url`, `--db-path`, `--sync-timeout-seconds`, `--poll-interval-seconds`.
+- Final output includes per-gate PASS/FAIL (or SKIP), summary counts, and non-zero exit on failures.
+- Validation: `python -m py_compile incremental_sync_gate.py` passed.
+
+## Latest Maintenance Update (2026-05-03, Incremental Sync Migration + API)
+
+- Added one-time startup migration in `database.py:init_db()` guarded by `app_settings.migration_incremental_sync_v1`.
+- On first startup after deploy (flag missing), migration deletes `app_settings.last_sync` to force a fresh `initial_import`, then writes the migration flag so subsequent restarts skip it.
+- Added `GET /api/sync/last-sync` in `main.py` (before static mounts), returning `{ "last_sync": <value|null> }` from `app_settings`.
+- Validation: `python -m py_compile database.py` and `python -m py_compile main.py` passed.
+
+## Latest Maintenance Update (2026-05-03, Importer Sync Refactor)
+
+- Refactored `importer.py` into a two-mode sync flow with extracted `_process_workout(db, workout, canonical_map)` logic shared by:
+	- `initial_import(db, canonical_map)` for full `GET /v1/workouts` pagination
+	- `incremental_sync(db, last_sync, canonical_map)` for `GET /v1/workouts/events?since=...`
+- Preserved existing importer behavior inside `_process_workout()` for:
+	- canonical title substitution
+	- modality classification and verification resolution
+	- `ensure_exercise_mapped()` exercise mapping flow
+	- `WorkoutSession` upsert behavior, including verified-session preservation
+	- set-level `WorkoutLog` upsert behavior that only updates titles on conflict
+- `initial_import()` now clears `workout_logs`, `workout_sessions`, and auto/unreviewed `exercise_mappings` before replaying paginated workout imports.
+- `incremental_sync()` now applies Hevy workout events:
+	- `deleted` events remove matching `workout_logs` and `workout_sessions`
+	- `updated` events re-run `_process_workout()` on the supplied workout payload
+- Import sync cursor now persists to `app_settings.last_sync` after successful full or incremental sync passes.
+- Updated importer callers in `main.py`, `canonical_gate.py`, and `conflict_gate.py` to use the new `import_hevy_data(db)` entrypoint.
+- Validation: `python -m py_compile importer.py` and `python -m py_compile main.py canonical_gate.py conflict_gate.py` passed.
+
+## Latest Maintenance Update (2026-05-03)
+
+- Added `HevyClient.get_workout_events(since, page=1, page_size=10)` in `hevy_client.py` for `GET /v1/workouts/events`.
+- Method builds the events URL inline, uses `self.session.get(..., timeout=30)`, clamps `page_size` to the API max of `10`, and returns `{ page, page_count, events: [] }` for `404` responses.
+- Method now raises explicit client-side errors for unauthorized, HTTP, JSON decode, connection, timeout, and unexpected failure paths without expanding the repo to a new config/error abstraction.
+- Validation: `python -m py_compile hevy_client.py` passed.
+
 ## 1) Current Product State
 
 - Today recommendation state now uses a combined score model:

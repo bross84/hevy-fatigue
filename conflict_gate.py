@@ -7,7 +7,7 @@ import requests
 from sqlalchemy import text
 
 import importer
-from database import SessionLocal
+from database import AppSetting, SessionLocal
 
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
@@ -184,8 +184,15 @@ def simulate_import(exercise_id, workout_id, api_title):
     original_client = importer.HevyClient
     importer.HevyClient = FakeHevyClient
     try:
-        with contextlib.redirect_stdout(io.StringIO()):
-            return importer.import_hevy_data(api_key="conflict-gate")
+        db = SessionLocal()
+        try:
+            db.info["hevy_api_key"] = "conflict-gate"
+            db.query(AppSetting).filter(AppSetting.key == "last_sync").delete(synchronize_session=False)
+            db.commit()
+            with contextlib.redirect_stdout(io.StringIO()):
+                return importer.import_hevy_data(db)
+        finally:
+            db.close()
     finally:
         importer.HevyClient = original_client
 

@@ -10,6 +10,40 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-03, Incremental Sync Gate)
+
+- Added `incremental_sync_gate.py` using the same gate-runner output structure as existing gate scripts.
+- Added preflight checks for app reachability and `GET /api/sync/last-sync` endpoint existence.
+- Implemented five gates covering first-sync bootstrap behavior, incremental cursor advancement, local delete simulation checks, canonical substitution integrity checks, and repeat cursor advancement checks.
+- Gate script supports `--base-url` and `--db-path` with defaults `http://127.0.0.1:8000` and `/data/hevy_fatigue.db`.
+- Script prints per-gate PASS/FAIL (or SKIP), final summary counts, and exits non-zero when any gate fails.
+- Validation: `python -m py_compile incremental_sync_gate.py` passed.
+
+## Latest Maintenance Update (2026-05-03, Incremental Sync Migration + API)
+
+- Added one-time startup migration in `database.py:init_db()` guarded by `app_settings.migration_incremental_sync_v1`.
+- On first startup after deploy (flag missing), migration deletes `app_settings.last_sync` to force a fresh `initial_import`, then writes the migration flag so subsequent restarts skip it.
+- Added `GET /api/sync/last-sync` in `main.py` (before static mounts), returning `{ "last_sync": <value|null> }` from `app_settings`.
+- Validation: `python -m py_compile database.py` and `python -m py_compile main.py` passed.
+
+## Latest Maintenance Update (2026-05-03, Importer Sync Refactor)
+
+- Refactored `importer.py` into a two-mode sync flow with extracted `_process_workout(db, workout, canonical_map)` logic shared by:
+	- `initial_import(db, canonical_map)` for full `GET /v1/workouts` pagination
+	- `incremental_sync(db, last_sync, canonical_map)` for `GET /v1/workouts/events?since=...`
+- Preserved existing importer behavior inside `_process_workout()` for canonical title substitution, modality classification, `ensure_exercise_mapped()`, `WorkoutSession` upserts, and set-level `WorkoutLog` upserts.
+- `initial_import()` now clears `workout_logs`, `workout_sessions`, and auto/unreviewed `exercise_mappings` before replaying paginated workout imports.
+- `incremental_sync()` now removes local rows for deleted workouts and reprocesses updated workouts from Hevy events, then stores the sync cursor in `app_settings.last_sync`.
+- Updated importer callers in `main.py`, `canonical_gate.py`, and `conflict_gate.py` to use the new `import_hevy_data(db)` entrypoint.
+- Validation: `python -m py_compile importer.py` and `python -m py_compile main.py canonical_gate.py conflict_gate.py` passed.
+
+## Latest Maintenance Update (2026-05-03)
+
+- Added `HevyClient.get_workout_events(since, page=1, page_size=10)` in `hevy_client.py` for `GET /v1/workouts/events`.
+- Method builds the events URL inline, uses `self.session.get(..., timeout=30)`, clamps `page_size` to the API max of `10`, and returns `{ page, page_count, events: [] }` for `404` responses.
+- Method now raises explicit client-side errors for unauthorized, HTTP, JSON decode, connection, timeout, and unexpected failure paths without adding a new repo-wide config or error abstraction.
+- Validation: `python -m py_compile hevy_client.py` passed.
+
 ## Latest Maintenance Update (2026-04-26)
 
 - `static/diagnostic.html` AI assistant markdown rendering added:

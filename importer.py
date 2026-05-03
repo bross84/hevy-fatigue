@@ -1,7 +1,7 @@
 from collections import defaultdict
 import re
 
-from database import SessionLocal, WorkoutLog, WorkoutSession, ExerciseMapping, ExerciseCanonical, ExerciseConflict, init_db
+from database import SessionLocal, WorkoutLog, WorkoutSession, ExerciseMapping, ExerciseCanonical, ExerciseConflict, AppSetting, init_db
 from hevy_client import HevyClient
 from rpe_table import calculate_e1rm, seed_rpe_table
 from exercise_classifier import classify_exercise, ensure_exercise_mapped
@@ -33,6 +33,9 @@ CARDIO_TITLE_KEYWORDS = [
 _MIXED_SESSION_NOTE = "Mixed session detected - consider splitting by modality"
 
 _SRPE_TITLE_TAG_PATTERN = re.compile(r"@(?P<value>\d+(?:\.\d+)?)")
+_IMPORT_CONTEXT_KEY = "importer_sync_context"
+_LAST_SYNC_SETTING_KEY = "last_sync"
+_AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT = 0.87
 
 
 def _extract_srpe_from_title(workout_title):
@@ -218,6 +221,250 @@ def _resolve_conditioning_from_current_classifier(exercise_title, db, mapping_ca
     return is_conditioning
 
 
+def _get_setting_value(db, key: str) -> str | None:
+    row = db.query(AppSetting).filter(AppSetting.key == key).first()
+    return row.value if row else None
+
+
+def _set_setting_value(db, key: str, value: str) -> None:
+    row = db.query(AppSetting).filter(AppSetting.key == key).first()
+    if row:
+        row.value = value
+    else:
+        db.add(AppSetting(key=key, value=value))
+
+
+def _get_auto_verify_confidence_threshold(db) -> float:
+    raw = _get_setting_value(db, "auto_verify_confidence_threshold")
+    if raw is None:
+        return _AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return _AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT
+    if 0.50 <= value <= 1.00:
+        return value
+    return _AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT
+
+
+def _get_client_api_key(db) -> str | None:
+    api_key = db.info.get("hevy_api_key")
+    if api_key:
+        return api_key
+
+    raw = _get_setting_value(db, "hevy_api_key")
+    if not raw:
+        return None
+
+    raw = raw.strip()
+    if not raw:
+        return None
+
+    # API-layer sync calls inject the decrypted key through db.info.
+    # When the DB still contains legacy plaintext, preserve that fallback.
+    if raw.startswith("gAAAA"):
+        return None
+    return raw
+
+
+def load_canonical_map(db) -> dict[str, str]:
+    return {
+        row.exercise_id: row.canonical_title
+        for row in db.query(ExerciseCanonical).all()
+        if row.exercise_id
+    }
+
+
+def _get_import_context(db) -> dict:
+    context = db.info.get(_IMPORT_CONTEXT_KEY)
+    if context is None:
+        raise RuntimeError("Importer context has not been initialized.")
+    return context
+
+
+def _process_workout(db, workout, canonical_map):
+    context = _get_import_context(db)
+    auto_verify_confidence_threshold = context["auto_verify_confidence_threshold"]
+    exercise_conditioning_cache = context["exercise_conditioning_cache"]
+    stats = context["stats"]
+
+    workout_id = workout.get('id')
+    workout_title = workout.get('title')
+    raw_start = workout.get('start_time')
+    raw_end = workout.get('end_time')
+    start_dt = _parse_hevy_datetime(raw_start)
+    end_dt = _parse_hevy_datetime(raw_end)
+    raw_date = raw_start
+
+    # start_time is required for WorkoutLog.date (NOT NULL); skip invalid payloads.
+    if not raw_date:
+        stats["skipped_workouts_missing_date"] += 1
+        return
+    try:
+        workout_date = datetime.fromisoformat(raw_date.replace('Z', '+00:00')).date()
+    except ValueError:
+        stats["skipped_workouts_missing_date"] += 1
+        return
+
+    exercises = workout.get('exercises', [])
+
+    for exercise in exercises:
+        title = exercise.get('title')
+
+        # Auto-classify exercise if not already in the mapping table
+        ensure_exercise_mapped(title, db)
+
+        if title in exercise_conditioning_cache:
+            continue
+
+        mapping = db.query(ExerciseMapping).filter(
+            ExerciseMapping.exercise_title == title
+        ).first()
+        is_conditioning = bool(mapping.is_conditioning) if mapping else False
+        exercise_conditioning_cache[title] = is_conditioning
+
+    modality, modality_confidence, modality_note = _infer_modality(
+        workout_title=workout_title,
+        exercises=exercises,
+        conditioning_cache=exercise_conditioning_cache,
+    )
+    srpe_from_title = _extract_srpe_from_title(workout_title)
+    duration_minutes = _compute_duration_minutes(start_dt, end_dt)
+    verification_status, verified_at = _resolve_verification(
+        modality=modality,
+        confidence=modality_confidence,
+        duration_minutes=duration_minutes,
+        auto_verify_confidence_threshold=auto_verify_confidence_threshold,
+        srpe=srpe_from_title,
+        srpe_from_title=srpe_from_title is not None,
+    )
+
+    existing_session = (
+        db.query(WorkoutSession)
+        .filter(WorkoutSession.hevy_workout_id == workout_id)
+        .first()
+    )
+
+    if existing_session and existing_session.verification_status == "verified":
+        session_stmt = sqlite_insert(WorkoutSession).values(
+            hevy_workout_id=workout_id,
+            workout_date=workout_date,
+            workout_title=workout_title,
+            start_time=start_dt,
+            end_time=end_dt,
+            duration_minutes=duration_minutes,
+            modality=existing_session.modality,
+            modality_confidence=existing_session.modality_confidence,
+            modality_note=existing_session.modality_note,
+            verification_status=existing_session.verification_status,
+            verified_at=existing_session.verified_at,
+            srpe=existing_session.srpe,
+            updated_at=datetime.utcnow(),
+        ).on_conflict_do_update(
+            index_elements=[WorkoutSession.hevy_workout_id],
+            set_={
+                "workout_date": workout_date,
+                "workout_title": workout_title,
+                "start_time": start_dt,
+                "end_time": end_dt,
+                "duration_minutes": duration_minutes,
+                "updated_at": datetime.utcnow(),
+            },
+        )
+    else:
+        session_stmt = sqlite_insert(WorkoutSession).values(
+            hevy_workout_id=workout_id,
+            workout_date=workout_date,
+            workout_title=workout_title,
+            start_time=start_dt,
+            end_time=end_dt,
+            duration_minutes=duration_minutes,
+            modality=modality,
+            modality_confidence=modality_confidence,
+            modality_note=modality_note,
+            verification_status=verification_status,
+            verified_at=verified_at,
+            srpe=srpe_from_title,
+            updated_at=datetime.utcnow(),
+        ).on_conflict_do_update(
+            index_elements=[WorkoutSession.hevy_workout_id],
+            set_={
+                "workout_date": workout_date,
+                "workout_title": workout_title,
+                "start_time": start_dt,
+                "end_time": end_dt,
+                "duration_minutes": duration_minutes,
+                "modality": modality,
+                "modality_confidence": modality_confidence,
+                "modality_note": modality_note,
+                "verification_status": verification_status,
+                "verified_at": verified_at,
+                "srpe": srpe_from_title,
+                "updated_at": datetime.utcnow(),
+            },
+        )
+    db.execute(session_stmt)
+
+    for exercise in exercises:
+        exercise_id = exercise.get('exercise_template_id')
+        title = canonical_map.get(exercise_id, exercise.get('title'))
+
+        is_conditioning = exercise_conditioning_cache.get(exercise.get('title'), False)
+
+        for set_data in exercise.get('sets', []):
+            if set_data.get('type') == 'warmup':
+                continue  # Skip warmup sets — working sets only
+
+            set_number = set_data.get('index')
+            weight_kg = set_data.get('weight_kg') or 0.0
+            reps = set_data.get('reps') or 0
+            rpe = set_data.get('rpe')
+            rir = set_data.get('rir')  # Reps in Reserve — Hevy may expose this field
+
+            weight_lbs = round(weight_kg * 2.20462, 2) if weight_kg else None
+
+            # Calculate e1RM using full fallback hierarchy:
+            # RPE/RIR table → history inference → Wendler
+            e1rm = calculate_e1rm(
+                weight=weight_lbs,
+                reps=reps,
+                rpe=rpe,
+                rir=rir,
+                exercise_title=title,
+                db=db
+            )
+
+            # Upsert set rows: preserve training data fields but allow title renames
+            # from Hevy to propagate to existing stored sets.
+            stmt = sqlite_insert(WorkoutLog).values(
+                date=workout_date,
+                workout_id=workout_id,
+                workout_title=workout_title,
+                exercise_id=exercise_id,
+                exercise_title=title,
+                set_number=set_number,
+                weight_lbs=weight_lbs,
+                reps=reps,
+                rpe=rpe,
+                rir=rir,
+                estimated_1rm=e1rm,
+                is_conditioning=is_conditioning,
+            ).on_conflict_do_update(
+                index_elements=[
+                    WorkoutLog.workout_id,
+                    WorkoutLog.exercise_id,
+                    WorkoutLog.set_number,
+                ],
+                set_={
+                    "exercise_title": title,
+                    "workout_title": workout_title,
+                },
+            )
+            result = db.execute(stmt)
+            if result.rowcount:
+                stats["new_sets"] += 1
+
+
 def reclassify_existing_sessions(db, force_all=False):
     init_db()
     session_query = db.query(WorkoutSession).order_by(WorkoutSession.workout_date.desc(), WorkoutSession.start_time.desc())
@@ -369,229 +616,119 @@ def detect_exercise_conflicts(db):
         )
         db.execute(stmt)
 
-def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshold: float = 0.87):
+def initial_import(db, canonical_map):
+    context = _get_import_context(db)
+    client = context["client"]
+
+    db.query(WorkoutLog).delete(synchronize_session=False)
+    db.query(WorkoutSession).delete(synchronize_session=False)
+    db.query(ExerciseMapping).filter(
+        ExerciseMapping.source == "auto",
+        ExerciseMapping.is_reviewed == False,
+    ).delete(synchronize_session=False)
+
+    page = 1
+    while True:
+        data = client.get_workouts(page)
+        workouts = data.get('workouts', [])
+        page_count = data.get('page_count', 1)
+
+        for workout in workouts:
+            _process_workout(db, workout, canonical_map)
+
+        db.commit()
+
+        if page >= page_count:
+            break
+        page += 1
+
+    _set_setting_value(db, _LAST_SYNC_SETTING_KEY, datetime.utcnow().isoformat())
+    detect_exercise_conflicts(db)
+    db.commit()
+
+
+def incremental_sync(db, last_sync: str, canonical_map):
+    context = _get_import_context(db)
+    client = context["client"]
+
+    page = 1
+    while True:
+        data = client.get_workout_events(since=last_sync, page=page)
+        events = data.get("events", [])
+        page_count = data.get("page_count", 0)
+
+        for event in events:
+            event_type = event.get("type")
+            if event_type == "deleted":
+                workout_id = event.get("id")
+                if workout_id is None:
+                    continue
+                db.query(WorkoutLog).filter(WorkoutLog.workout_id == workout_id).delete(
+                    synchronize_session=False,
+                )
+                db.query(WorkoutSession).filter(
+                    WorkoutSession.hevy_workout_id == workout_id
+                ).delete(synchronize_session=False)
+            elif event_type == "updated":
+                workout = event.get("workout")
+                if workout:
+                    _process_workout(db, workout, canonical_map)
+
+        db.commit()
+
+        if page >= page_count:
+            break
+        page += 1
+
+    _set_setting_value(db, _LAST_SYNC_SETTING_KEY, datetime.utcnow().isoformat())
+    detect_exercise_conflicts(db)
+    db.commit()
+
+
+def import_hevy_data(db):
     init_db()  # Ensure tables exist before we try to use them
-    client = HevyClient(api_key=api_key)
-    db = SessionLocal()
+    client = HevyClient(api_key=_get_client_api_key(db))
+    prior_context = db.info.get(_IMPORT_CONTEXT_KEY)
+    context = {
+        "client": client,
+        "auto_verify_confidence_threshold": _get_auto_verify_confidence_threshold(db),
+        "exercise_conditioning_cache": {},
+        "stats": {
+            "new_sets": 0,
+            "skipped_workouts_missing_date": 0,
+        },
+    }
+    db.info[_IMPORT_CONTEXT_KEY] = context
     try:
         seed_rpe_table(db)  # Seed RPE chart if not already done
 
-        exercise_canonical_map = {
-            row.exercise_id: row.canonical_title
-            for row in db.query(ExerciseCanonical).all()
-            if row.exercise_id
-        }
+        canonical_map = load_canonical_map(db)
 
         if not client.test_connection():
             print("❌ Could not connect to Hevy API. Check your API key.")
             return {"new_sets": 0, "error": "Could not connect to Hevy API. Check your API key."}
 
-        page = 1
-        total_added = 0
-        skipped_workouts_missing_date = 0
-        exercise_conditioning_cache: dict[str, bool] = {}
+        last_sync = _get_setting_value(db, _LAST_SYNC_SETTING_KEY)
+        if last_sync is None:
+            initial_import(db, canonical_map)
+        else:
+            incremental_sync(db, last_sync, canonical_map)
 
-        while True:
-            data = client.get_workouts(page)
-            workouts = data.get('workouts', [])
-            page_count = data.get('page_count', 1)
-
-            for workout in workouts:
-                workout_id = workout.get('id')
-                workout_title = workout.get('title')
-                raw_start = workout.get('start_time')
-                raw_end = workout.get('end_time')
-                start_dt = _parse_hevy_datetime(raw_start)
-                end_dt = _parse_hevy_datetime(raw_end)
-                raw_date = raw_start
-
-                # start_time is required for WorkoutLog.date (NOT NULL); skip invalid payloads.
-                if not raw_date:
-                    skipped_workouts_missing_date += 1
-                    continue
-                try:
-                    workout_date = datetime.fromisoformat(raw_date.replace('Z', '+00:00')).date()
-                except ValueError:
-                    skipped_workouts_missing_date += 1
-                    continue
-
-                exercises = workout.get('exercises', [])
-
-                for exercise in exercises:
-                    title = exercise.get('title')
-
-                    # Auto-classify exercise if not already in the mapping table
-                    ensure_exercise_mapped(title, db)
-
-                    if title in exercise_conditioning_cache:
-                        continue
-
-                    mapping = db.query(ExerciseMapping).filter(
-                        ExerciseMapping.exercise_title == title
-                    ).first()
-                    is_conditioning = bool(mapping.is_conditioning) if mapping else False
-                    exercise_conditioning_cache[title] = is_conditioning
-
-                modality, modality_confidence, modality_note = _infer_modality(
-                    workout_title=workout_title,
-                    exercises=exercises,
-                    conditioning_cache=exercise_conditioning_cache,
-                )
-                srpe_from_title = _extract_srpe_from_title(workout_title)
-                duration_minutes = _compute_duration_minutes(start_dt, end_dt)
-                verification_status, verified_at = _resolve_verification(
-                    modality=modality,
-                    confidence=modality_confidence,
-                    duration_minutes=duration_minutes,
-                    auto_verify_confidence_threshold=auto_verify_confidence_threshold,
-                    srpe=srpe_from_title,
-                    srpe_from_title=srpe_from_title is not None,
-                )
-
-                existing_session = (
-                    db.query(WorkoutSession)
-                    .filter(WorkoutSession.hevy_workout_id == workout_id)
-                    .first()
-                )
-
-                if existing_session and existing_session.verification_status == "verified":
-                    session_stmt = sqlite_insert(WorkoutSession).values(
-                        hevy_workout_id=workout_id,
-                        workout_date=workout_date,
-                        workout_title=workout_title,
-                        start_time=start_dt,
-                        end_time=end_dt,
-                        duration_minutes=duration_minutes,
-                        modality=existing_session.modality,
-                        modality_confidence=existing_session.modality_confidence,
-                        modality_note=existing_session.modality_note,
-                        verification_status=existing_session.verification_status,
-                        verified_at=existing_session.verified_at,
-                        srpe=existing_session.srpe,
-                        updated_at=datetime.utcnow(),
-                    ).on_conflict_do_update(
-                        index_elements=[WorkoutSession.hevy_workout_id],
-                        set_={
-                            "workout_date": workout_date,
-                            "workout_title": workout_title,
-                            "start_time": start_dt,
-                            "end_time": end_dt,
-                            "duration_minutes": duration_minutes,
-                            "updated_at": datetime.utcnow(),
-                        },
-                    )
-                else:
-                    session_stmt = sqlite_insert(WorkoutSession).values(
-                        hevy_workout_id=workout_id,
-                        workout_date=workout_date,
-                        workout_title=workout_title,
-                        start_time=start_dt,
-                        end_time=end_dt,
-                        duration_minutes=duration_minutes,
-                        modality=modality,
-                        modality_confidence=modality_confidence,
-                        modality_note=modality_note,
-                        verification_status=verification_status,
-                        verified_at=verified_at,
-                        srpe=srpe_from_title,
-                        updated_at=datetime.utcnow(),
-                    ).on_conflict_do_update(
-                        index_elements=[WorkoutSession.hevy_workout_id],
-                        set_={
-                            "workout_date": workout_date,
-                            "workout_title": workout_title,
-                            "start_time": start_dt,
-                            "end_time": end_dt,
-                            "duration_minutes": duration_minutes,
-                            "modality": modality,
-                            "modality_confidence": modality_confidence,
-                            "modality_note": modality_note,
-                            "verification_status": verification_status,
-                            "verified_at": verified_at,
-                            "srpe": srpe_from_title,
-                            "updated_at": datetime.utcnow(),
-                        },
-                    )
-                db.execute(session_stmt)
-
-                for exercise in exercises:
-                    exercise_id = exercise.get('exercise_template_id')
-                    title = exercise_canonical_map.get(exercise_id, exercise.get('title'))
-
-                    is_conditioning = exercise_conditioning_cache.get(exercise.get('title'), False)
-
-                    for set_data in exercise.get('sets', []):
-                        if set_data.get('type') == 'warmup':
-                            continue  # Skip warmup sets — working sets only
-
-                        set_number = set_data.get('index')
-                        weight_kg = set_data.get('weight_kg') or 0.0
-                        reps = set_data.get('reps') or 0
-                        rpe = set_data.get('rpe')
-                        rir = set_data.get('rir')  # Reps in Reserve — Hevy may expose this field
-
-                        weight_lbs = round(weight_kg * 2.20462, 2) if weight_kg else None
-
-                        # Calculate e1RM using full fallback hierarchy:
-                        # RPE/RIR table → history inference → Wendler
-                        e1rm = calculate_e1rm(
-                            weight=weight_lbs,
-                            reps=reps,
-                            rpe=rpe,
-                            rir=rir,
-                            exercise_title=title,
-                            db=db
-                        )
-
-                        # Upsert set rows: preserve training data fields but allow title renames
-                        # from Hevy to propagate to existing stored sets.
-                        stmt = sqlite_insert(WorkoutLog).values(
-                            date=workout_date,
-                            workout_id=workout_id,
-                            workout_title=workout_title,
-                            exercise_id=exercise_id,
-                            exercise_title=title,
-                            set_number=set_number,
-                            weight_lbs=weight_lbs,
-                            reps=reps,
-                            rpe=rpe,
-                            rir=rir,
-                            estimated_1rm=e1rm,
-                            is_conditioning=is_conditioning,
-                        ).on_conflict_do_update(
-                            index_elements=[
-                                WorkoutLog.workout_id,
-                                WorkoutLog.exercise_id,
-                                WorkoutLog.set_number,
-                            ],
-                            set_={
-                                "exercise_title": title,
-                                "workout_title": workout_title,
-                            },
-                        )
-                        result = db.execute(stmt)
-                        if result.rowcount:
-                            total_added += 1
-
-            db.commit()
-
-            if page >= page_count:
-                break
-            page += 1
-
-        detect_exercise_conflicts(db)
-        db.commit()
-
-        print(f"✅ Import complete. {total_added} new sets added.")
-        return {
-            "new_sets": total_added,
-            "skipped_workouts_missing_date": skipped_workouts_missing_date,
-        }
+        stats = dict(context["stats"])
+        print(f"✅ Import complete. {stats['new_sets']} new sets added.")
+        return stats
     except Exception:
         db.rollback()
         raise
     finally:
-        db.close()
+        if prior_context is None:
+            db.info.pop(_IMPORT_CONTEXT_KEY, None)
+        else:
+            db.info[_IMPORT_CONTEXT_KEY] = prior_context
 
 if __name__ == "__main__":
-    import_hevy_data()
+    db = SessionLocal()
+    try:
+        import_hevy_data(db)
+    finally:
+        db.close()

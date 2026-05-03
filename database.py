@@ -221,6 +221,22 @@ def init_db():
             Base.metadata.tables["exercise_conflicts"].create(bind=conn)
             conn.commit()
 
+        migration_flag_key = "migration_incremental_sync_v1"
+        migration_flag_exists = conn.execute(
+            text("SELECT key FROM app_settings WHERE key = :key"),
+            {"key": migration_flag_key},
+        ).first()
+        if not migration_flag_exists:
+            conn.execute(
+                text("DELETE FROM app_settings WHERE key = :key"),
+                {"key": "last_sync"},
+            )
+            conn.execute(
+                text("INSERT INTO app_settings (key, value) VALUES (:key, :value)"),
+                {"key": migration_flag_key, "value": "1"},
+            )
+            conn.commit()
+
     # app_settings table is created by create_all above (new installs and existing DBs)
 if __name__ == "__main__":
     init_db()

@@ -657,11 +657,8 @@ def trigger_sync(force: bool = False, db: Session = Depends(get_db)):
         _sync_status["running"] = True
         # Resolve API key: DB setting first, then file/env fallback inside HevyClient
         api_key = _get_db_api_key(db)
-        auto_verify_threshold = _get_auto_verify_confidence_threshold(db)
-        result = import_hevy_data(
-            api_key=api_key,
-            auto_verify_confidence_threshold=auto_verify_threshold,
-        )
+        db.info["hevy_api_key"] = api_key
+        result = import_hevy_data(db)
         _sync_status["last_result"] = result
         _sync_status["last_run"] = datetime.utcnow()
         return {
@@ -679,6 +676,12 @@ def trigger_sync(force: bool = False, db: Session = Depends(get_db)):
 def sync_status():
     """Check whether a sync is currently running and what the last run returned."""
     return {"running": _sync_status["running"], "last_result": _sync_status["last_result"]}
+
+
+@app.get("/api/sync/last-sync")
+def get_last_sync(db: Session = Depends(get_db)):
+    last_sync = _get_setting_value(db, "last_sync")
+    return {"last_sync": last_sync}
 
 # ── Settings ──────────────────────────────────────────────────────────────────
 
