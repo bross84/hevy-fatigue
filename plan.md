@@ -2,6 +2,13 @@
 
 Last updated: 2026-05-02 (Sync payload + post-sync conflict query refactor)
 
+## Latest Maintenance Update (2026-05-03, Sync Cooldown Removal)
+
+- Removed sync cooldown enforcement from `POST /api/sync` in `main.py`.
+- Removed `_SYNC_COOLDOWN_SECONDS` and the cooldown response path (`status="cooldown"`, `retry_after_seconds`).
+- Preserved `_sync_lock` behavior so concurrent sync runs are still prevented (`status="already_running"`).
+- Validation: `python -m py_compile main.py` passed.
+
 ## Latest Maintenance Update (2026-05-03, Incremental Sync Gate)
 
 - Added `incremental_sync_gate.py` with gate-runner structure aligned to existing gate scripts (`dedup_gate.py`, `conflict_gate.py`).

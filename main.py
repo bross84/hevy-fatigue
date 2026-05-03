@@ -318,7 +318,6 @@ def startup():
 # --- Sync state (prevents concurrent imports and rate-limits manual triggers) ---
 _sync_lock = threading.Lock()
 _sync_status = {"running": False, "last_result": None, "last_run": None}
-_SYNC_COOLDOWN_SECONDS = 600  # 10 minutes between manual syncs
 
 # --- Settings helper ---
 def _get_db_api_key(db: Session) -> str | None:
@@ -640,20 +639,12 @@ def serve_frontend():
 def trigger_sync(force: bool = False, db: Session = Depends(get_db)):
     """
     Pull latest workouts from the Hevy API into the local database.
-    Rejects if a sync is already running or ran within the cooldown window.
-    Pass ?force=true to bypass the cooldown (e.g. from the auto-sync on check-in).
+    Rejects if a sync is already running.
     """
     if not _sync_lock.acquire(blocking=False):
         return {"status": "already_running"}
 
     try:
-        # Enforce cooldown on manual triggers to prevent API hammering
-        if not force and _sync_status["last_run"] is not None:
-            elapsed = (datetime.utcnow() - _sync_status["last_run"]).total_seconds()
-            if elapsed < _SYNC_COOLDOWN_SECONDS:
-                remaining = int(_SYNC_COOLDOWN_SECONDS - elapsed)
-                return {"status": "cooldown", "retry_after_seconds": remaining}
-
         _sync_status["running"] = True
         # Resolve API key: DB setting first, then file/env fallback inside HevyClient
         api_key = _get_db_api_key(db)

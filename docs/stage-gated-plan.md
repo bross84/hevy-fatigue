@@ -10,6 +10,13 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-03, Sync Cooldown Removal)
+
+- Removed sync cooldown enforcement from `POST /api/sync` in `main.py`.
+- Removed `_SYNC_COOLDOWN_SECONDS` and the cooldown return path so sync requests are no longer throttled by elapsed time.
+- Kept `_sync_lock` unchanged so overlapping sync runs remain blocked by the existing `already_running` guard.
+- Validation: `python -m py_compile main.py` passed.
+
 ## Latest Maintenance Update (2026-05-03, Incremental Sync Gate)
 
 - Added `incremental_sync_gate.py` using the same gate-runner output structure as existing gate scripts.
