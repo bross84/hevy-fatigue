@@ -3052,11 +3052,12 @@ async function runSync({ silent = false } = {}) {
         const mins = Math.ceil(d.retry_after_seconds / 60);
         statusEl.innerHTML = `<div class="alert alert-info">Already synced recently — try again in ${mins} min.</div>`;
       } else if (r.ok) {
-        const msg = d.new_sets > 0
-          ? `✓ Sync complete — ${d.new_sets} new set${d.new_sets !== 1 ? 's' : ''} added.`
-          : '✓ Already up to date — no new sets found.';
+        const syncedLabel = d.synced_at
+          ? new Date(d.synced_at).toLocaleString()
+          : 'unknown time';
+        const msg = `✓ Sync complete — ${syncedLabel}`;
         statusEl.innerHTML = `<div class="alert alert-success">${msg}</div>`;
-        localStorage.setItem('hevy_last_sync_iso', new Date().toISOString());
+        localStorage.setItem('hevy_last_sync_iso', d.synced_at || new Date().toISOString());
         invalidateTodayCaches();
         // Refresh Today and Trend data surfaces
         loadTrainingLoadCard();

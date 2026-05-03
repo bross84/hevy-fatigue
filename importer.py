@@ -6,6 +6,7 @@ from hevy_client import HevyClient
 from rpe_table import calculate_e1rm, seed_rpe_table
 from exercise_classifier import classify_exercise, ensure_exercise_mapped
 from datetime import datetime, timezone
+from sqlalchemy import func
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 
@@ -299,6 +300,75 @@ def _resolve_verification(
 
     return "pending", None
 
+
+def detect_exercise_conflicts(db):
+    candidate_rows = (
+        db.query(WorkoutLog.exercise_id)
+        .filter(WorkoutLog.exercise_id.isnot(None))
+        .group_by(WorkoutLog.exercise_id)
+        .having(func.count(func.distinct(WorkoutLog.exercise_title)) > 1)
+        .all()
+    )
+    candidate_ids = [row.exercise_id for row in candidate_rows if row.exercise_id]
+    if not candidate_ids:
+        return
+
+    canonical_ids = {
+        row.exercise_id
+        for row in db.query(ExerciseCanonical.exercise_id)
+        .filter(ExerciseCanonical.exercise_id.in_(candidate_ids))
+        .all()
+    }
+    unresolved_ids = {
+        row.exercise_id
+        for row in db.query(ExerciseConflict.exercise_id)
+        .filter(
+            ExerciseConflict.exercise_id.in_(candidate_ids),
+            ExerciseConflict.resolved == False,
+        )
+        .all()
+    }
+
+    for exercise_id in candidate_ids:
+        if exercise_id in canonical_ids or exercise_id in unresolved_ids:
+            continue
+
+        newest = (
+            db.query(WorkoutLog.exercise_title)
+            .filter(WorkoutLog.exercise_id == exercise_id)
+            .order_by(WorkoutLog.date.desc(), WorkoutLog.id.desc())
+            .first()
+        )
+        oldest = (
+            db.query(WorkoutLog.exercise_title)
+            .filter(WorkoutLog.exercise_id == exercise_id)
+            .order_by(WorkoutLog.date.asc(), WorkoutLog.id.asc())
+            .first()
+        )
+        hevy_title = newest[0] if newest else None
+        stored_title = oldest[0] if oldest else None
+        if not hevy_title or not stored_title:
+            continue
+
+        stmt = sqlite_insert(ExerciseConflict).values(
+            exercise_id=exercise_id,
+            hevy_title=hevy_title,
+            stored_title=stored_title,
+            detected_at=datetime.utcnow(),
+            resolved=False,
+            resolved_at=None,
+        ).on_conflict_do_update(
+            index_elements=[ExerciseConflict.exercise_id],
+            set_={
+                "hevy_title": hevy_title,
+                "stored_title": stored_title,
+                "detected_at": datetime.utcnow(),
+                "resolved": False,
+                "resolved_at": None,
+            },
+        )
+        db.execute(stmt)
+
 def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshold: float = 0.87):
     init_db()  # Ensure tables exist before we try to use them
     client = HevyClient(api_key=api_key)
@@ -310,31 +380,6 @@ def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshol
             row.exercise_id: row.canonical_title
             for row in db.query(ExerciseCanonical).all()
             if row.exercise_id
-        }
-
-        # Preload already-flagged (unresolved) conflict exercise IDs so we don't re-flag each sync.
-        already_flagged = {
-            row.exercise_id
-            for row in db.query(ExerciseConflict).filter(ExerciseConflict.resolved == False).all()
-        }
-
-        # Build a map of the most-recently stored title per exercise from workout_logs.
-        from sqlalchemy import func as _func
-        _latest_log_subq = (
-            db.query(
-                WorkoutLog.exercise_id,
-                _func.max(WorkoutLog.id).label("max_id"),
-            )
-            .group_by(WorkoutLog.exercise_id)
-            .subquery()
-        )
-        stored_titles = {
-            row.exercise_id: row.exercise_title
-            for row in db.query(WorkoutLog).join(
-                _latest_log_subq,
-                (WorkoutLog.exercise_id == _latest_log_subq.c.exercise_id)
-                & (WorkoutLog.id == _latest_log_subq.c.max_id),
-            ).all()
         }
 
         if not client.test_connection():
@@ -473,23 +518,6 @@ def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshol
                     exercise_id = exercise.get('exercise_template_id')
                     title = exercise_canonical_map.get(exercise_id, exercise.get('title'))
 
-                    # Detect title drift: no canonical mapping, a stored title exists, and it differs.
-                    hevy_title = exercise.get('title')
-                    if (
-                        exercise_id
-                        and exercise_id not in exercise_canonical_map
-                        and exercise_id not in already_flagged
-                        and exercise_id in stored_titles
-                        and stored_titles[exercise_id] != hevy_title
-                    ):
-                        conflict = ExerciseConflict(
-                            exercise_id=exercise_id,
-                            hevy_title=hevy_title,
-                            stored_title=stored_titles[exercise_id],
-                        )
-                        db.merge(conflict)
-                        already_flagged.add(exercise_id)
-
                     is_conditioning = exercise_conditioning_cache.get(exercise.get('title'), False)
 
                     for set_data in exercise.get('sets', []):
@@ -550,6 +578,9 @@ def import_hevy_data(api_key: str | None = None, auto_verify_confidence_threshol
             if page >= page_count:
                 break
             page += 1
+
+        detect_exercise_conflicts(db)
+        db.commit()
 
         print(f"✅ Import complete. {total_added} new sets added.")
         return {

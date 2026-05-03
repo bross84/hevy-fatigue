@@ -1,6 +1,6 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-02 (Conflict stack implemented)
+Last updated: 2026-05-02 (Sync payload + post-sync conflict query refactor)
 
 ## 1) Current Product State
 
@@ -339,6 +339,19 @@ Last updated: 2026-05-02 (Conflict stack implemented)
 	- `main.py`: `ExerciseConflictResolveInput` Pydantic model; GET `/api/exercises/conflicts`; POST `…/{id}/resolve` (upserts canonical, marks resolved); POST `…/{id}/dismiss` (marks resolved only)
 	- `static/index.html`: Needs Review card (hidden until conflicts exist); nav badge on desktop + mobile exercises buttons; `loadExerciseConflicts()`, `renderExerciseConflictTable()`, `resolveExerciseConflict()`, `dismissExerciseConflict()` JS functions
 	- `python -m py_compile` passed for all touched files; JS brace count balanced (842/842)
+- Sync response contract + conflict detection refactor: COMPLETE (validated)
+	- `main.py`: `POST /api/sync` success payload changed to `{ "status": "complete", "synced_at": "<utc iso>" }`; removed `new_sets` from sync response
+	- `static/index.html`: `runSync()` now renders `Sync complete` with `synced_at` timestamp and no set-count messaging; existing cooldown/already-running behavior unchanged
+	- `importer.py`: removed per-loop conflict logic (`already_flagged`, `stored_titles`, and inline `ExerciseConflict` upsert)
+	- `importer.py`: added `detect_exercise_conflicts(db)` post-sync pass:
+		- finds `exercise_id` values with multiple distinct `workout_logs.exercise_title`
+		- excludes IDs with canonical mappings in `exercise_canonical`
+		- excludes IDs with existing unresolved rows in `exercise_conflicts`
+		- upserts conflict row using newest title by `date desc, id desc` and oldest title by `date asc, id asc`
+	- Validation:
+		- `python -m py_compile importer.py` — OK
+		- `python -m py_compile main.py` — OK
+		- `static/index.html` diagnostics — OK (`<script>`/`</script>`: 3/3, JS braces: 841/841)
 
 ## 5) Open Items / Next Backlog
 

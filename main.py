@@ -664,7 +664,10 @@ def trigger_sync(force: bool = False, db: Session = Depends(get_db)):
         )
         _sync_status["last_result"] = result
         _sync_status["last_run"] = datetime.utcnow()
-        return {"status": "ok", "new_sets": result.get("new_sets", 0)}
+        return {
+            "status": "complete",
+            "synced_at": _sync_status["last_run"].isoformat() + "Z",
+        }
     except Exception as e:
         _sync_status["last_result"] = {"error": str(e)}
         raise HTTPException(status_code=500, detail=f"Sync failed: {e}")

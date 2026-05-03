@@ -1220,6 +1220,37 @@ Gate tests:
 	- `python -m py_compile main.py` — OK
 	- `static/index.html` JS brace balance: open=842 close=842, `<script>`/`</script>` count balanced 3/3
 
+## Latest Maintenance Update (2026-05-02, Sync Payload + Post-Sync Conflict Query)
+
+- Sync endpoint response simplified in `main.py`:
+	- `POST /api/sync` success response now returns only:
+		- `status: "complete"`
+		- `synced_at: <utc iso timestamp>`
+	- `new_sets` removed from sync API response payload.
+- Sync UI updated in `static/index.html`:
+	- `runSync()` success branch now renders `Sync complete` with the returned `synced_at` timestamp.
+	- Removed set-count messaging and branching tied to `new_sets`.
+	- Existing cooldown/already-running states and post-sync refresh calls remain unchanged.
+- Importer conflict detection refactored in `importer.py`:
+	- Removed preloads and per-loop conflict logic:
+		- `already_flagged` set
+		- `stored_titles` map
+		- inline per-exercise `ExerciseConflict` upsert block inside import loop
+	- Added `detect_exercise_conflicts(db)` and call at end of `import_hevy_data()` after set writes:
+		- selects `exercise_id` values with `COUNT(DISTINCT workout_logs.exercise_title) > 1`
+		- excludes canonical IDs present in `exercise_canonical`
+		- excludes IDs with unresolved conflicts in `exercise_conflicts`
+		- for remaining IDs, upserts conflict rows with:
+			- `hevy_title` = newest by `WorkoutLog.date DESC, WorkoutLog.id DESC`
+			- `stored_title` = oldest by `WorkoutLog.date ASC, WorkoutLog.id ASC`
+			- `detected_at` = `datetime.utcnow()`
+			- `resolved` = `False`
+	- Canonical substitution logic, session modality inference, and workout_logs write path are unchanged.
+- Validation evidence:
+	- `python -m py_compile importer.py` — OK
+	- `python -m py_compile main.py` — OK
+	- `static/index.html` diagnostics — OK (`<script>`/`</script>`: 3/3, JS braces: 841/841)
+
 ## Decisions Locked
 
 - Full-body via existing percentage fields (no `is_full_body` column).
