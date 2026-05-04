@@ -1,6 +1,12 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-03 (Initial import verification-state preservation)
+Last updated: 2026-05-03 (Backlog source-of-truth established)
+
+## Latest Maintenance Update (2026-05-03, Backlog Source-of-Truth)
+
+- Added `backlog.md` in project root with release blockers, bookmarked items, low-priority items, and recently completed context.
+- Outstanding work tracking now uses `backlog.md` as the source of truth.
+- `plan.md` open-items section is retained as historical context only.
 
 ## Latest Maintenance Update (2026-05-03, Initial Import Verification-State Preservation)
 
@@ -441,6 +447,9 @@ Last updated: 2026-05-03 (Initial import verification-state preservation)
 		- `static/index.html` diagnostics — OK (`<script>`/`</script>`: 3/3, JS braces: 841/841)
 
 ## 5) Open Items / Next Backlog
+
+Source of truth: see `backlog.md` for current outstanding work and release-priority tracking.
+This section is historical context and may lag behind `backlog.md`.
 
 Priority A
 

@@ -17,6 +17,12 @@ This document locks implementation to strict stage gates and dependency order.
 - Kept `_sync_lock` unchanged so overlapping sync runs remain blocked by the existing `already_running` guard.
 - Validation: `python -m py_compile main.py` passed.
 
+## Latest Maintenance Update (2026-05-03, Backlog Source-of-Truth)
+
+- Added `backlog.md` in project root to centralize outstanding work tracking.
+- `backlog.md` is now the source of truth for open release blockers, bookmarked work, and low-priority items.
+- Stage-gated plan remains implementation-history and gate-evidence focused.
+
 ## Latest Maintenance Update (2026-05-03, Initial Import Verification-State Preservation)
 
 - Updated `initial_import()` in `importer.py` to preserve session verification state across full initial-import wipes.
