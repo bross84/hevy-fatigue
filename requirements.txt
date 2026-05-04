@@ -3,7 +3,7 @@ cryptography==47.0.0
 charset-normalizer==3.4.7
 fastapi==0.136.1
 greenlet==3.4.0
-idna==3.11
+idna==3.13
 python-dotenv==1.2.2
 requests==2.33.1
 SQLAlchemy==2.0.49
