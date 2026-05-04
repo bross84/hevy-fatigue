@@ -1,5 +1,5 @@
 certifi==2026.4.22
-cryptography==44.0.2
+cryptography==47.0.0
 charset-normalizer==3.4.7
 fastapi==0.136.1
 greenlet==3.4.0
