@@ -2755,19 +2755,34 @@ def dismiss_exercise_conflict(exercise_id: str, db: Session = Depends(get_db)):
 
 @app.get("/api/movements/search")
 def search_movements(q: str = "", db: Session = Depends(get_db)):
-    """Return up to 20 distinct exercise titles containing the search string."""
+    """Return up to 20 exercise-title matches for autocomplete.
+
+    Back-compat: keeps `results` as a title-only string list used by existing UI.
+    Also returns `items` with `{exercise_id, title}` for callers that need IDs.
+    """
     q_stripped = q.strip()
     if len(q_stripped) < 2:
-        return {"results": []}
+        return {"results": [], "items": []}
+
     rows = (
-        db.query(WorkoutLog.exercise_title)
+        db.query(WorkoutLog.exercise_id, WorkoutLog.exercise_title)
         .filter(WorkoutLog.exercise_title.ilike(f"%{q_stripped}%"))
-        .distinct()
-        .order_by(WorkoutLog.exercise_title)
+        .filter(WorkoutLog.exercise_id.isnot(None))
+        .group_by(WorkoutLog.exercise_id, WorkoutLog.exercise_title)
+        .order_by(WorkoutLog.exercise_title.asc())
         .limit(20)
         .all()
     )
-    return {"results": [r[0] for r in rows if r[0]]}
+
+    items = [
+        {"exercise_id": row.exercise_id, "title": row.exercise_title}
+        for row in rows
+        if row.exercise_id and row.exercise_title
+    ]
+    return {
+        "results": [item["title"] for item in items],
+        "items": items,
+    }
 
 
 def _movements_window_start(window: str):

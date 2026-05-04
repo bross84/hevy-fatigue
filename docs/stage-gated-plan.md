@@ -17,6 +17,38 @@ This document locks implementation to strict stage gates and dependency order.
 - Kept `_sync_lock` unchanged so overlapping sync runs remain blocked by the existing `already_running` guard.
 - Validation: `python -m py_compile main.py` passed.
 
+## Latest Maintenance Update (2026-05-03, Initial Import Verification-State Preservation)
+
+- Updated `initial_import()` in `importer.py` to preserve session verification state across full initial-import wipes.
+- Added pre-wipe snapshot of existing `workout_sessions` keyed by `hevy_workout_id` with:
+	- `verification_status`
+	- `verified_at`
+	- `srpe`
+- Added post-rebuild restore pass after workout replay to reapply preserved values to matching rebuilt sessions.
+- Prevents verified/manual sessions from being reset to default pending values by full reimport.
+- `incremental_sync()` unchanged.
+- `_process_workout()` unchanged.
+- Validation: `python -m py_compile importer.py` passed.
+
+## Latest Maintenance Update (2026-05-03, Exercises Tab Cleanup)
+
+- Removed `Exercise Name Overrides` card and associated frontend JS/state from `static/index.html`.
+- Removed `Rename Exercise` card and associated frontend JS/state from `static/index.html`.
+- Updated `Exercise Names - Needs Review` card to use a collapsible header toggle:
+	- default expanded when unresolved conflicts exist
+	- default collapsed when no unresolved conflicts exist
+- Added inline `Add Override` workflow inside Needs Review (expanded state):
+	- exercise autocomplete via `GET /api/movements/search`
+	- canonical title input
+	- save to `POST /api/exercises/canonical` with `{ exercise_id, canonical_title }`
+	- cancel without save and inline error feedback
+- Added one-open-editor behavior in Needs Review:
+	- opening Add Override closes conflict inline edit
+	- opening conflict inline edit closes Add Override form
+- Preserved existing conflict table actions (`resolve` / `dismiss`) and Exercises nav conflict badge behavior.
+- Back-compat API enhancement in `main.py`: `GET /api/movements/search` now returns `items` (`exercise_id`, `title`) in addition to existing `results` title list.
+- Validation: static diagnostics on `static/index.html` passed (no errors).
+
 ## Latest Maintenance Update (2026-05-03, Incremental Sync Gate)
 
 - Added `incremental_sync_gate.py` using the same gate-runner output structure as existing gate scripts.

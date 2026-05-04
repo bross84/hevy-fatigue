@@ -620,6 +620,16 @@ def initial_import(db, canonical_map):
     context = _get_import_context(db)
     client = context["client"]
 
+    preserved_session_state = {
+        row.hevy_workout_id: {
+            "verification_status": row.verification_status,
+            "verified_at": row.verified_at,
+            "srpe": row.srpe,
+        }
+        for row in db.query(WorkoutSession).all()
+        if row.hevy_workout_id
+    }
+
     db.query(WorkoutLog).delete(synchronize_session=False)
     db.query(WorkoutSession).delete(synchronize_session=False)
     db.query(ExerciseMapping).filter(
@@ -641,6 +651,20 @@ def initial_import(db, canonical_map):
         if page >= page_count:
             break
         page += 1
+
+    if preserved_session_state:
+        rebuilt_sessions = (
+            db.query(WorkoutSession)
+            .filter(WorkoutSession.hevy_workout_id.in_(list(preserved_session_state.keys())))
+            .all()
+        )
+        for session in rebuilt_sessions:
+            preserved = preserved_session_state.get(session.hevy_workout_id)
+            if not preserved:
+                continue
+            session.verification_status = preserved["verification_status"]
+            session.verified_at = preserved["verified_at"]
+            session.srpe = preserved["srpe"]
 
     _set_setting_value(db, _LAST_SYNC_SETTING_KEY, datetime.utcnow().isoformat())
     detect_exercise_conflicts(db)

@@ -1,6 +1,39 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-02 (Sync payload + post-sync conflict query refactor)
+Last updated: 2026-05-03 (Initial import verification-state preservation)
+
+## Latest Maintenance Update (2026-05-03, Initial Import Verification-State Preservation)
+
+- Updated `initial_import()` in `importer.py` to preserve manual verification fields across full reimport wipes.
+- Before deleting `workout_sessions`, importer now snapshots existing rows into a dict keyed by `hevy_workout_id` containing:
+	- `verification_status`
+	- `verified_at`
+	- `srpe`
+- After replaying Hevy workouts and rebuilding `workout_sessions`, importer now restores those preserved fields onto rebuilt rows where `hevy_workout_id` matches.
+- This prevents full reimports from resetting previously verified/manual session state back to default pending values.
+- No changes made to `incremental_sync()`.
+- No changes made to `_process_workout()`.
+- Validation: `python -m py_compile importer.py` passed.
+
+## Latest Maintenance Update (2026-05-03, Exercises Tab Cleanup)
+
+- Removed `Exercise Name Overrides` card and all associated frontend JS/state from `static/index.html`.
+- Removed `Rename Exercise` card and all associated frontend JS/state from `static/index.html`.
+- Updated `Exercise Names - Needs Review` card to be collapsible with a header toggle:
+	- Expanded by default when unresolved conflicts exist.
+	- Collapsed by default when no unresolved conflicts exist.
+- Added inline `Add Override` flow inside the expanded Needs Review card:
+	- Debounced autocomplete search using `GET /api/movements/search`.
+	- Canonical name input with Save/Cancel actions.
+	- Save posts to `POST /api/exercises/canonical` with `{ exercise_id, canonical_title }`.
+	- Inline error handling on save failures.
+- Enforced one-open-editor rule in Needs Review:
+	- Opening Add Override closes any conflict inline edit.
+	- Opening conflict inline edit closes Add Override form.
+- Preserved existing conflict table actions and nav badge behavior.
+- Backend compatibility update in `main.py`:
+	- `GET /api/movements/search` now also returns `items` with `{ exercise_id, title }` while preserving existing `results` title list for back-compat.
+- Validation: static diagnostics on `static/index.html` passed (no errors).
 
 ## Latest Maintenance Update (2026-05-03, Sync Cooldown Removal)
 

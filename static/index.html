@@ -2131,37 +2131,37 @@ tbody tr:hover td { background: var(--row-hover); }
 
 <!-- ══════════════ EXERCISES TAB ══════════════ -->
 <section id="tab-exercises" class="tab-content">
-  <div class="card" id="ex-conflict-card" style="display:none;">
-    <div class="card-title">Exercise Names — Needs Review</div>
-    <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px;">
+  <div class="card" id="ex-conflict-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div class="card-title" style="margin-bottom:0;">Exercise Names — Needs Review</div>
+      <button id="ex-conflict-toggle" onclick="toggleExConflictCard()" style="background:var(--bg);border:1px solid var(--border);cursor:pointer;color:var(--muted);font-size:12px;display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:5px;transition:all .15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'" title="Toggle conflicts">
+        <span id="ex-conflict-chevron" style="display:inline-block;transition:transform .2s;">▾</span> Details
+      </button>
+    </div>
+    <div id="ex-conflict-body">
+      <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px;">
       These exercises have a different name in Hevy than what was previously stored. Set a canonical name to lock it, or dismiss to ignore.
-    </div>
-    <div id="ex-conflict-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
-  </div>
-
-  <div class="card" id="ex-canonical-card">
-    <div class="card-title">Exercise Name Overrides</div>
-    <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px;">
-      Lock an exercise to a specific name. Overrides what Hevy sends on every sync.
-    </div>
-    <div id="ex-canonical-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
-  </div>
-
-  <div class="card" id="ex-rename-card">
-    <div class="card-title">Rename Exercise</div>
-    <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px;">
-      Use this when an exercise title changes in Hevy. Updates all historical sets and the exercise mapping table.
-    </div>
-    <div class="mvt-search-wrap" id="ex-rename-search-wrap" style="margin-bottom:10px;">
-      <input type="text" class="search-input" id="ex-rename-old-title" placeholder="Current title" autocomplete="off" style="width:100%;">
-      <div class="mvt-dropdown" id="ex-rename-dropdown" style="right:0;"></div>
-    </div>
-    <div style="margin-bottom:10px;">
-      <input type="text" class="search-input" id="ex-rename-new-title" placeholder="New title" autocomplete="off" style="width:100%;">
-    </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-      <button id="ex-rename-btn" style="background:var(--accent);color:var(--bg);border:1px solid var(--accent);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;">Rename Exercise</button>
-      <span id="ex-rename-result" style="font-size:12px;color:var(--muted);"></span>
+      </div>
+      <div id="ex-conflict-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px;">
+        <div>
+          <button id="ex-override-add-btn" class="btn btn-secondary" style="width:auto;" onclick="openExerciseOverrideForm()">Add Override</button>
+        </div>
+        <div id="ex-override-form" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;">
+          <div class="mvt-search-wrap" id="ex-override-search-wrap" style="margin-bottom:10px;">
+            <input type="text" class="search-input" id="ex-override-search-input" placeholder="Search exercise title" autocomplete="off" style="width:100%;">
+            <div class="mvt-dropdown" id="ex-override-dropdown" style="right:0;"></div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <input type="text" class="search-input" id="ex-override-canonical-title" placeholder="Canonical name" autocomplete="off" style="width:100%;">
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button id="ex-override-save-btn" class="btn btn-primary" style="width:auto;padding:8px 12px;" onclick="saveExerciseOverride()">Save</button>
+            <button class="btn btn-secondary" style="width:auto;padding:8px 12px;" onclick="cancelExerciseOverrideForm()">Cancel</button>
+          </div>
+          <div id="ex-override-status" style="font-size:12px;min-height:18px;margin-top:8px;"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2510,10 +2510,13 @@ window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', ()
 
 // ═══ State ════════════════════════════════════════════
 let exercises      = [];
-let exerciseCanonicalRows = [];
-let exerciseCanonicalEditingId = null;
 let exerciseConflictRows = [];
 let exerciseConflictEditingId = null;
+let exConflictCollapsed = false;
+let exOverrideSearchTimer = null;
+let exOverrideSearchReqId = 0;
+let exOverrideHandlersBound = false;
+let exOverrideSelected = null;
 
 // ── Chart resize handling ─────────────────────────────
 // window.resize + setTimeout has a race condition: the CSS grid layout may
@@ -2565,9 +2568,6 @@ let mvtChart = null;
 let mvtSearchReqId = 0;
 let mvtLastData = null;
 let mvtHandlersBound = false;
-let exRenameSearchTimer = null;
-let exRenameSearchReqId = 0;
-let exRenameHandlersBound = false;
 let _todayCheckinSubmitted = false;
 let _todayCheckinExpanded = false;
 let _todayCheckinEntry = null;
@@ -2587,7 +2587,7 @@ function activateTab(tabName) {
   document.getElementById('tab-' + tabName).classList.add('active');
   if (tabName === 'dashboard') { loadTrainingLoadCard(); checkTodayReadiness(); }
   if (tabName === 'trend')                               activateTrendTab();
-  if (tabName === 'exercises')                           { loadExerciseConflicts(); loadExerciseCanonical(); if (exercises.length === 0) loadExercises(); }
+  if (tabName === 'exercises')                           { loadExerciseConflicts(); if (exercises.length === 0) loadExercises(); }
   if (tabName === 'workouts'  && !workoutsLoaded)        loadWorkouts();
   if (tabName === 'log'       && !logLoaded)             loadLog();
   if (tabName === 'settings')                            loadSettingsTab();
@@ -2616,9 +2616,9 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#mvt-search-wrap')) {
     _mvtCloseDropdown();
   }
-  // Close exercise rename dropdown on outside click
-  if (!e.target.closest('#ex-rename-search-wrap')) {
-    _exRenameCloseDropdown();
+  // Close exercise override dropdown on outside click
+  if (!e.target.closest('#ex-override-search-wrap')) {
+    _exOverrideCloseDropdown();
   }
 });
 
@@ -2648,7 +2648,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setMobileNavOpen(false);
   initTrendRangeSelector();
   _mvtInitHandlers();
-  _exRenameInitHandlers();
+  _exOverrideInitHandlers();
   checkTodayReadiness();
   loadTrainingLoadCard();
 });
@@ -4155,11 +4155,24 @@ async function loadExerciseConflicts() {
     if (!r.ok) throw new Error(rows.detail || 'Failed to load conflicts.');
     exerciseConflictRows = Array.isArray(rows) ? rows : [];
     exerciseConflictEditingId = null;
+    _setExConflictCollapsed(exerciseConflictRows.length === 0);
     renderExerciseConflictTable();
     _updateExConflictBadge();
   } catch (e) {
     wrap.innerHTML = `<div style="color:var(--danger)">Failed to load conflicts: ${escHtml(e.message || '')}</div>`;
   }
+}
+
+function _setExConflictCollapsed(collapsed) {
+  exConflictCollapsed = !!collapsed;
+  const body = document.getElementById('ex-conflict-body');
+  const chevron = document.getElementById('ex-conflict-chevron');
+  if (body) body.style.display = exConflictCollapsed ? 'none' : 'block';
+  if (chevron) chevron.style.transform = exConflictCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+}
+
+function toggleExConflictCard() {
+  _setExConflictCollapsed(!exConflictCollapsed);
 }
 
 function _updateExConflictBadge() {
@@ -4174,8 +4187,6 @@ function _updateExConflictBadge() {
       el.style.display = 'none';
     }
   });
-  const card = document.getElementById('ex-conflict-card');
-  if (card) card.style.display = count > 0 ? '' : 'none';
 }
 
 function renderExerciseConflictTable() {
@@ -4216,6 +4227,7 @@ function renderExerciseConflictTable() {
 }
 
 function editExerciseConflict(exerciseId) {
+  cancelExerciseOverrideForm();
   exerciseConflictEditingId = exerciseId;
   renderExerciseConflictTable();
 }
@@ -4238,7 +4250,6 @@ async function resolveExerciseConflict(exerciseId) {
     const data = await r.json();
     if (!r.ok) throw new Error(data.detail || 'Failed to resolve conflict.');
     await loadExerciseConflicts();
-    await loadExerciseCanonical();
   } catch (e) {
     alert('Error: ' + (e.message || 'Unknown error'));
   }
@@ -4255,128 +4266,157 @@ async function dismissExerciseConflict(exerciseId) {
   }
 }
 
-async function loadExerciseCanonical() {
-  const wrap = document.getElementById('ex-canonical-wrap');
-  if (!wrap) return;
+function _exOverrideSetStatus(msg, ok = null) {
+  const el = document.getElementById('ex-override-status');
+  if (!el) return;
+  el.textContent = msg || '';
+  if (!msg) {
+    el.style.color = 'var(--muted)';
+    return;
+  }
+  if (ok === true) el.style.color = 'var(--success)';
+  else if (ok === false) el.style.color = 'var(--danger)';
+  else el.style.color = 'var(--muted)';
+}
 
-  wrap.innerHTML = '<div class="loading-wrap"><span class="spinner"></span> Loading name overrides…</div>';
+function _exOverrideCloseDropdown() {
+  const dd = document.getElementById('ex-override-dropdown');
+  if (dd) dd.style.display = 'none';
+}
 
+function cancelExerciseOverrideForm() {
+  const form = document.getElementById('ex-override-form');
+  if (form) form.style.display = 'none';
+  exOverrideSelected = null;
+  _exOverrideSetStatus('');
+  _exOverrideCloseDropdown();
+}
+
+function openExerciseOverrideForm() {
+  if (exerciseConflictEditingId) {
+    cancelExerciseConflictEdit();
+  }
+  const form = document.getElementById('ex-override-form');
+  const searchInput = document.getElementById('ex-override-search-input');
+  const canonicalInput = document.getElementById('ex-override-canonical-title');
+  if (!form || !searchInput || !canonicalInput) return;
+  exOverrideSelected = null;
+  searchInput.value = '';
+  canonicalInput.value = '';
+  _exOverrideSetStatus('');
+  form.style.display = 'block';
+  searchInput.focus();
+}
+
+function _exOverrideRenderDropdown(items) {
+  const dd = document.getElementById('ex-override-dropdown');
+  if (!dd) return;
+  if (!items.length) {
+    _exOverrideCloseDropdown();
+    return;
+  }
+  dd.innerHTML = items.map(item => `
+    <div class="mvt-dropdown-item" data-exercise-id="${escHtml(item.exercise_id || '')}" data-title="${escHtml(item.title || '')}">
+      ${escHtml(item.title || '')}
+    </div>
+  `).join('');
+  dd.style.display = 'block';
+}
+
+async function _exOverrideSearch(q) {
+  const reqId = ++exOverrideSearchReqId;
+  const term = q.trim();
+  if (term.length < 2) {
+    _exOverrideCloseDropdown();
+    return;
+  }
   try {
-    const r = await fetch('/api/exercises/canonical');
-    const rows = await r.json();
-    if (!r.ok) throw new Error(rows.detail || 'Failed to load name overrides.');
-    exerciseCanonicalRows = Array.isArray(rows) ? rows : [];
-    if (!exerciseCanonicalRows.some(row => row.exercise_id === exerciseCanonicalEditingId)) {
-      exerciseCanonicalEditingId = null;
-    }
-    renderExerciseCanonicalTable();
-  } catch (e) {
-    wrap.innerHTML = `<div style="color:var(--danger)">Failed to load name overrides: ${escHtml(e.message || '')}</div>`;
+    const r = await fetch(`/api/movements/search?q=${encodeURIComponent(term)}`);
+    if (reqId !== exOverrideSearchReqId) return;
+    const d = await r.json();
+    const rawItems = Array.isArray(d.items) ? d.items : [];
+    const fallbackTitles = Array.isArray(d.results) ? d.results : [];
+    const normalized = rawItems.length
+      ? rawItems.map(item => ({
+          exercise_id: String(item.exercise_id || ''),
+          title: String(item.title || ''),
+        })).filter(item => item.exercise_id && item.title)
+      : fallbackTitles.map(title => ({ exercise_id: '', title: String(title || '') })).filter(item => item.title);
+    _exOverrideRenderDropdown(normalized);
+  } catch (_) {
+    if (reqId !== exOverrideSearchReqId) return;
+    _exOverrideCloseDropdown();
   }
 }
 
-function _exerciseCanonicalNameCell(row) {
-  if (exerciseCanonicalEditingId !== row.exercise_id) {
-    return `<span>${escHtml(row.canonical_title || '')}</span>`;
-  }
-  return `
-    <div class="exercise-canonical-edit">
-      <input
-        type="text"
-        class="search-input ex-canonical-input"
-        data-exercise-id="${escHtml(row.exercise_id)}"
-        value="${escHtml(row.canonical_title || '')}"
-        autocomplete="off"
-      >
-      <div class="exercise-canonical-status"></div>
-    </div>
-  `;
-}
+async function saveExerciseOverride() {
+  const canonicalInput = document.getElementById('ex-override-canonical-title');
+  const saveBtn = document.getElementById('ex-override-save-btn');
+  if (!canonicalInput || !saveBtn) return;
 
-function _exerciseCanonicalActionCell(row) {
-  if (exerciseCanonicalEditingId !== row.exercise_id) {
-    return `<button class="btn btn-sm btn-secondary" data-exercise-id="${escHtml(row.exercise_id)}" onclick="editExerciseCanonical(this.dataset.exerciseId)">Edit</button>`;
-  }
-  return `
-    <div class="exercise-canonical-edit-actions">
-      <button class="btn btn-primary" style="width:auto;padding:8px 12px;" data-exercise-id="${escHtml(row.exercise_id)}" onclick="saveExerciseCanonical(this.dataset.exerciseId)">Save</button>
-      <button class="btn btn-secondary" style="width:auto;padding:8px 12px;" onclick="cancelExerciseCanonicalEdit()">Cancel</button>
-    </div>
-  `;
-}
-
-function renderExerciseCanonicalTable() {
-  const wrap = document.getElementById('ex-canonical-wrap');
-  if (!wrap) return;
-
-  if (!exerciseCanonicalRows.length) {
-    wrap.innerHTML = '<div class="exercise-canonical-empty">No overrides set. Exercises use names from Hevy.</div>';
+  if (!exOverrideSelected || !exOverrideSelected.exercise_id) {
+    _exOverrideSetStatus('Select an exercise from the autocomplete list first.', false);
     return;
   }
 
-  wrap.innerHTML = `<div class="table-scroll"><table>
-    <thead><tr>
-      <th>Hevy Title</th>
-      <th>Your Name</th>
-      <th>Action</th>
-    </tr></thead>
-    <tbody>
-      ${exerciseCanonicalRows.map(row => `
-        <tr data-exercise-id="${escHtml(row.exercise_id)}">
-          <td>
-            ${row.latest_hevy_title
-              ? escHtml(row.latest_hevy_title)
-              : '<span class="exercise-canonical-placeholder">No Hevy title seen yet</span>'}
-          </td>
-          <td>${_exerciseCanonicalNameCell(row)}</td>
-          <td>${_exerciseCanonicalActionCell(row)}</td>
-        </tr>
-      `).join('')}
-    </tbody>
-  </table></div>`;
-}
+  const canonical_title = canonicalInput.value.trim();
+  if (!canonical_title) {
+    _exOverrideSetStatus('Canonical name is required.', false);
+    return;
+  }
 
-function editExerciseCanonical(exerciseId) {
-  exerciseCanonicalEditingId = exerciseId;
-  renderExerciseCanonicalTable();
-}
-
-function cancelExerciseCanonicalEdit() {
-  exerciseCanonicalEditingId = null;
-  renderExerciseCanonicalTable();
-}
-
-async function saveExerciseCanonical(exerciseId) {
-  const row = document.querySelector(`#ex-canonical-wrap tr[data-exercise-id="${CSS.escape(exerciseId)}"]`);
-  if (!row) return;
-  const input = row.querySelector('.ex-canonical-input');
-  const statusEl = row.querySelector('.exercise-canonical-status');
-  const saveBtn = row.querySelector('.btn.btn-primary');
-  if (!input || !statusEl || !saveBtn) return;
-
-  statusEl.style.color = 'var(--muted)';
-  statusEl.textContent = 'Saving…';
+  _exOverrideSetStatus('Saving…');
   saveBtn.disabled = true;
-
   try {
     const r = await fetch('/api/exercises/canonical', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        exercise_id: exerciseId,
-        canonical_title: input.value,
+        exercise_id: exOverrideSelected.exercise_id,
+        canonical_title,
       }),
     });
-    const d = await r.json();
+    const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(d.detail || 'Save failed.');
-    exerciseCanonicalEditingId = null;
-    await loadExerciseCanonical();
+    cancelExerciseOverrideForm();
+    await loadExerciseConflicts();
   } catch (e) {
-    statusEl.style.color = 'var(--danger)';
-    statusEl.textContent = e.message || 'Save failed.';
+    _exOverrideSetStatus(e.message || 'Save failed.', false);
   } finally {
     saveBtn.disabled = false;
   }
+}
+
+function _exOverrideInitHandlers() {
+  const searchInput = document.getElementById('ex-override-search-input');
+  const canonicalInput = document.getElementById('ex-override-canonical-title');
+  const dropdown = document.getElementById('ex-override-dropdown');
+  if (!searchInput || !canonicalInput || !dropdown || exOverrideHandlersBound) return;
+  exOverrideHandlersBound = true;
+
+  searchInput.addEventListener('input', () => {
+    clearTimeout(exOverrideSearchTimer);
+    exOverrideSelected = null;
+    const value = searchInput.value;
+    if (value.trim().length < 2) {
+      exOverrideSearchReqId += 1;
+      _exOverrideCloseDropdown();
+      return;
+    }
+    exOverrideSearchTimer = setTimeout(() => _exOverrideSearch(value), 300);
+  });
+
+  dropdown.addEventListener('click', e => {
+    const item = e.target.closest('.mvt-dropdown-item');
+    if (!item) return;
+    const title = item.dataset.title || '';
+    const exerciseId = item.dataset.exerciseId || '';
+    searchInput.value = title;
+    exOverrideSelected = { exercise_id: exerciseId, title };
+    if (!canonicalInput.value.trim()) canonicalInput.value = title;
+    _exOverrideSetStatus('');
+    _exOverrideCloseDropdown();
+  });
 }
 
 async function loadExercises() {
@@ -4473,137 +4513,6 @@ document.getElementById('ex-sort').addEventListener('click', e => {
   document.querySelectorAll('#ex-sort button').forEach(b => b.classList.toggle('active', b === btn));
   renderExTable();
 });
-
-function _exRenameSetResult(msg, ok = null) {
-  const el = document.getElementById('ex-rename-result');
-  if (!el) return;
-  el.textContent = msg || '';
-  if (!msg) {
-    el.style.color = 'var(--muted)';
-    return;
-  }
-  if (ok === true) el.style.color = 'var(--success)';
-  else if (ok === false) el.style.color = 'var(--danger)';
-  else el.style.color = 'var(--muted)';
-}
-
-function _exRenameCloseDropdown() {
-  const dd = document.getElementById('ex-rename-dropdown');
-  if (dd) dd.style.display = 'none';
-}
-
-function _exRenameRenderDropdown(results) {
-  const dd = document.getElementById('ex-rename-dropdown');
-  if (!dd) return;
-  if (!results.length) {
-    _exRenameCloseDropdown();
-    return;
-  }
-  dd.innerHTML = results.map(r =>
-    `<div class="mvt-dropdown-item" data-title="${escHtml(r)}">${escHtml(r)}</div>`
-  ).join('');
-  dd.style.display = 'block';
-}
-
-async function _exRenameSearch(q) {
-  const reqId = ++exRenameSearchReqId;
-  if (q.trim().length < 2) {
-    _exRenameCloseDropdown();
-    return;
-  }
-  try {
-    const r = await fetch(`/api/movements/search?q=${encodeURIComponent(q)}`);
-    if (reqId !== exRenameSearchReqId) return;
-    const d = await r.json();
-    _exRenameRenderDropdown(d.results || []);
-  } catch (_) {
-    if (reqId !== exRenameSearchReqId) return;
-    _exRenameCloseDropdown();
-  }
-}
-
-function _exRenameClearAll() {
-  const oldInput = document.getElementById('ex-rename-old-title');
-  const newInput = document.getElementById('ex-rename-new-title');
-  if (oldInput) oldInput.value = '';
-  if (newInput) newInput.value = '';
-  _exRenameSetResult('');
-  _exRenameCloseDropdown();
-}
-
-async function _exRenameSubmit() {
-  const oldInput = document.getElementById('ex-rename-old-title');
-  const newInput = document.getElementById('ex-rename-new-title');
-  const btn = document.getElementById('ex-rename-btn');
-  if (!oldInput || !newInput || !btn) return;
-
-  const oldTitle = oldInput.value.trim();
-  const newTitle = newInput.value.trim();
-  if (!oldTitle || !newTitle) {
-    _exRenameSetResult('Both titles are required.', false);
-    return;
-  }
-
-  const origText = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = 'Renaming...';
-  try {
-    const r = await fetch('/api/exercises/rename', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ old_title: oldTitle, new_title: newTitle }),
-    });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) {
-      if (r.status === 404) {
-        _exRenameSetResult('No sets found matching that title.', false);
-        return;
-      }
-      _exRenameSetResult(d.detail || 'Rename failed.', false);
-      return;
-    }
-
-    _exRenameSetResult(`Renamed ${d.updated_sets} sets. Mapping updated: ${d.mapping_updated ? 'yes' : 'no'}.`, true);
-  } catch (e) {
-    _exRenameSetResult(e.message || 'Rename failed.', false);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = origText;
-  }
-}
-
-function _exRenameInitHandlers() {
-  const oldInput = document.getElementById('ex-rename-old-title');
-  const newInput = document.getElementById('ex-rename-new-title');
-  const btn = document.getElementById('ex-rename-btn');
-  const dd = document.getElementById('ex-rename-dropdown');
-  if (!oldInput || !newInput || !btn || !dd || exRenameHandlersBound) return;
-  exRenameHandlersBound = true;
-
-  oldInput.addEventListener('input', () => {
-    clearTimeout(exRenameSearchTimer);
-    const val = oldInput.value;
-    if (!val.trim()) {
-      _exRenameClearAll();
-      return;
-    }
-    if (val.trim().length < 2) {
-      exRenameSearchReqId += 1;
-      _exRenameCloseDropdown();
-      return;
-    }
-    exRenameSearchTimer = setTimeout(() => _exRenameSearch(val), 300);
-  });
-
-  dd.addEventListener('click', e => {
-    const item = e.target.closest('.mvt-dropdown-item');
-    if (!item) return;
-    oldInput.value = item.dataset.title || '';
-    _exRenameCloseDropdown();
-  });
-
-  btn.addEventListener('click', () => _exRenameSubmit());
-}
 
 // ═══ Modal ════════════════════════════════════════════
 function openModal(ex) {
