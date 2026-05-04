@@ -1,0 +1,11 @@
+version: 2
+updates:
+  - package-ecosystem: "docker" # Keeps your Docker images updated
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  
+  - package-ecosystem: "pip" # Change this to "npm" if using JavaScript or "gomod" for Go
+    directory: "/"
+    schedule:
+      interval: "weekly"
