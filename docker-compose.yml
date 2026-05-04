@@ -8,6 +8,7 @@ services:
     restart: unless-stopped
     environment:
       - DB_PATH=/data/hevy_fatigue.db
+      - TZ=America/New_York # change as needed
     ports:
       - mode: ingress
         target: 8000

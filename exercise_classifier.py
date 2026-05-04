@@ -74,15 +74,21 @@ EXPLICIT_MAPPINGS = {
     "preacher curl":                (0.0, 0.0, 0.0, 1.0, False),
     "t-bar row":                    (0.0, 0.0, 0.0, 1.0, False),
 
+    # Full-body mixed patterns
+    "burpee":                       (0.30, 0.30, 0.20, 0.20, False),
+    "burpees":                      (0.30, 0.30, 0.20, 0.20, False),
+    "thruster":                     (0.30, 0.30, 0.20, 0.20, False),
+    "barbell thruster":             (0.30, 0.30, 0.20, 0.20, False),
+    "dumbbell thruster":            (0.30, 0.30, 0.20, 0.20, False),
+    "box jump":                     (0.30, 0.30, 0.20, 0.20, False),
+    "box jumps":                    (0.30, 0.30, 0.20, 0.20, False),
+
     # Conditioning — excluded from pattern stress calculations
     "rowing machine":               (0.0, 0.0, 0.0, 0.0, True),
     "assault bike":                 (0.0, 0.0, 0.0, 0.0, True),
     "air bike":                     (0.0, 0.0, 0.0, 0.0, True),
     "ski erg":                      (0.0, 0.0, 0.0, 0.0, True),
     "treadmill":                    (0.0, 0.0, 0.0, 0.0, True),
-    "burpee":                       (0.0, 0.0, 0.0, 0.0, True),
-    "thruster":                     (0.0, 0.0, 0.0, 0.0, True),
-    "box jump":                     (0.0, 0.0, 0.0, 0.0, True),
     "double under":                 (0.0, 0.0, 0.0, 0.0, True),
     "jump rope":                    (0.0, 0.0, 0.0, 0.0, True),
 }
@@ -109,7 +115,7 @@ PULL_KEYWORDS    = ["row", "pulldown", "pull-down", "pullup", "pull-up", "chinup
                     "shrug", "t-bar", "cable pull"]
 
 CONDITIONING_KEYWORDS = ["bike", "run", "ski", "row machine", "rowing machine", "treadmill",
-                          "burpee", "thruster", "box jump", "jump rope", "double under",
+                          "jump rope", "double under",
                           "metcon", "conditioning", "wod", "amrap", "emom"]
 
 def _matches(title_lower, keywords):

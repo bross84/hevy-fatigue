@@ -43,9 +43,9 @@
 [data-theme="light"] {
   --bg:           #e1dee3;
   --card:         #f5f3f6;
-  --border:       #c5c0c8;
-  --text:         #40476d;
-  --muted:        #6e6e85;
+  --border:       #c8c4ca;
+  --text:         #2e2830;
+  --muted:        #7a6e7c;
   --accent:       #058ed9;
   --quad:         #058ed9;
   --posterior:    #b9314f;
@@ -120,6 +120,74 @@ nav {
 .nav-tab:hover  { color: var(--text); background: var(--border); }
 .nav-tab.active { color: var(--accent); background: var(--accent-sub); }
 
+.mobile-menu-btn {
+  display: none;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 8px;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mobile-nav-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.18s ease;
+  z-index: 400;
+}
+
+.mobile-nav-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 75vw;
+  max-width: 280px;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  transform: translateX(-100%);
+  transition: transform 0.18s ease;
+  z-index: 410;
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.mobile-drawer-nav {
+  display: grid;
+  gap: 4px;
+}
+
+.mobile-drawer-nav .nav-tab {
+  width: 100%;
+  min-height: 48px;
+  text-align: left;
+  padding: 12px 14px;
+}
+
+body.mobile-nav-open .mobile-nav-overlay {
+  opacity: 1;
+  visibility: visible;
+}
+
+body.mobile-nav-open .mobile-nav-drawer {
+  transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
+}
+
 /* Theme toggle — pushed to far right */
 .nav-right { margin-left: auto; }
 .theme-group button {
@@ -154,6 +222,366 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
   transition: background .2s, border-color .2s;
 }
 .card-title { font-weight: 600; font-size: 14px; margin-bottom: 14px; }
+
+/* ── Today view (Stage 7.1) ───────────────────────── */
+.today-wrap {
+  display: grid;
+  gap: 14px;
+  overflow-x: hidden;
+}
+.today-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+.today-state-label {
+  font-size: 30px;
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: .2px;
+  word-break: break-word;
+}
+.today-state-large_increase { color: var(--success); }
+.today-state-increase { color: color-mix(in srgb, var(--success) 72%, white); }
+.today-state-continue { color: var(--text); }
+.today-state-decrease { color: var(--warn); }
+.today-state-large_decrease { color: var(--danger); }
+.today-state-nodata { color: var(--muted); }
+.today-state-detail {
+  margin-top: 7px;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.today-scores-row {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.today-score {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  background: color-mix(in srgb, var(--card) 82%, black 18%);
+  min-width: 0;
+}
+.today-score-combined {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: color-mix(in srgb, var(--accent-sub) 65%, var(--card));
+}
+.today-score-label {
+  font-size: 11px;
+  letter-spacing: .7px;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+}
+.today-score-value {
+  margin-top: 5px;
+  font-size: 21px;
+  line-height: 1;
+  font-weight: 800;
+}
+.today-score-explainer {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  opacity: 0.6;
+  text-align: center;
+  line-height: 1.4;
+}
+.today-chart-wrap {
+  position: relative;
+  width: 100%;
+  min-height: 240px;
+}
+.today-chart-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.today-chart-empty {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--muted);
+  padding: 12px;
+  line-height: 1.5;
+}
+.today-pattern-explainer {
+  margin-top: 10px;
+  font-size: 0.75rem;
+  opacity: 0.6;
+  line-height: 1.4;
+}
+.today-pattern-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+.today-pattern-cell {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  min-height: 142px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-width: 0;
+}
+.today-pattern-available {
+  border-left-color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+}
+.today-pattern-neutral {
+  border-left-color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 14%, transparent);
+}
+.today-pattern-stressed {
+  border-left-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 13%, transparent);
+}
+.today-pattern-name {
+  font-size: 11px;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.today-pattern-days {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.3;
+}
+.today-dots {
+  display: inline-flex;
+  gap: 5px;
+  min-height: 22px;
+  align-items: center;
+  white-space: nowrap;
+}
+.today-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--muted);
+  background: transparent;
+}
+.today-dot-filled {
+  background: var(--text);
+  border-color: var(--text);
+}
+.today-pattern-level {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.today-grid-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.today-joint-list {
+  display: grid;
+  gap: 8px;
+}
+.today-joint-row {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--warn);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  padding: 10px;
+  display: grid;
+  gap: 5px;
+}
+.today-joint-row-warning {
+  border-left-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+.today-joint-title {
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.today-joint-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.today-joint-patterns {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.today-joint-pattern {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+.today-joint-pattern-knee {
+  background: color-mix(in srgb, var(--quad) 20%, transparent);
+  color: var(--quad);
+}
+.today-joint-pattern-hip {
+  background: color-mix(in srgb, var(--posterior) 20%, transparent);
+  color: var(--posterior);
+}
+.today-joint-pattern-push {
+  background: color-mix(in srgb, var(--push) 20%, transparent);
+  color: var(--push);
+}
+.today-joint-pattern-pull {
+  background: color-mix(in srgb, var(--pull) 20%, transparent);
+  color: var(--pull);
+}
+.today-metric-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+.today-metric {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--bg);
+  text-align: center;
+  min-width: 0;
+}
+.today-metric-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.today-metric-value {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.today-footer {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+.today-footer-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-height: 44px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--bg);
+  cursor: pointer;
+  min-width: 0;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.today-footer-item:hover { border-color: var(--accent); }
+.today-footer-body {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.today-footer-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.today-footer-value {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.today-footer-ok { color: var(--success); }
+.today-footer-warn { color: var(--warn); }
+.today-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  padding: 0 6px;
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+  color: var(--danger);
+  font-size: 11px;
+  font-weight: 700;
+}
+.checkin-scale-field { margin-bottom: 13px; }
+.checkin-scale-title {
+  font-size: 12px;
+  color: var(--text);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.checkin-scale-row {
+  display: grid;
+  grid-template-columns: minmax(42px, auto) 1fr minmax(42px, auto);
+  align-items: center;
+  gap: 8px;
+}
+.checkin-scale-endpoint {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.2;
+  user-select: none;
+  pointer-events: none;
+}
+.checkin-scale-endpoint:last-child { text-align: right; }
+.checkin-scale-buttons {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  min-width: 0;
+}
+.checkin-scale-buttons button {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  border-radius: 6px;
+  min-height: 44px;
+  padding: 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all .15s;
+}
+.checkin-scale-buttons button:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.checkin-scale-buttons button.active {
+  background: var(--card);
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--border));
+  box-shadow: 0 1px 3px var(--btn-shadow);
+}
 
 /* ── Forms ───────────────────────────── */
 .form-row { margin-bottom: 13px; }
@@ -388,6 +816,7 @@ tbody tr:hover td { background: var(--row-hover); }
 .badge-user       { background: color-mix(in srgb, var(--success) 16%, transparent); color: var(--success); }
 .badge-reviewed   { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
 .badge-unreviewed { background: color-mix(in srgb, var(--danger)  12%, transparent); color: var(--danger); }
+.badge-conflict   { background: var(--danger); color: #fff; border-radius: 10px; font-size: 10px; padding: 1px 5px; }
 
 /* ── Modal ───────────────────────────── */
 .modal-overlay {
@@ -482,6 +911,325 @@ tbody tr:hover td { background: var(--row-hover); }
 /* ── Workouts tab ─────────────────────── */
 .workout-stress-val { font-weight: 700; font-size: 15px; }
 .stress-note { font-size: 11px; color: var(--muted); margin-top: 14px; line-height: 1.6; }
+
+.verify-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.verify-item {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+.verify-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.verify-title {
+  font-weight: 600;
+  font-size: 13px;
+}
+.verify-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+.verify-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.verify-field label {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.verify-field input[type="number"] {
+  min-height: 44px;
+  padding: 10px 10px;
+}
+.verify-status {
+  min-height: 18px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.session-log-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.session-log-count {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.session-log-list {
+  display: grid;
+  gap: 10px;
+}
+
+.session-log-item {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.session-log-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.session-log-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.session-log-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.session-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.session-badge-strength,
+.session-badge-hypertrophy {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.session-badge-conditioning {
+  background: color-mix(in srgb, var(--warn) 18%, transparent);
+  color: var(--warn);
+}
+
+.session-badge-cardio {
+  background: color-mix(in srgb, var(--posterior) 18%, transparent);
+  color: var(--posterior);
+}
+
+.session-badge-pending {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+
+.session-badge-verified {
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--success);
+}
+
+.session-log-meta {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.session-log-fatigue {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.session-log-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.session-log-status-note {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.session-log-load-more {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+}
+
+.session-log-empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 18px 12px;
+}
+
+.exercise-canonical-empty {
+  color: var(--muted);
+  padding: 14px 4px 2px;
+}
+
+.exercise-canonical-placeholder {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.exercise-canonical-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.exercise-canonical-edit-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.exercise-canonical-status {
+  font-size: 12px;
+  min-height: 18px;
+}
+
+.session-detail-wrap {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.session-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.session-detail-cell {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  padding: 10px;
+}
+
+.session-detail-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+
+.session-detail-value {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.session-detail-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.session-detail-section {
+  margin-top: 12px;
+}
+
+.session-detail-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.session-detail-exercise-list {
+  display: grid;
+  gap: 8px;
+}
+
+.session-detail-exercise {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  padding: 10px;
+}
+
+.session-detail-exercise-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.session-detail-exercise-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.session-detail-exercise-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.session-detail-table td,
+.session-detail-table th {
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .verify-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .session-log-toolbar {
+    align-items: stretch;
+  }
+
+  .session-log-toolbar .btn-group {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .session-log-head,
+  .session-log-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .session-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .session-log-badges {
+    justify-content: flex-start;
+  }
+}
 
 /* ── Training Load summary card ──────── */
 .tl-grid {
@@ -583,13 +1331,83 @@ tbody tr:hover td { background: var(--row-hover); }
 .rec-large-decrease { background: color-mix(in srgb, var(--danger)    18%, transparent); color: var(--danger);    border: 1px solid color-mix(in srgb, var(--danger)    35%, transparent); }
 
 /* ── Trends tab ──────────────────────── */
-.trends-grid {
+.trend-wrap {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-  margin-bottom: 18px;
+  gap: 14px;
+  overflow-x: hidden;
 }
-@media (max-width: 800px) { .trends-grid { grid-template-columns: 1fr; } }
+.trend-range {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.trend-range .btn {
+  min-height: 44px;
+}
+.trend-range .btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-sub);
+}
+.trend-chart-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+.trend-chart-wrap {
+  position: relative;
+  width: 100%;
+  min-height: 280px;
+}
+.trend-chart-wrap.secondary {
+  min-height: 170px;
+}
+.trend-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.trend-empty {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--muted);
+  padding: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .trend-range {
+    grid-template-columns: 1fr;
+  }
+  .trend-chart-wrap {
+    min-height: 220px;
+  }
+  .trend-chart-wrap.secondary {
+    min-height: 140px;
+  }
+  .today-chart-wrap {
+    min-height: 210px;
+  }
+}
+
+@media (max-width: 767px) {
+  .nav-tabs {
+    display: none;
+  }
+
+  .mobile-menu-btn {
+    display: inline-flex;
+  }
+
+  .mobile-drawer-nav .nav-tab {
+    flex: none;
+    text-align: left;
+  }
+}
 
 /* ── Tooltips ────────────────────────── */
 .tip-icon {
@@ -638,6 +1456,7 @@ tbody tr:hover td { background: var(--row-hover); }
   box-shadow: 0 4px 16px rgba(0,0,0,.3);
 }
 .tip-icon:hover::after { opacity: 1; }
+.tip-icon.show::after { opacity: 1; }
 
 /* ── Spinner ─────────────────────────── */
 .spinner {
@@ -715,24 +1534,30 @@ tbody tr:hover td { background: var(--row-hover); }
   grid-template-columns: 1fr 1fr;
   gap: 14px;
   align-items: start;
+  grid-template-areas:
+    "api sync"
+    "diagnostics diagnostics";
 }
 #tab-settings .settings-card {
   max-width: none;
   margin-top: 0 !important;
   margin-bottom: 0;
 }
-#tab-settings .settings-card:nth-child(1) {
-  grid-column: 1;
-  grid-row: 1;
+#tab-settings .settings-card-api { grid-area: api; }
+#tab-settings .settings-card-sync { grid-area: sync; }
+#tab-settings .settings-card-diagnostics { grid-area: diagnostics; }
+.settings-diag-body { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 16px; }
+.settings-diag-cta {
+  display: inline-block;
+  padding: 8px 16px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
 }
-#tab-settings .settings-card:nth-child(2) {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-}
-#tab-settings .settings-card:nth-child(3) {
-  grid-column: 1;
-  grid-row: 2;
-}
+.settings-diag-cta:hover { opacity: 0.88; }
 .settings-key-row { display: flex; gap: 8px; align-items: stretch; }
 .settings-key-row input {
   flex: 1;
@@ -771,12 +1596,107 @@ tbody tr:hover td { background: var(--row-hover); }
 @media (max-width: 900px) {
   .tab-content#tab-settings.active {
     grid-template-columns: 1fr;
+    grid-template-areas: none;
+    grid-template-rows: auto;
   }
-  #tab-settings .settings-card:nth-child(1),
-  #tab-settings .settings-card:nth-child(2),
-  #tab-settings .settings-card:nth-child(3) {
-    grid-column: auto;
-    grid-row: auto;
+  #tab-settings .settings-card {
+    max-width: none;
+    width: 100%;
+  }
+  #tab-settings .settings-card-api,
+  #tab-settings .settings-card-sync,
+  #tab-settings .settings-card-diagnostics { grid-area: auto; }
+}
+
+/* ── Movement Trend card ── */
+.mvt-search-wrap {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.mvt-clear-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color .15s ease, color .15s ease;
+}
+.mvt-clear-btn:hover { color: var(--text); border-color: var(--accent); }
+.mvt-dropdown {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 0;
+  right: 40px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.2);
+  z-index: 200;
+  max-height: 220px;
+  overflow-y: auto;
+  display: none;
+}
+.mvt-dropdown-item {
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+}
+.mvt-dropdown-item:last-child { border-bottom: none; }
+.mvt-dropdown-item:hover { background: var(--bg); }
+.mvt-placeholder {
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.mvt-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.mvt-toggle-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.mvt-toggle-label {
+  font-size: 11px;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+#mvt-chart-wrap {
+  min-height: 220px;
+}
+#mvt-chart {
+  min-height: 220px;
+}
+
+@media (max-width: 640px) {
+  .mvt-search-wrap {
+    grid-template-columns: 1fr auto;
+  }
+  .mvt-dropdown {
+    right: 0;
   }
 }
 
@@ -811,6 +1731,21 @@ tbody tr:hover td { background: var(--row-hover); }
   main { padding: 12px 14px; }
   .card { padding: 14px; }
 
+  .today-state-label { font-size: 24px; }
+  .today-footer { grid-template-columns: 1fr; }
+  .today-footer-item { min-height: 48px; }
+  .today-pattern-cell { min-height: 134px; }
+  #tab-dashboard { overflow-x: hidden; }
+  .today-card { padding: 12px; }
+  .today-wrap { gap: 12px; }
+  .today-metric-value { font-size: 20px; }
+  .today-metric-label { font-size: 10px; }
+  .checkin-scale-row {
+    grid-template-columns: minmax(24px, auto) 1fr minmax(24px, auto);
+    gap: 6px;
+  }
+  .checkin-scale-endpoint { font-size: 10px; }
+
   /* ── Horizontal scroll for tables on small screens ── */
   .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
@@ -826,7 +1761,6 @@ tbody tr:hover td { background: var(--row-hover); }
   #ex-count { margin-left: 0 !important; align-self: flex-end; }
 
   /* ── Chart shorter on mobile ── */
-  #stressChart { max-height: 200px; }
 
   /* ── Tooltip: show above with enough room ── */
   .tip-icon::after { max-width: 200px; }
@@ -873,6 +1807,27 @@ tbody tr:hover td { background: var(--row-hover); }
 
   .theme-group button { font-size: 10px; padding: 3px 5px; }
   .btn-group button { padding: 4px 7px; font-size: 11px; }
+  .today-pattern-days,
+  .today-pattern-level { font-size: 12px; }
+  .today-pattern-cell {
+    min-height: 128px;
+    padding: 9px;
+    gap: 7px;
+  }
+  .today-pattern-name { font-size: 10px; letter-spacing: .6px; }
+  .today-dots { gap: 4px; }
+  .today-dot { width: 9px; height: 9px; }
+  .today-metric-row { gap: 8px; }
+  .today-metric { padding: 9px 8px; }
+
+  .checkin-scale-endpoint {
+    font-size: 0;
+  }
+  .checkin-scale-endpoint::after {
+    content: attr(data-short);
+    font-size: 10px;
+    color: var(--muted);
+  }
 }
 </style>
 </head>
@@ -890,11 +1845,13 @@ tbody tr:hover td { background: var(--row-hover); }
 </script>
 
 <nav>
+  <button class="mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-nav-drawer">☰</button>
   <div class="logo"><img class="logo-icon" src="/resources/favicon.png" alt="Hevy Fatigue icon">HEVY FATIGUE</div>
   <div class="nav-tabs">
-    <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
+    <button class="nav-tab" data-tab="dashboard">Today</button>
+    <button class="nav-tab" data-tab="trend">Trend</button>
     <button class="nav-tab" data-tab="workouts">Workouts</button>
-    <button class="nav-tab" data-tab="exercises">Exercises</button>
+    <button class="nav-tab" data-tab="exercises">Exercises<span id="ex-conflict-badge" class="badge badge-conflict" style="display:none;margin-left:5px;"></span></button>
     <button class="nav-tab" data-tab="log">Log</button>
     <button class="nav-tab" data-tab="settings">Settings</button>
   </div>
@@ -907,10 +1864,177 @@ tbody tr:hover td { background: var(--row-hover); }
   </div>
 </nav>
 
+<div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
+<aside class="mobile-nav-drawer" id="mobile-nav-drawer" aria-label="Mobile navigation" aria-hidden="true">
+  <div class="mobile-drawer-nav">
+    <button class="nav-tab" data-tab="dashboard">Today</button>
+    <button class="nav-tab" data-tab="trend">Trend</button>
+    <button class="nav-tab" data-tab="workouts">Workouts</button>
+    <button class="nav-tab" data-tab="exercises">Exercises<span id="ex-conflict-badge-mobile" class="badge" style="display:none;margin-left:5px;"></span></button>
+    <button class="nav-tab" data-tab="log">Log</button>
+    <button class="nav-tab" data-tab="settings">Settings</button>
+  </div>
+</aside>
+
 <main>
 
 <!-- ══════════════ DASHBOARD ══════════════ -->
 <section id="tab-dashboard" class="tab-content active">
+
+  <div id="today-wrap" class="today-wrap">
+    <div class="today-card" id="today-checkin-card">
+      <div class="card-title">Daily Check-in</div>
+      <div id="checkin-readonly" style="display:none;"></div>
+      <form id="checkin-form">
+        <div id="checkin-status"></div>
+        <div class="form-row">
+          <div class="form-label">Date</div>
+          <input type="date" id="ci-date">
+        </div>
+
+        <div class="checkin-scale-field">
+          <div class="checkin-scale-title">Tiredness</div>
+          <div class="checkin-scale-row">
+            <span class="checkin-scale-endpoint" data-short="N">None</span>
+            <div class="checkin-scale-buttons" data-ci-field="ci-t">
+              <button type="button" class="active" data-ci-field="ci-t" data-value="0">0</button>
+              <button type="button" data-ci-field="ci-t" data-value="1">1</button>
+              <button type="button" data-ci-field="ci-t" data-value="2">2</button>
+              <button type="button" data-ci-field="ci-t" data-value="3">3</button>
+              <button type="button" data-ci-field="ci-t" data-value="4">4</button>
+            </div>
+            <span class="checkin-scale-endpoint" data-short="E">Extreme</span>
+          </div>
+          <input type="hidden" id="ci-t" value="0">
+        </div>
+
+        <div class="checkin-scale-field">
+          <div class="checkin-scale-title">Fatigue</div>
+          <div class="checkin-scale-row">
+            <span class="checkin-scale-endpoint" data-short="F">Fresh</span>
+            <div class="checkin-scale-buttons" data-ci-field="ci-r">
+              <button type="button" class="active" data-ci-field="ci-r" data-value="0">0</button>
+              <button type="button" data-ci-field="ci-r" data-value="1">1</button>
+              <button type="button" data-ci-field="ci-r" data-value="2">2</button>
+              <button type="button" data-ci-field="ci-r" data-value="3">3</button>
+              <button type="button" data-ci-field="ci-r" data-value="4">4</button>
+            </div>
+            <span class="checkin-scale-endpoint" data-short="EF">Fatigued</span>
+          </div>
+          <input type="hidden" id="ci-r" value="0">
+        </div>
+
+        <hr class="section-sep">
+        <div class="section-label">Soreness</div>
+
+        <div class="checkin-scale-field">
+          <div class="checkin-scale-title"><span class="dot dot-quad"></span>Quad / Knee</div>
+          <div class="checkin-scale-row">
+            <span class="checkin-scale-endpoint" data-short="N">None</span>
+            <div class="checkin-scale-buttons" data-ci-field="ci-sq">
+              <button type="button" class="active" data-ci-field="ci-sq" data-value="0">0</button>
+              <button type="button" data-ci-field="ci-sq" data-value="1">1</button>
+              <button type="button" data-ci-field="ci-sq" data-value="2">2</button>
+              <button type="button" data-ci-field="ci-sq" data-value="3">3</button>
+              <button type="button" data-ci-field="ci-sq" data-value="4">4</button>
+            </div>
+            <span class="checkin-scale-endpoint" data-short="S">Severe</span>
+          </div>
+          <input type="hidden" id="ci-sq" value="0">
+        </div>
+
+        <div class="checkin-scale-field">
+          <div class="checkin-scale-title"><span class="dot dot-posterior"></span>Hip / Posterior</div>
+          <div class="checkin-scale-row">
+            <span class="checkin-scale-endpoint" data-short="N">None</span>
+            <div class="checkin-scale-buttons" data-ci-field="ci-sp">
+              <button type="button" class="active" data-ci-field="ci-sp" data-value="0">0</button>
+              <button type="button" data-ci-field="ci-sp" data-value="1">1</button>
+              <button type="button" data-ci-field="ci-sp" data-value="2">2</button>
+              <button type="button" data-ci-field="ci-sp" data-value="3">3</button>
+              <button type="button" data-ci-field="ci-sp" data-value="4">4</button>
+            </div>
+            <span class="checkin-scale-endpoint" data-short="S">Severe</span>
+          </div>
+          <input type="hidden" id="ci-sp" value="0">
+        </div>
+
+        <div class="checkin-scale-field">
+          <div class="checkin-scale-title"><span class="dot dot-push"></span>Upper Push</div>
+          <div class="checkin-scale-row">
+            <span class="checkin-scale-endpoint" data-short="N">None</span>
+            <div class="checkin-scale-buttons" data-ci-field="ci-spu">
+              <button type="button" class="active" data-ci-field="ci-spu" data-value="0">0</button>
+              <button type="button" data-ci-field="ci-spu" data-value="1">1</button>
+              <button type="button" data-ci-field="ci-spu" data-value="2">2</button>
+              <button type="button" data-ci-field="ci-spu" data-value="3">3</button>
+              <button type="button" data-ci-field="ci-spu" data-value="4">4</button>
+            </div>
+            <span class="checkin-scale-endpoint" data-short="S">Severe</span>
+          </div>
+          <input type="hidden" id="ci-spu" value="0">
+        </div>
+
+        <div class="checkin-scale-field">
+          <div class="checkin-scale-title"><span class="dot dot-pull"></span>Upper Pull</div>
+          <div class="checkin-scale-row">
+            <span class="checkin-scale-endpoint" data-short="N">None</span>
+            <div class="checkin-scale-buttons" data-ci-field="ci-spl">
+              <button type="button" class="active" data-ci-field="ci-spl" data-value="0">0</button>
+              <button type="button" data-ci-field="ci-spl" data-value="1">1</button>
+              <button type="button" data-ci-field="ci-spl" data-value="2">2</button>
+              <button type="button" data-ci-field="ci-spl" data-value="3">3</button>
+              <button type="button" data-ci-field="ci-spl" data-value="4">4</button>
+            </div>
+            <span class="checkin-scale-endpoint" data-short="S">Severe</span>
+          </div>
+          <input type="hidden" id="ci-spl" value="0">
+        </div>
+
+        <hr class="section-sep">
+        <div class="section-label">Joint Health</div>
+
+        <div class="checkin-scale-field">
+          <div class="checkin-scale-title">Upper Joint</div>
+          <div class="checkin-scale-row">
+            <span class="checkin-scale-endpoint" data-short="G">Good</span>
+            <div class="checkin-scale-buttons" data-ci-field="ci-ju">
+              <button type="button" class="active" data-ci-field="ci-ju" data-value="0">0</button>
+              <button type="button" data-ci-field="ci-ju" data-value="1">1</button>
+              <button type="button" data-ci-field="ci-ju" data-value="2">2</button>
+              <button type="button" data-ci-field="ci-ju" data-value="3">3</button>
+              <button type="button" data-ci-field="ci-ju" data-value="4">4</button>
+            </div>
+            <span class="checkin-scale-endpoint" data-short="P">Pain</span>
+          </div>
+          <input type="hidden" id="ci-ju" value="0">
+        </div>
+
+        <div class="checkin-scale-field">
+          <div class="checkin-scale-title">Lower Joint</div>
+          <div class="checkin-scale-row">
+            <span class="checkin-scale-endpoint" data-short="G">Good</span>
+            <div class="checkin-scale-buttons" data-ci-field="ci-jl">
+              <button type="button" class="active" data-ci-field="ci-jl" data-value="0">0</button>
+              <button type="button" data-ci-field="ci-jl" data-value="1">1</button>
+              <button type="button" data-ci-field="ci-jl" data-value="2">2</button>
+              <button type="button" data-ci-field="ci-jl" data-value="3">3</button>
+              <button type="button" data-ci-field="ci-jl" data-value="4">4</button>
+            </div>
+            <span class="checkin-scale-endpoint" data-short="P">Pain</span>
+          </div>
+          <input type="hidden" id="ci-jl" value="0">
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="ci-submit">Submit Check-in</button>
+      </form>
+    </div>
+    <div class="today-card" id="today-state-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
+    <div class="today-card" id="today-readiness-trend-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
+    <div class="today-card" id="today-pattern-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
+    <div class="today-card" id="today-joint-card" style="display:none;"></div>
+    <div class="today-card" id="today-metrics-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
+  </div>
 
   <!-- Banner shown until the user saves their API key -->
   <div class="setup-banner" id="setup-banner" style="display:none;">
@@ -918,173 +2042,38 @@ tbody tr:hover td { background: var(--row-hover); }
     <button class="btn btn-primary" onclick="switchToSettings()">Go to Settings →</button>
   </div>
 
-  <div class="grid-2">
+</section>
 
-    <!-- left: check-in -->
-    <div>
-      <div class="card">
-        <div class="card-title">Daily Check-in</div>
-        <div id="checkin-status"></div>
-        <form id="checkin-form">
-          <div class="form-row">
-            <div class="form-label">Date</div>
-            <input type="date" id="ci-date">
-          </div>
-          <hr class="section-sep">
-          <div class="section-label">Soreness</div>
-
-          <div class="form-row">
-            <div class="form-label"><span class="dot dot-quad"></span>Quad / Knee</div>
-            <select id="ci-sq">
-              <option value="0">0 — No soreness</option>
-              <option value="1">1 — Minor soreness</option>
-              <option value="2">2 — Average soreness</option>
-              <option value="3">3 — Moderate soreness</option>
-              <option value="4">4 — High soreness / injury</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <div class="form-label"><span class="dot dot-posterior"></span>Hip / Posterior</div>
-            <select id="ci-sp">
-              <option value="0">0 — No soreness</option>
-              <option value="1">1 — Minor soreness</option>
-              <option value="2">2 — Average soreness</option>
-              <option value="3">3 — Moderate soreness</option>
-              <option value="4">4 — High soreness / injury</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <div class="form-label"><span class="dot dot-push"></span>Upper Push</div>
-            <select id="ci-spu">
-              <option value="0">0 — No soreness</option>
-              <option value="1">1 — Minor soreness</option>
-              <option value="2">2 — Average soreness</option>
-              <option value="3">3 — Moderate soreness</option>
-              <option value="4">4 — High soreness / injury</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <div class="form-label"><span class="dot dot-pull"></span>Upper Pull</div>
-            <select id="ci-spl">
-              <option value="0">0 — No soreness</option>
-              <option value="1">1 — Minor soreness</option>
-              <option value="2">2 — Average soreness</option>
-              <option value="3">3 — Moderate soreness</option>
-              <option value="4">4 — High soreness / injury</option>
-            </select>
-          </div>
-
-          <hr class="section-sep">
-          <div class="section-label">Joint Health</div>
-
-          <div class="form-row">
-            <div class="form-label">Upper (Shoulder / Elbow / Wrist)</div>
-            <select id="ci-ju">
-              <option value="0">0 — No pain</option>
-              <option value="1">1 — Minor pain</option>
-              <option value="2">2 — Average pain</option>
-              <option value="3">3 — Moderate pain</option>
-              <option value="4">4 — High pain / injury</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <div class="form-label">Lower (Low Back / Hip / Knee)</div>
-            <select id="ci-jl">
-              <option value="0">0 — No pain</option>
-              <option value="1">1 — Minor pain</option>
-              <option value="2">2 — Average pain</option>
-              <option value="3">3 — Moderate pain</option>
-              <option value="4">4 — High pain / injury</option>
-            </select>
-          </div>
-
-          <hr class="section-sep">
-          <div class="section-label">Readiness</div>
-
-          <div class="form-row">
-            <div class="form-label">
-              Tiredness (0 Fresh → 4 Exhausted)
-              <input type="number" class="val-input" id="v-t" min="0" max="4" value="0" oninput="syncRange('v-t','ci-t')">
-            </div>
-            <input type="range" min="0" max="4" value="0" id="ci-t" oninput="syncNum('ci-t','v-t')">
-          </div>
-          <div class="form-row">
-            <div class="form-label">
-              Recovery (0 Fully Recovered → 4 Beat Up)
-              <input type="number" class="val-input" id="v-r" min="0" max="4" value="0" oninput="syncRange('v-r','ci-r')">
-            </div>
-            <input type="range" min="0" max="4" value="0" id="ci-r" oninput="syncNum('ci-r','v-r')">
-          </div>
-
-          <button type="submit" class="btn btn-primary" id="ci-submit">Submit Check-in</button>
-        </form>
+<!-- ══════════════ TREND TAB ══════════════ -->
+<section id="tab-trend" class="tab-content">
+  <div class="trend-wrap">
+    <div class="trend-chart-card">
+      <div class="card-title" style="margin-bottom:10px;">Time Range</div>
+      <div class="trend-range" id="trend-range">
+        <button class="btn btn-secondary" data-range="3">3 Day</button>
+        <button class="btn btn-secondary active" data-range="7">7 Day</button>
+        <button class="btn btn-secondary" data-range="14">14 Day</button>
       </div>
-
     </div>
 
-    <!-- right: chart + workout summary -->
-    <div>
-      <div class="card">
-        <div class="chart-header">
-          <div class="card-title" style="margin-bottom:0;">Training Stress</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <div class="btn-group" id="pattern-filter">
-              <button class="active" data-pattern="total">Total</button>
-              <button data-pattern="quad_dom">Quad</button>
-              <button data-pattern="posterior">Hip</button>
-              <button data-pattern="upper_push">Push</button>
-              <button data-pattern="upper_pull">Pull</button>
-            </div>
-            <div class="btn-group" id="baseline-toggle">
-              <button data-days="3">3d</button>
-              <button class="active" data-days="6">6d</button>
-              <button data-days="12">12d</button>
-            </div>
-          </div>
-        </div>
-        <div style="position:relative;height:260px;">
-          <canvas id="stressChart"></canvas>
-        </div>
-        <div id="chart-loading" style="display:none;" class="loading-wrap">
-          <span class="spinner"></span> Fetching pattern data…
-        </div>
-        <div class="stress-legend" style="display:flex;gap:18px;margin-top:10px;font-size:12px;color:var(--muted);">
-          <span class="stress-legend-item" style="display:inline-flex;align-items:center;gap:5px;">
-            <span style="width:16px;height:2px;background:var(--accent);display:inline-block;border-radius:1px;"></span>
-            Intensity Load
-            <span class="tip-icon" data-tip="How hard you trained. Heavy sets close to your max drive this number up fast. Think of it as nervous system fatigue — the kind that makes you feel strong but drained.">i</span>
-          </span>
-          <span class="stress-legend-item" style="display:inline-flex;align-items:center;gap:5px;">
-            <span style="width:16px;height:2px;background:var(--posterior);display:inline-block;border-radius:1px;"></span>
-            Volume Load
-            <span class="tip-icon" data-tip="How much total work you did. Adds up with every set and rep regardless of how heavy. Think of it as muscle fatigue — the kind that makes you sore and tired the next day.">i</span>
-          </span>
-        </div>
+    <div class="trend-chart-card">
+      <div class="card-title">Training Load Trend</div>
+      <div class="trend-chart-wrap" id="trend-main-wrap">
+        <canvas id="trend-main-chart"></canvas>
       </div>
+      <div class="trend-note">Fatigue = short-term load, Fitness = long-term load, Form = balance between the two.</div>
+    </div>
 
-      <div class="card">
-        <div class="card-title">Training Load</div>
-        <div id="tl-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
+    <div class="trend-chart-card" id="trend-pattern-card">
+      <div class="card-title">Per-Pattern Fatigue Trend</div>
+      <div class="trend-chart-wrap secondary" id="trend-pattern-wrap">
+        <canvas id="trend-pattern-chart"></canvas>
       </div>
+      <div class="trend-note" id="trend-pattern-note" style="display:none;">Pattern data unavailable for this date range.</div>
+    </div>
 
-      <div class="card">
-        <div class="card-title">Training Recommendation (30 days)</div>
-        <div style="position:relative;height:200px;">
-          <canvas id="tsbZoneChart"></canvas>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
-          <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--accent);display:inline-block;opacity:.7;"></span>Large Increase</span>
-          <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--success);display:inline-block;opacity:.7;"></span>Increase</span>
-          <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--warn);display:inline-block;opacity:.7;"></span>Continue</span>
-          <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--decrease-band);display:inline-block;opacity:.7;"></span>Decrease</span>
-          <span style="font-size:11px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--danger);display:inline-block;opacity:.7;"></span>Large Decrease</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Recent Workouts (14 days)</div>
-        <div id="workout-table-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
-      </div>
+    <div class="trend-chart-card" id="trend-empty" style="display:none;">
+      <div class="trend-empty">No training history yet. Complete check-ins and log workouts to build your trend data.</div>
     </div>
   </div>
 </section>
@@ -1092,14 +2081,90 @@ tbody tr:hover td { background: var(--row-hover); }
 <!-- ══════════════ WORKOUTS TAB ══════════════ -->
 <section id="tab-workouts" class="tab-content">
   <div class="card">
-    <div class="card-title">Last 12 Workouts — Stress Detail</div>
-    <div id="workouts-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
+    <div class="card-title">Session Verification Queue</div>
+    <div id="session-verify-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
+  </div>
+
+  <div class="card" id="movement-trend-card">
+    <div class="card-title">Movement Trend</div>
+
+    <div class="mvt-search-wrap" id="mvt-search-wrap">
+      <input type="text" class="search-input" id="mvt-search-input" placeholder="Search movements..." autocomplete="off" style="width:100%;">
+      <button class="mvt-clear-btn" id="mvt-clear-btn" title="Clear" aria-label="Clear movement search">&times;</button>
+      <div class="mvt-dropdown" id="mvt-dropdown"></div>
+    </div>
+
+    <div class="mvt-controls-row">
+      <div class="mvt-toggle-group" id="mvt-metric-group">
+        <span class="mvt-toggle-label">Metric</span>
+        <div class="btn-group" id="mvt-metric-selector">
+          <button data-metric="e1rm" class="active">e1RM</button>
+          <button data-metric="top_set">Top Set</button>
+          <button data-metric="avg_weight">Avg Weight</button>
+          <button data-metric="volume">Volume</button>
+        </div>
+      </div>
+      <div class="mvt-toggle-group" id="mvt-window-group">
+        <span class="mvt-toggle-label">Window</span>
+        <div class="btn-group" id="mvt-window-selector">
+          <button data-window="8w">8W</button>
+          <button data-window="6m" class="active">6M</button>
+          <button data-window="1y">1Y</button>
+          <button data-window="all">All</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="mvt-placeholder" class="mvt-placeholder">Search for a movement to see its trend</div>
+    <div class="loading-wrap" id="mvt-loading" style="display:none;"><span class="spinner"></span></div>
+    <div class="trend-chart-wrap" id="mvt-chart-wrap" style="display:none;">
+      <canvas id="mvt-chart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Session Log</div>
+    <div id="session-log-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
   </div>
 </section>
 
 
 <!-- ══════════════ EXERCISES TAB ══════════════ -->
 <section id="tab-exercises" class="tab-content">
+  <div class="card" id="ex-conflict-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div class="card-title" style="margin-bottom:0;">Exercise Names — Needs Review</div>
+      <button id="ex-conflict-toggle" onclick="toggleExConflictCard()" style="background:var(--bg);border:1px solid var(--border);cursor:pointer;color:var(--muted);font-size:12px;display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:5px;transition:all .15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'" title="Toggle conflicts">
+        <span id="ex-conflict-chevron" style="display:inline-block;transition:transform .2s;">▾</span> Details
+      </button>
+    </div>
+    <div id="ex-conflict-body">
+      <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px;">
+      These exercises have a different name in Hevy than what was previously stored. Set a canonical name to lock it, or dismiss to ignore.
+      </div>
+      <div id="ex-conflict-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px;">
+        <div>
+          <button id="ex-override-add-btn" class="btn btn-secondary" style="width:auto;" onclick="openExerciseOverrideForm()">Add Override</button>
+        </div>
+        <div id="ex-override-form" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;">
+          <div class="mvt-search-wrap" id="ex-override-search-wrap" style="margin-bottom:10px;">
+            <input type="text" class="search-input" id="ex-override-search-input" placeholder="Search exercise title" autocomplete="off" style="width:100%;">
+            <div class="mvt-dropdown" id="ex-override-dropdown" style="right:0;"></div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <input type="text" class="search-input" id="ex-override-canonical-title" placeholder="Canonical name" autocomplete="off" style="width:100%;">
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button id="ex-override-save-btn" class="btn btn-primary" style="width:auto;padding:8px 12px;" onclick="saveExerciseOverride()">Save</button>
+            <button class="btn btn-secondary" style="width:auto;padding:8px 12px;" onclick="cancelExerciseOverrideForm()">Cancel</button>
+          </div>
+          <div id="ex-override-status" style="font-size:12px;min-height:18px;margin-top:8px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
       <div class="card-title" style="margin-bottom:0;">Exercise Movement Mappings</div>
@@ -1161,7 +2226,7 @@ tbody tr:hover td { background: var(--row-hover); }
 
 <!-- ══════════════ SETTINGS TAB ══════════════ -->
 <section id="tab-settings" class="tab-content">
-  <div class="card settings-card">
+  <div class="card settings-card settings-card-api">
     <div class="card-title">Settings</div>
 
     <div style="margin-bottom:6px;font-weight:600;font-size:13px;">Hevy API Key</div>
@@ -1186,74 +2251,7 @@ tbody tr:hover td { background: var(--row-hover); }
     </div>
   </div>
 
-  <div class="card settings-card" style="margin-top:14px;">
-    <div class="card-title">Advanced Calibration</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
-      Optional manual calibration for daily recommendation thresholds.
-      Leave disabled to use default system thresholds.
-    </p>
-
-    <label class="checkbox-label" style="margin-bottom:12px;">
-      <input type="checkbox" id="cal-enabled" onchange="syncCalibrationUi()">
-      Enable custom recommendation thresholds
-    </label>
-
-    <label class="checkbox-label" style="margin-bottom:12px;">
-      <input type="checkbox" id="cal-adaptive" onchange="syncCalibrationUi()">
-      Enable adaptive percentile thresholds (based on recent history)
-    </label>
-
-    <div style="font-size:12px;color:var(--muted);margin:-2px 0 12px 0;line-height:1.6;">
-      Adaptive mode builds thresholds from your recent fatigue scores using percentiles:
-      <code>P20</code> increase, <code>P40</code> continue, <code>P60</code> decrease, <code>P80</code> large decrease.
-    </div>
-
-    <div style="font-size:12px;color:var(--muted);margin:-2px 0 12px 0;line-height:1.6;">
-      <strong style="color:var(--text);">Default mode:</strong>
-      calibration disabled with system thresholds:
-      Large Decrease <code>&gt;= 8.0</code>,
-      Decrease <code>&gt;= 6.5</code>,
-      Continue <code>&gt;= 4.5</code>,
-      Increase <code>&gt;= 3.0</code>,
-      otherwise Large Increase.
-    </div>
-
-    <div class="settings-grid-2" style="margin-bottom:10px;">
-      <div class="form-row" style="margin-bottom:0;">
-        <div class="form-label">Large Decrease threshold</div>
-        <input type="number" id="cal-ld" min="0" max="10" step="0.1">
-      </div>
-      <div class="form-row" style="margin-bottom:0;">
-        <div class="form-label">Decrease threshold</div>
-        <input type="number" id="cal-d" min="0" max="10" step="0.1">
-      </div>
-      <div class="form-row" style="margin-bottom:0;">
-        <div class="form-label">Continue threshold</div>
-        <input type="number" id="cal-c" min="0" max="10" step="0.1">
-      </div>
-      <div class="form-row" style="margin-bottom:0;">
-        <div class="form-label">Increase threshold</div>
-        <input type="number" id="cal-i" min="0" max="10" step="0.1">
-      </div>
-      <div class="form-row" style="margin-bottom:0;">
-        <div class="form-label">Adaptive lookback (days)</div>
-        <input type="number" id="cal-lookback" min="30" max="180" step="1">
-      </div>
-      <div class="form-row" style="margin-bottom:0;">
-        <div class="form-label">Adaptive minimum entries</div>
-        <input type="number" id="cal-min" min="7" max="120" step="1">
-      </div>
-    </div>
-
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn btn-primary" id="btn-save-cal" onclick="saveCalibrationSettings()">Save Calibration</button>
-      <button class="btn" id="btn-reset-cal" onclick="resetCalibrationSettings()">Reset Defaults</button>
-    </div>
-
-    <div class="settings-result" id="cal-result" style="margin-top:10px;"></div>
-  </div>
-
-  <div class="card settings-card" style="margin-top:14px;">
+  <div class="card settings-card settings-card-sync">
     <div class="card-title">Hevy Sync</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
       Pull the latest workouts from Hevy into the local database.
@@ -1261,6 +2259,12 @@ tbody tr:hover td { background: var(--row-hover); }
     </p>
     <div id="sync-status" style="margin-bottom:10px;"></div>
     <button class="btn btn-secondary" id="sync-btn" onclick="runSync()" style="width:100%;">⟳ Sync Now</button>
+  </div>
+
+  <div class="card settings-card settings-card-diagnostics">
+    <div class="card-title">Engine Diagnostics &amp; Tweaks</div>
+    <p class="settings-diag-body">The diagnostics page shows how your scores are calculated, the raw numbers behind your Today recommendation, and settings for fine-tuning how the engine classifies and patterns your training data.</p>
+    <a class="settings-diag-cta" href="/static/diagnostic.html">Open Engine Diagnostics →</a>
   </div>
 </section>
 
@@ -1439,7 +2443,7 @@ tbody tr:hover td { background: var(--row-hover); }
       <input type="range" min="0" max="4" value="0" id="le-t" oninput="syncNum('le-t','lv-t')">
     </div>
     <div class="form-row">
-      <div class="form-label">Recovery (0 Fully Recovered → 4 Beat Up)<input type="number" class="val-input" id="lv-r" min="0" max="4" value="0" oninput="syncRange('lv-r','le-r')"></div>
+      <div class="form-label">Fatigue (0 Fresh → 4 Extremely Fatigued)<input type="number" class="val-input" id="lv-r" min="0" max="4" value="0" oninput="syncRange('lv-r','le-r')"></div>
       <input type="range" min="0" max="4" value="0" id="le-r" oninput="syncNum('le-r','lv-r')">
     </div>
 
@@ -1466,6 +2470,7 @@ function themeColors() {
     card:      getCSSVar('--card'),
     border:    getCSSVar('--border'),
     accent:    getCSSVar('--accent'),
+    success:   getCSSVar('--success'),
     quad:      getCSSVar('--quad'),
     posterior: getCSSVar('--posterior'),
     push:      getCSSVar('--push'),
@@ -1486,16 +2491,14 @@ function applyTheme(pref) {
 
   // Rebuild charts with new colors after CSS vars settle
   requestAnimationFrame(() => {
-    patternCache = {};
-    if (stressChart) {
-      renderChart();
-      document.querySelectorAll('#pattern-filter button').forEach(b =>
-        b.classList.toggle('active', b.dataset.pattern === 'total')
-      );
-      activePattern = 'total';
+    if (document.getElementById('tab-dashboard')?.classList.contains('active')) {
+      loadTrainingLoadCard();
     }
-    if (_tlHistory) {
-      renderFatigueChart(_tlHistory, _tlThresholds);
+    if (document.getElementById('tab-trend')?.classList.contains('active')) {
+      renderTrendView();
+    }
+    if (document.getElementById('tab-workouts')?.classList.contains('active') && mvtLastData) {
+      _mvtRenderChart(mvtLastData);
     }
   });
 }
@@ -1506,12 +2509,14 @@ window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', ()
 });
 
 // ═══ State ════════════════════════════════════════════
-let stressHistory  = [];
-let patternCache   = {};
-let activePattern  = 'total';
-let baselineDays   = 6;
-let stressChart    = null;
 let exercises      = [];
+let exerciseConflictRows = [];
+let exerciseConflictEditingId = null;
+let exConflictCollapsed = false;
+let exOverrideSearchTimer = null;
+let exOverrideSearchReqId = 0;
+let exOverrideHandlersBound = false;
+let exOverrideSelected = null;
 
 // ── Chart resize handling ─────────────────────────────
 // window.resize + setTimeout has a race condition: the CSS grid layout may
@@ -1519,25 +2524,18 @@ let exercises      = [];
 // ResizeObserver fires *after* the browser finishes computing the new layout
 // for each specific container, so we always measure the correct dimensions.
 
-// Stress chart lives on the Dashboard (never in a switching grid) — .resize() is fine
-{
-  let _t;
-  window.addEventListener('resize', () => {
-    clearTimeout(_t);
-    _t = setTimeout(() => { if (stressChart) stressChart.resize(); }, 150);
-  });
-}
-
-// Watch the TSB chart container for resize and re-render with cached history
+// Trend charts: re-render active view on resize after layout settles.
 let _tlHistory = null;
 if (window.ResizeObserver) {
-  const _tsbEl = document.getElementById('tsbZoneChart')?.parentElement;
-  if (_tsbEl) {
-    let _tsbTimer;
+  const _trendMainEl = document.getElementById('trend-main-wrap');
+  if (_trendMainEl) {
+    let _trendTimer;
     new ResizeObserver(() => {
-      clearTimeout(_tsbTimer);
-      _tsbTimer = setTimeout(() => { if (_tlHistory) renderFatigueChart(_tlHistory, _tlThresholds); }, 60);
-    }).observe(_tsbEl);
+      clearTimeout(_trendTimer);
+      _trendTimer = setTimeout(() => {
+        if (document.getElementById('tab-trend')?.classList.contains('active')) renderTrendView();
+      }, 80);
+    }).observe(_trendMainEl);
   }
 }
 let editingTitle   = null;
@@ -1546,21 +2544,82 @@ let workoutsLoaded = false;
 let logLoaded      = false;
 let logEditDate    = null;
 let exSort         = 'alpha';
-let tsbZoneChart   = null;
 let _tlThresholds  = null;
+let _trainingLoadPayload = null;
+let _trainingLoadFetchPromise = null;
+let _readinessCombinedHistoryPayload = null;
+let _readinessCombinedHistoryFetchPromise = null;
+let trendMainChart = null;
+let trendPatternChart = null;
+let todayReadinessChart = null;
+let trendSmoothingDays = 7;
+let sessionLogRows = [];
+const SESSION_LOG_PAGE_SIZE = 50;
+let sessionLogOffset = 0;
+let sessionLogHasMore = false;
+let sessionLogFilter = 'all';
+let sessionLogFatiguePayload = null;
+let sessionDetailCache = {};
+let mvtSelectedMovement = null;
+let mvtMetric = 'e1rm';
+let mvtWindow = '6m';
+let mvtSearchTimer = null;
+let mvtChart = null;
+let mvtSearchReqId = 0;
+let mvtLastData = null;
+let mvtHandlersBound = false;
+let _todayCheckinSubmitted = false;
+let _todayCheckinExpanded = false;
+let _todayCheckinEntry = null;
+
+function setMobileNavOpen(isOpen) {
+  document.body.classList.toggle('mobile-nav-open', !!isOpen);
+  const menuBtn = document.getElementById('mobile-menu-btn');
+  const drawer = document.getElementById('mobile-nav-drawer');
+  if (menuBtn) menuBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  if (drawer) drawer.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+}
+
+function activateTab(tabName) {
+  setMobileNavOpen(false);
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+  document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-' + tabName).classList.add('active');
+  if (tabName === 'dashboard') { loadTrainingLoadCard(); checkTodayReadiness(); }
+  if (tabName === 'trend')                               activateTrendTab();
+  if (tabName === 'exercises')                           { loadExerciseConflicts(); if (exercises.length === 0) loadExercises(); }
+  if (tabName === 'workouts'  && !workoutsLoaded)        loadWorkouts();
+  if (tabName === 'log'       && !logLoaded)             loadLog();
+  if (tabName === 'settings')                            loadSettingsTab();
+}
 
 // ═══ Tabs ════════════════════════════════════════════
 document.querySelectorAll('.nav-tab').forEach(tab => {
   tab.addEventListener('click', () => {
-    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
-    if (tab.dataset.tab === 'exercises' && exercises.length === 0) loadExercises();
-    if (tab.dataset.tab === 'workouts'  && !workoutsLoaded)        loadWorkouts();
-    if (tab.dataset.tab === 'log'       && !logLoaded)             loadLog();
-    if (tab.dataset.tab === 'settings')                            loadSettingsTab();
+    activateTab(tab.dataset.tab);
   });
+});
+
+document.addEventListener('click', e => {
+  if (e.target.closest('#mobile-menu-btn')) {
+    setMobileNavOpen(true);
+    return;
+  }
+  if (e.target.closest('#mobile-nav-overlay')) {
+    setMobileNavOpen(false);
+    return;
+  }
+  if (e.target.closest('.mobile-drawer-nav .nav-tab')) {
+    setMobileNavOpen(false);
+  }
+  // Close movement trend dropdown on outside click
+  if (!e.target.closest('#mvt-search-wrap')) {
+    _mvtCloseDropdown();
+  }
+  // Close exercise override dropdown on outside click
+  if (!e.target.closest('#ex-override-search-wrap')) {
+    _exOverrideCloseDropdown();
+  }
 });
 
 // Theme toggle clicks
@@ -1584,23 +2643,142 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   document.getElementById('ci-date').value = todayStr();
+  document.getElementById('ci-date').max = todayStr();
+  ['ci-t','ci-r','ci-sq','ci-sp','ci-spu','ci-spl','ci-ju','ci-jl'].forEach(id => _setCheckinScaleValue(id, 0));
+  setMobileNavOpen(false);
+  initTrendRangeSelector();
+  _mvtInitHandlers();
+  _exOverrideInitHandlers();
   checkTodayReadiness();
-  await loadStressHistory();
-  renderChart();
-  loadWorkoutSummary();
   loadTrainingLoadCard();
-  checkSetupBanner();   // show banner if API key not yet configured
 });
 
-function todayStr() { return new Date().toISOString().split('T')[0]; }
+function initTrendRangeSelector() {
+  const rangeEl = document.getElementById('trend-range');
+  if (!rangeEl || rangeEl.dataset.bound === '1') return;
+  rangeEl.dataset.bound = '1';
+
+  rangeEl.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-range]');
+    if (!btn) return;
+    trendSmoothingDays = Number(btn.dataset.range || 7);
+    rangeEl.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+    renderTrendView();
+  });
+}
+
+// Tooltips: hover works by CSS; click/tap toggles visibility for touch devices.
+document.addEventListener('click', e => {
+  const tip = e.target.closest('.tip-icon');
+  document.querySelectorAll('.tip-icon.show').forEach(el => {
+    if (el !== tip) el.classList.remove('show');
+  });
+  if (tip) {
+    tip.classList.toggle('show');
+    e.stopPropagation();
+  }
+});
+
+function todayStr() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function _setCheckinScaleValue(fieldId, value) {
+  const input = document.getElementById(fieldId);
+  if (!input) return;
+  const next = Math.max(0, Math.min(4, Number(value) || 0));
+  input.value = String(next);
+  document.querySelectorAll(`.checkin-scale-buttons button[data-ci-field="${fieldId}"]`).forEach(btn => {
+    btn.classList.toggle('active', Number(btn.dataset.value) === next);
+  });
+}
+
+function _renderCheckinReadonly(entry) {
+  const box = document.getElementById('checkin-readonly');
+  if (!box || !entry) return;
+  box.innerHTML = `
+    <div class="alert alert-success">✓ Already logged today — Intensity Load: ${entry.central_stress ?? '—'} | Volume Load: ${entry.peripheral_stress ?? '—'}</div>
+    <div style="display:flex;justify-content:flex-end;align-items:center;margin-top:8px;">
+      <button type="button" class="btn btn-secondary" id="checkin-edit-toggle" onclick="toggleTodayCheckinEditor()" aria-expanded="false">Edit / Backdate</button>
+    </div>
+  `;
+}
+
+function _setCheckinFormFromEntry(entry) {
+  if (!entry) return;
+  _setCheckinScaleValue('ci-t', entry.tiredness ?? 0);
+  _setCheckinScaleValue('ci-r', entry.perceived_recovery ?? 0);
+  _setCheckinScaleValue('ci-sq', entry.sore_quad_dom ?? 0);
+  _setCheckinScaleValue('ci-sp', entry.sore_posterior ?? 0);
+  _setCheckinScaleValue('ci-spu', entry.sore_upper_push ?? 0);
+  _setCheckinScaleValue('ci-spl', entry.sore_upper_pull ?? 0);
+  _setCheckinScaleValue('ci-ju', entry.joint_upper ?? 0);
+  _setCheckinScaleValue('ci-jl', entry.joint_lower ?? 0);
+}
+
+function toggleTodayCheckinEditor() {
+  if (!_todayCheckinSubmitted) return;
+  const form = document.getElementById('checkin-form');
+  const toggleBtn = document.getElementById('checkin-edit-toggle');
+  const dateInput = document.getElementById('ci-date');
+  const status = document.getElementById('checkin-status');
+  if (!form || !toggleBtn || !dateInput) return;
+
+  _todayCheckinExpanded = !_todayCheckinExpanded;
+  form.style.display = _todayCheckinExpanded ? 'block' : 'none';
+  toggleBtn.setAttribute('aria-expanded', _todayCheckinExpanded ? 'true' : 'false');
+
+  if (_todayCheckinExpanded) {
+    dateInput.value = todayStr();
+    _setCheckinFormFromEntry(_todayCheckinEntry);
+    const btn = document.getElementById('ci-submit');
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Submit Check-in';
+    }
+  } else if (status) {
+    // Collapse without saving: reset editor fields back to today's values.
+    dateInput.value = todayStr();
+    _setCheckinFormFromEntry(_todayCheckinEntry);
+    status.innerHTML = '';
+  }
+}
+
+function _setCheckinTodayVisibility(isSubmitted, entry = null) {
+  const form = document.getElementById('checkin-form');
+  const readonly = document.getElementById('checkin-readonly');
+  const status = document.getElementById('checkin-status');
+  const dateInput = document.getElementById('ci-date');
+  if (!form || !readonly) return;
+
+  _todayCheckinSubmitted = !!isSubmitted;
+
+  if (isSubmitted) {
+    _todayCheckinEntry = entry || null;
+    _todayCheckinExpanded = false;
+    form.style.display = 'none';
+    readonly.style.display = 'block';
+    _renderCheckinReadonly(entry || {});
+    if (dateInput) dateInput.value = todayStr();
+    if (status) status.innerHTML = '';
+    return;
+  }
+
+  _todayCheckinEntry = null;
+  _todayCheckinExpanded = true;
+  form.style.display = 'block';
+  readonly.style.display = 'none';
+  readonly.innerHTML = '';
+  if (status) status.innerHTML = '';
+}
 
 // ═══ Settings ════════════════════════════════════════
 function switchToSettings() {
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
-  document.querySelector('[data-tab="settings"]').classList.add('active');
-  document.getElementById('tab-settings').classList.add('active');
-  loadSettingsTab();
+  activateTab('settings');
 }
 
 async function checkSetupBanner() {
@@ -1616,6 +2794,7 @@ async function loadSettingsTab() {
   try {
     const r = await fetch('/api/settings');
     const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Could not load API key settings.');
     const el = document.getElementById('api-key-current');
     if (d.api_key_set) {
       el.textContent = `Current key: ${d.api_key_preview}`;
@@ -1624,7 +2803,6 @@ async function loadSettingsTab() {
     }
     // Clear result box whenever the tab refreshes
     _setKeyResult('', null);
-    await loadCalibrationSettings();
   } catch (e) {
     document.getElementById('api-key-current').textContent = 'Could not load settings.';
   }
@@ -1643,106 +2821,12 @@ function _setKeyResult(msg, ok) {
   el.style.display = 'block';
 }
 
-function _setCalResult(msg, ok) {
-  const el = document.getElementById('cal-result');
+function _setSectionResult(id, msg, ok) {
+  const el = document.getElementById(id);
   if (!msg) { el.style.display = 'none'; return; }
   el.textContent = msg;
   el.className = 'settings-result ' + (ok ? 'ok' : 'error');
   el.style.display = 'block';
-}
-
-function syncCalibrationUi() {
-  const enabled = document.getElementById('cal-enabled').checked;
-  const adaptive = document.getElementById('cal-adaptive').checked;
-  ['cal-ld', 'cal-d', 'cal-c', 'cal-i'].forEach(id => {
-    document.getElementById(id).disabled = !enabled;
-  });
-  ['cal-lookback', 'cal-min'].forEach(id => {
-    document.getElementById(id).disabled = !adaptive;
-  });
-}
-
-async function loadCalibrationSettings() {
-  try {
-    const r = await fetch('/api/settings/calibration');
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.detail || 'Failed to load calibration settings.');
-
-    document.getElementById('cal-enabled').checked = !!d.enabled;
-    document.getElementById('cal-adaptive').checked = !!d.adaptive_enabled;
-    document.getElementById('cal-ld').value = d.threshold_large_decrease;
-    document.getElementById('cal-d').value = d.threshold_decrease;
-    document.getElementById('cal-c').value = d.threshold_continue;
-    document.getElementById('cal-i').value = d.threshold_increase;
-    document.getElementById('cal-lookback').value = d.adaptive_lookback_days;
-    document.getElementById('cal-min').value = d.adaptive_min_entries;
-    syncCalibrationUi();
-    _setCalResult('', null);
-  } catch (e) {
-    _setCalResult('✗ ' + e.message, false);
-  }
-}
-
-async function saveCalibrationSettings() {
-  const btn = document.getElementById('btn-save-cal');
-  btn.disabled = true;
-  btn.textContent = 'Saving…';
-  try {
-    const payload = {
-      enabled: document.getElementById('cal-enabled').checked,
-      threshold_large_decrease: +document.getElementById('cal-ld').value,
-      threshold_decrease: +document.getElementById('cal-d').value,
-      threshold_continue: +document.getElementById('cal-c').value,
-      threshold_increase: +document.getElementById('cal-i').value,
-      adaptive_enabled: document.getElementById('cal-adaptive').checked,
-      adaptive_lookback_days: +document.getElementById('cal-lookback').value,
-      adaptive_min_entries: +document.getElementById('cal-min').value,
-    };
-
-    const r = await fetch('/api/settings/calibration', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.detail || 'Save failed.');
-    _setCalResult('✓ Calibration settings saved.', true);
-    loadTrainingLoadCard();
-    if (logLoaded) { logLoaded = false; loadLog(); }
-  } catch (e) {
-    _setCalResult('✗ ' + e.message, false);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Save Calibration';
-  }
-}
-
-async function resetCalibrationSettings() {
-  const btn = document.getElementById('btn-reset-cal');
-  btn.disabled = true;
-  btn.textContent = 'Resetting…';
-  try {
-    const r = await fetch('/api/settings/calibration/reset', { method: 'POST' });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.detail || 'Reset failed.');
-    document.getElementById('cal-enabled').checked = !!d.enabled;
-    document.getElementById('cal-adaptive').checked = !!d.adaptive_enabled;
-    document.getElementById('cal-ld').value = d.threshold_large_decrease;
-    document.getElementById('cal-d').value = d.threshold_decrease;
-    document.getElementById('cal-c').value = d.threshold_continue;
-    document.getElementById('cal-i').value = d.threshold_increase;
-    document.getElementById('cal-lookback').value = d.adaptive_lookback_days;
-    document.getElementById('cal-min').value = d.adaptive_min_entries;
-    syncCalibrationUi();
-    _setCalResult('✓ Calibration reset to defaults.', true);
-    loadTrainingLoadCard();
-    if (logLoaded) { logLoaded = false; loadLog(); }
-  } catch (e) {
-    _setCalResult('✗ ' + e.message, false);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Reset Defaults';
-  }
 }
 
 async function saveApiKey() {
@@ -1810,15 +2894,23 @@ function syncRange(numId, sliderId) {
 
 // ═══ Check-in ════════════════════════════════════════
 async function checkTodayReadiness() {
+  const dateInput = document.getElementById('ci-date');
+  if (!dateInput) return;
+  if (dateInput.value !== todayStr()) {
+    _setCheckinTodayVisibility(false);
+    return;
+  }
   try {
     const r = await fetch('/api/readiness/today');
     if (r.ok) {
       const d = await r.json();
-      setStatus('success', `✓ Already logged today — Intensity Load: ${d.central_stress ?? '—'} | Volume Load: ${d.peripheral_stress ?? '—'}`);  
+      _setCheckinTodayVisibility(true, d);
       const btn = document.getElementById('ci-submit');
       btn.disabled = true;
       btn.textContent = 'Already logged today';
+      return;
     }
+    _setCheckinTodayVisibility(false);
   } catch {}
 }
 
@@ -1831,6 +2923,15 @@ function setStatus(type, msg) {
 document.getElementById('ci-date').addEventListener('change', function () {
   const isToday = this.value === todayStr();
   const btn     = document.getElementById('ci-submit');
+
+  if (_todayCheckinSubmitted) {
+    btn.disabled = false;
+    btn.textContent = isToday ? 'Submit Check-in' : 'Add Past Entry';
+    const st = document.getElementById('checkin-status');
+    if (st.querySelector('.alert-success')) st.innerHTML = '';
+    return;
+  }
+
   if (isToday) {
     btn.textContent = 'Submit Check-in';
     checkTodayReadiness();          // re-lock if today already has an entry
@@ -1841,6 +2942,12 @@ document.getElementById('ci-date').addEventListener('change', function () {
     const st = document.getElementById('checkin-status');
     if (st.querySelector('.alert-success')) st.innerHTML = '';
   }
+});
+
+document.getElementById('checkin-form').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-ci-field][data-value]');
+  if (!btn) return;
+  _setCheckinScaleValue(btn.dataset.ciField, btn.dataset.value);
 });
 
 document.getElementById('checkin-form').addEventListener('submit', async e => {
@@ -1878,16 +2985,25 @@ document.getElementById('checkin-form').addEventListener('submit', async e => {
     const d = await r.json();
     if (r.ok) {
       // Reset all check-in fields after any successful submission
-      ['ci-sq','ci-sp','ci-spu','ci-spl','ci-ju','ci-jl'].forEach(id => {
-        document.getElementById(id).value = '0';
-      });
-      ['ci-t','v-t','ci-r','v-r'].forEach(id => {
-        document.getElementById(id).value = 0;
-      });
-      if (isToday) {
-        setStatus('success', `✓ Logged! Intensity Load: ${d.central_stress} | Volume Load: ${d.peripheral_stress}`);
+      ['ci-t','ci-r','ci-sq','ci-sp','ci-spu','ci-spl','ci-ju','ci-jl'].forEach(id => _setCheckinScaleValue(id, 0));
+      if (_todayCheckinSubmitted && !isToday) {
+        // Backdated save while today's summary exists: collapse back to
+        // today's canonical read-only values from backend.
+        document.getElementById('ci-date').value = todayStr();
+        await checkTodayReadiness();
+      } else if (isToday) {
+        document.getElementById('ci-date').value = todayStr();
+        _setCheckinTodayVisibility(true, {
+          ...payload,
+          date: todayStr(),
+          central_stress: d.central_stress,
+          peripheral_stress: d.peripheral_stress,
+          perceived_recovery: payload.perceived_recovery,
+          tiredness: payload.tiredness,
+        });
         btn.disabled    = true;
         btn.textContent = 'Already logged today';
+        invalidateTodayCaches();
         loadTrainingLoadCard();
       } else {
         setStatus('success', `✓ Added entry for ${submittedDate} — Intensity Load: ${d.central_stress} | Volume Load: ${d.peripheral_stress}`);
@@ -1936,15 +3052,18 @@ async function runSync({ silent = false } = {}) {
         const mins = Math.ceil(d.retry_after_seconds / 60);
         statusEl.innerHTML = `<div class="alert alert-info">Already synced recently — try again in ${mins} min.</div>`;
       } else if (r.ok) {
-        const msg = d.new_sets > 0
-          ? `✓ Sync complete — ${d.new_sets} new set${d.new_sets !== 1 ? 's' : ''} added.`
-          : '✓ Already up to date — no new sets found.';
+        const syncedLabel = d.synced_at
+          ? new Date(d.synced_at).toLocaleString()
+          : 'unknown time';
+        const msg = `✓ Sync complete — ${syncedLabel}`;
         statusEl.innerHTML = `<div class="alert alert-success">${msg}</div>`;
-        // Refresh stress chart, workout table, and training load card
-        await loadStressHistory();
-        renderChart();
-        loadWorkoutSummary();
+        localStorage.setItem('hevy_last_sync_iso', d.synced_at || new Date().toISOString());
+        invalidateTodayCaches();
+        // Refresh Today and Trend data surfaces
         loadTrainingLoadCard();
+        if (document.getElementById('tab-trend')?.classList.contains('active')) {
+          renderTrendView();
+        }
         if (exercises.length || document.getElementById('tab-exercises').classList.contains('active')) {
           loadExercises();
         }
@@ -1962,149 +3081,6 @@ async function runSync({ silent = false } = {}) {
       btn.disabled = false;
       btn.textContent = '⟳ Sync Now';
     }
-  }
-}
-
-// ═══ Stress history ═══════════════════════════════════
-async function loadStressHistory() {
-  try {
-    const r = await fetch('/api/stress/history?days=60');
-    stressHistory = await r.json();
-  } catch { stressHistory = []; }
-}
-
-function rollingAvg(vals, win) {
-  return vals.map((_, i) => {
-    const sl = vals.slice(Math.max(0, i - win + 1), i + 1);
-    return +(sl.reduce((a, b) => a + b, 0) / sl.length).toFixed(3);
-  });
-}
-
-// ═══ Chart ════════════════════════════════════════════
-function chartOpts() {
-  const c = themeColors();
-  return {
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: { duration: 250 },
-    interaction: { mode: 'index', intersect: false },
-    plugins: {
-      legend: { labels: { color: c.muted, font: { size: 11 }, boxWidth: 16, usePointStyle: true } },
-      tooltip: {
-        backgroundColor: c.card,
-        borderColor: c.border,
-        borderWidth: 1,
-        titleColor: c.text,
-        bodyColor: c.muted,
-        padding: 10,
-      }
-    },
-    scales: {
-      x: { ticks: { color: c.muted, font: { size: 10 }, maxTicksLimit: 10 }, grid: { color: c.border } },
-      y: { ticks: { color: c.muted, font: { size: 10 } }, grid: { color: c.border }, beginAtZero: true }
-    }
-  };
-}
-
-function buildDatasets(labels, cVals, pVals, cColor, pColor) {
-  return {
-    labels,
-    datasets: [
-      { label: 'Intensity Load',    data: cVals, borderColor: cColor, backgroundColor: cColor+'22', borderWidth: 2, tension: 0.35, pointRadius: 3, pointHoverRadius: 6 },
-      { label: 'Volume Load', data: pVals, borderColor: pColor, backgroundColor: pColor+'22', borderWidth: 2, tension: 0.35, pointRadius: 3, pointHoverRadius: 6 },
-      { label: `${baselineDays}d Intensity Avg`,    data: rollingAvg(cVals, baselineDays), borderColor: cColor, borderWidth: 1.5, borderDash: [5,4], pointRadius: 0, tension: 0.35 },
-      { label: `${baselineDays}d Volume Avg`, data: rollingAvg(pVals, baselineDays), borderColor: pColor, borderWidth: 1.5, borderDash: [5,4], pointRadius: 0, tension: 0.35 },
-    ]
-  };
-}
-
-function renderChart() {
-  const c = themeColors();
-  const ctx = document.getElementById('stressChart').getContext('2d');
-  const data = buildDatasets(
-    stressHistory.map(d => d.date),
-    stressHistory.map(d => d.central),
-    stressHistory.map(d => d.peripheral),
-    c.accent, c.posterior
-  );
-  if (stressChart) stressChart.destroy();
-  stressChart = new Chart(ctx, { type: 'line', data, options: chartOpts() });
-}
-
-function renderPatternChart(key) {
-  const c = themeColors();
-  const colors = { quad_dom: c.quad, posterior: c.posterior, upper_push: c.push, upper_pull: c.pull };
-  const col = colors[key] || c.accent;
-  const pd  = patternCache[key];
-  const data = buildDatasets(pd.map(d => d.date), pd.map(d => d.central), pd.map(d => d.peripheral), col, col+'bb');
-  const ctx = document.getElementById('stressChart').getContext('2d');
-  if (stressChart) stressChart.destroy();
-  stressChart = new Chart(ctx, { type: 'line', data, options: chartOpts() });
-}
-
-// ═══ Pattern filter ═══════════════════════════════════
-document.getElementById('pattern-filter').addEventListener('click', async e => {
-  const btn = e.target.closest('button');
-  if (!btn) return;
-  document.querySelectorAll('#pattern-filter button').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  activePattern = btn.dataset.pattern;
-  if (activePattern === 'total') { renderChart(); return; }
-
-  if (!patternCache[activePattern]) {
-    document.getElementById('chart-loading').style.display = 'block';
-    document.getElementById('stressChart').style.opacity = '0.3';
-    const results = await Promise.all(
-      stressHistory.map(d => fetch(`/api/stress/patterns/${d.date}`).then(r => r.json()).catch(() => null))
-    );
-    patternCache[activePattern] = results.filter(Boolean).map(r => ({
-      date:       r.date,
-      central:    r.patterns[activePattern]?.central    ?? 0,
-      peripheral: r.patterns[activePattern]?.peripheral ?? 0,
-    }));
-    document.getElementById('chart-loading').style.display = 'none';
-    document.getElementById('stressChart').style.opacity = '1';
-  }
-  renderPatternChart(activePattern);
-});
-
-// ═══ Baseline toggle ══════════════════════════════════
-document.getElementById('baseline-toggle').addEventListener('click', e => {
-  const btn = e.target.closest('button');
-  if (!btn) return;
-  document.querySelectorAll('#baseline-toggle button').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  baselineDays = +btn.dataset.days;
-  patternCache = {};
-  if (activePattern === 'total') renderChart(); else renderPatternChart(activePattern);
-});
-
-// ═══ Dashboard workout summary ════════════════════════
-async function loadWorkoutSummary() {
-  const wrap = document.getElementById('workout-table-wrap');
-  try {
-    const r = await fetch('/api/workouts/summary?days=14');
-    const rows = await r.json();
-    if (!rows.length) {
-      wrap.innerHTML = '<div class="loading-wrap" style="color:var(--muted)">No workout data — run the importer.</div>';
-      return;
-    }
-    wrap.innerHTML = `<div class="table-scroll"><table>
-      <thead><tr>
-        <th>Date</th>
-        <th>Volume (lbs)</th>
-        <th class="col-hide">Sets</th>
-        <th class="col-hide">Avg RPE</th>
-      </tr></thead>
-      <tbody>${[...rows].reverse().map(r => `<tr>
-        <td>${r.date}</td>
-        <td>${Number(r.total_volume).toLocaleString()}</td>
-        <td class="col-hide">${r.total_sets}</td>
-        <td class="col-hide">${r.avg_rpe ?? '—'}</td>
-      </tr>`).join('')}</tbody>
-    </table></div>`;
-  } catch {
-    wrap.innerHTML = '<div style="color:var(--danger)">Failed to load workout data.</div>';
   }
 }
 
@@ -2144,7 +3120,6 @@ async function loadLog() {
     wrap.innerHTML = `<div class="table-scroll"><table>
       <thead><tr>
         <th>Date</th>
-        <th>Rec</th>
         <th>Fatigue</th>
         <th>Tired</th>
         <th>Recovery</th>
@@ -2159,7 +3134,6 @@ async function loadLog() {
         const trendWindow = entries.slice(i, i + 7).map(x => x.fatigue_score).reverse();
         return `<tr>
         <td style="white-space:nowrap;">${e.date}</td>
-        <td><span class="rec-pill ${rec.cls}" style="margin-top:0;padding:3px 10px;font-size:12px;">${rec.label}</span></td>
         <td><span class="fatigue-cell"><span style="font-weight:600;">${fatigueVal}</span>${_sparkline(trendWindow)}</span></td>
         <td><span class="sev-badge sev-${e.tiredness}">${e.tiredness}</span></td>
         <td><span class="sev-badge sev-${e.perceived_recovery}">${e.perceived_recovery}</span></td>
@@ -2273,48 +3247,890 @@ async function deleteLogEntry() {
   }
 }
 
-// ═══ Workouts tab ═════════════════════════════════════
-async function loadWorkouts() {
-  const wrap = document.getElementById('workouts-wrap');
+// ═══ Movement Trend ═══════════════════════════════════
+function _destroyMvtChart() {
+  if (mvtChart) { mvtChart.destroy(); mvtChart = null; }
+}
+
+function _mvtSetState(state) {
+  // state: 'placeholder' | 'loading' | 'chart'
+  document.getElementById('mvt-placeholder').style.display = state === 'placeholder' ? '' : 'none';
+  document.getElementById('mvt-loading').style.display     = state === 'loading'     ? 'flex' : 'none';
+  document.getElementById('mvt-chart-wrap').style.display  = state === 'chart'       ? '' : 'none';
+}
+
+function _mvtCloseDropdown() {
+  const dd = document.getElementById('mvt-dropdown');
+  if (dd) dd.style.display = 'none';
+}
+
+function _mvtDateLabel(dateStr) {
+  const [y, m, d] = String(dateStr).split('-').map(Number);
+  if (!y || !m || !d) return String(dateStr || '');
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function _mvtMetricLabel(metric) {
+  if (metric === 'e1rm') return 'e1RM';
+  if (metric === 'top_set') return 'Top Set';
+  if (metric === 'avg_weight') return 'Avg Weight';
+  return 'Volume';
+}
+
+function _mvtMetricUnit(metric) {
+  return metric === 'volume' ? 'lbs-volume' : 'lbs';
+}
+
+function _mvtFormatValue(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return 'n/a';
+  return Number(value).toFixed(1);
+}
+
+async function _mvtSearch(q) {
+  const reqId = ++mvtSearchReqId;
+  if (q.trim().length < 2) {
+    _mvtCloseDropdown();
+    return;
+  }
   try {
-    const r = await fetch('/api/workouts/recent?count=12');
-    const workouts = await r.json();
-    workoutsLoaded = true;
-    if (!workouts.length) {
-      wrap.innerHTML = '<div class="loading-wrap" style="color:var(--muted)">No workouts found. Run the importer.</div>';
+    const r = await fetch(`/api/movements/search?q=${encodeURIComponent(q)}`);
+    if (reqId !== mvtSearchReqId) return;
+    const d = await r.json();
+    _mvtRenderDropdown(d.results || []);
+  } catch (_) {
+    if (reqId !== mvtSearchReqId) return;
+    _mvtCloseDropdown();
+  }
+}
+
+function _mvtRenderDropdown(results) {
+  const dd = document.getElementById('mvt-dropdown');
+  if (!dd) return;
+  if (!results.length) {
+    _mvtCloseDropdown();
+    return;
+  }
+  dd.innerHTML = results.map(r =>
+    `<div class="mvt-dropdown-item" data-title="${escHtml(r)}">${escHtml(r)}</div>`
+  ).join('');
+  dd.style.display = 'block';
+}
+
+function _mvtSelectMovement(title) {
+  mvtSelectedMovement = title;
+  document.getElementById('mvt-search-input').value = title;
+  _mvtCloseDropdown();
+  _mvtLoadTrend();
+}
+
+function _mvtClear() {
+  mvtSelectedMovement = null;
+  mvtLastData = null;
+  mvtSearchReqId += 1;
+  clearTimeout(mvtSearchTimer);
+  document.getElementById('mvt-search-input').value = '';
+  _mvtCloseDropdown();
+  _destroyMvtChart();
+  _mvtSetState('placeholder');
+  document.getElementById('mvt-placeholder').textContent = 'Search for a movement to see its trend';
+}
+
+async function _mvtLoadTrend() {
+  if (!mvtSelectedMovement) return;
+  _destroyMvtChart();
+  _mvtSetState('loading');
+
+  const usingVolume = mvtMetric === 'volume';
+  const endpoint = usingVolume ? '/api/movements/volume-trend' : '/api/movements/session-trend';
+  const qs = `exercise=${encodeURIComponent(mvtSelectedMovement)}&window=${encodeURIComponent(mvtWindow)}`;
+
+  try {
+    const url = `${endpoint}?${qs}`;
+    const r = await fetch(url);
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      throw new Error(d.detail || r.statusText);
+    }
+    const rows = await r.json();
+    const normalized = rows.map(row => {
+      if (usingVolume) {
+        return {
+          date: row.week_start,
+          value: row.weekly_volume,
+        };
+      }
+      return {
+        date: row.session_date,
+        value: row[mvtMetric],
+      };
+    }).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+
+    if (!normalized.length) {
+      mvtLastData = null;
+      _mvtSetState('placeholder');
+      document.getElementById('mvt-placeholder').textContent = 'No trend data found for this movement and window';
       return;
     }
+
+    mvtLastData = {
+      metric: mvtMetric,
+      label: _mvtMetricLabel(mvtMetric),
+      points: normalized,
+    };
+    _mvtRenderChart(mvtLastData);
+    _mvtSetState('chart');
+  } catch (err) {
+    mvtLastData = null;
+    _mvtSetState('placeholder');
+    document.getElementById('mvt-placeholder').textContent = `Could not load trend: ${err.message}`;
+  }
+}
+
+function _mvtRenderChart(payload) {
+  if (!payload || !Array.isArray(payload.points)) return;
+  _destroyMvtChart();
+  const c = themeColors();
+  const ctx = document.getElementById('mvt-chart').getContext('2d');
+
+  const labels = payload.points.map(p => _mvtDateLabel(p.date));
+  const values = payload.points.map(p => (p.value === null || p.value === undefined ? null : Number(p.value)));
+
+  const finite = values.filter(v => Number.isFinite(v));
+  let yMin = 0;
+  let yMax = 1;
+  if (finite.length) {
+    const minVal = Math.min(...finite);
+    const maxVal = Math.max(...finite);
+    const span = Math.max(maxVal - minVal, 1);
+    const pad = span * 0.10;
+    yMin = Math.max(0, minVal - pad);
+    yMax = maxVal + pad;
+    if (yMax <= yMin) yMax = yMin + 1;
+  }
+
+  mvtChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: payload.label,
+          data: values,
+          borderColor: c.accent,
+          backgroundColor: c.accent,
+          borderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: c.accent,
+          pointBorderColor: c.card,
+          pointBorderWidth: 2,
+          tension: 0.3,
+          spanGaps: false,
+          fill: false,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: c.card,
+          borderColor: c.border,
+          borderWidth: 1,
+          titleColor: c.text,
+          bodyColor: c.muted,
+          padding: 10,
+          callbacks: {
+            title(items) {
+              const idx = items?.[0]?.dataIndex;
+              if (idx === undefined || idx === null) return '';
+              return labels[idx] || '';
+            },
+            label(item) {
+              return `${payload.label}: ${_mvtFormatValue(item.raw)} ${_mvtMetricUnit(payload.metric)}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: c.muted,
+            font: { size: 10 },
+            maxTicksLimit: 6,
+          },
+          grid: { color: 'rgba(128,128,128,0.08)' },
+        },
+        y: {
+          type: 'linear',
+          suggestedMin: yMin,
+          suggestedMax: yMax,
+          title: { display: true, text: payload.label, color: c.muted, font: { size: 10 } },
+          ticks: { color: c.muted, font: { size: 10 } },
+          grid: { color: 'rgba(128,128,128,0.08)' },
+        },
+      },
+    },
+  });
+}
+
+function _mvtInitHandlers() {
+  const input = document.getElementById('mvt-search-input');
+  if (!input || mvtHandlersBound) return;
+  mvtHandlersBound = true;
+
+  input.addEventListener('input', () => {
+    clearTimeout(mvtSearchTimer);
+    const val = input.value;
+    if (val.trim().length < 2) {
+      mvtSearchReqId += 1;
+      _mvtCloseDropdown();
+      return;
+    }
+    mvtSearchTimer = setTimeout(() => _mvtSearch(val), 300);
+  });
+
+  document.getElementById('mvt-dropdown').addEventListener('click', e => {
+    const item = e.target.closest('.mvt-dropdown-item');
+    if (item) _mvtSelectMovement(item.dataset.title);
+  });
+
+  document.getElementById('mvt-clear-btn').addEventListener('click', () => _mvtClear());
+
+  document.getElementById('mvt-metric-selector').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-metric]');
+    if (!btn) return;
+    const next = String(btn.dataset.metric || '').toLowerCase();
+    if (!next || next === mvtMetric) return;
+    mvtMetric = next;
+    document.querySelectorAll('#mvt-metric-selector button').forEach(b =>
+      b.classList.toggle('active', b.dataset.metric === mvtMetric)
+    );
+    if (mvtSelectedMovement) _mvtLoadTrend();
+  });
+
+  document.getElementById('mvt-window-selector').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-window]');
+    if (!btn) return;
+    const next = String(btn.dataset.window || '').toLowerCase();
+    if (!next || next === mvtWindow) return;
+    mvtWindow = next;
+    document.querySelectorAll('#mvt-window-selector button').forEach(b =>
+      b.classList.toggle('active', b.dataset.window === mvtWindow)
+    );
+    if (mvtSelectedMovement) _mvtLoadTrend();
+  });
+}
+
+// ═══ Workouts tab ═════════════════════════════════════
+async function loadWorkouts() {
+  workoutsLoaded = true;
+  loadSessionVerificationQueue();
+  loadSessionLog();
+}
+
+function _sessionBadgeClass(modalityOrStatus) {
+  const key = String(modalityOrStatus || '').toLowerCase();
+  if (['strength', 'hypertrophy', 'conditioning', 'cardio', 'pending', 'verified'].includes(key)) {
+    return `session-badge session-badge-${key}`;
+  }
+  return 'session-badge';
+}
+
+function _sessionFilterMatches(session) {
+  if (sessionLogFilter === 'all') return true;
+  if (sessionLogFilter === 'pending' || sessionLogFilter === 'verified') {
+    return session.verification_status === sessionLogFilter;
+  }
+  return session.modality === sessionLogFilter;
+}
+
+function _sessionFatigueAnnotation(session) {
+  const history = sessionLogFatiguePayload?.history || [];
+  const item = history.find(entry => entry.date === session.workout_date);
+  if (!item) return 'Fatigue annotation unavailable for this date.';
+  const label = _resolveStateLabel(item, sessionLogFatiguePayload?.thresholds || {});
+  const score = Number(item.fatigue_score ?? 0);
+  return `${label} · Fatigue ${_fmt1(score)} · ATL ${_fmt1(item.atl)} · CTL ${_fmt1(item.ctl)} · TSB ${_fmt1(item.tsb)}`;
+}
+
+function _sessionStatusNote(session) {
+  if (session.verification_status === 'pending') {
+    return session.needs_manual_duration
+      ? 'Pending verification - manual duration still required.'
+      : 'Pending verification - review modality and confirm session inputs.';
+  }
+  if (session.modality === 'conditioning' || session.modality === 'cardio') {
+    return session.srpe == null
+      ? 'Verified without sRPE details available.'
+      : `Verified with sRPE ${_fmt1(session.srpe)}.`;
+  }
+  return 'Verified and ready for detail review.';
+}
+
+function setSessionLogFilter(filterKey) {
+  sessionLogFilter = filterKey;
+  renderSessionLog();
+}
+
+async function loadMoreSessionLog() {
+  await _loadSessionLogPage(true);
+}
+
+function _resetSessionLogDetail(card) {
+  const wrap = card.querySelector('.session-detail-wrap');
+  const detailBtn = card.querySelector('.session-detail-btn');
+  if (wrap) wrap.style.display = 'none';
+  if (detailBtn) detailBtn.textContent = 'Show Details';
+}
+
+function toggleSessionLogEdit(btn) {
+  const card = btn.closest('.session-log-item');
+  if (!card) return;
+  const editWrap = card.querySelector('.session-edit-wrap');
+  const detailBtn = card.querySelector('.session-detail-btn');
+  if (!editWrap) return;
+
+  const opening = editWrap.style.display === 'none';
+  if (opening) {
+    _resetSessionLogDetail(card);
+  }
+  editWrap.style.display = opening ? 'block' : 'none';
+  btn.textContent = opening ? 'Cancel Edit' : 'Edit';
+  if (detailBtn) detailBtn.disabled = opening;
+  if (opening) _toggleSessionSrpe(editWrap);
+}
+
+function _resetSessionLogEdit(card) {
+  const editWrap = card.querySelector('.session-edit-wrap');
+  const editBtn = card.querySelector('.session-edit-btn');
+  const detailBtn = card.querySelector('.session-detail-btn');
+  const statusEl = card.querySelector('.session-edit-status');
+  if (editWrap) editWrap.style.display = 'none';
+  if (editBtn) editBtn.textContent = 'Edit';
+  if (detailBtn) detailBtn.disabled = false;
+  if (statusEl) statusEl.textContent = '';
+}
+
+function cancelSessionLogEdit(btn) {
+  const card = btn.closest('.session-log-item');
+  if (!card) return;
+  _resetSessionLogEdit(card);
+}
+
+async function saveSessionLogEdit(btn) {
+  const card = btn.closest('.session-log-item');
+  if (!card) return;
+
+  const sessionId = card.getAttribute('data-session-id');
+  const modality = card.querySelector('.sv-modality')?.value;
+  const durationRaw = card.querySelector('.sv-duration')?.value;
+  const srpeRaw = card.querySelector('.sv-srpe')?.value;
+  const statusEl = card.querySelector('.session-edit-status');
+  const isConditioningOrCardio = modality === 'conditioning' || modality === 'cardio';
+
+  const durationNum = durationRaw === '' ? NaN : Number(durationRaw);
+  if (!Number.isFinite(durationNum) || durationNum < 1 || durationNum > 480) {
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = 'Enter a valid duration between 1 and 480 minutes.';
+    return;
+  }
+
+  const payload = {
+    modality,
+    duration_minutes: Math.round(durationNum),
+    verify: false,
+  };
+
+  if (isConditioningOrCardio) {
+    const srpeNum = srpeRaw === '' ? NaN : Number(srpeRaw);
+    if (!Number.isFinite(srpeNum) || srpeNum < 0 || srpeNum > 10) {
+      statusEl.style.color = 'var(--danger)';
+      statusEl.textContent = 'sRPE is required for conditioning/cardio (0-10).';
+      return;
+    }
+    payload.srpe = srpeNum;
+  }
+
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = 'Saving…';
+  btn.disabled = true;
+
+  try {
+    const r = await fetch(`/api/workout-sessions/${encodeURIComponent(sessionId)}/verify`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Save failed.');
+
+    await loadSessionLog();
+    await loadSessionVerificationQueue();
+  } catch (e) {
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = e.message || 'Save failed.';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function _sessionDetailMetric(label, value) {
+  return `
+    <div class="session-detail-cell">
+      <div class="session-detail-label">${escHtml(label)}</div>
+      <div class="session-detail-value">${escHtml(String(value))}</div>
+    </div>
+  `;
+}
+
+function _sessionDetailExerciseList(exercises) {
+  if (!Array.isArray(exercises) || !exercises.length) {
+    return '<div class="session-detail-note">No exercise rows were imported for this session.</div>';
+  }
+  return `<div class="session-detail-exercise-list">${exercises.map(ex => `
+    <div class="session-detail-exercise">
+      <div class="session-detail-exercise-head">
+        <div class="session-detail-exercise-title">${escHtml(ex.exercise_title || 'Unknown exercise')}</div>
+        <div class="session-detail-exercise-meta">
+          <span>${escHtml(String(ex.set_count || 0))} sets</span>
+          <span>${escHtml(String(ex.total_reps || 0))} reps</span>
+        </div>
+      </div>
+      <div class="session-detail-exercise-meta">
+        <span>Volume ${escHtml(Number(ex.total_volume || 0).toLocaleString())} lbs</span>
+        <span>Top ${escHtml(_fmt1(ex.top_weight || 0))} lbs</span>
+        <span>${ex.avg_rpe == null ? 'Avg RPE -' : `Avg RPE ${escHtml(_fmt1(ex.avg_rpe))}`}</span>
+      </div>
+    </div>
+  `).join('')}</div>`;
+}
+
+function _sessionSetTable(setRows) {
+  if (!Array.isArray(setRows) || !setRows.length) {
+    return '<div class="session-detail-note">No set rows were imported for this session.</div>';
+  }
+  return `
+    <div class="table-scroll session-detail-table"><table>
+      <thead><tr>
+        <th>Exercise</th>
+        <th>Set</th>
+        <th>Weight</th>
+        <th>Reps</th>
+        <th>RPE</th>
+      </tr></thead>
+      <tbody>
+        ${setRows.map(setRow => `
+          <tr>
+            <td>${escHtml(setRow.exercise_title || 'Unknown exercise')}</td>
+            <td>${escHtml(String(setRow.set_number ?? '-'))}</td>
+            <td>${setRow.weight_lbs == null ? '—' : escHtml(_fmt1(setRow.weight_lbs))}</td>
+            <td>${escHtml(String(setRow.reps ?? '-'))}</td>
+            <td>${setRow.rpe == null ? '—' : escHtml(_fmt1(setRow.rpe))}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table></div>
+  `;
+}
+
+function _renderSessionDetail(detail) {
+  const summary = detail.summary || {};
+  const session = detail.session || {};
+  const stress = detail.stress || null;
+  const exercisesHtml = _sessionDetailExerciseList(detail.exercises || []);
+
+  if (detail.detail_type === 'strength' || detail.detail_type === 'hypertrophy') {
+    return `
+      <div class="session-detail-grid">
+        ${_sessionDetailMetric('Sets', summary.set_count || 0)}
+        ${_sessionDetailMetric('Volume', `${Number(summary.volume || 0).toLocaleString()} lbs`)}
+        ${_sessionDetailMetric('Avg RPE', summary.avg_rpe == null ? '—' : _fmt1(summary.avg_rpe))}
+        ${_sessionDetailMetric('Central', _fmt1(stress?.central || 0))}
+        ${_sessionDetailMetric('Peripheral', _fmt1(stress?.peripheral || 0))}
+        ${_sessionDetailMetric('Exercises', summary.exercise_count || 0)}
+      </div>
+      <div class="session-detail-note">Per-set stress is shown here using the same strength/hypertrophy pathway as the existing stress model.</div>
+      <div class="session-detail-section">
+        <div class="session-detail-section-title">Exercise Summary</div>
+        ${exercisesHtml}
+      </div>
+      <div class="session-detail-section">
+        <div class="session-detail-section-title">Set Detail</div>
+        ${_sessionSetTable(detail.sets || [])}
+      </div>
+    `;
+  }
+
+  if (detail.detail_type === 'conditioning') {
+    const pattern = stress?.pattern_distribution || {};
+    return `
+      <div class="session-detail-grid">
+        ${_sessionDetailMetric('Duration', session.duration_minutes == null ? 'Pending' : `${session.duration_minutes} min`)}
+        ${_sessionDetailMetric('sRPE', session.srpe == null ? '—' : _fmt1(session.srpe))}
+        ${_sessionDetailMetric('Session Load', stress ? _fmt1(stress.raw) : '—')}
+        ${_sessionDetailMetric('Central', stress ? _fmt1(stress.central) : '—')}
+        ${_sessionDetailMetric('Peripheral', stress ? _fmt1(stress.peripheral) : '—')}
+        ${_sessionDetailMetric('Exercises', summary.exercise_count || 0)}
+      </div>
+      <div class="session-detail-note">Conditioning sessions use sRPE × duration, then distribute load using the average mapped exercise split for the session. Knee ${_fmt1((pattern.knee || 0) * 100)}%, Hip ${_fmt1((pattern.hip || 0) * 100)}%, Push ${_fmt1((pattern.push || 0) * 100)}%, Pull ${_fmt1((pattern.pull || 0) * 100)}%.</div>
+      <div class="session-detail-section">
+        <div class="session-detail-section-title">Exercise Summary</div>
+        ${exercisesHtml}
+      </div>
+    `;
+  }
+
+  if (detail.detail_type === 'cardio') {
+    return `
+      <div class="session-detail-grid">
+        ${_sessionDetailMetric('Duration', session.duration_minutes == null ? 'Pending' : `${session.duration_minutes} min`)}
+        ${_sessionDetailMetric('sRPE', session.srpe == null ? '—' : _fmt1(session.srpe))}
+        ${_sessionDetailMetric('Session Load', stress ? _fmt1(stress.raw) : '—')}
+        ${_sessionDetailMetric('Central', stress ? _fmt1(stress.central) : '—')}
+        ${_sessionDetailMetric('Peripheral', stress ? _fmt1(stress.peripheral) : '—')}
+        ${_sessionDetailMetric('Exercises', summary.exercise_count || 0)}
+      </div>
+      <div class="session-detail-note">Cardio uses the same sRPE × duration session load, then applies the fixed 30% central / 70% peripheral split.</div>
+      <div class="session-detail-section">
+        <div class="session-detail-section-title">Exercise Summary</div>
+        ${exercisesHtml}
+      </div>
+    `;
+  }
+
+  const pending = detail.pending_requirements || {};
+  return `
+    <div class="session-detail-grid">
+      ${_sessionDetailMetric('Imported Modality', (session.modality || 'unknown').replace(/^./, c => c.toUpperCase()))}
+      ${_sessionDetailMetric('Duration', session.duration_minutes == null ? 'Pending' : `${session.duration_minutes} min`)}
+      ${_sessionDetailMetric('sRPE Needed', pending.needs_srpe ? 'Yes' : 'No')}
+      ${_sessionDetailMetric('Sets', summary.set_count || 0)}
+      ${_sessionDetailMetric('Exercises', summary.exercise_count || 0)}
+      ${_sessionDetailMetric('Avg RPE', summary.avg_rpe == null ? '—' : _fmt1(summary.avg_rpe))}
+    </div>
+    <div class="session-detail-note">This session is still pending verification. ${pending.needs_manual_duration ? 'Add a valid duration before verification.' : 'Review modality and confirm the imported session fields.'}</div>
+    <div class="session-detail-section">
+      <div class="session-detail-section-title">Exercise Summary</div>
+      ${exercisesHtml}
+    </div>
+  `;
+}
+
+async function toggleSessionDetail(btn) {
+  const card = btn.closest('.session-log-item');
+  if (!card) return;
+  const sessionId = card.getAttribute('data-session-id');
+  const wrap = card.querySelector('.session-detail-wrap');
+  if (!sessionId || !wrap) return;
+
+  const isOpen = wrap.style.display !== 'none';
+  if (isOpen) {
+    wrap.style.display = 'none';
+    btn.textContent = 'Show Details';
+    return;
+  }
+
+  _resetSessionLogEdit(card);
+
+  wrap.style.display = 'block';
+  btn.textContent = 'Hide Details';
+
+  if (sessionDetailCache[sessionId]) {
+    wrap.innerHTML = _renderSessionDetail(sessionDetailCache[sessionId]);
+    return;
+  }
+
+  wrap.innerHTML = '<div class="loading-wrap"><span class="spinner"></span> Loading session detail…</div>';
+  try {
+    const r = await fetch(`/api/workout-sessions/${encodeURIComponent(sessionId)}`);
+    const detail = await r.json();
+    if (!r.ok) throw new Error(detail.detail || 'Failed to load session detail.');
+    sessionDetailCache[sessionId] = detail;
+    wrap.innerHTML = _renderSessionDetail(detail);
+  } catch (e) {
+    wrap.innerHTML = `<div style="color:var(--danger)">Failed to load session detail: ${escHtml(e.message || '')}</div>`;
+    btn.textContent = 'Show Details';
+  }
+}
+
+function renderSessionLog() {
+  const wrap = document.getElementById('session-log-wrap');
+  if (!wrap) return;
+
+  const filtered = sessionLogRows.filter(_sessionFilterMatches);
+  const filterButtons = [
+    ['all', 'All'],
+    ['pending', 'Pending'],
+    ['verified', 'Verified'],
+    ['strength', 'Strength'],
+    ['hypertrophy', 'Hypertrophy'],
+    ['conditioning', 'Conditioning'],
+    ['cardio', 'Cardio'],
+  ].map(([key, label]) => `<button class="${sessionLogFilter === key ? 'active' : ''}" onclick="setSessionLogFilter('${key}')">${label}</button>`).join('');
+
+  if (!filtered.length) {
     wrap.innerHTML = `
-      <div class="table-scroll"><table>
-        <thead><tr>
-          <th>Date</th>
-          <th>Workout</th>
-          <th class="col-hide">Sets</th>
-          <th class="col-hide">Volume (lbs)</th>
-          <th class="col-hide">Avg RPE</th>
-          <th style="color:var(--accent);">Central <span class="tip-icon" style="border-color:var(--accent);color:var(--accent);" data-tip="How hard you trained. Heavy sets close to your max drive this up fast. Nervous system fatigue.">i</span></th>
-          <th style="color:var(--posterior);">Peripheral <span class="tip-icon" style="border-color:var(--posterior);color:var(--posterior);" data-tip="How much total work you did. Adds up with every set and rep. Muscle fatigue.">i</span></th>
-        </tr></thead>
-        <tbody>
-        ${workouts.map(w => `<tr>
-          <td style="white-space:nowrap;">${w.date}</td>
-          <td style="font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
-              title="${escHtml(w.workout_title || '')}">${w.workout_title || '—'}</td>
-          <td class="col-hide">${w.set_count}</td>
-          <td class="col-hide">${Number(w.volume).toLocaleString()}</td>
-          <td class="col-hide">${w.avg_rpe ?? '—'}</td>
-          <td><span class="workout-stress-val" style="color:var(--accent);">${w.central_stress}</span></td>
-          <td><span class="workout-stress-val" style="color:var(--posterior);">${w.peripheral_stress}</span></td>
-        </tr>`).join('')}
-        </tbody>
-      </table></div>
-      <div class="stress-note">
-        <strong style="color:var(--text);">Central stress</strong> = Σ(intensity%² × reps) — intensity-driven, reflects CNS / neural fatigue. High RPE sets move this number significantly.<br>
-        <strong style="color:var(--text);">Peripheral stress</strong> = Σ(intensity% × reps) — volume-driven, reflects muscular fatigue. Accumulates with total workload regardless of RPE.
+      <div class="session-log-toolbar">
+        <div class="btn-group">${filterButtons}</div>
+        <div class="session-log-count">0 sessions</div>
+      </div>
+      <div class="session-log-empty">No sessions match the current filter.</div>
+    `;
+    return;
+  }
+
+  wrap.innerHTML = `
+    <div class="session-log-toolbar">
+      <div class="btn-group">${filterButtons}</div>
+      <div class="session-log-count">Showing ${filtered.length} loaded session${filtered.length === 1 ? '' : 's'}${sessionLogHasMore ? ' (more available)' : ''}</div>
+    </div>
+    <div class="session-log-list">
+      ${filtered.map(session => `
+        <div class="session-log-item" data-session-id="${escHtml(String(session.hevy_workout_id))}">
+          <div class="session-log-head">
+            <div>
+              <div class="session-log-title">${escHtml(session.workout_title || 'Untitled workout')}</div>
+              <div class="session-log-meta">
+                <span>${escHtml(session.workout_date)}</span>
+                <span>${session.duration_minutes == null ? 'Duration pending' : `${Math.round(Number(session.duration_minutes))} min`}</span>
+                <span>Confidence ${(Number(session.modality_confidence || 0) * 100).toFixed(0)}%</span>
+                <span>${session.srpe == null ? 'sRPE -' : `sRPE ${_fmt1(session.srpe)}`}</span>
+              </div>
+            </div>
+            <div class="session-log-badges">
+              <span class="${_sessionBadgeClass(session.modality)}">${escHtml((session.modality || 'unknown').replace(/^./, c => c.toUpperCase()))}</span>
+              <span class="${_sessionBadgeClass(session.verification_status)}">${escHtml((session.verification_status || 'unknown').replace(/^./, c => c.toUpperCase()))}</span>
+            </div>
+          </div>
+          <div class="session-log-fatigue">${escHtml(_sessionFatigueAnnotation(session))}</div>
+          <div class="session-log-actions">
+            <div class="session-log-status-note">${escHtml(_sessionStatusNote(session))}</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-secondary session-edit-btn" style="width:auto;" onclick="toggleSessionLogEdit(this)">Edit</button>
+              <button class="btn btn-secondary session-detail-btn" style="width:auto;" onclick="toggleSessionDetail(this)">Show Details</button>
+            </div>
+          </div>
+          <div class="session-edit-wrap" style="display:none;border-top:1px solid var(--border);margin-top:10px;padding-top:10px;">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Editing</div>
+            <div class="verify-fields" style="margin-bottom:8px;">
+              <div class="verify-field">
+                <label>Modality</label>
+                <select class="sv-modality" onchange="_toggleSessionSrpe(this.closest('.session-edit-wrap'))">
+                  ${_modalityOption('strength', session.modality)}
+                  ${_modalityOption('hypertrophy', session.modality)}
+                  ${_modalityOption('conditioning', session.modality)}
+                  ${_modalityOption('cardio', session.modality)}
+                </select>
+              </div>
+              <div class="verify-field">
+                <label>Duration (min)</label>
+                <input type="number" min="1" max="480" class="sv-duration" value="${session.duration_minutes == null ? '' : Number(session.duration_minutes)}" placeholder="required">
+              </div>
+              <div class="verify-field sv-srpe-row" style="display:none;">
+                <label>sRPE (0-10)</label>
+                <input type="number" min="0" max="10" step="0.5" class="sv-srpe" value="${session.srpe ?? ''}" placeholder="required for conditioning/cardio">
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <button class="btn btn-primary" style="width:auto;padding:8px 12px;" onclick="saveSessionLogEdit(this)">Save</button>
+              <button class="btn" style="width:auto;padding:8px 12px;" onclick="cancelSessionLogEdit(this)">Cancel</button>
+            </div>
+            <div class="session-edit-status" style="font-size:12px;margin-top:8px;"></div>
+          </div>
+          <div class="session-detail-wrap" style="display:none;"></div>
+        </div>
+      `).join('')}
+    </div>
+    ${sessionLogHasMore ? `<div class="session-log-load-more"><button class="btn btn-secondary" onclick="loadMoreSessionLog()">Load More</button></div>` : ''}
+  `;
+
+  wrap.querySelectorAll('.session-edit-wrap').forEach(editWrap => _toggleSessionSrpe(editWrap));
+}
+
+async function loadSessionLog() {
+  const wrap = document.getElementById('session-log-wrap');
+  if (!wrap) return;
+
+  wrap.innerHTML = '<div class="loading-wrap"><span class="spinner"></span> Loading session log…</div>';
+
+  sessionLogRows = [];
+  sessionLogOffset = 0;
+  sessionLogHasMore = false;
+
+  try {
+    sessionLogFatiguePayload = await ensureTrainingLoadPayload().catch(() => null);
+    await _loadSessionLogPage(false);
+  } catch (e) {
+    wrap.innerHTML = `<div style="color:var(--danger)">Failed to load session log: ${escHtml(e.message || '')}</div>`;
+  }
+}
+
+async function _loadSessionLogPage(append) {
+  const wrap = document.getElementById('session-log-wrap');
+  if (!wrap) return;
+
+  if (!append && sessionLogRows.length === 0) {
+    wrap.innerHTML = '<div class="loading-wrap"><span class="spinner"></span> Loading session log…</div>';
+  }
+
+  const r = await fetch(`/api/workout-sessions?limit=${SESSION_LOG_PAGE_SIZE}&offset=${sessionLogOffset}`);
+  const sessions = await r.json();
+  if (!r.ok) throw new Error(sessions.detail || 'Failed to load workout sessions.');
+
+  const page = Array.isArray(sessions) ? sessions : [];
+  if (append) {
+    sessionLogRows = sessionLogRows.concat(page);
+  } else {
+    sessionLogRows = page;
+  }
+  sessionLogOffset += page.length;
+  sessionLogHasMore = page.length === SESSION_LOG_PAGE_SIZE;
+  renderSessionLog();
+}
+
+function _modalityOption(modality, current) {
+  const selected = modality === current ? 'selected' : '';
+  const label = modality.charAt(0).toUpperCase() + modality.slice(1);
+  return `<option value="${modality}" ${selected}>${label}</option>`;
+}
+
+function _toggleSessionSrpe(container) {
+  const modality = container.querySelector('.sv-modality')?.value;
+  const srpeRow = container.querySelector('.sv-srpe-row');
+  const srpeInput = container.querySelector('.sv-srpe');
+  const needsSrpe = modality === 'conditioning' || modality === 'cardio';
+  if (!srpeRow || !srpeInput) return;
+  srpeRow.style.display = needsSrpe ? 'block' : 'none';
+  srpeInput.required = needsSrpe;
+}
+
+async function loadSessionVerificationQueue() {
+  const wrap = document.getElementById('session-verify-wrap');
+  if (!wrap) return;
+
+  wrap.innerHTML = '<div class="loading-wrap"><span class="spinner"></span> Loading pending sessions…</div>';
+
+  try {
+    const r = await fetch('/api/workout-sessions/pending?days=45');
+    const sessions = await r.json();
+
+    if (!r.ok) throw new Error(sessions.detail || 'Failed to load pending sessions.');
+
+    if (!sessions.length) {
+      wrap.innerHTML = '<div class="loading-wrap" style="color:var(--muted)">No sessions pending verification.</div>';
+      return;
+    }
+
+    wrap.innerHTML = `<div class="verify-list">${sessions.map(s => {
+      const displayTitle = (s.workout_title || 'Untitled workout').replace(/@(\d+(?:\.\d+)?)/g, '').trim() || 'Untitled workout';
+      const title = escHtml(displayTitle);
+      const needsDuration = s.needs_manual_duration || !Number.isFinite(Number(s.duration_minutes));
+      return `<div class="verify-item" data-session-id="${escHtml(String(s.hevy_workout_id))}">
+        <div class="verify-head">
+          <div class="verify-title">${title}</div>
+          <div class="verify-meta">${s.workout_date} · confidence ${(Number(s.modality_confidence || 0) * 100).toFixed(0)}%</div>
+        </div>
+        <div class="verify-fields">
+          <div class="verify-field">
+            <label>Modality</label>
+            <select class="sv-modality">
+              ${_modalityOption('strength', s.modality)}
+              ${_modalityOption('hypertrophy', s.modality)}
+              ${_modalityOption('conditioning', s.modality)}
+              ${_modalityOption('cardio', s.modality)}
+            </select>
+          </div>
+          <div class="verify-field">
+            <label>Duration (min)</label>
+            <input type="number" min="1" max="480" class="sv-duration" value="${needsDuration ? '' : Number(s.duration_minutes)}" placeholder="required">
+          </div>
+          <div class="verify-field sv-srpe-row" style="display:none;">
+            <label>sRPE (0-10)</label>
+            <input type="number" min="0" max="10" step="0.5" class="sv-srpe" value="${s.srpe ?? ''}" placeholder="required for conditioning/cardio">
+          </div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="btn btn-primary" style="width:auto;padding:8px 12px;" onclick="verifySessionFromCard(this)">Verify Session</button>
+          ${needsDuration ? '<span style="font-size:11px;color:var(--warn);">Manual duration required before verification.</span>' : ''}
+        </div>
+        <div class="verify-status"></div>
       </div>`;
-  } catch {
-    wrap.innerHTML = '<div style="color:var(--danger)">Failed to load workouts.</div>';
-    workoutsLoaded = false;
+    }).join('')}</div>`;
+
+    wrap.querySelectorAll('.verify-item').forEach(card => {
+      const modalitySelect = card.querySelector('.sv-modality');
+      if (modalitySelect) {
+        modalitySelect.addEventListener('change', () => _toggleSessionSrpe(card));
+      }
+      _toggleSessionSrpe(card);
+    });
+  } catch (e) {
+    wrap.innerHTML = `<div style="color:var(--danger)">Failed to load session verification queue: ${escHtml(e.message || '')}</div>`;
+  }
+}
+
+async function verifySessionFromCard(btn) {
+  const card = btn.closest('.verify-item');
+  if (!card) return;
+
+  const sessionId = card.getAttribute('data-session-id');
+  const modality = card.querySelector('.sv-modality')?.value;
+  const durationRaw = card.querySelector('.sv-duration')?.value;
+  const srpeRaw = card.querySelector('.sv-srpe')?.value;
+  const statusEl = card.querySelector('.verify-status');
+  const isConditioningOrCardio = modality === 'conditioning' || modality === 'cardio';
+
+  const durationNum = durationRaw === '' ? NaN : Number(durationRaw);
+  if (!Number.isFinite(durationNum) || durationNum < 1 || durationNum > 480) {
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = 'Enter a valid duration between 1 and 480 minutes.';
+    return;
+  }
+
+  const payload = {
+    modality,
+    duration_minutes: Math.round(durationNum),
+  };
+
+  if (isConditioningOrCardio) {
+    const srpeNum = srpeRaw === '' ? NaN : Number(srpeRaw);
+    if (!Number.isFinite(srpeNum) || srpeNum < 0 || srpeNum > 10) {
+      statusEl.style.color = 'var(--danger)';
+      statusEl.textContent = 'sRPE is required for conditioning/cardio (0-10).';
+      return;
+    }
+    payload.srpe = srpeNum;
+  }
+
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = 'Verifying…';
+  btn.disabled = true;
+
+  try {
+    const r = await fetch(`/api/workout-sessions/${encodeURIComponent(sessionId)}/verify`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      throw new Error(d.detail || 'Verification failed.');
+    }
+
+    statusEl.style.color = 'var(--success)';
+    statusEl.textContent = 'Verified.';
+    await loadSessionVerificationQueue();
+    await loadSessionLog();
+  } catch (e) {
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = e.message || 'Verification failed.';
+  } finally {
+    btn.disabled = false;
   }
 }
 
@@ -2329,6 +4145,280 @@ function toggleExInfo() {
 }
 
 // ═══ Exercises tab ════════════════════════════════════
+async function loadExerciseConflicts() {
+  const wrap = document.getElementById('ex-conflict-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="loading-wrap"><span class="spinner"></span> Checking for conflicts…</div>';
+  try {
+    const r = await fetch('/api/exercises/conflicts');
+    const rows = await r.json();
+    if (!r.ok) throw new Error(rows.detail || 'Failed to load conflicts.');
+    exerciseConflictRows = Array.isArray(rows) ? rows : [];
+    exerciseConflictEditingId = null;
+    _setExConflictCollapsed(exerciseConflictRows.length === 0);
+    renderExerciseConflictTable();
+    _updateExConflictBadge();
+  } catch (e) {
+    wrap.innerHTML = `<div style="color:var(--danger)">Failed to load conflicts: ${escHtml(e.message || '')}</div>`;
+  }
+}
+
+function _setExConflictCollapsed(collapsed) {
+  exConflictCollapsed = !!collapsed;
+  const body = document.getElementById('ex-conflict-body');
+  const chevron = document.getElementById('ex-conflict-chevron');
+  if (body) body.style.display = exConflictCollapsed ? 'none' : 'block';
+  if (chevron) chevron.style.transform = exConflictCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+}
+
+function toggleExConflictCard() {
+  _setExConflictCollapsed(!exConflictCollapsed);
+}
+
+function _updateExConflictBadge() {
+  const count = exerciseConflictRows.length;
+  ['ex-conflict-badge', 'ex-conflict-badge-mobile'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (count > 0) {
+      el.textContent = count;
+      el.style.display = 'inline-block';
+    } else {
+      el.style.display = 'none';
+    }
+  });
+}
+
+function renderExerciseConflictTable() {
+  const wrap = document.getElementById('ex-conflict-wrap');
+  if (!wrap) return;
+  if (!exerciseConflictRows.length) {
+    wrap.innerHTML = '<div class="exercise-canonical-empty">No conflicts detected.</div>';
+    return;
+  }
+  const rows = exerciseConflictRows.map(row => {
+    const isEditing = exerciseConflictEditingId === row.exercise_id;
+    const nameCell = isEditing
+      ? `<input type="text" class="search-input ex-conflict-input" data-exercise-id="${escHtml(row.exercise_id)}" value="${escHtml(row.hevy_title)}" autocomplete="off" style="width:100%;">`
+      : `<span>${escHtml(row.hevy_title)}</span>`;
+    const actionCell = isEditing
+      ? `<div class="exercise-canonical-edit-actions">
+           <button class="btn btn-primary" style="width:auto;padding:8px 12px;" data-exercise-id="${escHtml(row.exercise_id)}" onclick="resolveExerciseConflict(this.dataset.exerciseId)">Set Name</button>
+           <button class="btn btn-secondary" style="width:auto;padding:8px 12px;" onclick="cancelExerciseConflictEdit()">Cancel</button>
+         </div>`
+      : `<div style="display:flex;gap:6px;">
+           <button class="btn btn-sm btn-primary" data-exercise-id="${escHtml(row.exercise_id)}" onclick="editExerciseConflict(this.dataset.exerciseId)">Set Name</button>
+           <button class="btn btn-sm btn-secondary" data-exercise-id="${escHtml(row.exercise_id)}" onclick="dismissExerciseConflict(this.dataset.exerciseId)">Dismiss</button>
+         </div>`;
+    return `<tr>
+      <td>${escHtml(row.stored_title)}</td>
+      <td>${nameCell}</td>
+      <td>${actionCell}</td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<div class="table-scroll"><table>
+    <thead><tr>
+      <th>Stored Name</th>
+      <th>Hevy Name (new)</th>
+      <th>Action</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function editExerciseConflict(exerciseId) {
+  cancelExerciseOverrideForm();
+  exerciseConflictEditingId = exerciseId;
+  renderExerciseConflictTable();
+}
+
+function cancelExerciseConflictEdit() {
+  exerciseConflictEditingId = null;
+  renderExerciseConflictTable();
+}
+
+async function resolveExerciseConflict(exerciseId) {
+  const input = document.querySelector(`.ex-conflict-input[data-exercise-id="${CSS.escape(exerciseId)}"]`);
+  const canonical_title = input ? input.value.trim() : '';
+  if (!canonical_title) { alert('Please enter a canonical name.'); return; }
+  try {
+    const r = await fetch(`/api/exercises/conflicts/${encodeURIComponent(exerciseId)}/resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ canonical_title }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || 'Failed to resolve conflict.');
+    await loadExerciseConflicts();
+  } catch (e) {
+    alert('Error: ' + (e.message || 'Unknown error'));
+  }
+}
+
+async function dismissExerciseConflict(exerciseId) {
+  try {
+    const r = await fetch(`/api/exercises/conflicts/${encodeURIComponent(exerciseId)}/dismiss`, { method: 'POST' });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || 'Failed to dismiss conflict.');
+    await loadExerciseConflicts();
+  } catch (e) {
+    alert('Error: ' + (e.message || 'Unknown error'));
+  }
+}
+
+function _exOverrideSetStatus(msg, ok = null) {
+  const el = document.getElementById('ex-override-status');
+  if (!el) return;
+  el.textContent = msg || '';
+  if (!msg) {
+    el.style.color = 'var(--muted)';
+    return;
+  }
+  if (ok === true) el.style.color = 'var(--success)';
+  else if (ok === false) el.style.color = 'var(--danger)';
+  else el.style.color = 'var(--muted)';
+}
+
+function _exOverrideCloseDropdown() {
+  const dd = document.getElementById('ex-override-dropdown');
+  if (dd) dd.style.display = 'none';
+}
+
+function cancelExerciseOverrideForm() {
+  const form = document.getElementById('ex-override-form');
+  if (form) form.style.display = 'none';
+  exOverrideSelected = null;
+  _exOverrideSetStatus('');
+  _exOverrideCloseDropdown();
+}
+
+function openExerciseOverrideForm() {
+  if (exerciseConflictEditingId) {
+    cancelExerciseConflictEdit();
+  }
+  const form = document.getElementById('ex-override-form');
+  const searchInput = document.getElementById('ex-override-search-input');
+  const canonicalInput = document.getElementById('ex-override-canonical-title');
+  if (!form || !searchInput || !canonicalInput) return;
+  exOverrideSelected = null;
+  searchInput.value = '';
+  canonicalInput.value = '';
+  _exOverrideSetStatus('');
+  form.style.display = 'block';
+  searchInput.focus();
+}
+
+function _exOverrideRenderDropdown(items) {
+  const dd = document.getElementById('ex-override-dropdown');
+  if (!dd) return;
+  if (!items.length) {
+    _exOverrideCloseDropdown();
+    return;
+  }
+  dd.innerHTML = items.map(item => `
+    <div class="mvt-dropdown-item" data-exercise-id="${escHtml(item.exercise_id || '')}" data-title="${escHtml(item.title || '')}">
+      ${escHtml(item.title || '')}
+    </div>
+  `).join('');
+  dd.style.display = 'block';
+}
+
+async function _exOverrideSearch(q) {
+  const reqId = ++exOverrideSearchReqId;
+  const term = q.trim();
+  if (term.length < 2) {
+    _exOverrideCloseDropdown();
+    return;
+  }
+  try {
+    const r = await fetch(`/api/movements/search?q=${encodeURIComponent(term)}`);
+    if (reqId !== exOverrideSearchReqId) return;
+    const d = await r.json();
+    const rawItems = Array.isArray(d.items) ? d.items : [];
+    const fallbackTitles = Array.isArray(d.results) ? d.results : [];
+    const normalized = rawItems.length
+      ? rawItems.map(item => ({
+          exercise_id: String(item.exercise_id || ''),
+          title: String(item.title || ''),
+        })).filter(item => item.exercise_id && item.title)
+      : fallbackTitles.map(title => ({ exercise_id: '', title: String(title || '') })).filter(item => item.title);
+    _exOverrideRenderDropdown(normalized);
+  } catch (_) {
+    if (reqId !== exOverrideSearchReqId) return;
+    _exOverrideCloseDropdown();
+  }
+}
+
+async function saveExerciseOverride() {
+  const canonicalInput = document.getElementById('ex-override-canonical-title');
+  const saveBtn = document.getElementById('ex-override-save-btn');
+  if (!canonicalInput || !saveBtn) return;
+
+  if (!exOverrideSelected || !exOverrideSelected.exercise_id) {
+    _exOverrideSetStatus('Select an exercise from the autocomplete list first.', false);
+    return;
+  }
+
+  const canonical_title = canonicalInput.value.trim();
+  if (!canonical_title) {
+    _exOverrideSetStatus('Canonical name is required.', false);
+    return;
+  }
+
+  _exOverrideSetStatus('Saving…');
+  saveBtn.disabled = true;
+  try {
+    const r = await fetch('/api/exercises/canonical', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        exercise_id: exOverrideSelected.exercise_id,
+        canonical_title,
+      }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.detail || 'Save failed.');
+    cancelExerciseOverrideForm();
+    await loadExerciseConflicts();
+  } catch (e) {
+    _exOverrideSetStatus(e.message || 'Save failed.', false);
+  } finally {
+    saveBtn.disabled = false;
+  }
+}
+
+function _exOverrideInitHandlers() {
+  const searchInput = document.getElementById('ex-override-search-input');
+  const canonicalInput = document.getElementById('ex-override-canonical-title');
+  const dropdown = document.getElementById('ex-override-dropdown');
+  if (!searchInput || !canonicalInput || !dropdown || exOverrideHandlersBound) return;
+  exOverrideHandlersBound = true;
+
+  searchInput.addEventListener('input', () => {
+    clearTimeout(exOverrideSearchTimer);
+    exOverrideSelected = null;
+    const value = searchInput.value;
+    if (value.trim().length < 2) {
+      exOverrideSearchReqId += 1;
+      _exOverrideCloseDropdown();
+      return;
+    }
+    exOverrideSearchTimer = setTimeout(() => _exOverrideSearch(value), 300);
+  });
+
+  dropdown.addEventListener('click', e => {
+    const item = e.target.closest('.mvt-dropdown-item');
+    if (!item) return;
+    const title = item.dataset.title || '';
+    const exerciseId = item.dataset.exerciseId || '';
+    searchInput.value = title;
+    exOverrideSelected = { exercise_id: exerciseId, title };
+    if (!canonicalInput.value.trim()) canonicalInput.value = title;
+    _exOverrideSetStatus('');
+    _exOverrideCloseDropdown();
+  });
+}
+
 async function loadExercises() {
   try {
     const r = await fetch('/api/exercises/mappings');
@@ -2525,6 +4615,232 @@ const REC_META = {
   large_decrease: { label: '↓↓ Large Decrease',   cls: 'rec-large-decrease', img: 'dead.png'    },
 };
 
+function _formatDaysSinceLoaded(days) {
+  if (days == null) return 'Never loaded';
+  if (days <= 1) return 'Today';
+  return `${days} days ago`;
+}
+
+function _fmt1(n) {
+  const v = Number(n);
+  return Number.isFinite(v) ? v.toFixed(1) : '0.0';
+}
+
+function _relativeTimeFromIso(iso) {
+  if (!iso) return 'Sync time unavailable';
+  const ms = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return 'Sync time unavailable';
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return 'Synced just now';
+  if (mins < 60) return `Synced ${mins} minute${mins === 1 ? '' : 's'} ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `Synced ${hrs} hour${hrs === 1 ? '' : 's'} ago`;
+  const days = Math.floor(hrs / 24);
+  return `Synced ${days} day${days === 1 ? '' : 's'} ago`;
+}
+
+function _stateClass(state) {
+  const k = (state || 'nodata').toLowerCase();
+  if (['large_increase','increase','continue','decrease','large_decrease'].includes(k)) {
+    return `today-state-${k}`;
+  }
+  return 'today-state-nodata';
+}
+
+function _patternCellClass(status, forceNeutral = false) {
+  if (forceNeutral) return 'today-pattern-cell today-pattern-neutral';
+  if (status === 'available') return 'today-pattern-cell today-pattern-available';
+  if (status === 'stressed') return 'today-pattern-cell today-pattern-stressed';
+  return 'today-pattern-cell today-pattern-neutral';
+}
+
+function _tips(label) {
+  if (label === 'Fatigue (ATL)') return 'Short-term training stress over the past 7 days';
+  if (label === 'Fitness (CTL)') return 'Long-term training capacity built over the past 42 days';
+  return 'Balance between fitness and fatigue. Positive = fresh, negative = fatigued';
+}
+
+function showLegacyCheckin() {
+  const card = document.getElementById('today-checkin-card');
+  if (!card) return;
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  checkTodayReadiness();
+}
+
+async function _getPendingSessionCount() {
+  try {
+    const r = await fetch('/api/workout-sessions/pending?days=45');
+    const data = await r.json();
+    if (!r.ok || !Array.isArray(data)) return 0;
+    return data.length;
+  } catch {
+    return 0;
+  }
+}
+
+function _safePatternStatus(r2) {
+  const fallback = {
+    knee: { status: 'neutral', stress_level_label: 'Moderate', combined_signal: 0.0, days_since_loaded: null, dots_filled: 1, dots_total: 5 },
+    hip: { status: 'neutral', stress_level_label: 'Moderate', combined_signal: 0.0, days_since_loaded: null, dots_filled: 1, dots_total: 5 },
+    push: { status: 'neutral', stress_level_label: 'Moderate', combined_signal: 0.0, days_since_loaded: null, dots_filled: 1, dots_total: 5 },
+    pull: { status: 'neutral', stress_level_label: 'Moderate', combined_signal: 0.0, days_since_loaded: null, dots_filled: 1, dots_total: 5 },
+  };
+  if (!r2 || !r2.pattern_status) return fallback;
+  const out = { ...fallback };
+  ['knee','hip','push','pull'].forEach(p => {
+    const v = r2.pattern_status[p] || {};
+    out[p] = {
+      status: v.status || 'neutral',
+      dots_filled: Math.max(1, Math.min(5, Number(v.dots_filled || 1))),
+      stress_level_label: v.stress_level_label || ['Fresh','Min. Stress','Normal Stress','Moderate Stress','High Stress'][Math.max(1,Math.min(5,Number(v.dots_filled||1)))-1],
+      combined_signal: Number(v.combined_signal || 0),
+      days_since_loaded: v.days_since_loaded == null ? null : Number(v.days_since_loaded),
+      dots_total: 5,
+    };
+  });
+  return out;
+}
+
+function _safeJointAdvisory(r2) {
+  const fallback = {
+    upper: { score: 0, level: 'none', label: null, affected_patterns: [] },
+    lower: { score: 0, level: 'none', label: null, affected_patterns: [] },
+  };
+  if (!r2 || !r2.joint_advisory) return fallback;
+  const upper = r2.joint_advisory.upper || {};
+  const lower = r2.joint_advisory.lower || {};
+  return {
+    upper: {
+      score: Number(upper.score || 0),
+      level: upper.level || 'none',
+      label: upper.label || null,
+      affected_patterns: Array.isArray(upper.affected_patterns) ? upper.affected_patterns : [],
+    },
+    lower: {
+      score: Number(lower.score || 0),
+      level: lower.level || 'none',
+      label: lower.label || null,
+      affected_patterns: Array.isArray(lower.affected_patterns) ? lower.affected_patterns : [],
+    },
+  };
+}
+
+function _renderTodayCards(data, pendingCount) {
+  const today = data?.today || {};
+  const recV2 = today.recommendation_v2 || null;
+  const hasData = Number(today.atl || 0) !== 0 || Number(today.ctl || 0) !== 0 || Number(today.tsb || 0) !== 0;
+  const checkinExists = today.checkin_exists != null
+    ? !!today.checkin_exists
+    : today.score_source === 'subjective_plus_training';
+
+  const recAdj = today.recommendation_adjusted || 'continue';
+  const recAdjLabel = (REC_META[recAdj]?.label || 'Continue').replace(/[↑↓→]+\s*/g, '').trim();
+  const stateLabel = recV2?.training_state_label || (hasData ? 'Today Overview' : 'No Data Yet');
+  const stateDetail = recV2?.training_state_detail || (hasData
+    ? `Recommendation: ${recAdjLabel}`
+    : 'Log workouts and complete daily check-ins to build your baseline');
+  const stateKey = recV2?.training_state || (hasData ? 'continue' : 'nodata');
+  const subjScore = recV2?.subjective_score ?? null;
+  const objScore = recV2?.objective_score ?? null;
+  const combScore = recV2?.combined_score ?? null;
+  const scoresHtml = (subjScore !== null && objScore !== null) ? `
+    <div class="today-scores-row">
+      <div class="today-score">
+        <div class="today-score-label">Subjective</div>
+        <div class="today-score-value">${Number(subjScore).toFixed(1)}</div>
+      </div>
+      <div class="today-score">
+        <div class="today-score-label">Objective</div>
+        <div class="today-score-value">${Number(objScore).toFixed(1)}</div>
+      </div>
+      <div class="today-score today-score-combined">
+        <div class="today-score-label">Combined</div>
+        <div class="today-score-value">${Number(combScore ?? 0).toFixed(1)}</div>
+      </div>
+    </div>
+    <div class="today-score-explainer">Combined = (Subjective &times; 80%) + (Objective Load &times; 20%)</div>
+  ` : '';
+  document.getElementById('today-state-card').innerHTML = `
+    <div class="today-state-label ${_stateClass(stateKey)}">${escHtml(stateLabel)}</div>
+    <div class="today-state-detail">${escHtml(stateDetail)}</div>
+    ${scoresHtml}
+  `;
+
+  const patterns = _safePatternStatus(recV2);
+  const forceNeutral = !checkinExists;
+  const grid = ['knee','hip','push','pull'].map(p => {
+    const d = patterns[p];
+    const dots = Array.from({ length: 5 }, (_, i) => `<span class="today-dot ${i < d.dots_filled ? 'today-dot-filled' : ''}"></span>`).join('');
+    return `
+      <div class="${_patternCellClass(d.status, forceNeutral)}">
+        <div class="today-pattern-name">${p.toUpperCase()}</div>
+        <div class="today-pattern-days">${escHtml(_formatDaysSinceLoaded(d.days_since_loaded))}</div>
+        <div class="today-dots" aria-label="${p} stress dots">${dots}</div>
+        <div class="today-pattern-level">${escHtml(d.stress_level_label || 'Moderate')}</div>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('today-pattern-card').innerHTML = `
+    <div class="card-title">Pattern Stress</div>
+    <div class="today-pattern-grid">${grid}</div>
+    ${!checkinExists ? '<div class="today-grid-note">No check-in today - pattern signals based on training load only</div>' : ''}
+    <div class="today-pattern-explainer">Pattern stress scores are based on recent training load distribution across movement patterns &mdash; Knee, Hip, Push, and Pull &mdash; calculated from your last 7 days of verified sessions relative to your personal baseline.</div>
+  `;
+
+  const jointCard = document.getElementById('today-joint-card');
+  const jointAdv = _safeJointAdvisory(recV2);
+  const jointRows = [
+    { key: 'upper', region: 'Upper', data: jointAdv.upper },
+    { key: 'lower', region: 'Lower', data: jointAdv.lower },
+  ].filter(r => r.data.level === 'advisory' || r.data.level === 'warning')
+   .map(r => {
+     const icon = r.data.level === 'warning' ? '❗' : '⚠';
+     const levelText = r.data.level === 'warning' ? 'warning' : 'advisory';
+     const patt = r.data.affected_patterns || [];
+     const pattLabels = patt.map(p => p === 'knee' ? 'Knee' : p === 'hip' ? 'Hip' : p === 'push' ? 'Push' : 'Pull');
+     const pattChips = patt.map(p => `<span class="today-joint-pattern today-joint-pattern-${p}">${p === 'knee' ? 'Knee' : p === 'hip' ? 'Hip' : p === 'push' ? 'Push' : 'Pull'}</span>`).join('');
+     return `
+       <div class="today-joint-row ${r.data.level === 'warning' ? 'today-joint-row-warning' : ''}">
+         <div class="today-joint-title">${icon} ${escHtml(r.region)} joint health ${levelText}</div>
+         <div class="today-joint-desc">${escHtml(r.data.label || `${r.region} joint advisory`)}</div>
+         <div class="today-joint-desc">${escHtml(pattLabels.join(' and '))} patterns affected - be conservative with loading</div>
+         <div class="today-joint-patterns">${pattChips}</div>
+       </div>
+     `;
+   }).join('');
+
+  if (jointCard) {
+    if (jointRows) {
+      jointCard.style.display = 'block';
+      jointCard.innerHTML = `<div class="card-title">Joint Advisory</div><div class="today-joint-list">${jointRows}</div>`;
+    } else {
+      jointCard.style.display = 'none';
+      jointCard.innerHTML = '';
+    }
+  }
+
+  const metric = (label, val) => `
+    <div class="today-metric">
+      <div class="today-metric-label">${label} <span class="tip-icon" data-tip="${_tips(label)}">i</span></div>
+      <div class="today-metric-value">${_fmt1(val)}</div>
+    </div>
+  `;
+  document.getElementById('today-metrics-card').innerHTML = `
+    <div class="card-title">Load Summary</div>
+    <div class="today-metric-row">
+      ${metric('Fatigue (ATL)', today.atl || 0)}
+      ${metric('Fitness (CTL)', today.ctl || 0)}
+      ${metric('Form (TSB)', today.tsb || 0)}
+    </div>
+  `;
+
+}
+
+function switchToWorkoutsFromToday() {
+  activateTab('workouts');
+}
+
 // Vertical bar for ATL / CTL — fills from bottom up, score is 0–10
 function _tlBar(score, color) {
   const pct = (score / 10 * 100).toFixed(1);
@@ -2547,178 +4863,499 @@ function _tsbBar(tsb) {
 }
 
 async function loadTrainingLoadCard() {
-  const wrap = document.getElementById('tl-wrap');
+  const todayWrap = document.getElementById('today-wrap');
+  if (!todayWrap) return;
   try {
-    const r = await fetch('/api/training-load?days=30');
-    const d = await r.json();
-    _tlHistory = d.history;
-    _tlThresholds = d.thresholds || null;
-    renderFatigueChart(d.history, _tlThresholds);
-    const t   = d.today;
-    const rec = REC_META[t.recommendation_adjusted] || REC_META.continue;
-    const fatigueScore = typeof t.fatigue_score === 'number' ? t.fatigue_score.toFixed(1) : '—';
-    const baseScore = typeof t.subjective_base_score === 'number' ? t.subjective_base_score.toFixed(1) : '—';
-    const modScore = typeof t.training_modifier === 'number'
-      ? `${t.training_modifier >= 0 ? '+' : ''}${t.training_modifier.toFixed(1)}`
-      : '—';
-    const modeLabel = t.recommendation_mode === 'adaptive'
-      ? 'Adaptive Mode'
-      : t.calibration_enabled
-        ? 'Custom Mode'
-        : 'Default Mode';
-    const modeColor = modeLabel === 'Adaptive Mode' ? 'var(--success)'
-      : t.calibration_enabled ? 'var(--accent)' : 'var(--muted)';
-    const pendingStressNote = t.has_pending_workout_stress
-      ? `<div class="tl-sub" style="margin-top:2px;color:var(--muted);font-style:italic;">Newly synced workouts are preview-only until the next check-in (currently applying stress through ${t.stress_included_through}).</div>`
-      : '';
-
-    const atlLabel  = t.atl_score < 2.5 ? 'Low Fatigue'
-                    : t.atl_score < 5.0 ? 'Moderate Fatigue'
-                    : t.atl_score < 7.5 ? 'High Fatigue'
-                    :                     'Very High Fatigue';
-    const trendLabel = t.ctl_trend === 'building'  ? '↗ Building'
-                     : t.ctl_trend === 'declining' ? '↘ Declining'
-                     :                               '→ Maintaining';
-
-    wrap.innerHTML = `
-      <div class="tl-grid">
-        <div class="tl-cell">
-          <div class="tl-label">Short Term Fatigue <span class="tip-icon" data-tip="How hard you've pushed recently relative to your personal peak — based on the 7-day average of your daily training stress.">i</span></div>
-          ${_tlBar(t.atl_score, 'var(--danger)')}
-          <div class="tl-value" style="color:var(--danger);font-size:14px;">${t.atl_score} / 10</div>
-          <div class="tl-sub">${atlLabel}</div>
-        </div>
-        <div class="tl-cell">
-          <div class="tl-label">Long Term Load <span class="tip-icon" data-tip="Your longer-term training baseline from the 28-day average of daily stress. Higher means more chronic load capacity, not necessarily a bad state by itself.">i</span></div>
-          ${_tlBar(t.ctl_score, 'var(--accent)')}
-          <div class="tl-value" style="color:var(--accent);font-size:14px;">${t.ctl_score} / 10</div>
-          <div class="tl-sub">${trendLabel}</div>
-        </div>
-        <div class="tl-cell">
-          <div class="tl-label" style="margin-bottom:8px;">Daily Recommendation</div>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
-            <img src="/resources/${rec.img}" style="width:48px;height:48px;image-rendering:pixelated;">
-            <span class="rec-pill ${rec.cls}">${rec.label}</span>
-            <div class="tl-sub" style="color:${modeColor};font-weight:600;">${modeLabel}</div>
-            <div class="tl-sub" style="margin-top:4px;">Fatigue Score: ${fatigueScore} / 10</div>
-            <div class="tl-sub">Base ${baseScore} ${modScore !== '—' ? `· Modifier ${modScore}` : ''}</div>
-            ${t.score_source === 'subjective_plus_training' && t.tiredness != null && t.perceived_recovery != null
-              ? `<div class="tl-sub" style="margin-top:2px;color:var(--muted);">Tired ${t.tiredness}/4 · Recovery ${t.perceived_recovery}/4</div>`
-              : `<div class="tl-sub" style="margin-top:2px;color:var(--muted);font-style:italic;">No check-in today</div>`}
-            ${pendingStressNote}
-          </div>
-        </div>
-      </div>`;
+    const [trainingRes, readinessHistory] = await Promise.all([
+      ensureTrainingLoadPayload(),
+      ensureReadinessCombinedHistoryPayload(),
+    ]);
+    _renderTodayCards(trainingRes, 0);
+    renderTodayReadinessChart(readinessHistory);
   } catch {
-    wrap.innerHTML = '<div style="color:var(--muted);font-size:12px;">Training load unavailable — sync some workouts first.</div>';
+    _destroyTodayReadinessChart();
+    document.getElementById('today-state-card').innerHTML = '<div class="today-state-label today-state-nodata">No Data Yet</div><div class="today-state-detail">Log workouts and complete daily check-ins to build your baseline</div>';
+    document.getElementById('today-readiness-trend-card').innerHTML = '<div class="card-title">7-Day Readiness Trend</div><div class="today-chart-empty">Combined readiness history is unavailable right now.</div>';
+    document.getElementById('today-pattern-card').innerHTML = '<div class="card-title">Pattern Stress</div><div class="today-pattern-grid">' + ['KNEE','HIP','PUSH','PULL'].map(p => `<div class="today-pattern-cell today-pattern-neutral"><div class="today-pattern-name">${p}</div><div class="today-pattern-days">Never loaded</div><div class="today-dots"><span class="today-dot today-dot-filled"></span><span class="today-dot"></span><span class="today-dot"></span><span class="today-dot"></span><span class="today-dot"></span></div><div class="today-pattern-level">Moderate</div></div>`).join('') + '</div>';
+    const jointCard = document.getElementById('today-joint-card'); if (jointCard) { jointCard.style.display = 'none'; jointCard.innerHTML = ''; }
+    document.getElementById('today-metrics-card').innerHTML = '<div class="card-title">Load Summary</div><div class="today-metric-row"><div class="today-metric"><div class="today-metric-label">Fatigue (ATL)</div><div class="today-metric-value">0.0</div></div><div class="today-metric"><div class="today-metric-label">Fitness (CTL)</div><div class="today-metric-value">0.0</div></div><div class="today-metric"><div class="today-metric-label">Form (TSB)</div><div class="today-metric-value">0.0</div></div></div>';
   }
 }
 
 // ═══ Trends tab ═══════════════════════════════════════
 
-// Custom Chart.js plugin — draws colored horizontal bands in the background
-const bandPlugin = {
-  id: 'bandBackground',
-  beforeDraw(chart, args, options) {
-    const { ctx, chartArea, scales } = chart;
-    if (!chartArea || !scales.y) return;
-    if (!options || !options.bands || !options.bands.length) return;
-    const { top, bottom, left, right } = chartArea;
-    const yScale = scales.y;
-    options.bands.forEach(band => {
-      const yTop    = yScale.getPixelForValue(Math.min(band.max, yScale.max));
-      const yBottom = yScale.getPixelForValue(Math.max(band.min, yScale.min));
-      ctx.fillStyle = band.color;
-      ctx.fillRect(left, yTop, right - left, yBottom - yTop);
+async function ensureTrainingLoadPayload() {
+  if (_trainingLoadPayload) return _trainingLoadPayload;
+  if (_trainingLoadFetchPromise) return _trainingLoadFetchPromise;
+
+  _trainingLoadFetchPromise = fetch('/api/training-load?days=180')
+    .then(r => r.json())
+    .then(d => {
+      _trainingLoadPayload = d || {};
+      _tlHistory = _trainingLoadPayload.history || [];
+      _tlThresholds = _trainingLoadPayload.thresholds || null;
+      return _trainingLoadPayload;
+    })
+    .finally(() => {
+      _trainingLoadFetchPromise = null;
     });
+
+  return _trainingLoadFetchPromise;
+}
+
+async function ensureReadinessCombinedHistoryPayload() {
+  if (_readinessCombinedHistoryPayload) return _readinessCombinedHistoryPayload;
+  if (_readinessCombinedHistoryFetchPromise) return _readinessCombinedHistoryFetchPromise;
+
+  _readinessCombinedHistoryFetchPromise = fetch('/api/readiness/combined-history?days=7')
+    .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+    .then(({ ok, data }) => {
+      if (!ok) throw new Error(data?.detail || 'Failed to load readiness history.');
+      _readinessCombinedHistoryPayload = Array.isArray(data) ? data : [];
+      return _readinessCombinedHistoryPayload;
+    })
+    .finally(() => {
+      _readinessCombinedHistoryFetchPromise = null;
+    });
+
+  return _readinessCombinedHistoryFetchPromise;
+}
+
+function activateTrendTab() {
+  renderTrendView();
+}
+
+function invalidateTodayCaches() {
+  _trainingLoadPayload = null;
+  _readinessCombinedHistoryPayload = null;
+}
+
+function _weekdayLabel(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString(undefined, { weekday: 'short' });
+}
+
+function _dateLabel(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function _destroyTodayReadinessChart() {
+  if (todayReadinessChart) {
+    todayReadinessChart.destroy();
+    todayReadinessChart = null;
   }
-};
-Chart.register(bandPlugin);
+}
 
-
-function renderFatigueChart(history, thresholds = null) {
-  const c      = themeColors();
-  const ctx    = document.getElementById('tsbZoneChart').getContext('2d');
-  const labels = history.map(d => d.date.slice(5));
-  const values = history.map(d => d.fatigue_score ?? 5.0);
-  const activeThresholds = {
-    threshold_large_decrease: Number(thresholds?.threshold_large_decrease ?? 8.0),
-    threshold_decrease: Number(thresholds?.threshold_decrease ?? 6.5),
-    threshold_continue: Number(thresholds?.threshold_continue ?? 4.5),
-    threshold_increase: Number(thresholds?.threshold_increase ?? 3.0),
+function _todayReadinessBandsPlugin() {
+  return {
+    id: 'todayReadinessBands',
+    beforeDatasetsDraw(chart) {
+      const { ctx, chartArea, scales } = chart;
+      if (!chartArea || !scales?.y) return;
+      const bands = [
+        { from: 0.0, to: 3.0, color: 'rgba(2, 47, 64, 0.40)' },
+        { from: 3.0, to: 4.0, color: 'rgba(82, 178, 207, 0.35)' },
+        { from: 4.0, to: 6.0, color: 'rgba(79, 180, 119, 0.40)' },
+        { from: 6.0, to: 6.5, color: 'rgba(255, 178, 15, 0.35)' },
+        { from: 6.5, to: 10.0, color: 'rgba(158, 43, 37, 0.35)' },
+      ];
+      ctx.save();
+      for (const band of bands) {
+        const top = scales.y.getPixelForValue(band.to);
+        const bottom = scales.y.getPixelForValue(band.from);
+        ctx.fillStyle = band.color;
+        ctx.fillRect(chartArea.left, top, chartArea.right - chartArea.left, bottom - top);
+      }
+      ctx.restore();
+    },
   };
-  const largeDecreaseThreshold = activeThresholds.threshold_large_decrease;
-  const decreaseThreshold = activeThresholds.threshold_decrease;
-  const continueThreshold = activeThresholds.threshold_continue;
-  const increaseThreshold = activeThresholds.threshold_increase;
+}
 
-  // Fixed 0–10 y-axis — bands match the fatigue score thresholds
-  const yMin = 0;
-  const yMax = 10;
+function renderTodayReadinessChart(history) {
+  const card = document.getElementById('today-readiness-trend-card');
+  if (!card) return;
 
-  // Colored bands: higher score = more fatigued = decrease band (red/orange at top)
-  const bands = [
-    { min: largeDecreaseThreshold, max: 10, color: getCSSVar('--danger') + '45' },
-    { min: decreaseThreshold, max: largeDecreaseThreshold, color: getCSSVar('--decrease-band') + '45' },
-    { min: continueThreshold, max: decreaseThreshold, color: getCSSVar('--warn') + '45' },
-    { min: increaseThreshold, max: continueThreshold, color: getCSSVar('--success') + '45' },
-    { min: 0, max: increaseThreshold, color: getCSSVar('--accent') + '45' },
-  ];
-
-  function fatigueZone(score) {
-    if (score >= largeDecreaseThreshold) return 'Large Decrease';
-    if (score >= decreaseThreshold) return 'Decrease';
-    if (score >= continueThreshold) return 'Continue';
-    if (score >= increaseThreshold) return 'Increase';
-    return 'Large Increase';
+  if (!Array.isArray(history) || !history.length) {
+    _destroyTodayReadinessChart();
+    card.innerHTML = '<div class="card-title">7-Day Readiness Trend</div><div class="today-chart-empty">No readiness trend data yet.</div>';
+    return;
   }
 
-  if (tsbZoneChart) tsbZoneChart.destroy();
-  tsbZoneChart = new Chart(ctx, {
+  card.innerHTML = `
+    <div class="card-title">7-Day Readiness Trend</div>
+    <div class="today-chart-wrap"><canvas id="today-readiness-chart"></canvas></div>
+    <div class="today-chart-note">Combined score uses the 80/20 subjective and objective weighting. Missing check-ins render as gaps.</div>
+  `;
+
+  const c = themeColors();
+  const ctx = document.getElementById('today-readiness-chart').getContext('2d');
+  const labels = history.map(item => _weekdayLabel(item.date));
+  const points = history.map(item => item.combined_score == null ? null : Number(item.combined_score));
+  _destroyTodayReadinessChart();
+
+  todayReadinessChart = new Chart(ctx, {
     type: 'line',
     data: {
       labels,
-      datasets: [{
-        label: 'Fatigue',
-        data: values,
-        borderColor: c.text,
-        borderWidth: 2.5,
-        pointRadius: 3,
-        pointHoverRadius: 6,
-        tension: 0.35,
-        fill: false,
-      }],
+      datasets: [
+        {
+          label: 'Combined score',
+          data: points,
+          borderColor: c.accent,
+          backgroundColor: c.accent + '33',
+          pointBackgroundColor: c.accent,
+          pointBorderColor: c.card,
+          pointBorderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointHitRadius: 12,
+          borderWidth: 2.5,
+          tension: 0.35,
+          spanGaps: false,
+        },
+      ],
     },
     options: {
-      ...chartOpts(),
+      ..._trendChartBaseOptions(),
       plugins: {
-        ...chartOpts().plugins,
-        legend: {
-          ...chartOpts().plugins.legend,
-          onClick: () => {},
-        },
-        bandBackground: { bands },
+        ..._trendChartBaseOptions().plugins,
+        legend: { display: false },
         tooltip: {
-          ...chartOpts().plugins.tooltip,
+          ..._trendChartBaseOptions().plugins.tooltip,
           callbacks: {
-            label(item) {
-              const score = item.raw;
-              return `Fatigue: ${score.toFixed(1)} / 10  →  ${fatigueZone(score)}`;
+            title(items) {
+              const idx = items?.[0]?.dataIndex ?? 0;
+              return _dateLabel(history[idx].date);
+            },
+            label(ctxItem) {
+              if (ctxItem.parsed?.y == null) return 'Combined: no check-in';
+              return `Combined: ${Number(ctxItem.parsed.y).toFixed(1)}`;
+            },
+            afterBody(items) {
+              const idx = items?.[0]?.dataIndex ?? 0;
+              const day = history[idx] || {};
+              return [
+                `Objective: ${Number(day.objective_score ?? 0).toFixed(1)}`,
+                `Subjective: ${day.subjective_score == null ? 'none' : Number(day.subjective_score).toFixed(1)}`,
+              ];
             },
           },
         },
       },
       scales: {
-        x: chartOpts().scales.x,
+        ..._trendChartBaseOptions().scales,
+        x: {
+          ..._trendChartBaseOptions().scales.x,
+          grid: { color: 'rgba(128,128,128,0.15)' },
+          ticks: { ..._trendChartBaseOptions().scales.x.ticks, maxTicksLimit: 7 },
+        },
         y: {
-          min: yMin,
-          max: yMax,
-          ticks: { color: c.muted, font: { size: 10 }, stepSize: 1 },
-          grid:  { color: c.border },
+          ..._trendChartBaseOptions().scales.y,
+          min: 0,
+          max: 10,
+          grid: { color: 'rgba(128,128,128,0.15)' },
+          ticks: { ..._trendChartBaseOptions().scales.y.ticks, stepSize: 1 },
+        },
+      },
+    },
+    plugins: [_todayReadinessBandsPlugin()],
+  });
+}
+
+function _resolveStateLabel(item, thresholds) {
+  if (item?.training_state_label) return item.training_state_label;
+  const tsb = Number(item?.tsb || 0);
+  const underloaded = Number(thresholds?.tsb_threshold_underloaded ?? 8);
+  const slightlyFresh = Number(thresholds?.tsb_threshold_slightly_fresh ?? 3);
+  const balanced = Number(thresholds?.tsb_threshold_balanced ?? -5);
+  const slightlyFatigued = Number(thresholds?.tsb_threshold_slightly_fatigued ?? -10);
+  if (tsb >= underloaded) return 'Underloaded';
+  if (tsb >= slightlyFresh) return 'Slightly Fresh';
+  if (tsb >= balanced) return 'Balanced';
+  if (tsb >= slightlyFatigued) return 'Slightly Fatigued';
+  return 'Fatigued';
+}
+
+function _trendSlice(history, days) {
+  if (!Array.isArray(history) || !history.length) return [];
+  if (history.length <= 30) return history;
+  return history.slice(history.length - 30);
+}
+
+function _trendRollingAvg(values, windowDays) {
+  if (!Array.isArray(values) || windowDays <= 0) return values;
+  return values.map((_, i) => {
+    const start = Math.max(0, i - windowDays + 1);
+    const slice = values.slice(start, i + 1);
+    return +(slice.reduce((a, b) => a + b, 0) / slice.length).toFixed(3);
+  });
+}
+
+function _destroyTrendCharts() {
+  if (trendMainChart) {
+    trendMainChart.destroy();
+    trendMainChart = null;
+  }
+  if (trendPatternChart) {
+    trendPatternChart.destroy();
+    trendPatternChart = null;
+  }
+}
+
+function _trendChartBaseOptions() {
+  const c = themeColors();
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { labels: { color: c.muted, font: { size: 11 } } },
+      tooltip: {
+        backgroundColor: c.card,
+        borderColor: c.border,
+        borderWidth: 1,
+        titleColor: c.text,
+        bodyColor: c.muted,
+        padding: 10,
+      },
+    },
+    scales: {
+      x: {
+        ticks: { color: c.muted, font: { size: 10 }, maxTicksLimit: 12 },
+        grid: { color: 'rgba(255,255,255,0.05)' },
+      },
+      y: {
+        ticks: { color: c.muted, font: { size: 10 } },
+        grid: { color: 'rgba(255,255,255,0.05)' },
+      },
+    },
+  };
+}
+
+function _renderTrendMainChart(history, thresholds) {
+  const c = themeColors();
+  const ctx = document.getElementById('trend-main-chart').getContext('2d');
+  const labels = history.map(h => _dateLabel(h.date));
+  const atlRaw = history.map(h => Number(h.atl || 0));
+  const ctlRaw = history.map(h => Number(h.ctl || 0));
+  const tsbRaw = history.map(h => Number(h.tsb || 0));
+  const atlSmoothed = _trendRollingAvg(atlRaw, trendSmoothingDays);
+  const ctlSmoothed = _trendRollingAvg(ctlRaw, trendSmoothingDays);
+  const tsbSmoothed = _trendRollingAvg(tsbRaw, trendSmoothingDays);
+
+  trendMainChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Fatigue',
+          data: atlSmoothed,
+          borderColor: c.posterior,
+          backgroundColor: c.posterior + '33',
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          tension: 0.35,
+        },
+        {
+          label: 'Fitness',
+          data: ctlSmoothed,
+          borderColor: c.accent,
+          backgroundColor: c.accent + '33',
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          tension: 0.35,
+        },
+        {
+          label: 'Form',
+          data: tsbSmoothed,
+          borderColor: c.success,
+          backgroundColor: c.success + '33',
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          tension: 0.35,
+        },
+        {
+          label: '__zero__',
+          data: history.map(() => 0),
+          borderColor: 'rgba(255,255,255,0.15)',
+          borderDash: [4, 4],
+          pointRadius: 0,
+          borderWidth: 1,
+          tension: 0,
+        },
+      ],
+    },
+    options: {
+      ..._trendChartBaseOptions(),
+      plugins: {
+        ..._trendChartBaseOptions().plugins,
+        legend: {
+          ..._trendChartBaseOptions().plugins.legend,
+          labels: {
+            ..._trendChartBaseOptions().plugins.legend.labels,
+            filter: item => item.text !== '__zero__',
+          },
+        },
+        tooltip: {
+          ..._trendChartBaseOptions().plugins.tooltip,
+          callbacks: {
+            title(items) {
+              const idx = items?.[0]?.dataIndex ?? 0;
+              return _dateLabel(history[idx].date);
+            },
+            label(ctxItem) {
+              if (ctxItem.dataset.label === '__zero__') return null;
+              const plotted = Number(ctxItem.parsed?.y ?? 0);
+              if (ctxItem.dataset.label === 'Fatigue') return `Fatigue: ${_fmt1(plotted)}`;
+              if (ctxItem.dataset.label === 'Fitness') return `Fitness: ${_fmt1(plotted)}`;
+              return `Form: ${_fmt1(plotted)}`;
+            },
+            afterBody(items) {
+              const idx = items?.[0]?.dataIndex ?? 0;
+              return [`State: ${_resolveStateLabel(history[idx], thresholds)}`];
+            },
+          },
         },
       },
     },
   });
+}
+
+function _renderTrendPatternChart(history) {
+  const c = themeColors();
+  const ctx = document.getElementById('trend-pattern-chart').getContext('2d');
+  const labels = history.map(h => _dateLabel(h.date));
+  const kneeRaw = history.map(h => Number(h.pattern_loads?.knee?.atl || 0));
+  const hipRaw = history.map(h => Number(h.pattern_loads?.hip?.atl || 0));
+  const pushRaw = history.map(h => Number(h.pattern_loads?.push?.atl || 0));
+  const pullRaw = history.map(h => Number(h.pattern_loads?.pull?.atl || 0));
+  const kneeSmoothed = _trendRollingAvg(kneeRaw, trendSmoothingDays);
+  const hipSmoothed = _trendRollingAvg(hipRaw, trendSmoothingDays);
+  const pushSmoothed = _trendRollingAvg(pushRaw, trendSmoothingDays);
+  const pullSmoothed = _trendRollingAvg(pullRaw, trendSmoothingDays);
+
+  trendPatternChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Knee',
+          data: kneeSmoothed,
+          borderColor: c.quad,
+          backgroundColor: c.quad + '33',
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          tension: 0.35,
+        },
+        {
+          label: 'Hip',
+          data: hipSmoothed,
+          borderColor: c.posterior,
+          backgroundColor: c.posterior + '33',
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          tension: 0.35,
+        },
+        {
+          label: 'Push',
+          data: pushSmoothed,
+          borderColor: c.push,
+          backgroundColor: c.push + '33',
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          tension: 0.35,
+        },
+        {
+          label: 'Pull',
+          data: pullSmoothed,
+          borderColor: c.pull,
+          backgroundColor: c.pull + '33',
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          tension: 0.35,
+        },
+      ],
+    },
+    options: {
+      ..._trendChartBaseOptions(),
+      plugins: {
+        ..._trendChartBaseOptions().plugins,
+        tooltip: {
+          ..._trendChartBaseOptions().plugins.tooltip,
+          callbacks: {
+            title(items) {
+              const idx = items?.[0]?.dataIndex ?? 0;
+              return _dateLabel(history[idx].date);
+            },
+            label(ctxItem) {
+              const plotted = Number(ctxItem.parsed?.y ?? 0);
+              if (ctxItem.dataset.label === 'Knee') return `Knee: ${_fmt1(plotted)}`;
+              if (ctxItem.dataset.label === 'Hip') return `Hip: ${_fmt1(plotted)}`;
+              if (ctxItem.dataset.label === 'Push') return `Push: ${_fmt1(plotted)}`;
+              return `Pull: ${_fmt1(plotted)}`;
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+async function renderTrendView() {
+  const emptyEl = document.getElementById('trend-empty');
+  const mainWrap = document.getElementById('trend-main-wrap');
+  const patternCard = document.getElementById('trend-pattern-card');
+  const patternWrap = document.getElementById('trend-pattern-wrap');
+  const patternNote = document.getElementById('trend-pattern-note');
+  if (!emptyEl || !mainWrap || !patternCard || !patternWrap || !patternNote) return;
+
+  try {
+    const [payload] = await Promise.all([
+      ensureTrainingLoadPayload(),
+    ]);
+    const history = _trendSlice(payload?.history || [], 30);
+
+    _destroyTrendCharts();
+
+    if (!history.length) {
+      emptyEl.style.display = 'block';
+      mainWrap.style.display = 'none';
+      patternCard.style.display = 'none';
+      return;
+    }
+
+    emptyEl.style.display = 'none';
+    mainWrap.style.display = 'block';
+    patternCard.style.display = 'block';
+
+    _renderTrendMainChart(history, payload?.thresholds || {});
+
+    const hasPatternLoads = history.some(h => h && typeof h === 'object' && h.pattern_loads && h.pattern_loads.knee && h.pattern_loads.hip && h.pattern_loads.push && h.pattern_loads.pull);
+    if (!hasPatternLoads) {
+      patternWrap.style.display = 'none';
+      patternNote.style.display = 'block';
+    } else {
+      patternWrap.style.display = 'block';
+      patternNote.style.display = 'none';
+      _renderTrendPatternChart(history);
+    }
+  } catch {
+    _destroyTrendCharts();
+    emptyEl.style.display = 'block';
+    mainWrap.style.display = 'none';
+    patternCard.style.display = 'none';
+  }
 }
 
 
@@ -2749,7 +5386,6 @@ async function saveMapping() {
         // Merge updated fields back; preserve use_count / last_used from local state
         exercises[idx] = { ...exercises[idx], ...updated };
       }
-      patternCache = {};
       closeModal();
       renderExTable();
     } else {

@@ -1,4 +1,5 @@
 import os
+
 import requests
 from dotenv import load_dotenv
 
@@ -29,6 +30,9 @@ class HevyClient:
         self.api_key = api_key or _load_api_key()
         self.base_url = "https://api.hevyapp.com/v1"
         self.headers = {"api-key": self.api_key} if self.api_key else {}
+        self.session = requests.Session()
+        if self.headers:
+            self.session.headers.update(self.headers)
 
     def test_connection(self):
         """Simple check to see if the API key is valid."""
@@ -56,6 +60,50 @@ class HevyClient:
         response = requests.get(url, headers=self.headers, timeout=10)
         response.raise_for_status()
         return response.json()
+
+    def get_workout_events(self, since: str, page: int = 1, page_size: int = 10) -> dict:
+        """
+        Fetch paginated workout events (updates and deletes) since a given timestamp.
+
+        Args:
+            since: ISO 8601 timestamp string - only events after this time are returned
+            page: Page number (default: 1)
+            page_size: Number of items per page (max 10, default: 10)
+
+        Returns:
+            dict: { page, page_count, events: [...] }
+            Each event is either:
+              { type: "updated", workout: { id, title, exercises, ... } }
+              { type: "deleted", id: <workout_id>, deleted_at: <timestamp> }
+        """
+        if not self.api_key:
+            raise ValueError("No Hevy API key is configured.")
+
+        url = f"{self.base_url}/workouts/events"
+        params = {
+            "since": since,
+            "page": page,
+            "pageSize": max(1, min(page_size, 10)),
+        }
+
+        try:
+            response = self.session.get(url, params=params, timeout=30)
+            if response.status_code == 404:
+                return {"page": page, "page_count": 0, "events": []}
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.HTTPError as exc:
+            if exc.response is not None and exc.response.status_code == 401:
+                raise PermissionError("Unauthorized Hevy API request.") from exc
+            raise RuntimeError("Hevy API request failed.") from exc
+        except requests.exceptions.JSONDecodeError as exc:
+            raise RuntimeError("Hevy API returned invalid JSON.") from exc
+        except requests.exceptions.ConnectionError as exc:
+            raise RuntimeError("Failed to connect to the Hevy API.") from exc
+        except requests.exceptions.Timeout as exc:
+            raise RuntimeError("Timed out while requesting the Hevy API.") from exc
+        except Exception as exc:
+            raise RuntimeError("Unexpected error while requesting the Hevy API.") from exc
 
 if __name__ == "__main__":
     client = HevyClient()

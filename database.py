@@ -1,5 +1,6 @@
 from datetime import date as date_type
-from sqlalchemy import create_engine, Column, Integer, Float, String, Date, Boolean, UniqueConstraint
+from datetime import datetime as dt_datetime
+from sqlalchemy import create_engine, Column, Integer, Float, String, Date, DateTime, Boolean, UniqueConstraint, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 # Path to the database file.
@@ -108,9 +109,134 @@ class ExerciseMapping(Base):
     def __repr__(self):
         return f"<ExerciseMapping {self.exercise_title} source={self.source} reviewed={self.is_reviewed}>"
 
+# --- TABLE 6: Workout Sessions (Imported from Hevy) ---
+class WorkoutSession(Base):
+    __tablename__ = "workout_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    hevy_workout_id = Column(String, nullable=False, unique=True, index=True)
+    workout_date = Column(Date, nullable=False)
+    workout_title = Column(String, nullable=True)
+    start_time = Column(DateTime, nullable=True)
+    end_time = Column(DateTime, nullable=True)
+    duration_minutes = Column(Integer, nullable=True)
+    modality = Column(String, nullable=False, default="strength")  # strength|hypertrophy|conditioning|cardio
+    modality_confidence = Column(Float, nullable=False, default=0.0)
+    modality_note = Column(String, nullable=True)
+    verification_status = Column(String, nullable=False, default="pending")  # pending|verified
+    verified_at = Column(DateTime, nullable=True)
+    srpe = Column(Float, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=dt_datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=dt_datetime.utcnow, onupdate=dt_datetime.utcnow)
+
+    def __repr__(self):
+        return (
+            f"<WorkoutSession workout_id={self.hevy_workout_id} "
+            f"modality={self.modality} status={self.verification_status}>"
+        )
+
+
+# --- TABLE 7: Canonical Exercise Titles ---
+class ExerciseCanonical(Base):
+    __tablename__ = "exercise_canonical"
+
+    exercise_id = Column(String, primary_key=True)
+    canonical_title = Column(String, nullable=False)
+    created_at = Column(DateTime, default=dt_datetime.utcnow)
+    updated_at = Column(DateTime, default=dt_datetime.utcnow, onupdate=dt_datetime.utcnow)
+
+    def __repr__(self):
+        return f"<ExerciseCanonical exercise_id={self.exercise_id} canonical_title={self.canonical_title}>"
+
+
+class ExerciseConflict(Base):
+    __tablename__ = "exercise_conflicts"
+
+    exercise_id = Column(String, primary_key=True)
+    hevy_title = Column(String, nullable=False)
+    stored_title = Column(String, nullable=False)
+    detected_at = Column(DateTime, default=dt_datetime.utcnow)
+    resolved = Column(Boolean, default=False)
+    resolved_at = Column(DateTime, nullable=True)
+
+    def __repr__(self):
+        return f"<ExerciseConflict exercise_id={self.exercise_id} resolved={self.resolved}>"
+
+
 # This part actually creates the file and tables when you run the script
 def init_db():
     Base.metadata.create_all(bind=engine)
+    with engine.connect() as conn:
+        exercise_canonical_exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='exercise_canonical'")
+        ).first()
+        if not exercise_canonical_exists:
+            Base.metadata.tables["exercise_canonical"].create(bind=conn)
+            conn.commit()
+
+        cols = conn.execute(text("PRAGMA table_info(workout_sessions)")).fetchall()
+        col_names = {row[1] for row in cols}
+        if "modality_note" not in col_names:
+            conn.execute(text("ALTER TABLE workout_sessions ADD COLUMN modality_note VARCHAR"))
+            conn.commit()
+
+        # Ensure workout_logs has a hard unique index on natural set identity.
+        # Existing deployments may contain duplicates from earlier versions, so
+        # dedup first to guarantee index creation succeeds.
+        conn.execute(
+            text(
+                """
+                DELETE FROM workout_logs
+                WHERE id IN (
+                    SELECT wl.id
+                    FROM workout_logs wl
+                    JOIN (
+                        SELECT workout_id, exercise_id, set_number, MIN(id) AS keep_id
+                        FROM workout_logs
+                        GROUP BY workout_id, exercise_id, set_number
+                        HAVING COUNT(*) > 1
+                    ) d
+                      ON wl.workout_id = d.workout_id
+                     AND wl.exercise_id = d.exercise_id
+                     AND wl.set_number = d.set_number
+                    WHERE wl.id <> d.keep_id
+                )
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS uq_workout_logs_set
+                ON workout_logs (workout_id, exercise_id, set_number)
+                """
+            )
+        )
+        conn.commit()
+
+        exercise_conflicts_exists = conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='exercise_conflicts'")
+        ).first()
+        if not exercise_conflicts_exists:
+            Base.metadata.tables["exercise_conflicts"].create(bind=conn)
+            conn.commit()
+
+        migration_flag_key = "migration_incremental_sync_v1"
+        migration_flag_exists = conn.execute(
+            text("SELECT key FROM app_settings WHERE key = :key"),
+            {"key": migration_flag_key},
+        ).first()
+        if not migration_flag_exists:
+            conn.execute(
+                text("DELETE FROM app_settings WHERE key = :key"),
+                {"key": "last_sync"},
+            )
+            conn.execute(
+                text("INSERT INTO app_settings (key, value) VALUES (:key, :value)"),
+                {"key": migration_flag_key, "value": "1"},
+            )
+            conn.commit()
+
     # app_settings table is created by create_all above (new installs and existing DBs)
 if __name__ == "__main__":
     init_db()
