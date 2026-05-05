@@ -1732,24 +1732,35 @@ tbody tr:hover td { background: var(--row-hover); }
   opacity: .75;
   animation: aiBlink 1s steps(1,end) infinite;
 }
-.ai-chat-bubble p,
+.ai-chat-bubble p { margin: 0 0 0.5em 0; }
+.ai-chat-bubble p:last-child { margin-bottom: 0; }
+.ai-chat-bubble h1,
+.ai-chat-bubble h2,
+.ai-chat-bubble h3 {
+  font-size: 1em;
+  font-weight: 600;
+  margin: 0.5em 0 0.25em 0;
+}
 .ai-chat-bubble ul,
-.ai-chat-bubble ol,
-.ai-chat-bubble pre { margin: 0 0 8px 0; }
-.ai-chat-bubble p:last-child,
-.ai-chat-bubble ul:last-child,
-.ai-chat-bubble ol:last-child,
-.ai-chat-bubble pre:last-child { margin-bottom: 0; }
+.ai-chat-bubble ol {
+  margin: 0.25em 0 0.5em 1.25em;
+  padding: 0;
+}
+.ai-chat-bubble li { margin-bottom: 0.25em; }
+.ai-chat-bubble strong { font-weight: 600; }
 .ai-chat-bubble pre {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 7px;
   overflow-x: auto;
+  margin: 0.25em 0 0.5em 0;
 }
 .ai-chat-bubble code {
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
+  font-family: monospace;
+  background: var(--surface);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
 }
 .ai-chat-status {
   min-height: 18px;
