@@ -10,6 +10,37 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-05, Stage 5 Frontend: AI Chat Card)
+
+- Added Stage 5 AI chat card to `#tab-ai` in `static/index.html`.
+- Chat card includes:
+	- collapsed context preview with `show context` / `hide context` toggle
+	- scrollable chat messages panel
+	- right-aligned user bubbles and left-aligned assistant bubbles
+	- auto-resize textarea input row with `Enter` send and `Shift+Enter` newline
+	- `Send` and `Clear` controls
+	- status line for thinking/error states
+- Added markdown support for assistant responses in `static/index.html` via `marked.parse()` and added marked.js CDN reference.
+- Added required frontend state:
+	- `aiChatHistory = []`
+	- `aiReadinessContext = null`
+- Implemented `loadAIContext()` in `static/index.html`:
+	- pulls `GET /api/diagnostics/snapshot`
+	- builds context preview text client-side using the same field set used by backend `_build_ai_system_prompt()`
+	- called on each AI tab activation after `loadAISettings()`
+- Implemented `sendAIMessage()` in `static/index.html`:
+	- posts `{ message, history: aiChatHistory }` to `POST /api/ai/chat`
+	- consumes SSE stream and updates a streaming assistant bubble with markdown rendering
+	- finalizes completed exchange into `aiChatHistory`
+- Implemented `clearAIChat()` in `static/index.html` to reset `aiChatHistory` and clear chat UI state.
+- Implemented unconfigured chat gating:
+	- when AI settings are unconfigured on AI tab activation, notice is shown and Send is disabled
+	- when configured, notice hides and Send is enabled
+- Validation evidence:
+	- static diagnostics on `static/index.html` pass
+	- inline JS brace counts are balanced
+	- marked.js CDN reference present in `static/index.html`
+
 ## Latest Maintenance Update (2026-05-05, Stage 4 Fix: Move AI Settings To Settings Tab)
 
 - Relocated the AI settings card in `static/index.html` from `#tab-ai` into the existing `#tab-settings` section.

@@ -2,6 +2,40 @@
 
 Last updated: 2026-05-03 (Backlog source-of-truth established)
 
+## Latest Maintenance Update (2026-05-05, Stage 5 Frontend: AI Chat Card)
+
+- Added AI chat card UI in `#tab-ai` inside `static/index.html` with:
+	- collapsed context preview (`show context` / `hide context`) using monospace pre-wrapped display
+	- scrollable message window with user bubbles right-aligned and assistant bubbles left-aligned
+	- markdown rendering for assistant content via `marked.parse()`
+	- auto-resize textarea input row with Enter-to-send and Shift+Enter newline behavior
+	- Send/Clear buttons and status line for `Thinking...` and error states
+- Added marked.js CDN to `static/index.html` head (`cdnjs marked 9.1.6`).
+- Added frontend state in `static/index.html`:
+	- `aiChatHistory = []`
+	- `aiReadinessContext = null`
+- Implemented `loadAIContext()` in `static/index.html`:
+	- fetches `GET /api/diagnostics/snapshot`
+	- builds context preview string client-side using the same field set/labels as `_build_ai_system_prompt()` in backend
+	- refreshes on every AI tab activation
+- Updated AI tab activation flow in `static/index.html`:
+	- `activateTab('ai')` now runs `loadAISettings().then(() => loadAIContext())`
+- Implemented `sendAIMessage()` in `static/index.html`:
+	- posts `{ message, history: aiChatHistory }` to `POST /api/ai/chat`
+	- reads SSE stream and appends deltas into a streaming assistant bubble
+	- renders streaming/final assistant content with `marked.parse()`
+	- finalizes exchange into `aiChatHistory`
+- Implemented `clearAIChat()` in `static/index.html`:
+	- resets `aiChatHistory`
+	- restores message window placeholder and clears status/input state
+- Added unconfigured-state chat gating:
+	- when AI settings are not configured on tab activation, chat notice is shown and Send is disabled
+	- when configured, notice is hidden and Send is enabled
+- Validation:
+	- static diagnostics on `static/index.html` pass (no errors)
+	- inline JS brace counts balanced (`open=close` for both inline script blocks)
+	- marked.js CDN reference confirmed in `static/index.html`
+
 ## Latest Maintenance Update (2026-05-05, Stage 4 Fix: Move AI Settings To Settings Tab)
 
 - Moved the full AI settings card markup (provider/model/API key + save/change controls) from `#tab-ai` to `#tab-settings` in `static/index.html`.
