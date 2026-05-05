@@ -460,7 +460,7 @@ def _extract_provider_error_message(response: httpx.Response) -> str:
 
 
 def _safe_sse_chunk(delta: str) -> str:
-    clean = (delta or "").replace("\r", " ").replace("\n", " ").strip()
+    clean = (delta or "").replace("\r", "")
     if not clean:
         return ""
     return f"data: {clean}\n\n"
