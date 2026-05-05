@@ -1592,6 +1592,62 @@ tbody tr:hover td { background: var(--row-hover); }
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
+.ai-settings-card { max-width: 740px; }
+.ai-settings-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.ai-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ai-settings-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.ai-settings-helper {
+  font-size: 12px;
+  color: var(--muted);
+}
+.ai-control {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+}
+.ai-control:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+.ai-model-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.ai-model-chip {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ai-model-chip:hover { border-color: var(--accent); color: var(--text); }
+.ai-model-chip:disabled { opacity: 0.55; cursor: not-allowed; }
+.ai-change-wrap {
+  display: none;
+  margin-top: 10px;
+}
+.ai-preview {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
 @media (max-width: 640px) { .settings-grid-2 { grid-template-columns: 1fr; } }
 @media (max-width: 900px) {
   .tab-content#tab-settings.active {
@@ -1606,6 +1662,7 @@ tbody tr:hover td { background: var(--row-hover); }
   #tab-settings .settings-card-api,
   #tab-settings .settings-card-sync,
   #tab-settings .settings-card-diagnostics { grid-area: auto; }
+  .ai-settings-card { max-width: none; }
 }
 
 /* ── Movement Trend card ── */
@@ -1852,6 +1909,7 @@ tbody tr:hover td { background: var(--row-hover); }
     <button class="nav-tab" data-tab="trend">Trend</button>
     <button class="nav-tab" data-tab="workouts">Workouts</button>
     <button class="nav-tab" data-tab="exercises">Exercises<span id="ex-conflict-badge" class="badge badge-conflict" style="display:none;margin-left:5px;"></span></button>
+    <button class="nav-tab" data-tab="ai">AI</button>
     <button class="nav-tab" data-tab="log">Log</button>
     <button class="nav-tab" data-tab="settings">Settings</button>
   </div>
@@ -1871,6 +1929,7 @@ tbody tr:hover td { background: var(--row-hover); }
     <button class="nav-tab" data-tab="trend">Trend</button>
     <button class="nav-tab" data-tab="workouts">Workouts</button>
     <button class="nav-tab" data-tab="exercises">Exercises<span id="ex-conflict-badge-mobile" class="badge" style="display:none;margin-left:5px;"></span></button>
+    <button class="nav-tab" data-tab="ai">AI</button>
     <button class="nav-tab" data-tab="log">Log</button>
     <button class="nav-tab" data-tab="settings">Settings</button>
   </div>
@@ -2210,6 +2269,53 @@ tbody tr:hover td { background: var(--row-hover); }
       <span id="ex-count" style="color:var(--muted);font-size:12px;"></span>
     </div>
     <div id="ex-table-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
+  </div>
+</section>
+
+<!-- ══════════════ LOG TAB ══════════════ -->
+<section id="tab-ai" class="tab-content">
+  <div class="card settings-card ai-settings-card">
+    <div class="card-title">AI Settings</div>
+    <p class="ai-settings-helper" style="margin-top:-6px;margin-bottom:12px;line-height:1.55;">
+      Configure your AI provider, model, and API key for chat features. API keys are stored encrypted in local app settings.
+    </p>
+
+    <div class="ai-preview" id="ai-key-current">No AI API key saved yet.</div>
+
+    <div class="ai-settings-grid">
+      <div class="ai-settings-field">
+        <label class="ai-settings-label" for="ai-provider">Provider</label>
+        <select id="ai-provider" class="ai-control" onchange="handleAIProviderChange()">
+          <option value="openrouter">OpenRouter</option>
+          <option value="anthropic">Anthropic</option>
+          <option value="gemini">Gemini</option>
+          <option value="openai">ChatGPT (OpenAI)</option>
+          <option value="deepseek">DeepSeek</option>
+        </select>
+      </div>
+
+      <div class="ai-settings-field">
+        <label class="ai-settings-label" for="ai-model-value">Model</label>
+        <div id="ai-model-field"></div>
+      </div>
+
+      <div class="ai-settings-field">
+        <label class="ai-settings-label" for="ai-api-key-input">API Key</label>
+        <div class="settings-key-row">
+          <input type="password" id="ai-api-key-input" placeholder="Paste your AI provider API key..." autocomplete="off">
+          <button class="btn" id="ai-api-key-toggle" onclick="toggleAIKeyVisibility()" title="Show / hide">Show</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-result" id="ai-settings-result"></div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+      <button class="btn btn-primary" id="btn-save-ai" onclick="saveAISettings()">Save AI Settings</button>
+    </div>
+    <div class="ai-change-wrap" id="ai-change-wrap">
+      <button class="btn btn-secondary" id="btn-change-ai" onclick="unlockAISettings()">Change</button>
+    </div>
   </div>
 </section>
 
@@ -2571,6 +2677,30 @@ let mvtHandlersBound = false;
 let _todayCheckinSubmitted = false;
 let _todayCheckinExpanded = false;
 let _todayCheckinEntry = null;
+let aiSettingsLocked = false;
+
+const AI_PROVIDER_MODELS = {
+  anthropic: ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-3-5'],
+  gemini: ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-pro'],
+  openai: ['gpt-4o', 'gpt-4o-mini', 'o3-mini'],
+  deepseek: ['deepseek-chat', 'deepseek-reasoner'],
+};
+
+const OPENROUTER_MODEL_CHIPS = [
+  'google/gemini-flash-1.5',
+  'anthropic/claude-sonnet-4-5',
+  'meta-llama/llama-3.3-70b-instruct',
+  'deepseek/deepseek-chat',
+  'openai/gpt-4o',
+];
+
+const AI_PROVIDER_DEFAULT_MODEL = {
+  openrouter: 'openai/gpt-4o',
+  anthropic: 'claude-sonnet-4-5',
+  gemini: 'gemini-2.0-flash',
+  openai: 'gpt-4o',
+  deepseek: 'deepseek-chat',
+};
 
 function setMobileNavOpen(isOpen) {
   document.body.classList.toggle('mobile-nav-open', !!isOpen);
@@ -2589,6 +2719,7 @@ function activateTab(tabName) {
   if (tabName === 'trend')                               activateTrendTab();
   if (tabName === 'exercises')                           { loadExerciseConflicts(); if (exercises.length === 0) loadExercises(); }
   if (tabName === 'workouts'  && !workoutsLoaded)        loadWorkouts();
+  if (tabName === 'ai')                                   loadAISettings();
   if (tabName === 'log'       && !logLoaded)             loadLog();
   if (tabName === 'settings')                            loadSettingsTab();
 }
@@ -2827,6 +2958,177 @@ function _setSectionResult(id, msg, ok) {
   el.textContent = msg;
   el.className = 'settings-result ' + (ok ? 'ok' : 'error');
   el.style.display = 'block';
+}
+
+function _extractApiErrorDetail(detail, fallback) {
+  if (typeof detail === 'string' && detail.trim()) return detail;
+  if (Array.isArray(detail)) {
+    const chunks = detail.map(item => {
+      if (!item || typeof item !== 'object') return '';
+      const loc = Array.isArray(item.loc) ? item.loc.join('.') : '';
+      const msg = item.msg || '';
+      return loc && msg ? `${loc}: ${msg}` : (msg || loc);
+    }).filter(Boolean);
+    if (chunks.length) return chunks.join('; ');
+  }
+  return fallback;
+}
+
+function _currentAIProvider() {
+  return document.getElementById('ai-provider')?.value || 'openrouter';
+}
+
+function _renderAIModelField(provider, modelValue = '') {
+  const wrap = document.getElementById('ai-model-field');
+  if (!wrap) return;
+
+  if (provider === 'openrouter') {
+    const chips = OPENROUTER_MODEL_CHIPS.map(model =>
+      `<button type="button" class="ai-model-chip" onclick="setOpenRouterModel('${model}')" ${aiSettingsLocked ? 'disabled' : ''}>${escHtml(model)}</button>`
+    ).join('');
+
+    wrap.innerHTML = `
+      <input id="ai-model-value" class="ai-control" type="text" autocomplete="off" placeholder="provider/model" value="${escHtml(modelValue)}" ${aiSettingsLocked ? 'disabled' : ''}>
+      <div class="ai-model-chips">${chips}</div>
+    `;
+    return;
+  }
+
+  const options = Array.isArray(AI_PROVIDER_MODELS[provider]) ? AI_PROVIDER_MODELS[provider] : [];
+  let normalizedValue = modelValue;
+  if (!normalizedValue || !options.includes(normalizedValue)) {
+    normalizedValue = AI_PROVIDER_DEFAULT_MODEL[provider] || options[0] || '';
+  }
+
+  wrap.innerHTML = `
+    <select id="ai-model-value" class="ai-control" ${aiSettingsLocked ? 'disabled' : ''}>
+      ${options.map(model => `<option value="${escHtml(model)}" ${model === normalizedValue ? 'selected' : ''}>${escHtml(model)}</option>`).join('')}
+    </select>
+  `;
+}
+
+function _getAIModelValue() {
+  const modelEl = document.getElementById('ai-model-value');
+  return modelEl ? modelEl.value.trim() : '';
+}
+
+function _setAILocked(locked) {
+  aiSettingsLocked = !!locked;
+  const providerEl = document.getElementById('ai-provider');
+  const apiKeyEl = document.getElementById('ai-api-key-input');
+  const saveBtn = document.getElementById('btn-save-ai');
+  const changeWrap = document.getElementById('ai-change-wrap');
+
+  if (providerEl) providerEl.disabled = aiSettingsLocked;
+  if (apiKeyEl) apiKeyEl.disabled = aiSettingsLocked;
+  if (saveBtn) saveBtn.style.display = aiSettingsLocked ? 'none' : 'inline-flex';
+  if (changeWrap) changeWrap.style.display = aiSettingsLocked ? 'block' : 'none';
+
+  _renderAIModelField(_currentAIProvider(), _getAIModelValue());
+}
+
+function setOpenRouterModel(model) {
+  const input = document.getElementById('ai-model-value');
+  if (!input || input.disabled) return;
+  input.value = model;
+}
+
+function handleAIProviderChange() {
+  if (aiSettingsLocked) return;
+  const provider = _currentAIProvider();
+  const currentModel = _getAIModelValue();
+  const nextModel = currentModel || AI_PROVIDER_DEFAULT_MODEL[provider] || '';
+  _renderAIModelField(provider, nextModel);
+}
+
+function toggleAIKeyVisibility() {
+  const inp = document.getElementById('ai-api-key-input');
+  if (!inp) return;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function unlockAISettings() {
+  _setAILocked(false);
+  _setSectionResult('ai-settings-result', '', null);
+}
+
+async function loadAISettings() {
+  const keyPreview = document.getElementById('ai-key-current');
+  const keyInput = document.getElementById('ai-api-key-input');
+  const providerEl = document.getElementById('ai-provider');
+  if (!keyPreview || !keyInput || !providerEl) return;
+
+  _setSectionResult('ai-settings-result', '', null);
+
+  try {
+    const r = await fetch('/api/settings/ai');
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(_extractApiErrorDetail(d.detail, 'Could not load AI settings.'));
+
+    const provider = d.provider && providerEl.querySelector(`option[value="${d.provider}"]`) ? d.provider : 'openrouter';
+    providerEl.value = provider;
+    _renderAIModelField(provider, d.model || AI_PROVIDER_DEFAULT_MODEL[provider] || '');
+
+    if (d.configured) {
+      keyPreview.textContent = `Current key: ${d.api_key_preview || 'configured'}`;
+      keyInput.value = '';
+      keyInput.type = 'password';
+      _setAILocked(true);
+    } else {
+      keyPreview.textContent = 'No AI API key saved yet.';
+      keyInput.value = '';
+      keyInput.type = 'password';
+      _setAILocked(false);
+    }
+  } catch (e) {
+    keyPreview.textContent = 'Could not load AI settings.';
+    _setAILocked(false);
+    _setSectionResult('ai-settings-result', `✗ ${e.message || 'Could not load AI settings.'}`, false);
+  }
+}
+
+async function saveAISettings() {
+  const provider = _currentAIProvider();
+  const model = _getAIModelValue();
+  const keyInput = document.getElementById('ai-api-key-input');
+  const key = (keyInput?.value || '').trim();
+  const saveBtn = document.getElementById('btn-save-ai');
+  if (!saveBtn || !keyInput) return;
+
+  if (!model) {
+    _setSectionResult('ai-settings-result', 'Model is required.', false);
+    return;
+  }
+  if (!key) {
+    _setSectionResult('ai-settings-result', 'Please paste your API key first.', false);
+    return;
+  }
+
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving...';
+
+  try {
+    const r = await fetch('/api/settings/ai', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider, model, api_key: key }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      throw new Error(_extractApiErrorDetail(d.detail, 'Save failed.'));
+    }
+
+    document.getElementById('ai-key-current').textContent = `Current key: ${d.api_key_preview || 'configured'}`;
+    keyInput.value = '';
+    keyInput.type = 'password';
+    _setSectionResult('ai-settings-result', '✓ AI settings saved.', true);
+    _setAILocked(true);
+  } catch (e) {
+    _setSectionResult('ai-settings-result', `✗ ${e.message || 'Save failed.'}`, false);
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save AI Settings';
+  }
 }
 
 async function saveApiKey() {

@@ -10,6 +10,24 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-04, Stage 4 Frontend: AI Settings Card)
+
+- Added `AI` tab in `static/index.html` desktop and mobile navigation (fifth tab position).
+- Added `#tab-ai` panel with AI settings card UI in `static/index.html`.
+- Implemented provider/model controls per Stage 4 requirements:
+	- OpenRouter: text model field + chip shortcuts
+	- Anthropic/Gemini/OpenAI/DeepSeek: provider-specific model dropdowns
+- OpenRouter chip set now uses valid model IDs and replaces invalid `google/gemini-2.0-flash-exp` with `google/gemini-flash-1.5`.
+- Implemented frontend API flow:
+	- `loadAISettings()` calls `GET /api/settings/ai` when AI tab activates
+	- `saveAISettings()` calls `PUT /api/settings/ai` with provider/model/api_key payload
+	- empty API key blocked client-side with inline error
+	- backend validation details (including `422`) surfaced inline
+	- successful save locks fields, shows masked key preview, and enables `Change` unlock action
+- Validation evidence:
+	- static diagnostics on `static/index.html` report no errors
+	- tab activation flow remains intact with added AI branch
+
 ## Latest Maintenance Update (2026-05-04, Stage 3 Backend: AI Chat Proxy Endpoint)
 
 - Added `AIChatMessage` and `AIChatRequest` models in `main.py`.

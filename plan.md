@@ -2,6 +2,35 @@
 
 Last updated: 2026-05-03 (Backlog source-of-truth established)
 
+## Latest Maintenance Update (2026-05-04, Stage 4 Frontend: AI Settings Card)
+
+- Updated `static/index.html` navigation to add `AI` as the fifth tab in both desktop and mobile tab lists.
+- Added new `#tab-ai` panel in `static/index.html` with an AI settings card containing:
+	- provider selector (`OpenRouter`, `Anthropic`, `Gemini`, `ChatGPT (OpenAI)`, `DeepSeek`)
+	- dynamic model control area
+	- encrypted API key input with show/hide toggle
+	- inline result feedback and save/change actions
+- Added provider-aware model control behavior in `static/index.html`:
+	- OpenRouter uses free-text model input plus quick-pick chips:
+		- `google/gemini-flash-1.5`
+		- `anthropic/claude-sonnet-4-5`
+		- `meta-llama/llama-3.3-70b-instruct`
+		- `deepseek/deepseek-chat`
+		- `openai/gpt-4o`
+	- Anthropic models: `claude-opus-4-5`, `claude-sonnet-4-5`, `claude-haiku-3-5`
+	- Gemini models: `gemini-2.0-flash`, `gemini-2.0-flash-lite`, `gemini-1.5-pro`
+	- OpenAI models: `gpt-4o`, `gpt-4o-mini`, `o3-mini`
+	- DeepSeek models: `deepseek-chat`, `deepseek-reasoner`
+- Added AI settings API wiring in `static/index.html`:
+	- `loadAISettings()` -> `GET /api/settings/ai` on AI tab activation
+	- `saveAISettings()` -> `PUT /api/settings/ai`
+	- inline `422`/validation detail extraction and display
+	- empty API key client-side validation (request blocked)
+	- success lock flow: fields disabled + masked preview shown + `Change` unlock action
+- Validation:
+	- static diagnostics for `static/index.html` report no errors
+	- existing tab activation branches preserved with added `ai` activation load hook
+
 ## Latest Maintenance Update (2026-05-04, Stage 3 Backend: AI Chat Proxy Endpoint)
 
 - Added `AIChatMessage` and `AIChatRequest` models in `main.py`.
