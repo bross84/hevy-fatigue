@@ -3399,23 +3399,23 @@ async function sendAIMessage() {
       const events = buffer.split('\n\n');
       buffer = events.pop() || '';
 
-      events.forEach(eventBlock => {
+      for (const eventBlock of events) {
         const lines = eventBlock
           .split('\n')
           .map(line => line.trim())
           .filter(line => line.startsWith('data:'));
-        if (!lines.length) return;
+        if (!lines.length) continue;
         const payload = lines.map(line => line.slice(5)).join('');
         if (payload.trim() === '[DONE]') {
           doneReceived = true;
-          return;
+          break;
         }
-        if (!payload) return;
+        if (!payload) continue;
         assistantText += payload;
         if (bubbleEl) bubbleEl.textContent = assistantText;
         const container = document.getElementById('ai-chat-messages');
         if (container) container.scrollTop = container.scrollHeight;
-      });
+      }
     }
 
     if (!assistantText.trim()) {
