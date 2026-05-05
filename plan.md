@@ -22,8 +22,8 @@ Last updated: 2026-05-03 (Backlog source-of-truth established)
 	- `activateTab('ai')` now runs `loadAISettings().then(() => loadAIContext())`
 - Implemented `sendAIMessage()` in `static/index.html`:
 	- posts `{ message, history: aiChatHistory }` to `POST /api/ai/chat`
-	- reads SSE stream and appends deltas into a streaming assistant bubble
-	- renders streaming/final assistant content with `marked.parse()`
+	- reads SSE stream into a plain-text streaming assistant bubble
+	- renders assistant markdown with `marked.parse()` once after the stream completes
 	- finalizes exchange into `aiChatHistory`
 - Implemented `clearAIChat()` in `static/index.html`:
 	- resets `aiChatHistory`

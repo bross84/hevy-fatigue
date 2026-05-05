@@ -30,7 +30,8 @@ This document locks implementation to strict stage gates and dependency order.
 	- called on each AI tab activation after `loadAISettings()`
 - Implemented `sendAIMessage()` in `static/index.html`:
 	- posts `{ message, history: aiChatHistory }` to `POST /api/ai/chat`
-	- consumes SSE stream and updates a streaming assistant bubble with markdown rendering
+	- consumes SSE stream into a plain-text streaming assistant bubble
+	- renders assistant markdown once after stream completion
 	- finalizes completed exchange into `aiChatHistory`
 - Implemented `clearAIChat()` in `static/index.html` to reset `aiChatHistory` and clear chat UI state.
 - Implemented unconfigured chat gating:

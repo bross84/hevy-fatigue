@@ -3392,11 +3392,15 @@ function _appendAIMessage(role, content, streaming = false) {
   const placeholder = container.querySelector('.ai-chat-placeholder');
   if (placeholder) placeholder.remove();
 
+  const bubbleContent = role === 'user'
+    ? _aiEscapeHtml(content)
+    : (streaming ? _aiEscapeHtml(content || '') : marked.parse(content || ''));
+
   const wrapper = document.createElement('div');
   wrapper.className = `ai-chat-msg ${role}`;
   wrapper.innerHTML = `
     <div class="ai-chat-msg-label">${role === 'user' ? 'You' : 'Assistant'}</div>
-    <div class="ai-chat-bubble${streaming ? ' streaming' : ''}">${role === 'user' ? _aiEscapeHtml(content) : marked.parse(content || '')}</div>
+    <div class="ai-chat-bubble${streaming ? ' streaming' : ''}">${bubbleContent}</div>
   `;
   container.appendChild(wrapper);
   container.scrollTop = container.scrollHeight;
@@ -3494,7 +3498,7 @@ async function sendAIMessage() {
         }
         if (!payload) return;
         assistantText += payload;
-        if (bubbleEl) bubbleEl.innerHTML = marked.parse(assistantText);
+        if (bubbleEl) bubbleEl.textContent = assistantText;
         const container = document.getElementById('ai-chat-messages');
         if (container) container.scrollTop = container.scrollHeight;
       });
@@ -3502,9 +3506,11 @@ async function sendAIMessage() {
 
     if (!assistantText.trim()) {
       assistantText = 'No response content returned.';
-      if (bubbleEl) bubbleEl.innerHTML = marked.parse(assistantText);
     }
-    if (bubbleEl) bubbleEl.classList.remove('streaming');
+    if (bubbleEl) {
+      bubbleEl.classList.remove('streaming');
+      bubbleEl.innerHTML = marked.parse(assistantText);
+    }
 
     aiChatHistory.push({ role: 'user', content: message });
     aiChatHistory.push({ role: 'assistant', content: assistantText });
