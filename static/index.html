@@ -3491,7 +3491,7 @@ async function sendAIMessage() {
           .map(line => line.trim())
           .filter(line => line.startsWith('data:'));
         if (!lines.length) return;
-        const payload = lines.map(line => line.slice(5).trimStart()).join('\n');
+        const payload = lines.map(line => line.slice(5)).join('');
         if (payload === '[DONE]') {
           doneReceived = true;
           return;
