@@ -2,6 +2,20 @@
 
 Last updated: 2026-05-03 (Backlog source-of-truth established)
 
+## Latest Maintenance Update (2026-05-05, Stage 4 Fix: Move AI Settings To Settings Tab)
+
+- Moved the full AI settings card markup (provider/model/API key + save/change controls) from `#tab-ai` to `#tab-settings` in `static/index.html`.
+- Left `#tab-ai` in the DOM but empty to reserve it for Stage 5 chat UI.
+- Kept AI settings logic unchanged:
+	- `loadAISettings()` unchanged
+	- `saveAISettings()` unchanged
+	- AI tab activation still calls `loadAISettings()` for configured-state refresh
+- No backend changes.
+- No CSS changes required.
+- Validation:
+	- static diagnostics on `static/index.html` pass (no errors)
+	- markup checks confirm AI card is now inside Settings tab and AI tab is empty
+
 ## Latest Maintenance Update (2026-05-04, Stage 4 Frontend: AI Settings Card)
 
 - Updated `static/index.html` navigation to add `AI` as the fifth tab in both desktop and mobile tab lists.

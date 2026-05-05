@@ -10,6 +10,20 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-05, Stage 4 Fix: Move AI Settings To Settings Tab)
+
+- Relocated the AI settings card in `static/index.html` from `#tab-ai` into the existing `#tab-settings` section.
+- Preserved `#tab-ai` as an empty tab panel in the DOM for upcoming Stage 5 chat content.
+- Kept existing AI settings JavaScript behavior unchanged:
+	- `loadAISettings()` unchanged
+	- `saveAISettings()` unchanged
+	- AI tab activation still invokes `loadAISettings()` for configured-state checks
+- No backend/API changes.
+- No CSS changes were required for this relocation.
+- Validation evidence:
+	- static diagnostics on `static/index.html` report no errors
+	- DOM checks confirm AI settings card is now under Settings tab and AI tab is empty
+
 ## Latest Maintenance Update (2026-05-04, Stage 4 Frontend: AI Settings Card)
 
 - Added `AI` tab in `static/index.html` desktop and mobile navigation (fifth tab position).

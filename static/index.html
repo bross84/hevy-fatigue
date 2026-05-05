@@ -2274,49 +2274,6 @@ tbody tr:hover td { background: var(--row-hover); }
 
 <!-- ══════════════ LOG TAB ══════════════ -->
 <section id="tab-ai" class="tab-content">
-  <div class="card settings-card ai-settings-card">
-    <div class="card-title">AI Settings</div>
-    <p class="ai-settings-helper" style="margin-top:-6px;margin-bottom:12px;line-height:1.55;">
-      Configure your AI provider, model, and API key for chat features. API keys are stored encrypted in local app settings.
-    </p>
-
-    <div class="ai-preview" id="ai-key-current">No AI API key saved yet.</div>
-
-    <div class="ai-settings-grid">
-      <div class="ai-settings-field">
-        <label class="ai-settings-label" for="ai-provider">Provider</label>
-        <select id="ai-provider" class="ai-control" onchange="handleAIProviderChange()">
-          <option value="openrouter">OpenRouter</option>
-          <option value="anthropic">Anthropic</option>
-          <option value="gemini">Gemini</option>
-          <option value="openai">ChatGPT (OpenAI)</option>
-          <option value="deepseek">DeepSeek</option>
-        </select>
-      </div>
-
-      <div class="ai-settings-field">
-        <label class="ai-settings-label" for="ai-model-value">Model</label>
-        <div id="ai-model-field"></div>
-      </div>
-
-      <div class="ai-settings-field">
-        <label class="ai-settings-label" for="ai-api-key-input">API Key</label>
-        <div class="settings-key-row">
-          <input type="password" id="ai-api-key-input" placeholder="Paste your AI provider API key..." autocomplete="off">
-          <button class="btn" id="ai-api-key-toggle" onclick="toggleAIKeyVisibility()" title="Show / hide">Show</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="settings-result" id="ai-settings-result"></div>
-
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
-      <button class="btn btn-primary" id="btn-save-ai" onclick="saveAISettings()">Save AI Settings</button>
-    </div>
-    <div class="ai-change-wrap" id="ai-change-wrap">
-      <button class="btn btn-secondary" id="btn-change-ai" onclick="unlockAISettings()">Change</button>
-    </div>
-  </div>
 </section>
 
 <!-- ══════════════ LOG TAB ══════════════ -->
@@ -2371,6 +2328,50 @@ tbody tr:hover td { background: var(--row-hover); }
     <div class="card-title">Engine Diagnostics &amp; Tweaks</div>
     <p class="settings-diag-body">The diagnostics page shows how your scores are calculated, the raw numbers behind your Today recommendation, and settings for fine-tuning how the engine classifies and patterns your training data.</p>
     <a class="settings-diag-cta" href="/static/diagnostic.html">Open Engine Diagnostics →</a>
+  </div>
+
+  <div class="card settings-card ai-settings-card">
+    <div class="card-title">AI Settings</div>
+    <p class="ai-settings-helper" style="margin-top:-6px;margin-bottom:12px;line-height:1.55;">
+      Configure your AI provider, model, and API key for chat features. API keys are stored encrypted in local app settings.
+    </p>
+
+    <div class="ai-preview" id="ai-key-current">No AI API key saved yet.</div>
+
+    <div class="ai-settings-grid">
+      <div class="ai-settings-field">
+        <label class="ai-settings-label" for="ai-provider">Provider</label>
+        <select id="ai-provider" class="ai-control" onchange="handleAIProviderChange()">
+          <option value="openrouter">OpenRouter</option>
+          <option value="anthropic">Anthropic</option>
+          <option value="gemini">Gemini</option>
+          <option value="openai">ChatGPT (OpenAI)</option>
+          <option value="deepseek">DeepSeek</option>
+        </select>
+      </div>
+
+      <div class="ai-settings-field">
+        <label class="ai-settings-label" for="ai-model-value">Model</label>
+        <div id="ai-model-field"></div>
+      </div>
+
+      <div class="ai-settings-field">
+        <label class="ai-settings-label" for="ai-api-key-input">API Key</label>
+        <div class="settings-key-row">
+          <input type="password" id="ai-api-key-input" placeholder="Paste your AI provider API key..." autocomplete="off">
+          <button class="btn" id="ai-api-key-toggle" onclick="toggleAIKeyVisibility()" title="Show / hide">Show</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-result" id="ai-settings-result"></div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+      <button class="btn btn-primary" id="btn-save-ai" onclick="saveAISettings()">Save AI Settings</button>
+    </div>
+    <div class="ai-change-wrap" id="ai-change-wrap">
+      <button class="btn btn-secondary" id="btn-change-ai" onclick="unlockAISettings()">Change</button>
+    </div>
   </div>
 </section>
 
