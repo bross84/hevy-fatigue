@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date as date_type, timedelta, datetime
 from cryptography.fernet import Fernet
+import httpx
+import json
 import os
 import threading
 
@@ -96,6 +98,22 @@ class ReadinessUpdate(BaseModel):
 
 class SettingsInput(BaseModel):
     hevy_api_key: str
+
+
+class AISettingsInput(BaseModel):
+    provider: str
+    api_key: str
+    model: str
+
+
+class AIChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class AIChatRequest(BaseModel):
+    message: str
+    history: list[AIChatMessage] = []
 
 class TrainingStateThresholdsInput(BaseModel):
     tsb_threshold_underloaded: float = Field(8.0, ge=-50.0, le=50.0)
@@ -368,6 +386,7 @@ _CALIBRATION_DEFAULTS = {
 }
 
 _VALID_MODALITIES = {"strength", "hypertrophy", "conditioning", "cardio"}
+_VALID_AI_PROVIDERS = {"openrouter", "anthropic", "gemini", "openai", "deepseek"}
 
 
 def _normalize_modality(value: str | None) -> str:
@@ -403,6 +422,283 @@ def _set_setting_value(db: Session, key: str, value: str) -> None:
         row.value = value
     else:
         db.add(AppSetting(key=key, value=value))
+
+
+def _get_ai_settings(db: Session) -> tuple[str | None, str | None, str | None]:
+    provider = _get_setting_value(db, "ai_provider")
+    model = _get_setting_value(db, "ai_model")
+    encrypted_api_key = _get_setting_value(db, "ai_api_key")
+    if not provider or not model or not encrypted_api_key:
+        return None, None, None
+    try:
+        api_key = _decrypt(encrypted_api_key)
+    except Exception:
+        return None, None, None
+    if not api_key:
+        return None, None, None
+    return provider, model, api_key
+
+
+def _extract_provider_error_message(response: httpx.Response) -> str:
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = None
+
+    if isinstance(payload, dict):
+        if isinstance(payload.get("error"), dict):
+            msg = payload["error"].get("message") or payload["error"].get("type")
+            if msg:
+                return str(msg)
+        if isinstance(payload.get("error"), str):
+            return payload["error"]
+        if isinstance(payload.get("message"), str):
+            return payload["message"]
+
+    text = (response.text or "").strip()
+    return text if text else f"HTTP {response.status_code}"
+
+
+def _safe_sse_chunk(delta: str) -> str:
+    clean = (delta or "").replace("\r", " ").replace("\n", " ").strip()
+    if not clean:
+        return ""
+    return f"data: {clean}\n\n"
+
+
+def _openai_compatible_messages(system_prompt: str, history: list[AIChatMessage], message: str) -> list[dict]:
+    out = [{"role": "system", "content": system_prompt}]
+    for item in history:
+        role = (item.role or "").strip().lower()
+        content = (item.content or "").strip()
+        if role not in {"system", "user", "assistant"} or not content:
+            continue
+        out.append({"role": role, "content": content})
+    out.append({"role": "user", "content": message})
+    return out
+
+
+def _anthropic_messages(history: list[AIChatMessage], message: str) -> list[dict]:
+    out = []
+    for item in history:
+        role = (item.role or "").strip().lower()
+        content = (item.content or "").strip()
+        if role not in {"user", "assistant"} or not content:
+            continue
+        out.append({
+            "role": role,
+            "content": [{"type": "text", "text": content}],
+        })
+    out.append({
+        "role": "user",
+        "content": [{"type": "text", "text": message}],
+    })
+    return out
+
+
+def _gemini_contents(history: list[AIChatMessage], message: str) -> list[dict]:
+    out = []
+    for item in history:
+        role = (item.role or "").strip().lower()
+        content = (item.content or "").strip()
+        if not content:
+            continue
+        if role == "assistant":
+            gemini_role = "model"
+        elif role == "user":
+            gemini_role = "user"
+        else:
+            continue
+        out.append({"role": gemini_role, "parts": [{"text": content}]})
+    out.append({"role": "user", "parts": [{"text": message}]})
+    return out
+
+
+def _stream_openai_family(provider: str, model: str, api_key: str, messages: list[dict]) -> StreamingResponse:
+    url_map = {
+        "openrouter": "https://openrouter.ai/api/v1/chat/completions",
+        "openai": "https://api.openai.com/v1/chat/completions",
+        "deepseek": "https://api.deepseek.com/chat/completions",
+    }
+    url = url_map[provider]
+    client = httpx.Client(timeout=httpx.Timeout(90.0, connect=20.0))
+    request = client.build_request(
+        "POST",
+        url,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": model,
+            "messages": messages,
+            "stream": True,
+        },
+    )
+    try:
+        response = client.send(request, stream=True)
+    except httpx.HTTPError as exc:
+        client.close()
+        raise HTTPException(status_code=502, detail=f"{provider} request failed: {exc}") from exc
+
+    if response.status_code >= 400:
+        response.read()
+        detail = _extract_provider_error_message(response)
+        response.close()
+        client.close()
+        raise HTTPException(status_code=502, detail=f"{provider} error: {detail}")
+
+    def _iter():
+        try:
+            for line in response.iter_lines():
+                if not line:
+                    continue
+                text = line.decode("utf-8", errors="ignore") if isinstance(line, bytes) else str(line)
+                if not text.startswith("data:"):
+                    continue
+                raw = text[5:].strip()
+                if raw == "[DONE]":
+                    break
+                try:
+                    obj = json.loads(raw)
+                except json.JSONDecodeError:
+                    continue
+                choices = obj.get("choices") or []
+                if not choices:
+                    continue
+                delta = (choices[0].get("delta") or {}).get("content")
+                if not delta:
+                    delta = choices[0].get("text")
+                chunk = _safe_sse_chunk(delta or "")
+                if chunk:
+                    yield chunk
+            yield "data: [DONE]\n\n"
+        finally:
+            response.close()
+            client.close()
+
+    return StreamingResponse(_iter(), media_type="text/event-stream")
+
+
+def _stream_anthropic(model: str, api_key: str, system_prompt: str, history: list[AIChatMessage], message: str) -> StreamingResponse:
+    client = httpx.Client(timeout=httpx.Timeout(90.0, connect=20.0))
+    request = client.build_request(
+        "POST",
+        "https://api.anthropic.com/v1/messages",
+        headers={
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        },
+        json={
+            "model": model,
+            "system": system_prompt,
+            "messages": _anthropic_messages(history, message),
+            "max_tokens": 1024,
+            "stream": True,
+        },
+    )
+    try:
+        response = client.send(request, stream=True)
+    except httpx.HTTPError as exc:
+        client.close()
+        raise HTTPException(status_code=502, detail=f"anthropic request failed: {exc}") from exc
+
+    if response.status_code >= 400:
+        response.read()
+        detail = _extract_provider_error_message(response)
+        response.close()
+        client.close()
+        raise HTTPException(status_code=502, detail=f"anthropic error: {detail}")
+
+    def _iter():
+        try:
+            for line in response.iter_lines():
+                if not line:
+                    continue
+                text = line.decode("utf-8", errors="ignore") if isinstance(line, bytes) else str(line)
+                if not text.startswith("data:"):
+                    continue
+                raw = text[5:].strip()
+                if not raw or raw == "[DONE]":
+                    continue
+                try:
+                    obj = json.loads(raw)
+                except json.JSONDecodeError:
+                    continue
+
+                delta = ""
+                if obj.get("type") == "content_block_delta":
+                    delta = (obj.get("delta") or {}).get("text") or ""
+                elif obj.get("type") == "message_delta":
+                    delta = (obj.get("delta") or {}).get("text") or ""
+
+                chunk = _safe_sse_chunk(delta)
+                if chunk:
+                    yield chunk
+            yield "data: [DONE]\n\n"
+        finally:
+            response.close()
+            client.close()
+
+    return StreamingResponse(_iter(), media_type="text/event-stream")
+
+
+def _stream_gemini(model: str, api_key: str, system_prompt: str, history: list[AIChatMessage], message: str) -> StreamingResponse:
+    client = httpx.Client(timeout=httpx.Timeout(90.0, connect=20.0))
+    request = client.build_request(
+        "POST",
+        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent",
+        params={"key": api_key},
+        headers={"content-type": "application/json"},
+        json={
+            "systemInstruction": {"parts": [{"text": system_prompt}]},
+            "contents": _gemini_contents(history, message),
+        },
+    )
+    try:
+        response = client.send(request, stream=True)
+    except httpx.HTTPError as exc:
+        client.close()
+        raise HTTPException(status_code=502, detail=f"gemini request failed: {exc}") from exc
+
+    if response.status_code >= 400:
+        response.read()
+        detail = _extract_provider_error_message(response)
+        response.close()
+        client.close()
+        raise HTTPException(status_code=502, detail=f"gemini error: {detail}")
+
+    def _iter():
+        try:
+            for line in response.iter_lines():
+                if not line:
+                    continue
+                text = line.decode("utf-8", errors="ignore") if isinstance(line, bytes) else str(line)
+                raw = text[5:].strip() if text.startswith("data:") else text.strip()
+                if not raw or raw == "[DONE]":
+                    continue
+                try:
+                    obj = json.loads(raw)
+                except json.JSONDecodeError:
+                    continue
+
+                candidates = obj.get("candidates") or []
+                if not candidates:
+                    continue
+                parts = ((candidates[0].get("content") or {}).get("parts") or [])
+                delta = "".join(
+                    p.get("text", "") for p in parts if isinstance(p, dict)
+                )
+                chunk = _safe_sse_chunk(delta)
+                if chunk:
+                    yield chunk
+            yield "data: [DONE]\n\n"
+        finally:
+            response.close()
+            client.close()
+
+    return StreamingResponse(_iter(), media_type="text/event-stream")
 
 
 def _seed_and_migrate_session_processing_settings(db: Session) -> None:
@@ -703,6 +999,48 @@ def save_settings(data: SettingsInput, db: Session = Depends(get_db)):
     db.commit()
     preview = "···" + key[-4:] if len(key) >= 4 else "···"
     return {"message": "API key saved.", "api_key_preview": preview}
+
+
+@app.get("/api/settings/ai")
+def get_ai_settings(db: Session = Depends(get_db)):
+    provider, model, api_key = _get_ai_settings(db)
+    configured = bool(provider and model and api_key)
+    api_key_preview = "···" + api_key[-4:] if api_key else None
+    return {
+        "configured": configured,
+        "provider": provider if configured else None,
+        "model": model if configured else None,
+        "api_key_preview": api_key_preview,
+    }
+
+
+@app.put("/api/settings/ai")
+def save_ai_settings(data: AISettingsInput, db: Session = Depends(get_db)):
+    provider = data.provider.strip().lower()
+    model = data.model.strip()
+    api_key = data.api_key.strip()
+
+    if provider not in _VALID_AI_PROVIDERS:
+        raise HTTPException(
+            status_code=422,
+            detail="provider must be one of: openrouter, anthropic, gemini, openai, deepseek",
+        )
+    if not model:
+        raise HTTPException(status_code=422, detail="model cannot be empty.")
+    if not api_key:
+        raise HTTPException(status_code=422, detail="api_key cannot be empty.")
+
+    _set_setting_value(db, "ai_provider", provider)
+    _set_setting_value(db, "ai_model", model)
+    _set_setting_value(db, "ai_api_key", _encrypt(api_key))
+    db.commit()
+
+    return {
+        "configured": True,
+        "provider": provider,
+        "model": model,
+        "api_key_preview": "···" + api_key[-4:],
+    }
 
 @app.get("/api/settings/test")
 def test_api_key(db: Session = Depends(get_db)):
@@ -1588,8 +1926,7 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
     }
 
 
-@app.get("/api/diagnostics/snapshot")
-def get_diagnostics_snapshot(db: Session = Depends(get_db)):
+def _build_diagnostics_snapshot(db: Session) -> dict:
     today_date = date_type.today()
     history, _, _ = _compute_training_load(60, db)
     today = history[-1] if history else {
@@ -1788,6 +2125,145 @@ def get_diagnostics_snapshot(db: Session = Depends(get_db)):
             for s in recent_sessions
         ],
     }
+
+
+@app.get("/api/diagnostics/snapshot")
+def get_diagnostics_snapshot(db: Session = Depends(get_db)):
+    return _build_diagnostics_snapshot(db)
+
+
+def _build_ai_system_prompt(db: Session) -> str:
+    snapshot = _build_diagnostics_snapshot(db)
+    today_date = date_type.today()
+
+    def _fmt_text(value: object) -> str:
+        if value is None:
+            return "N/A"
+        text = str(value).strip()
+        return text if text else "N/A"
+
+    def _fmt_num(value: object, decimals: int = 2) -> str:
+        if value is None:
+            return "N/A"
+        if isinstance(value, (int, float)):
+            return f"{value:.{decimals}f}"
+        return _fmt_text(value)
+
+    combined = snapshot.get("combined_score", {})
+    subjective = snapshot.get("subjective_breakdown", {})
+    subjective_raw = subjective.get("raw", {})
+    soreness = subjective_raw.get("soreness", {})
+    objective = snapshot.get("objective_breakdown", {})
+    training = snapshot.get("training_load", {})
+    joint = snapshot.get("joint_advisory", {})
+    joint_raw = joint.get("raw", {})
+    joint_state = joint.get("state", {})
+
+    def _joint_state_level(state_value: object) -> str:
+        if isinstance(state_value, dict):
+            return _fmt_text(state_value.get("level"))
+        return _fmt_text(state_value)
+
+    lines = [
+        "You are an S&C assistant helping interpret this athlete snapshot.",
+        f"Date: {_fmt_text(snapshot.get('date', str(today_date)))}",
+        "",
+        "Scores:",
+        f"Combined Score: {_fmt_num(combined.get('combined_score'))}",
+        f"Subjective Score: {_fmt_num(combined.get('subjective_score'))}",
+        f"Objective Score: {_fmt_num(combined.get('objective_score'))}",
+        "",
+        "Check-in Details:",
+    ]
+
+    if snapshot.get("checkin_exists"):
+        lines.extend([
+            f"Tiredness: {_fmt_text(subjective_raw.get('tiredness'))}",
+            f"Perceived Recovery: {_fmt_text(subjective_raw.get('perceived_recovery'))}",
+            f"Sore Quad: {_fmt_text(soreness.get('sore_quad_dom'))}",
+            f"Sore Posterior: {_fmt_text(soreness.get('sore_posterior'))}",
+            f"Sore Upper Push: {_fmt_text(soreness.get('sore_upper_push'))}",
+            f"Sore Upper Pull: {_fmt_text(soreness.get('sore_upper_pull'))}",
+            f"Joint Upper Raw: {_fmt_text(subjective_raw.get('joint_upper'))}",
+            f"Joint Lower Raw: {_fmt_text(subjective_raw.get('joint_lower'))}",
+        ])
+    else:
+        lines.append("No check-in recorded for today")
+
+    lines.extend([
+        "",
+        "Joint Advisory:",
+        f"Upper Raw: {_fmt_text(joint_raw.get('upper'))}",
+        f"Lower Raw: {_fmt_text(joint_raw.get('lower'))}",
+        f"Upper State: {_joint_state_level(joint_state.get('upper'))}",
+        f"Lower State: {_joint_state_level(joint_state.get('lower'))}",
+        "",
+        "Training Load:",
+        f"ATL: {_fmt_num(training.get('atl'))}",
+        f"CTL: {_fmt_num(training.get('ctl'))}",
+        f"TSB: {_fmt_num(training.get('tsb'))}",
+        "",
+        "Volume Baseline:",
+        f"7-day Load Volume: {_fmt_num(objective.get('seven_day_load_volume'))}",
+        f"6-month Weekly Avg Load Volume: {_fmt_num(objective.get('six_month_weekly_avg_load_volume'))}",
+        f"Volume Ratio: {_fmt_num(objective.get('ratio'), 4)}",
+        "",
+        "Last 7 Days Sessions:",
+    ])
+
+    seven_day_cutoff = today_date - timedelta(days=6)
+    recent_from_snapshot: list[dict] = []
+    for session in snapshot.get("last_10_session_classifications", []):
+        raw_date = session.get("workout_date")
+        if not raw_date:
+            continue
+        try:
+            parsed = date_type.fromisoformat(raw_date)
+        except ValueError:
+            continue
+        if parsed >= seven_day_cutoff:
+            recent_from_snapshot.append(session)
+
+    if not recent_from_snapshot:
+        lines.append("No sessions in the last 7 days")
+    else:
+        for session in recent_from_snapshot:
+            lines.append(
+                "Session: "
+                f"{_fmt_text(session.get('workout_date'))} | "
+                f"{_fmt_text(session.get('workout_title'))} | "
+                f"modality={_fmt_text(session.get('modality'))} | "
+                f"status={_fmt_text(session.get('verification_status'))} | "
+                f"sRPE={_fmt_num(session.get('srpe'))}"
+            )
+
+    return "\n".join(lines)
+
+
+@app.post("/api/ai/chat")
+def ai_chat_proxy(data: AIChatRequest, db: Session = Depends(get_db)):
+    provider, model, api_key = _get_ai_settings(db)
+    if not provider or not model or not api_key:
+        raise HTTPException(status_code=422, detail="AI settings are not configured.")
+
+    message = (data.message or "").strip()
+    if not message:
+        raise HTTPException(status_code=422, detail="message cannot be empty.")
+
+    system_prompt = _build_ai_system_prompt(db)
+    history = data.history or []
+
+    if provider in {"openrouter", "openai", "deepseek"}:
+        messages = _openai_compatible_messages(system_prompt, history, message)
+        return _stream_openai_family(provider, model, api_key, messages)
+
+    if provider == "anthropic":
+        return _stream_anthropic(model, api_key, system_prompt, history, message)
+
+    if provider == "gemini":
+        return _stream_gemini(model, api_key, system_prompt, history, message)
+
+    raise HTTPException(status_code=422, detail=f"Unsupported AI provider: {provider}")
 
 
 # ── Readiness history ─────────────────────────────────────────────────────────

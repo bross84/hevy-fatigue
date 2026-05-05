@@ -2,6 +2,82 @@
 
 Last updated: 2026-05-03 (Backlog source-of-truth established)
 
+## Latest Maintenance Update (2026-05-04, Stage 3 Backend: AI Chat Proxy Endpoint)
+
+- Added `AIChatMessage` and `AIChatRequest` models in `main.py`.
+- Added `POST /api/ai/chat` in `main.py`:
+	- returns `422` when AI settings are not configured
+	- builds system prompt using `_build_ai_system_prompt(db)`
+	- dispatches by stored provider (`openrouter`, `openai`, `deepseek`, `anthropic`, `gemini`)
+- Implemented provider-specific streaming helpers using `httpx` with streamed upstream responses:
+	- OpenRouter/OpenAI/DeepSeek via shared OpenAI-compatible path and message format
+	- Anthropic via `https://api.anthropic.com/v1/messages` with required headers and Anthropic message format
+	- Gemini via `.../{model}:streamGenerateContent?key=...` with Gemini contents format
+- SSE proxy behavior:
+	- forwards chunks as `data: {delta}\n\n`
+	- terminates with `data: [DONE]\n\n`
+- Provider error mapping:
+	- upstream HTTP errors are surfaced as `502` with provider error detail
+	- avoids raw Python traceback leakage in response detail
+- Validation:
+	- `python -m py_compile main.py` passed
+	- Stage 3 gate checks passed in deterministic mocked-stream harness:
+		- no AI settings configured -> `422`
+		- bad API key -> `502` with provider message
+		- OpenAI-compatible stream yields at least one `data:` chunk and ends with `[DONE]`
+		- Anthropic stream yields at least one `data:` chunk and ends with `[DONE]`
+		- history payload propagation verified with follow-up context response
+
+## Latest Maintenance Update (2026-05-04, Stage 2 Backend: System Prompt Builder)
+
+- Refactored diagnostics snapshot logic into shared helper `_build_diagnostics_snapshot(db)` in `main.py`.
+- Updated `GET /api/diagnostics/snapshot` in `main.py` to return `_build_diagnostics_snapshot(db)` so route output remains unchanged while enabling internal reuse.
+- Added `_build_ai_system_prompt(db)` helper in `main.py` that consumes the same diagnostics snapshot data and builds a structured system prompt containing:
+	- date
+	- combined/subjective/objective scores
+	- check-in detail fields
+	- joint advisory
+	- ATL/CTL/TSB
+	- volume baseline
+	- last 7 days of sessions
+- Missing-data handling in `_build_ai_system_prompt(db)`:
+	- emits `No check-in recorded for today` when no check-in exists for today
+	- emits `No sessions in the last 7 days` when no sessions match the last-7-day window
+	- normalizes missing values to `N/A` (no literal `None` output)
+- Validation:
+	- `python -m py_compile main.py` passed
+	- Stage 2 gate checks passed via isolated temp DB snippet:
+		- with today's check-in: output contains `Combined Score`, `Tiredness`, `ATL`, and at least one `Session:` line
+		- with no check-in today: output contains `No check-in recorded for today` and does not contain literal `None`
+		- with no sessions in last 7 days: output contains `No sessions in the last 7 days`
+
+## Latest Maintenance Update (2026-05-04, Stage 1 Backend: Encrypted AI Settings Storage)
+
+- Added `AISettingsInput` in `main.py` with fields `provider`, `api_key`, and `model` for AI settings payloads.
+- Added `_get_ai_settings(db)` helper in `main.py`:
+	- reads `ai_provider`, `ai_model`, and `ai_api_key` from `app_settings`
+	- decrypts `ai_api_key` via `_decrypt()`
+	- returns `(None, None, None)` when any value is missing or decryption fails
+- Added `GET /api/settings/ai` in `main.py`:
+	- always returns stable shape `{ configured, provider, model, api_key_preview }`
+	- maps unset/missing state to `configured: false` with null `provider`, `model`, and `api_key_preview`
+	- never returns raw API key
+- Added `PUT /api/settings/ai` in `main.py`:
+	- validates provider allowlist: `openrouter`, `anthropic`, `gemini`, `openai`, `deepseek`
+	- returns `422` on invalid provider
+	- trims and validates non-empty `model` and `api_key` (`422` on empty)
+	- encrypts API key with `_encrypt()` and stores `ai_provider`, `ai_model`, `ai_api_key` in `app_settings`
+	- returns same shape as GET with masked preview only
+- Validation:
+	- `python -m py_compile main.py` passed
+	- API gate checks passed (isolated temp DB + TestClient):
+		- unset `GET /api/settings/ai` returns `200` and stable `configured: false` null-shape
+		- valid `PUT /api/settings/ai` returns `200`, `configured: true`, preview suffix matches key tail, raw key absent
+		- invalid provider returns `422`
+		- empty key returns `422`
+		- post-save `GET /api/settings/ai` returns correct provider/model, raw key absent
+		- DB `app_settings.ai_api_key` stored encrypted (Fernet token prefix `gAAA`, not plaintext)
+
 ## Latest Maintenance Update (2026-05-03, Backlog Source-of-Truth)
 
 - Added `backlog.md` in project root with release blockers, bookmarked items, low-priority items, and recently completed context.

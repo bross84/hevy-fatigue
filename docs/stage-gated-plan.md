@@ -10,6 +10,79 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-04, Stage 3 Backend: AI Chat Proxy Endpoint)
+
+- Added `AIChatMessage` and `AIChatRequest` models in `main.py`.
+- Added `POST /api/ai/chat` in `main.py` with provider dispatch based on stored AI settings.
+- Endpoint behavior implemented:
+	- `422` when AI settings are not configured
+	- system prompt sourced from `_build_ai_system_prompt(db)`
+	- provider routing for `openrouter`, `openai`, `deepseek`, `anthropic`, and `gemini`
+- Outbound provider calls implemented with streamed `httpx` responses and provider-specific request formats:
+	- OpenRouter/OpenAI/DeepSeek use OpenAI-compatible `messages` payload with bearer auth
+	- Anthropic uses `x-api-key` + `anthropic-version` headers and Anthropic messages payload
+	- Gemini uses `streamGenerateContent` endpoint with API key query param and Gemini contents payload
+- SSE proxy contract:
+	- emits `data: {delta}\n\n` chunks
+	- emits terminal `data: [DONE]\n\n`
+- Provider error handling:
+	- upstream HTTP errors return `502` with extracted provider error message
+	- avoids raw traceback details in API response payload
+- Validation evidence:
+	- `python -m py_compile main.py` passed
+	- deterministic mocked-stream gate harness passed:
+		- no settings -> `422`
+		- bad API key -> `502`
+		- OpenAI-compatible stream -> chunk(s) + `[DONE]`
+		- Anthropic stream -> chunk(s) + `[DONE]`
+		- history context propagated into follow-up response path
+
+## Latest Maintenance Update (2026-05-04, Stage 2 Backend: System Prompt Builder)
+
+- Extracted diagnostics snapshot computation into shared helper `_build_diagnostics_snapshot(db)` in `main.py`.
+- Updated route handler `GET /api/diagnostics/snapshot` in `main.py` to return helper output, preserving API contract while enabling internal reuse.
+- Added `_build_ai_system_prompt(db)` in `main.py` that builds a structured system prompt from the same snapshot data used by diagnostics.
+- Prompt content includes required fields:
+	- date
+	- combined/subjective/objective scores
+	- check-in detail fields
+	- joint advisory
+	- ATL/CTL/TSB
+	- volume baseline
+	- last 7 days of sessions
+- Missing-data behavior:
+	- outputs `No check-in recorded for today` when check-in is absent
+	- outputs `No sessions in the last 7 days` when no session rows exist in the 7-day window
+	- formats missing values as `N/A` to avoid literal `None` in generated prompt text
+- Validation evidence:
+	- `python -m py_compile main.py` passed
+	- Gate checks passed in isolated DB execution:
+		- with today's check-in, prompt contains `Combined Score`, `Tiredness`, `ATL`, and a `Session:` line
+		- with no check-in today, prompt contains `No check-in recorded for today` and contains no literal `None`
+		- with no sessions in last 7 days, prompt contains `No sessions in the last 7 days`
+
+## Latest Maintenance Update (2026-05-04, Stage 1 Backend: Encrypted AI Settings Storage)
+
+- Added `AISettingsInput` in `main.py` with fields `provider`, `api_key`, and `model`.
+- Added `_get_ai_settings(db)` helper in `main.py` that reads `ai_provider`, `ai_model`, and encrypted `ai_api_key` from `app_settings`, decrypts key material, and returns `(None, None, None)` when any required value is missing.
+- Added `GET /api/settings/ai` in `main.py`:
+	- always returns stable response shape `{ configured, provider, model, api_key_preview }`
+	- returns `configured: false` with null `provider/model/api_key_preview` when unset
+	- never returns raw API key
+- Added `PUT /api/settings/ai` in `main.py`:
+	- provider allowlist validation (`openrouter|anthropic|gemini|openai|deepseek`) with `422` on mismatch
+	- rejects empty `api_key` and empty `model` with `422`
+	- encrypts API key via `_encrypt()` and stores all three values in `app_settings`
+	- returns same shape as GET with preview only
+- Validation evidence:
+	- `python -m py_compile main.py` passed
+	- Gate checks passed via FastAPI `TestClient` against isolated temp DB:
+		- valid provider/model/key `PUT` returns `200`, `configured: true`, preview ends with key tail, raw key absent
+		- invalid provider returns `422`
+		- empty key returns `422`
+		- post-save `GET` returns correct provider/model, raw key absent
+		- stored `ai_api_key` value is encrypted Fernet token (`gAAA...`), not plaintext
+
 ## Latest Maintenance Update (2026-05-03, Sync Cooldown Removal)
 
 - Removed sync cooldown enforcement from `POST /api/sync` in `main.py`.
