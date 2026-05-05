@@ -2,6 +2,31 @@
 
 Last updated: 2026-05-03 (Backlog source-of-truth established)
 
+## Latest Maintenance Update (2026-05-05, OpenRouter-Only AI Simplification)
+
+- Simplified backend AI integration in `main.py` to OpenRouter-only:
+	- removed provider field from `AISettingsInput`
+	- `_get_ai_settings(db)` now returns only `(model, api_key)` and no longer reads `ai_provider`
+	- removed multi-provider stream helpers (`_stream_anthropic`, `_stream_gemini`) and provider-specific payload builders
+	- renamed `_stream_openai_family(...)` to `_stream_openrouter(...)` and hardcoded OpenRouter chat completions URL
+	- removed provider dispatch from `POST /api/ai/chat`; endpoint now always uses OpenRouter path via `_openai_compatible_messages(...)`
+- Simplified AI settings API contract in `main.py`:
+	- `PUT /api/settings/ai` now accepts/stores only `model` and `api_key` (encrypted)
+	- `GET /api/settings/ai` now returns `configured`, `model`, and `api_key_preview` only (no `provider` field)
+- Confirmed `_safe_sse_chunk()` behavior in `main.py` keeps only carriage-return sanitization:
+	- `clean = (delta or "").replace("\r", "")`
+	- no newline replacement and no `.strip()`
+- Simplified AI settings UI/JS in `static/index.html`:
+	- removed provider dropdown from Settings tab AI card
+	- replaced chip/provider model controls with a single free-text model input and helper note
+	- removed provider-switching frontend logic and provider-bearing save payloads
+	- `saveAISettings()` now sends `{ model, api_key }`
+	- updated AI copy to OpenRouter-specific wording
+- Kept chat card behavior unchanged (including SSE streaming and final markdown render on completion).
+- Validation:
+	- static diagnostics: no errors in `main.py` and `static/index.html`
+	- `python -m py_compile main.py` passes
+
 ## Latest Maintenance Update (2026-05-05, Stage 5 Frontend: AI Chat Card)
 
 - Added AI chat card UI in `#tab-ai` inside `static/index.html` with:

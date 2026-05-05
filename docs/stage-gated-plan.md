@@ -10,6 +10,32 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-05, OpenRouter-Only AI Simplification)
+
+- Simplified backend AI integration in `main.py` to OpenRouter-only.
+- Removed provider from AI settings contract:
+	- `AISettingsInput` now includes only `model` and `api_key`
+	- `GET /api/settings/ai` returns `configured`, `model`, `api_key_preview` (no `provider`)
+	- `PUT /api/settings/ai` validates/stores only `model` and encrypted `api_key`
+- Refactored AI settings retrieval in `main.py`:
+	- `_get_ai_settings(db)` now returns `(model, api_key)` and no longer reads `ai_provider`
+- Removed multi-provider backend branching in `main.py`:
+	- deleted `_stream_anthropic` and `_stream_gemini`
+	- deleted provider-specific message builder helpers used only by those paths
+	- renamed `_stream_openai_family(...)` to `_stream_openrouter(...)`
+	- hardcoded OpenRouter URL (`https://openrouter.ai/api/v1/chat/completions`)
+	- `POST /api/ai/chat` now always streams via OpenRouter using `_openai_compatible_messages(...)`
+- Preserved SSE text fidelity fix in `main.py`:
+	- `_safe_sse_chunk()` keeps only carriage-return sanitization (`replace("\r", "")`), without newline replacement and without `.strip()`
+- Simplified AI settings UI and frontend logic in `static/index.html`:
+	- removed provider dropdown and provider-switching logic
+	- model control is now a single free-text input with OpenRouter helper note
+	- `saveAISettings()` sends only `{ model, api_key }`
+	- OpenRouter wording updated in settings/chat notices
+- Validation evidence:
+	- static diagnostics pass for `main.py` and `static/index.html`
+	- `python -m py_compile main.py` passes
+
 ## Latest Maintenance Update (2026-05-05, Stage 5 Frontend: AI Chat Card)
 
 - Added Stage 5 AI chat card to `#tab-ai` in `static/index.html`.

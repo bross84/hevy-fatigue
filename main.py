@@ -101,7 +101,6 @@ class SettingsInput(BaseModel):
 
 
 class AISettingsInput(BaseModel):
-    provider: str
     api_key: str
     model: str
 
@@ -386,7 +385,6 @@ _CALIBRATION_DEFAULTS = {
 }
 
 _VALID_MODALITIES = {"strength", "hypertrophy", "conditioning", "cardio"}
-_VALID_AI_PROVIDERS = {"openrouter", "anthropic", "gemini", "openai", "deepseek"}
 
 
 def _normalize_modality(value: str | None) -> str:
@@ -424,19 +422,18 @@ def _set_setting_value(db: Session, key: str, value: str) -> None:
         db.add(AppSetting(key=key, value=value))
 
 
-def _get_ai_settings(db: Session) -> tuple[str | None, str | None, str | None]:
-    provider = _get_setting_value(db, "ai_provider")
+def _get_ai_settings(db: Session) -> tuple[str | None, str | None]:
     model = _get_setting_value(db, "ai_model")
     encrypted_api_key = _get_setting_value(db, "ai_api_key")
-    if not provider or not model or not encrypted_api_key:
-        return None, None, None
+    if not model or not encrypted_api_key:
+        return None, None
     try:
         api_key = _decrypt(encrypted_api_key)
     except Exception:
-        return None, None, None
+        return None, None
     if not api_key:
-        return None, None, None
-    return provider, model, api_key
+        return None, None
+    return model, api_key
 
 
 def _extract_provider_error_message(response: httpx.Response) -> str:
@@ -478,53 +475,11 @@ def _openai_compatible_messages(system_prompt: str, history: list[AIChatMessage]
     return out
 
 
-def _anthropic_messages(history: list[AIChatMessage], message: str) -> list[dict]:
-    out = []
-    for item in history:
-        role = (item.role or "").strip().lower()
-        content = (item.content or "").strip()
-        if role not in {"user", "assistant"} or not content:
-            continue
-        out.append({
-            "role": role,
-            "content": [{"type": "text", "text": content}],
-        })
-    out.append({
-        "role": "user",
-        "content": [{"type": "text", "text": message}],
-    })
-    return out
-
-
-def _gemini_contents(history: list[AIChatMessage], message: str) -> list[dict]:
-    out = []
-    for item in history:
-        role = (item.role or "").strip().lower()
-        content = (item.content or "").strip()
-        if not content:
-            continue
-        if role == "assistant":
-            gemini_role = "model"
-        elif role == "user":
-            gemini_role = "user"
-        else:
-            continue
-        out.append({"role": gemini_role, "parts": [{"text": content}]})
-    out.append({"role": "user", "parts": [{"text": message}]})
-    return out
-
-
-def _stream_openai_family(provider: str, model: str, api_key: str, messages: list[dict]) -> StreamingResponse:
-    url_map = {
-        "openrouter": "https://openrouter.ai/api/v1/chat/completions",
-        "openai": "https://api.openai.com/v1/chat/completions",
-        "deepseek": "https://api.deepseek.com/chat/completions",
-    }
-    url = url_map[provider]
+def _stream_openrouter(model: str, api_key: str, messages: list[dict]) -> StreamingResponse:
     client = httpx.Client(timeout=httpx.Timeout(90.0, connect=20.0))
     request = client.build_request(
         "POST",
-        url,
+        "https://openrouter.ai/api/v1/chat/completions",
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
@@ -539,14 +494,14 @@ def _stream_openai_family(provider: str, model: str, api_key: str, messages: lis
         response = client.send(request, stream=True)
     except httpx.HTTPError as exc:
         client.close()
-        raise HTTPException(status_code=502, detail=f"{provider} request failed: {exc}") from exc
+        raise HTTPException(status_code=502, detail=f"OpenRouter request failed: {exc}") from exc
 
     if response.status_code >= 400:
         response.read()
         detail = _extract_provider_error_message(response)
         response.close()
         client.close()
-        raise HTTPException(status_code=502, detail=f"{provider} error: {detail}")
+        raise HTTPException(status_code=502, detail=f"OpenRouter error: {detail}")
 
     def _iter():
         try:
@@ -570,127 +525,6 @@ def _stream_openai_family(provider: str, model: str, api_key: str, messages: lis
                 if not delta:
                     delta = choices[0].get("text")
                 chunk = _safe_sse_chunk(delta or "")
-                if chunk:
-                    yield chunk
-            yield "data: [DONE]\n\n"
-        finally:
-            response.close()
-            client.close()
-
-    return StreamingResponse(_iter(), media_type="text/event-stream")
-
-
-def _stream_anthropic(model: str, api_key: str, system_prompt: str, history: list[AIChatMessage], message: str) -> StreamingResponse:
-    client = httpx.Client(timeout=httpx.Timeout(90.0, connect=20.0))
-    request = client.build_request(
-        "POST",
-        "https://api.anthropic.com/v1/messages",
-        headers={
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-        },
-        json={
-            "model": model,
-            "system": system_prompt,
-            "messages": _anthropic_messages(history, message),
-            "max_tokens": 1024,
-            "stream": True,
-        },
-    )
-    try:
-        response = client.send(request, stream=True)
-    except httpx.HTTPError as exc:
-        client.close()
-        raise HTTPException(status_code=502, detail=f"anthropic request failed: {exc}") from exc
-
-    if response.status_code >= 400:
-        response.read()
-        detail = _extract_provider_error_message(response)
-        response.close()
-        client.close()
-        raise HTTPException(status_code=502, detail=f"anthropic error: {detail}")
-
-    def _iter():
-        try:
-            for line in response.iter_lines():
-                if not line:
-                    continue
-                text = line.decode("utf-8", errors="ignore") if isinstance(line, bytes) else str(line)
-                if not text.startswith("data:"):
-                    continue
-                raw = text[5:].strip()
-                if not raw or raw == "[DONE]":
-                    continue
-                try:
-                    obj = json.loads(raw)
-                except json.JSONDecodeError:
-                    continue
-
-                delta = ""
-                if obj.get("type") == "content_block_delta":
-                    delta = (obj.get("delta") or {}).get("text") or ""
-                elif obj.get("type") == "message_delta":
-                    delta = (obj.get("delta") or {}).get("text") or ""
-
-                chunk = _safe_sse_chunk(delta)
-                if chunk:
-                    yield chunk
-            yield "data: [DONE]\n\n"
-        finally:
-            response.close()
-            client.close()
-
-    return StreamingResponse(_iter(), media_type="text/event-stream")
-
-
-def _stream_gemini(model: str, api_key: str, system_prompt: str, history: list[AIChatMessage], message: str) -> StreamingResponse:
-    client = httpx.Client(timeout=httpx.Timeout(90.0, connect=20.0))
-    request = client.build_request(
-        "POST",
-        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent",
-        params={"key": api_key},
-        headers={"content-type": "application/json"},
-        json={
-            "systemInstruction": {"parts": [{"text": system_prompt}]},
-            "contents": _gemini_contents(history, message),
-        },
-    )
-    try:
-        response = client.send(request, stream=True)
-    except httpx.HTTPError as exc:
-        client.close()
-        raise HTTPException(status_code=502, detail=f"gemini request failed: {exc}") from exc
-
-    if response.status_code >= 400:
-        response.read()
-        detail = _extract_provider_error_message(response)
-        response.close()
-        client.close()
-        raise HTTPException(status_code=502, detail=f"gemini error: {detail}")
-
-    def _iter():
-        try:
-            for line in response.iter_lines():
-                if not line:
-                    continue
-                text = line.decode("utf-8", errors="ignore") if isinstance(line, bytes) else str(line)
-                raw = text[5:].strip() if text.startswith("data:") else text.strip()
-                if not raw or raw == "[DONE]":
-                    continue
-                try:
-                    obj = json.loads(raw)
-                except json.JSONDecodeError:
-                    continue
-
-                candidates = obj.get("candidates") or []
-                if not candidates:
-                    continue
-                parts = ((candidates[0].get("content") or {}).get("parts") or [])
-                delta = "".join(
-                    p.get("text", "") for p in parts if isinstance(p, dict)
-                )
-                chunk = _safe_sse_chunk(delta)
                 if chunk:
                     yield chunk
             yield "data: [DONE]\n\n"
@@ -1003,12 +837,11 @@ def save_settings(data: SettingsInput, db: Session = Depends(get_db)):
 
 @app.get("/api/settings/ai")
 def get_ai_settings(db: Session = Depends(get_db)):
-    provider, model, api_key = _get_ai_settings(db)
-    configured = bool(provider and model and api_key)
+    model, api_key = _get_ai_settings(db)
+    configured = bool(model and api_key)
     api_key_preview = "···" + api_key[-4:] if api_key else None
     return {
         "configured": configured,
-        "provider": provider if configured else None,
         "model": model if configured else None,
         "api_key_preview": api_key_preview,
     }
@@ -1016,28 +849,20 @@ def get_ai_settings(db: Session = Depends(get_db)):
 
 @app.put("/api/settings/ai")
 def save_ai_settings(data: AISettingsInput, db: Session = Depends(get_db)):
-    provider = data.provider.strip().lower()
     model = data.model.strip()
     api_key = data.api_key.strip()
 
-    if provider not in _VALID_AI_PROVIDERS:
-        raise HTTPException(
-            status_code=422,
-            detail="provider must be one of: openrouter, anthropic, gemini, openai, deepseek",
-        )
     if not model:
         raise HTTPException(status_code=422, detail="model cannot be empty.")
     if not api_key:
         raise HTTPException(status_code=422, detail="api_key cannot be empty.")
 
-    _set_setting_value(db, "ai_provider", provider)
     _set_setting_value(db, "ai_model", model)
     _set_setting_value(db, "ai_api_key", _encrypt(api_key))
     db.commit()
 
     return {
         "configured": True,
-        "provider": provider,
         "model": model,
         "api_key_preview": "···" + api_key[-4:],
     }
@@ -2242,8 +2067,8 @@ def _build_ai_system_prompt(db: Session) -> str:
 
 @app.post("/api/ai/chat")
 def ai_chat_proxy(data: AIChatRequest, db: Session = Depends(get_db)):
-    provider, model, api_key = _get_ai_settings(db)
-    if not provider or not model or not api_key:
+    model, api_key = _get_ai_settings(db)
+    if not model or not api_key:
         raise HTTPException(status_code=422, detail="AI settings are not configured.")
 
     message = (data.message or "").strip()
@@ -2252,18 +2077,8 @@ def ai_chat_proxy(data: AIChatRequest, db: Session = Depends(get_db)):
 
     system_prompt = _build_ai_system_prompt(db)
     history = data.history or []
-
-    if provider in {"openrouter", "openai", "deepseek"}:
-        messages = _openai_compatible_messages(system_prompt, history, message)
-        return _stream_openai_family(provider, model, api_key, messages)
-
-    if provider == "anthropic":
-        return _stream_anthropic(model, api_key, system_prompt, history, message)
-
-    if provider == "gemini":
-        return _stream_gemini(model, api_key, system_prompt, history, message)
-
-    raise HTTPException(status_code=422, detail=f"Unsupported AI provider: {provider}")
+    messages = _openai_compatible_messages(system_prompt, history, message)
+    return _stream_openrouter(model, api_key, messages)
 
 
 # ── Readiness history ─────────────────────────────────────────────────────────

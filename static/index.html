@@ -1623,23 +1623,6 @@ tbody tr:hover td { background: var(--row-hover); }
   font-size: 14px;
 }
 .ai-control:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
-.ai-model-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
-}
-.ai-model-chip {
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--muted);
-  border-radius: 999px;
-  padding: 5px 10px;
-  font-size: 12px;
-  cursor: pointer;
-}
-.ai-model-chip:hover { border-color: var(--accent); color: var(--text); }
-.ai-model-chip:disabled { opacity: 0.55; cursor: not-allowed; }
 .ai-change-wrap {
   display: none;
   margin-top: 10px;
@@ -2453,7 +2436,7 @@ tbody tr:hover td { background: var(--row-hover); }
       <button class="ai-chat-context-toggle" id="ai-chat-context-toggle" type="button" onclick="toggleAIContextPreview()">show context</button>
     </div>
     <pre class="ai-chat-context-preview" id="ai-chat-context-preview">Loading readiness context...</pre>
-    <div class="ai-chat-unconfigured" id="ai-chat-unconfigured">Configure AI provider, model, and key in Settings before sending messages.</div>
+    <div class="ai-chat-unconfigured" id="ai-chat-unconfigured">Configure OpenRouter model and API key in Settings before sending messages.</div>
     <div class="ai-chat-messages" id="ai-chat-messages">
       <div class="ai-chat-placeholder">Ask anything about today's readiness, fatigue profile, and session choices.</div>
     </div>
@@ -2523,32 +2506,24 @@ tbody tr:hover td { background: var(--row-hover); }
   <div class="card settings-card ai-settings-card">
     <div class="card-title">AI Settings</div>
     <p class="ai-settings-helper" style="margin-top:-6px;margin-bottom:12px;line-height:1.55;">
-      Configure your AI provider, model, and API key for chat features. API keys are stored encrypted in local app settings.
+      Configure your OpenRouter model and API key for chat features. API keys are stored encrypted in local app settings.
     </p>
 
     <div class="ai-preview" id="ai-key-current">No AI API key saved yet.</div>
 
     <div class="ai-settings-grid">
       <div class="ai-settings-field">
-        <label class="ai-settings-label" for="ai-provider">Provider</label>
-        <select id="ai-provider" class="ai-control" onchange="handleAIProviderChange()">
-          <option value="openrouter">OpenRouter</option>
-          <option value="anthropic">Anthropic</option>
-          <option value="gemini">Gemini</option>
-          <option value="openai">ChatGPT (OpenAI)</option>
-          <option value="deepseek">DeepSeek</option>
-        </select>
-      </div>
-
-      <div class="ai-settings-field">
         <label class="ai-settings-label" for="ai-model-value">Model</label>
         <div id="ai-model-field"></div>
+        <div class="ai-settings-helper" style="margin-top:6px;">
+          Enter any OpenRouter model string, e.g. openai/gpt-4o-mini
+        </div>
       </div>
 
       <div class="ai-settings-field">
         <label class="ai-settings-label" for="ai-api-key-input">API Key</label>
         <div class="settings-key-row">
-          <input type="password" id="ai-api-key-input" placeholder="Paste your AI provider API key..." autocomplete="off">
+          <input type="password" id="ai-api-key-input" placeholder="Paste your OpenRouter API key..." autocomplete="off">
           <button class="btn" id="ai-api-key-toggle" onclick="toggleAIKeyVisibility()" title="Show / hide">Show</button>
         </div>
       </div>
@@ -2875,28 +2850,7 @@ let aiChatConfigured = false;
 let aiChatStreaming = false;
 let aiChatHandlersBound = false;
 
-const AI_PROVIDER_MODELS = {
-  anthropic: ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-3-5'],
-  gemini: ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-pro'],
-  openai: ['gpt-4o', 'gpt-4o-mini', 'o3-mini'],
-  deepseek: ['deepseek-chat', 'deepseek-reasoner'],
-};
-
-const OPENROUTER_MODEL_CHIPS = [
-  'google/gemini-flash-1.5',
-  'anthropic/claude-sonnet-4-5',
-  'meta-llama/llama-3.3-70b-instruct',
-  'deepseek/deepseek-chat',
-  'openai/gpt-4o',
-];
-
-const AI_PROVIDER_DEFAULT_MODEL = {
-  openrouter: 'openai/gpt-4o',
-  anthropic: 'claude-sonnet-4-5',
-  gemini: 'gemini-2.0-flash',
-  openai: 'gpt-4o',
-  deepseek: 'deepseek-chat',
-};
+const AI_DEFAULT_MODEL = 'openai/gpt-4o-mini';
 
 function setMobileNavOpen(isOpen) {
   document.body.classList.toggle('mobile-nav-open', !!isOpen);
@@ -3171,36 +3125,12 @@ function _extractApiErrorDetail(detail, fallback) {
   return fallback;
 }
 
-function _currentAIProvider() {
-  return document.getElementById('ai-provider')?.value || 'openrouter';
-}
-
-function _renderAIModelField(provider, modelValue = '') {
+function _renderAIModelField(modelValue = '') {
   const wrap = document.getElementById('ai-model-field');
   if (!wrap) return;
 
-  if (provider === 'openrouter') {
-    const chips = OPENROUTER_MODEL_CHIPS.map(model =>
-      `<button type="button" class="ai-model-chip" onclick="setOpenRouterModel('${model}')" ${aiSettingsLocked ? 'disabled' : ''}>${escHtml(model)}</button>`
-    ).join('');
-
-    wrap.innerHTML = `
-      <input id="ai-model-value" class="ai-control" type="text" autocomplete="off" placeholder="provider/model" value="${escHtml(modelValue)}" ${aiSettingsLocked ? 'disabled' : ''}>
-      <div class="ai-model-chips">${chips}</div>
-    `;
-    return;
-  }
-
-  const options = Array.isArray(AI_PROVIDER_MODELS[provider]) ? AI_PROVIDER_MODELS[provider] : [];
-  let normalizedValue = modelValue;
-  if (!normalizedValue || !options.includes(normalizedValue)) {
-    normalizedValue = AI_PROVIDER_DEFAULT_MODEL[provider] || options[0] || '';
-  }
-
   wrap.innerHTML = `
-    <select id="ai-model-value" class="ai-control" ${aiSettingsLocked ? 'disabled' : ''}>
-      ${options.map(model => `<option value="${escHtml(model)}" ${model === normalizedValue ? 'selected' : ''}>${escHtml(model)}</option>`).join('')}
-    </select>
+    <input id="ai-model-value" class="ai-control" type="text" autocomplete="off" placeholder="openai/gpt-4o-mini" value="${escHtml(modelValue)}" ${aiSettingsLocked ? 'disabled' : ''}>
   `;
 }
 
@@ -3211,31 +3141,15 @@ function _getAIModelValue() {
 
 function _setAILocked(locked) {
   aiSettingsLocked = !!locked;
-  const providerEl = document.getElementById('ai-provider');
   const apiKeyEl = document.getElementById('ai-api-key-input');
   const saveBtn = document.getElementById('btn-save-ai');
   const changeWrap = document.getElementById('ai-change-wrap');
 
-  if (providerEl) providerEl.disabled = aiSettingsLocked;
   if (apiKeyEl) apiKeyEl.disabled = aiSettingsLocked;
   if (saveBtn) saveBtn.style.display = aiSettingsLocked ? 'none' : 'inline-flex';
   if (changeWrap) changeWrap.style.display = aiSettingsLocked ? 'block' : 'none';
 
-  _renderAIModelField(_currentAIProvider(), _getAIModelValue());
-}
-
-function setOpenRouterModel(model) {
-  const input = document.getElementById('ai-model-value');
-  if (!input || input.disabled) return;
-  input.value = model;
-}
-
-function handleAIProviderChange() {
-  if (aiSettingsLocked) return;
-  const provider = _currentAIProvider();
-  const currentModel = _getAIModelValue();
-  const nextModel = currentModel || AI_PROVIDER_DEFAULT_MODEL[provider] || '';
-  _renderAIModelField(provider, nextModel);
+  _renderAIModelField(_getAIModelValue());
 }
 
 function toggleAIKeyVisibility() {
@@ -3563,8 +3477,7 @@ function _initAIChatHandlers() {
 async function loadAISettings() {
   const keyPreview = document.getElementById('ai-key-current');
   const keyInput = document.getElementById('ai-api-key-input');
-  const providerEl = document.getElementById('ai-provider');
-  if (!keyPreview || !keyInput || !providerEl) {
+  if (!keyPreview || !keyInput) {
     _setAIChatConfiguredState(false);
     return false;
   }
@@ -3576,9 +3489,7 @@ async function loadAISettings() {
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(_extractApiErrorDetail(d.detail, 'Could not load AI settings.'));
 
-    const provider = d.provider && providerEl.querySelector(`option[value="${d.provider}"]`) ? d.provider : 'openrouter';
-    providerEl.value = provider;
-    _renderAIModelField(provider, d.model || AI_PROVIDER_DEFAULT_MODEL[provider] || '');
+    _renderAIModelField(d.model || AI_DEFAULT_MODEL);
 
     if (d.configured) {
       keyPreview.textContent = `Current key: ${d.api_key_preview || 'configured'}`;
@@ -3605,7 +3516,6 @@ async function loadAISettings() {
 }
 
 async function saveAISettings() {
-  const provider = _currentAIProvider();
   const model = _getAIModelValue();
   const keyInput = document.getElementById('ai-api-key-input');
   const key = (keyInput?.value || '').trim();
@@ -3628,7 +3538,7 @@ async function saveAISettings() {
     const r = await fetch('/api/settings/ai', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider, model, api_key: key }),
+      body: JSON.stringify({ model, api_key: key }),
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) {
