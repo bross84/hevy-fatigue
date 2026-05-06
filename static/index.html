@@ -3458,7 +3458,6 @@ async function sendAIMessage() {
       for (const eventBlock of events) {
         const lines = eventBlock
           .split('\n')
-          .map(line => line.trim())
           .filter(line => line.startsWith('data:'));
         if (!lines.length) continue;
         const payload = lines.map(line => line.replace(/^data: ?/, '')).join('');
