@@ -2,6 +2,26 @@
 
 Last updated: 2026-05-03 (Backlog source-of-truth established)
 
+## Latest Maintenance Update (2026-05-06, AI Prompt Recent Session Detail Rewrite)
+
+- Replaced the recent-session section in `_build_ai_system_prompt()` in `main.py` with direct database queries over `WorkoutSession` and `WorkoutLog`.
+- The AI system prompt now includes only the last 3 sessions ordered by `workout_date DESC, start_time DESC` instead of a snapshot-derived 7-day window.
+- Each session line now includes:
+	- workout date
+	- workout title
+	- modality
+	- duration in minutes
+	- sRPE
+- Each session now expands into per-exercise detail aggregated from `WorkoutLog` grouped by `exercise_title`, including:
+	- set count
+	- total reps
+	- total volume (`weight_lbs * reps`)
+	- top weight
+	- average RPE when present
+- Session ATL/CTL/TSB values were intentionally left out of the session line because current-day training load context already appears in the prompt's `Training Load` section.
+- Validation:
+	- `python -m py_compile main.py` passes
+
 ## Latest Maintenance Update (2026-05-06, AI Prompt Scale Reference)
 
 - Updated `_build_ai_system_prompt()` in `main.py` to include a `SCALE REFERENCE (critical for correct interpretation):` section immediately after the prompt header/date block.

@@ -10,6 +10,21 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-06, AI Prompt Recent Session Detail Rewrite)
+
+- Reworked the recent-session portion of `_build_ai_system_prompt()` in `main.py` to query `WorkoutSession` and `WorkoutLog` directly instead of relying on snapshot session summaries.
+- The prompt now limits recent-session context to the last 3 sessions ordered by date and start time.
+- Each recent session is rendered as a single summary line with date, title, modality, duration, and sRPE.
+- Each session summary is followed by grouped per-exercise aggregates from `WorkoutLog`, including:
+	- sets
+	- reps
+	- total volume
+	- top weight
+	- average RPE when available
+- Session ATL/CTL/TSB values remain excluded from these session lines because the prompt already provides today's training-load block separately.
+- Validation evidence:
+	- `python -m py_compile main.py` passes
+
 ## Latest Maintenance Update (2026-05-06, AI Prompt Scale Reference)
 
 - Added a `SCALE REFERENCE (critical for correct interpretation):` block to `_build_ai_system_prompt()` in `main.py` immediately after the prompt header/date section.

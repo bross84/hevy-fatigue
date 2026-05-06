@@ -1962,6 +1962,16 @@ def _build_ai_system_prompt(db: Session) -> str:
             return f"{value:.{decimals}f}"
         return _fmt_text(value)
 
+    def _fmt_metric(value: object, decimals: int = 1) -> str:
+        if value is None:
+            return "N/A"
+        if isinstance(value, (int, float)):
+            n = float(value)
+            if abs(n - round(n)) < 1e-9:
+                return f"{int(round(n)):,}"
+            return f"{n:,.{decimals}f}".rstrip("0").rstrip(".")
+        return _fmt_text(value)
+
     combined = snapshot.get("combined_score", {})
     subjective = snapshot.get("subjective_breakdown", {})
     subjective_raw = subjective.get("raw", {})
@@ -2047,34 +2057,74 @@ def _build_ai_system_prompt(db: Session) -> str:
         f"6-month Weekly Avg Load Volume: {_fmt_num(objective.get('six_month_weekly_avg_load_volume'))}",
         f"Volume Ratio: {_fmt_num(objective.get('ratio'), 4)}",
         "",
-        "Last 7 Days Sessions:",
+        "Last 3 Sessions:",
     ])
 
-    seven_day_cutoff = today_date - timedelta(days=6)
-    recent_from_snapshot: list[dict] = []
-    for session in snapshot.get("last_10_session_classifications", []):
-        raw_date = session.get("workout_date")
-        if not raw_date:
-            continue
-        try:
-            parsed = date_type.fromisoformat(raw_date)
-        except ValueError:
-            continue
-        if parsed >= seven_day_cutoff:
-            recent_from_snapshot.append(session)
+    recent_sessions = (
+        db.query(WorkoutSession)
+        .filter(WorkoutSession.workout_date.isnot(None))
+        .order_by(WorkoutSession.workout_date.desc(), WorkoutSession.start_time.desc())
+        .limit(3)
+        .all()
+    )
 
-    if not recent_from_snapshot:
-        lines.append("No sessions in the last 7 days")
+    if not recent_sessions:
+        lines.append("No recent sessions found")
     else:
-        for session in recent_from_snapshot:
-            lines.append(
-                "Session: "
-                f"{_fmt_text(session.get('workout_date'))} | "
-                f"{_fmt_text(session.get('workout_title'))} | "
-                f"modality={_fmt_text(session.get('modality'))} | "
-                f"status={_fmt_text(session.get('verification_status'))} | "
-                f"sRPE={_fmt_num(session.get('srpe'))}"
+        for session in recent_sessions:
+            modality_text = _fmt_text(session.modality)
+            modality_display = modality_text.title() if modality_text != "N/A" else modality_text
+            duration_display = (
+                f"{int(session.duration_minutes)}min"
+                if session.duration_minutes is not None
+                else "N/A"
             )
+
+            lines.append(
+                f"- {_fmt_text(session.workout_date)} | "
+                f"{_fmt_text(session.workout_title)} | "
+                f"{modality_display} | "
+                f"{duration_display} | "
+                f"sRPE: {_fmt_num(session.srpe, 1)}"
+            )
+
+            exercise_rows = (
+                db.query(
+                    WorkoutLog.exercise_title.label("exercise_title"),
+                    func.count(WorkoutLog.id).label("set_count"),
+                    func.coalesce(func.sum(WorkoutLog.reps), 0).label("total_reps"),
+                    func.coalesce(
+                        func.sum(
+                            func.coalesce(WorkoutLog.weight_lbs, 0.0) *
+                            func.coalesce(WorkoutLog.reps, 0)
+                        ),
+                        0.0,
+                    ).label("total_volume"),
+                    func.max(WorkoutLog.weight_lbs).label("top_weight"),
+                    func.avg(WorkoutLog.rpe).label("avg_rpe"),
+                    func.min(WorkoutLog.id).label("first_log_id"),
+                )
+                .filter(WorkoutLog.workout_id == session.hevy_workout_id)
+                .group_by(WorkoutLog.exercise_title)
+                .order_by(func.min(WorkoutLog.id))
+                .all()
+            )
+
+            if not exercise_rows:
+                lines.append("  No exercise detail available")
+                continue
+
+            for row in exercise_rows:
+                detail = (
+                    f"  {_fmt_text(row.exercise_title)}: "
+                    f"{int(row.set_count or 0)} sets, "
+                    f"{int(row.total_reps or 0)} reps, "
+                    f"{_fmt_metric(row.total_volume)} lbs volume, "
+                    f"top {_fmt_metric(row.top_weight)} lbs"
+                )
+                if row.avg_rpe is not None:
+                    detail += f", avg RPE {_fmt_num(row.avg_rpe, 1)}"
+                lines.append(detail)
 
     return "\n".join(lines)
 
