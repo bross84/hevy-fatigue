@@ -10,6 +10,18 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-06, AI Prompt Scale Reference)
+
+- Added a `SCALE REFERENCE (critical for correct interpretation):` block to `_build_ai_system_prompt()` in `main.py` immediately after the prompt header/date section.
+- The prompt now explicitly defines scoring direction and scale meaning for:
+	- combined, subjective, and objective scores
+	- tiredness and perceived recovery
+	- soreness and joint health
+	- TSB and volume ratio
+- This change is backend-only and improves model interpretation consistency without changing frontend behavior or API contracts.
+- Validation evidence:
+	- `python -m py_compile main.py` passes
+
 ## Latest Maintenance Update (2026-05-06, AI Chat Raw JSON SSE Alignment)
 
 - Adjusted AI chat streaming to keep the backend proxy while aligning frontend parsing with raw JSON SSE behavior.

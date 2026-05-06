@@ -2,6 +2,13 @@
 
 Last updated: 2026-05-03 (Backlog source-of-truth established)
 
+## Latest Maintenance Update (2026-05-06, AI Prompt Scale Reference)
+
+- Updated `_build_ai_system_prompt()` in `main.py` to include a `SCALE REFERENCE (critical for correct interpretation):` section immediately after the prompt header/date block.
+- Added explicit interpretation ranges for combined, subjective, and objective scores, tiredness, perceived recovery, soreness, joint health, TSB, and volume ratio so model responses anchor to the intended fatigue/recovery direction.
+- Validation:
+	- `python -m py_compile main.py` passes
+
 ## Latest Maintenance Update (2026-05-06, AI Chat Raw JSON SSE Alignment)
 
 - Updated AI chat streaming contract between `main.py` and `static/index.html` to preserve upstream OpenRouter JSON SSE payloads instead of flattening deltas into plain-text proxy chunks.
