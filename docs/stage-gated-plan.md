@@ -10,6 +10,22 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-06, AI Chat Raw JSON SSE Alignment)
+
+- Adjusted AI chat streaming to keep the backend proxy while aligning frontend parsing with raw JSON SSE behavior.
+- In `main.py`:
+	- `_stream_openrouter(...)` now forwards upstream OpenRouter `data:` JSON payloads unchanged instead of extracting deltas and re-emitting plain text
+	- `[DONE]` still terminates the stream cleanly and resource cleanup remains in `finally`
+- In `static/index.html`:
+	- `sendAIMessage()` now parses per-line JSON SSE payloads from the proxy stream
+	- incomplete lines are buffered across chunks before parsing
+	- assistant content is built from `parsed.choices?.[0]?.delta?.content` with `text` fallback
+	- markdown continues rendering incrementally via `marked.parse(assistantText)` during streaming
+- This change preserves secure server-side API-key handling while removing the plain-text SSE flattening that was causing malformed output.
+- Validation evidence:
+	- `python -m py_compile main.py` passes
+	- static diagnostics pass for `main.py` and `static/index.html`
+
 ## Latest Maintenance Update (2026-05-06, Session-Scoped AI Model Selection)
 
 - Moved AI model selection from persisted settings into the AI chat UI in `static/index.html`.

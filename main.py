@@ -509,6 +509,7 @@ def _stream_openrouter(model: str, api_key: str, messages: list[dict]) -> Stream
                 buffer += chunk
                 while "\n\n" in buffer:
                     event, buffer = buffer.split("\n\n", 1)
+                    forwarded = False
                     for line in event.splitlines():
                         if not line.startswith("data:"):
                             continue
@@ -516,18 +517,10 @@ def _stream_openrouter(model: str, api_key: str, messages: list[dict]) -> Stream
                         if raw == "[DONE]":
                             yield "data: [DONE]\n\n"
                             return
-                        try:
-                            obj = json.loads(raw)
-                        except json.JSONDecodeError:
-                            continue
-                        choices = obj.get("choices") or []
-                        if not choices:
-                            continue
-                        delta = (choices[0].get("delta") or {}).get("content")
-                        if not delta:
-                            delta = choices[0].get("text")
-                        if delta:
-                            yield _safe_sse_chunk(delta)
+                        yield f"data: {raw}\n\n"
+                        forwarded = True
+                    if forwarded:
+                        continue
             yield "data: [DONE]\n\n"
         finally:
             response.close()

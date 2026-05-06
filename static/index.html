@@ -3452,24 +3452,27 @@ async function sendAIMessage() {
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
 
-      const events = buffer.split('\n\n');
-      buffer = events.pop() || '';
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
 
-      for (const eventBlock of events) {
-        const lines = eventBlock
-          .split('\n')
-          .filter(line => line.startsWith('data:'));
-        if (!lines.length) continue;
-        const payload = lines.map(line => line.replace(/^data: ?/, '')).join('');
-        if (payload.trim() === '[DONE]') {
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') {
           doneReceived = true;
           break;
         }
-        if (!payload) continue;
-        assistantText += payload;
-        if (bubbleEl) bubbleEl.innerHTML = marked.parse(assistantText);
-        const container = document.getElementById('ai-chat-messages');
-        if (container) container.scrollTop = container.scrollHeight;
+        try {
+          const parsed = JSON.parse(data);
+          const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.text || '';
+          if (!delta) continue;
+          assistantText += delta;
+          if (bubbleEl) bubbleEl.innerHTML = marked.parse(assistantText);
+          const container = document.getElementById('ai-chat-messages');
+          if (container) container.scrollTop = container.scrollHeight;
+        } catch (_) {
+          continue;
+        }
       }
     }
 

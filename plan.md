@@ -2,6 +2,24 @@
 
 Last updated: 2026-05-03 (Backlog source-of-truth established)
 
+## Latest Maintenance Update (2026-05-06, AI Chat Raw JSON SSE Alignment)
+
+- Updated AI chat streaming contract between `main.py` and `static/index.html` to preserve upstream OpenRouter JSON SSE payloads instead of flattening deltas into plain-text proxy chunks.
+- Changed `_stream_openrouter(...)` in `main.py` to forward upstream `data:` payloads unchanged:
+	- still buffers `iter_text()` manually on `\n\n` SSE boundaries
+	- now emits `data: {raw_json}\n\n` for each upstream JSON event
+	- preserves `[DONE]` pass-through and keeps response/client cleanup in `finally`
+- Refactored `sendAIMessage()` in `static/index.html` to match the working diagnostic-style parser against raw JSON SSE lines:
+	- reads stream chunks with `ReadableStream` + `TextDecoder`
+	- buffers incomplete lines across chunks
+	- processes `data: ` lines individually instead of joining multiple payload lines
+	- parses each JSON payload and appends `choices[0].delta.content` (with `text` fallback) to `assistantText`
+	- keeps incremental `marked.parse(assistantText)` rendering and scroll-to-bottom behavior
+- Resulting architecture keeps backend key secrecy intact while aligning the chat parser with the working raw-JSON SSE model used elsewhere.
+- Validation:
+	- `python -m py_compile main.py` passes
+	- editor diagnostics report no errors in `main.py` or `static/index.html`
+
 ## Latest Maintenance Update (2026-05-06, Session-Scoped AI Model Selection)
 
 - Moved AI model selection out of persisted settings and into the AI chat UI in `static/index.html`:
