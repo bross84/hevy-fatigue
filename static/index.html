@@ -3423,7 +3423,7 @@ async function sendAIMessage() {
         }
         if (!payload) continue;
         assistantText += payload;
-        if (bubbleEl) bubbleEl.textContent = assistantText;
+        if (bubbleEl) bubbleEl.innerHTML = marked.parse(assistantText);
         const container = document.getElementById('ai-chat-messages');
         if (container) container.scrollTop = container.scrollHeight;
       }
