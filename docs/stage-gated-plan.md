@@ -10,6 +10,255 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-06, Stage 6: Diagnostic AI Removal)
+
+- Removed the Diagnostics-page AI assistant from `static/diagnostic.html`.
+- Deleted AI assistant markup and interaction controls (model select, context preview, messages, status, input/send/clear row).
+- Removed AI JavaScript from `static/diagnostic.html`, including:
+	- hardcoded OpenRouter key/url constants
+	- chat state and helper functions
+	- send/clear message pipeline
+	- readiness-context preview assignment logic
+	- DOMContentLoaded AI input event handlers
+- Removed AI-specific CSS (`.ai-*` selectors).
+- Removed `marked.js` CDN include because the diagnostics page no longer uses markdown rendering.
+- Preserved diagnostics and settings behavior outside AI:
+	- Engine Snapshot render flow unchanged
+	- Pattern Sensitivity controls unchanged
+	- Session Processing controls unchanged
+- Validation evidence:
+	- static diagnostics pass for `static/diagnostic.html`
+	- no residual `OPENROUTER_API_KEY` references in file content
+	- no residual AI function/id references in file content
+
+## Latest Maintenance Update (2026-05-06, AI Prompt Recent Session Detail Rewrite)
+
+- Reworked the recent-session portion of `_build_ai_system_prompt()` in `main.py` to query `WorkoutSession` and `WorkoutLog` directly instead of relying on snapshot session summaries.
+- The prompt now limits recent-session context to the last 3 sessions ordered by date and start time.
+- Each recent session is rendered as a single summary line with date, title, modality, duration, and sRPE.
+- Each session summary is followed by grouped per-exercise aggregates from `WorkoutLog`, including:
+	- sets
+	- reps
+	- total volume
+	- top weight
+	- average RPE when available
+- Session ATL/CTL/TSB values remain excluded from these session lines because the prompt already provides today's training-load block separately.
+- Validation evidence:
+	- `python -m py_compile main.py` passes
+
+## Latest Maintenance Update (2026-05-06, AI Prompt Scale Reference)
+
+- Added a `SCALE REFERENCE (critical for correct interpretation):` block to `_build_ai_system_prompt()` in `main.py` immediately after the prompt header/date section.
+- Revised the prompt guidance so AI interpretation follows the intended fatigue semantics:
+	- all subjective inputs share the same 0-4 meaning, with `2` treated as normal post-training fatigue and only `3` or `4` treated as caution territory
+	- combined and subjective scores are defined as `0 = fully fresh/recovered, 10 = maximum fatigue`
+	- objective score is defined as a neutral recent-volume indicator relative to the 6-month baseline, not a readiness score
+	- TSB and volume ratio remain explicit load-context references
+- This change is backend-only and improves model interpretation consistency without changing frontend behavior or API contracts.
+- Validation evidence:
+	- `python -m py_compile main.py` passes
+
+## Latest Maintenance Update (2026-05-06, AI Chat Raw JSON SSE Alignment)
+
+- Adjusted AI chat streaming to keep the backend proxy while aligning frontend parsing with raw JSON SSE behavior.
+- In `main.py`:
+	- `_stream_openrouter(...)` now forwards upstream OpenRouter `data:` JSON payloads unchanged instead of extracting deltas and re-emitting plain text
+	- `[DONE]` still terminates the stream cleanly and resource cleanup remains in `finally`
+- In `static/index.html`:
+	- `sendAIMessage()` now parses per-line JSON SSE payloads from the proxy stream
+	- incomplete lines are buffered across chunks before parsing
+	- assistant content is built from `parsed.choices?.[0]?.delta?.content` with `text` fallback
+	- markdown continues rendering incrementally via `marked.parse(assistantText)` during streaming
+- This change preserves secure server-side API-key handling while removing the plain-text SSE flattening that was causing malformed output.
+- Validation evidence:
+	- `python -m py_compile main.py` passes
+	- static diagnostics pass for `main.py` and `static/index.html`
+
+## Latest Maintenance Update (2026-05-06, Session-Scoped AI Model Selection)
+
+- Moved AI model selection from persisted settings into the AI chat UI in `static/index.html`.
+- AI tab now includes a model selector row above the context preview with:
+	- preset options for Claude Sonnet 4.5, Claude Haiku 4.5, GPT-4o, GPT-4o Mini, Llama 3.3 70B, and DeepSeek V3.2
+	- a `Custom model…` option that reveals a free-text input for any OpenRouter model string
+	- session-only state tracked in `aiSelectedModel`, defaulting to `openai/gpt-4o-mini`
+- Simplified the Settings-tab AI card to API-key-only while preserving save and lock/change behavior.
+- Changed backend AI settings contract in `main.py`:
+	- `AISettingsInput` now contains only `api_key`
+	- `GET /api/settings/ai` returns only `configured` and `api_key_preview`
+	- `PUT /api/settings/ai` persists only encrypted `ai_api_key`
+	- `ai_model` is no longer read or written
+- Changed request-scoped chat handling in `main.py`:
+	- `AIChatRequest` now includes `model` with default `openai/gpt-4o-mini`
+	- `POST /api/ai/chat` uses `data.model` instead of stored settings when calling `_stream_openrouter(...)`
+	- frontend `sendAIMessage()` now submits `{ message, history, model }`
+- Validation evidence:
+	- `python -m py_compile main.py` passes
+	- static diagnostics pass for `main.py` and `static/index.html`
+	- isolated API smoke checks confirmed settings PUT/GET no longer return `model`, chat uses the selected request model, and only `ai_api_key` is persisted
+
+## Latest Maintenance Update (2026-05-05, OpenRouter-Only AI Simplification)
+
+- Simplified backend AI integration in `main.py` to OpenRouter-only.
+- Removed provider from AI settings contract:
+	- `AISettingsInput` now includes only `model` and `api_key`
+	- `GET /api/settings/ai` returns `configured`, `model`, `api_key_preview` (no `provider`)
+	- `PUT /api/settings/ai` validates/stores only `model` and encrypted `api_key`
+- Refactored AI settings retrieval in `main.py`:
+	- `_get_ai_settings(db)` now returns `(model, api_key)` and no longer reads `ai_provider`
+- Removed multi-provider backend branching in `main.py`:
+	- deleted `_stream_anthropic` and `_stream_gemini`
+	- deleted provider-specific message builder helpers used only by those paths
+	- renamed `_stream_openai_family(...)` to `_stream_openrouter(...)`
+	- hardcoded OpenRouter URL (`https://openrouter.ai/api/v1/chat/completions`)
+	- `POST /api/ai/chat` now always streams via OpenRouter using `_openai_compatible_messages(...)`
+- Preserved SSE text fidelity fix in `main.py`:
+	- `_safe_sse_chunk()` keeps only carriage-return sanitization (`replace("\r", "")`), without newline replacement and without `.strip()`
+- Simplified AI settings UI and frontend logic in `static/index.html`:
+	- removed provider dropdown and provider-switching logic
+	- model control is now a single free-text input with OpenRouter helper note
+	- `saveAISettings()` sends only `{ model, api_key }`
+	- OpenRouter wording updated in settings/chat notices
+- Validation evidence:
+	- static diagnostics pass for `main.py` and `static/index.html`
+	- `python -m py_compile main.py` passes
+
+## Latest Maintenance Update (2026-05-05, Stage 5 Frontend: AI Chat Card)
+
+- Added Stage 5 AI chat card to `#tab-ai` in `static/index.html`.
+- Chat card includes:
+	- collapsed context preview with `show context` / `hide context` toggle
+	- scrollable chat messages panel
+	- right-aligned user bubbles and left-aligned assistant bubbles
+	- auto-resize textarea input row with `Enter` send and `Shift+Enter` newline
+	- `Send` and `Clear` controls
+	- status line for thinking/error states
+- Added markdown support for assistant responses in `static/index.html` via `marked.parse()` and added marked.js CDN reference.
+- Added required frontend state:
+	- `aiChatHistory = []`
+	- `aiReadinessContext = null`
+- Implemented `loadAIContext()` in `static/index.html`:
+	- pulls `GET /api/diagnostics/snapshot`
+	- builds context preview text client-side using the same field set used by backend `_build_ai_system_prompt()`
+	- called on each AI tab activation after `loadAISettings()`
+- Implemented `sendAIMessage()` in `static/index.html`:
+	- posts `{ message, history: aiChatHistory }` to `POST /api/ai/chat`
+	- consumes SSE stream into a plain-text streaming assistant bubble
+	- renders assistant markdown once after stream completion
+	- finalizes completed exchange into `aiChatHistory`
+- Implemented `clearAIChat()` in `static/index.html` to reset `aiChatHistory` and clear chat UI state.
+- Implemented unconfigured chat gating:
+	- when AI settings are unconfigured on AI tab activation, notice is shown and Send is disabled
+	- when configured, notice hides and Send is enabled
+- Validation evidence:
+	- static diagnostics on `static/index.html` pass
+	- inline JS brace counts are balanced
+	- marked.js CDN reference present in `static/index.html`
+
+## Latest Maintenance Update (2026-05-05, Stage 4 Fix: Move AI Settings To Settings Tab)
+
+- Relocated the AI settings card in `static/index.html` from `#tab-ai` into the existing `#tab-settings` section.
+- Preserved `#tab-ai` as an empty tab panel in the DOM for upcoming Stage 5 chat content.
+- Kept existing AI settings JavaScript behavior unchanged:
+	- `loadAISettings()` unchanged
+	- `saveAISettings()` unchanged
+	- AI tab activation still invokes `loadAISettings()` for configured-state checks
+- No backend/API changes.
+- No CSS changes were required for this relocation.
+- Validation evidence:
+	- static diagnostics on `static/index.html` report no errors
+	- DOM checks confirm AI settings card is now under Settings tab and AI tab is empty
+
+## Latest Maintenance Update (2026-05-04, Stage 4 Frontend: AI Settings Card)
+
+- Added `AI` tab in `static/index.html` desktop and mobile navigation (fifth tab position).
+- Added `#tab-ai` panel with AI settings card UI in `static/index.html`.
+- Implemented provider/model controls per Stage 4 requirements:
+	- OpenRouter: text model field + chip shortcuts
+	- Anthropic/Gemini/OpenAI/DeepSeek: provider-specific model dropdowns
+- OpenRouter chip set now uses valid model IDs and replaces invalid `google/gemini-2.0-flash-exp` with `google/gemini-flash-1.5`.
+- Implemented frontend API flow:
+	- `loadAISettings()` calls `GET /api/settings/ai` when AI tab activates
+	- `saveAISettings()` calls `PUT /api/settings/ai` with provider/model/api_key payload
+	- empty API key blocked client-side with inline error
+	- backend validation details (including `422`) surfaced inline
+	- successful save locks fields, shows masked key preview, and enables `Change` unlock action
+- Validation evidence:
+	- static diagnostics on `static/index.html` report no errors
+	- tab activation flow remains intact with added AI branch
+
+## Latest Maintenance Update (2026-05-04, Stage 3 Backend: AI Chat Proxy Endpoint)
+
+- Added `AIChatMessage` and `AIChatRequest` models in `main.py`.
+- Added `POST /api/ai/chat` in `main.py` with provider dispatch based on stored AI settings.
+- Endpoint behavior implemented:
+	- `422` when AI settings are not configured
+	- system prompt sourced from `_build_ai_system_prompt(db)`
+	- provider routing for `openrouter`, `openai`, `deepseek`, `anthropic`, and `gemini`
+- Outbound provider calls implemented with streamed `httpx` responses and provider-specific request formats:
+	- OpenRouter/OpenAI/DeepSeek use OpenAI-compatible `messages` payload with bearer auth
+	- Anthropic uses `x-api-key` + `anthropic-version` headers and Anthropic messages payload
+	- Gemini uses `streamGenerateContent` endpoint with API key query param and Gemini contents payload
+- SSE proxy contract:
+	- emits `data: {delta}\n\n` chunks
+	- emits terminal `data: [DONE]\n\n`
+- Provider error handling:
+	- upstream HTTP errors return `502` with extracted provider error message
+	- avoids raw traceback details in API response payload
+- Validation evidence:
+	- `python -m py_compile main.py` passed
+	- deterministic mocked-stream gate harness passed:
+		- no settings -> `422`
+		- bad API key -> `502`
+		- OpenAI-compatible stream -> chunk(s) + `[DONE]`
+		- Anthropic stream -> chunk(s) + `[DONE]`
+		- history context propagated into follow-up response path
+
+## Latest Maintenance Update (2026-05-04, Stage 2 Backend: System Prompt Builder)
+
+- Extracted diagnostics snapshot computation into shared helper `_build_diagnostics_snapshot(db)` in `main.py`.
+- Updated route handler `GET /api/diagnostics/snapshot` in `main.py` to return helper output, preserving API contract while enabling internal reuse.
+- Added `_build_ai_system_prompt(db)` in `main.py` that builds a structured system prompt from the same snapshot data used by diagnostics.
+- Prompt content includes required fields:
+	- date
+	- combined/subjective/objective scores
+	- check-in detail fields
+	- joint advisory
+	- ATL/CTL/TSB
+	- volume baseline
+	- last 7 days of sessions
+- Missing-data behavior:
+	- outputs `No check-in recorded for today` when check-in is absent
+	- outputs `No sessions in the last 7 days` when no session rows exist in the 7-day window
+	- formats missing values as `N/A` to avoid literal `None` in generated prompt text
+- Validation evidence:
+	- `python -m py_compile main.py` passed
+	- Gate checks passed in isolated DB execution:
+		- with today's check-in, prompt contains `Combined Score`, `Tiredness`, `ATL`, and a `Session:` line
+		- with no check-in today, prompt contains `No check-in recorded for today` and contains no literal `None`
+		- with no sessions in last 7 days, prompt contains `No sessions in the last 7 days`
+
+## Latest Maintenance Update (2026-05-04, Stage 1 Backend: Encrypted AI Settings Storage)
+
+- Added `AISettingsInput` in `main.py` with fields `provider`, `api_key`, and `model`.
+- Added `_get_ai_settings(db)` helper in `main.py` that reads `ai_provider`, `ai_model`, and encrypted `ai_api_key` from `app_settings`, decrypts key material, and returns `(None, None, None)` when any required value is missing.
+- Added `GET /api/settings/ai` in `main.py`:
+	- always returns stable response shape `{ configured, provider, model, api_key_preview }`
+	- returns `configured: false` with null `provider/model/api_key_preview` when unset
+	- never returns raw API key
+- Added `PUT /api/settings/ai` in `main.py`:
+	- provider allowlist validation (`openrouter|anthropic|gemini|openai|deepseek`) with `422` on mismatch
+	- rejects empty `api_key` and empty `model` with `422`
+	- encrypts API key via `_encrypt()` and stores all three values in `app_settings`
+	- returns same shape as GET with preview only
+- Validation evidence:
+	- `python -m py_compile main.py` passed
+	- Gate checks passed via FastAPI `TestClient` against isolated temp DB:
+		- valid provider/model/key `PUT` returns `200`, `configured: true`, preview ends with key tail, raw key absent
+		- invalid provider returns `422`
+		- empty key returns `422`
+		- post-save `GET` returns correct provider/model, raw key absent
+		- stored `ai_api_key` value is encrypted Fernet token (`gAAA...`), not plaintext
+
 ## Latest Maintenance Update (2026-05-03, Sync Cooldown Removal)
 
 - Removed sync cooldown enforcement from `POST /api/sync` in `main.py`.

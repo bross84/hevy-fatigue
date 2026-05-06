@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hevy Fatigue</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <link rel="icon" href="/resources/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/resources/apple-touch-icon.png">
 <style>
@@ -1592,6 +1593,220 @@ tbody tr:hover td { background: var(--row-hover); }
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
+.ai-settings-card { max-width: 740px; }
+.ai-settings-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.ai-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ai-settings-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.ai-settings-helper {
+  font-size: 12px;
+  color: var(--muted);
+}
+.ai-control {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+}
+.ai-control:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+.ai-change-wrap {
+  display: none;
+  margin-top: 10px;
+}
+.ai-preview {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.ai-chat-card { max-width: 980px; margin-top: 12px; }
+.ai-chat-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.ai-chat-helper {
+  font-size: 12px;
+  color: var(--muted);
+}
+.ai-chat-context-toggle {
+  font-size: 12px;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+.ai-chat-context-preview {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'Courier New', monospace;
+  white-space: pre-wrap;
+  max-height: 160px;
+  overflow-y: auto;
+  display: none;
+  margin-bottom: 10px;
+}
+.ai-chat-unconfigured {
+  display: none;
+  background: rgba(236,167,44,.16);
+  border: 1px solid rgba(236,167,44,.45);
+  color: var(--warn);
+  border-radius: 6px;
+  padding: 9px 11px;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+.ai-chat-messages {
+  height: 320px;
+  max-height: 48vh;
+  min-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ai-chat-placeholder {
+  margin: auto;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+.ai-chat-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 84%;
+}
+.ai-chat-msg.user { align-self: flex-end; }
+.ai-chat-msg.assistant { align-self: flex-start; }
+.ai-chat-msg-label {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.ai-chat-msg.user .ai-chat-msg-label { text-align: right; }
+.ai-chat-bubble {
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  border: 1px solid var(--border);
+  word-break: break-word;
+}
+.ai-chat-msg.user .ai-chat-bubble {
+  background: var(--accent-sub);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+}
+.ai-chat-msg.assistant .ai-chat-bubble {
+  background: var(--card);
+}
+.ai-chat-bubble.streaming::after {
+  content: '▌';
+  margin-left: 3px;
+  opacity: .75;
+  animation: aiBlink 1s steps(1,end) infinite;
+}
+.ai-chat-bubble p { margin: 0 0 0.5em 0; }
+.ai-chat-bubble p:last-child { margin-bottom: 0; }
+.ai-chat-bubble h1,
+.ai-chat-bubble h2,
+.ai-chat-bubble h3 {
+  font-size: 1em;
+  font-weight: 600;
+  margin: 0.5em 0 0.25em 0;
+}
+.ai-chat-bubble ul,
+.ai-chat-bubble ol {
+  margin: 0.25em 0 0.5em 1.25em;
+  padding: 0;
+}
+.ai-chat-bubble li { margin-bottom: 0.25em; }
+.ai-chat-bubble strong { font-weight: 600; }
+.ai-chat-bubble pre {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 7px;
+  overflow-x: auto;
+  margin: 0.25em 0 0.5em 0;
+}
+.ai-chat-bubble code {
+  font-family: monospace;
+  background: var(--surface);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+}
+.ai-chat-status {
+  min-height: 18px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.ai-chat-status.error { color: var(--danger); }
+.ai-chat-input-row {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.ai-chat-input {
+  flex: 1;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: none;
+  min-height: 38px;
+  max-height: 120px;
+  line-height: 1.5;
+}
+.ai-chat-input:focus { outline: none; border-color: var(--accent); }
+.ai-chat-send,
+.ai-chat-clear {
+  height: 38px;
+  white-space: nowrap;
+  width: auto;
+  padding: 0 16px;
+  margin-top: 0;
+}
+.ai-chat-send:disabled,
+.ai-chat-clear:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+@keyframes aiBlink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
 @media (max-width: 640px) { .settings-grid-2 { grid-template-columns: 1fr; } }
 @media (max-width: 900px) {
   .tab-content#tab-settings.active {
@@ -1606,6 +1821,14 @@ tbody tr:hover td { background: var(--row-hover); }
   #tab-settings .settings-card-api,
   #tab-settings .settings-card-sync,
   #tab-settings .settings-card-diagnostics { grid-area: auto; }
+  .ai-settings-card { max-width: none; }
+  .ai-chat-card { max-width: none; }
+  .ai-chat-messages {
+    height: 280px;
+    max-height: 46vh;
+    min-height: 220px;
+  }
+  .ai-chat-msg { max-width: 92%; }
 }
 
 /* ── Movement Trend card ── */
@@ -1852,6 +2075,7 @@ tbody tr:hover td { background: var(--row-hover); }
     <button class="nav-tab" data-tab="trend">Trend</button>
     <button class="nav-tab" data-tab="workouts">Workouts</button>
     <button class="nav-tab" data-tab="exercises">Exercises<span id="ex-conflict-badge" class="badge badge-conflict" style="display:none;margin-left:5px;"></span></button>
+    <button class="nav-tab" data-tab="ai">AI</button>
     <button class="nav-tab" data-tab="log">Log</button>
     <button class="nav-tab" data-tab="settings">Settings</button>
   </div>
@@ -1871,6 +2095,7 @@ tbody tr:hover td { background: var(--row-hover); }
     <button class="nav-tab" data-tab="trend">Trend</button>
     <button class="nav-tab" data-tab="workouts">Workouts</button>
     <button class="nav-tab" data-tab="exercises">Exercises<span id="ex-conflict-badge-mobile" class="badge" style="display:none;margin-left:5px;"></span></button>
+    <button class="nav-tab" data-tab="ai">AI</button>
     <button class="nav-tab" data-tab="log">Log</button>
     <button class="nav-tab" data-tab="settings">Settings</button>
   </div>
@@ -2214,6 +2439,32 @@ tbody tr:hover td { background: var(--row-hover); }
 </section>
 
 <!-- ══════════════ LOG TAB ══════════════ -->
+<section id="tab-ai" class="tab-content">
+  <div class="card settings-card ai-chat-card">
+    <div class="card-title">AI Chat</div>
+    <div class="ai-settings-field" style="margin-bottom:12px;">
+      <label class="ai-settings-label" for="ai-model-select">Model</label>
+      <div id="ai-model-field"></div>
+    </div>
+    <div class="ai-chat-top">
+      <div class="ai-chat-helper">Uses your current readiness context from diagnostics snapshot.</div>
+      <button class="ai-chat-context-toggle" id="ai-chat-context-toggle" type="button" onclick="toggleAIContextPreview()">show context</button>
+    </div>
+    <pre class="ai-chat-context-preview" id="ai-chat-context-preview">Loading readiness context...</pre>
+    <div class="ai-chat-unconfigured" id="ai-chat-unconfigured">Configure your OpenRouter API key in Settings before sending messages.</div>
+    <div class="ai-chat-messages" id="ai-chat-messages">
+      <div class="ai-chat-placeholder">Ask anything about today's readiness, fatigue profile, and session choices.</div>
+    </div>
+    <div class="ai-chat-status" id="ai-chat-status"></div>
+    <div class="ai-chat-input-row">
+      <textarea class="ai-chat-input" id="ai-chat-input" rows="1" placeholder="e.g. Should I train heavy today? What does my fatigue profile suggest?"></textarea>
+      <button class="btn ai-chat-clear" id="ai-chat-clear" type="button" onclick="clearAIChat()">Clear</button>
+      <button class="btn btn-primary ai-chat-send" id="ai-chat-send" type="button" onclick="sendAIMessage()">Send</button>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ LOG TAB ══════════════ -->
 <section id="tab-log" class="tab-content">
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
@@ -2265,6 +2516,34 @@ tbody tr:hover td { background: var(--row-hover); }
     <div class="card-title">Engine Diagnostics &amp; Tweaks</div>
     <p class="settings-diag-body">The diagnostics page shows how your scores are calculated, the raw numbers behind your Today recommendation, and settings for fine-tuning how the engine classifies and patterns your training data.</p>
     <a class="settings-diag-cta" href="/static/diagnostic.html">Open Engine Diagnostics →</a>
+  </div>
+
+  <div class="card settings-card ai-settings-card">
+    <div class="card-title">AI Settings</div>
+    <p class="ai-settings-helper" style="margin-top:-6px;margin-bottom:12px;line-height:1.55;">
+      Configure your OpenRouter API key for chat features. Model selection is handled per session in the AI tab. API keys are stored encrypted in local app settings.
+    </p>
+
+    <div class="ai-preview" id="ai-key-current">No AI API key saved yet.</div>
+
+    <div class="ai-settings-grid">
+      <div class="ai-settings-field">
+        <label class="ai-settings-label" for="ai-api-key-input">API Key</label>
+        <div class="settings-key-row">
+          <input type="password" id="ai-api-key-input" placeholder="Paste your OpenRouter API key..." autocomplete="off">
+          <button class="btn" id="ai-api-key-toggle" onclick="toggleAIKeyVisibility()" title="Show / hide">Show</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-result" id="ai-settings-result"></div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+      <button class="btn btn-primary" id="btn-save-ai" onclick="saveAISettings()">Save AI Settings</button>
+    </div>
+    <div class="ai-change-wrap" id="ai-change-wrap">
+      <button class="btn btn-secondary" id="btn-change-ai" onclick="unlockAISettings()">Change</button>
+    </div>
   </div>
 </section>
 
@@ -2571,6 +2850,23 @@ let mvtHandlersBound = false;
 let _todayCheckinSubmitted = false;
 let _todayCheckinExpanded = false;
 let _todayCheckinEntry = null;
+let aiSettingsLocked = false;
+let aiChatHistory = [];
+let aiReadinessContext = null;
+let aiChatConfigured = false;
+let aiChatStreaming = false;
+let aiChatHandlersBound = false;
+
+const AI_DEFAULT_MODEL = 'openai/gpt-4o-mini';
+const AI_MODEL_OPTIONS = [
+  ['anthropic/claude-sonnet-4-5', 'claude-sonnet-4-5'],
+  ['anthropic/claude-haiku-4-5', 'claude-haiku-4-5'],
+  ['openai/gpt-4o', 'gpt-4o'],
+  ['openai/gpt-4o-mini', 'gpt-4o-mini'],
+  ['meta-llama/llama-3.3-70b-instruct', 'llama-3.3-70b'],
+  ['deepseek/deepseek-v3.2', 'deepseek-v3.2'],
+];
+let aiSelectedModel = AI_DEFAULT_MODEL;
 
 function setMobileNavOpen(isOpen) {
   document.body.classList.toggle('mobile-nav-open', !!isOpen);
@@ -2589,6 +2885,7 @@ function activateTab(tabName) {
   if (tabName === 'trend')                               activateTrendTab();
   if (tabName === 'exercises')                           { loadExerciseConflicts(); if (exercises.length === 0) loadExercises(); }
   if (tabName === 'workouts'  && !workoutsLoaded)        loadWorkouts();
+  if (tabName === 'ai')                                   loadAISettings().then(() => loadAIContext());
   if (tabName === 'log'       && !logLoaded)             loadLog();
   if (tabName === 'settings')                            loadSettingsTab();
 }
@@ -2649,6 +2946,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   initTrendRangeSelector();
   _mvtInitHandlers();
   _exOverrideInitHandlers();
+  _renderAIModelField(aiSelectedModel);
+  _initAIChatHandlers();
   checkTodayReadiness();
   loadTrainingLoadCard();
 });
@@ -2827,6 +3126,487 @@ function _setSectionResult(id, msg, ok) {
   el.textContent = msg;
   el.className = 'settings-result ' + (ok ? 'ok' : 'error');
   el.style.display = 'block';
+}
+
+function _extractApiErrorDetail(detail, fallback) {
+  if (typeof detail === 'string' && detail.trim()) return detail;
+  if (Array.isArray(detail)) {
+    const chunks = detail.map(item => {
+      if (!item || typeof item !== 'object') return '';
+      const loc = Array.isArray(item.loc) ? item.loc.join('.') : '';
+      const msg = item.msg || '';
+      return loc && msg ? `${loc}: ${msg}` : (msg || loc);
+    }).filter(Boolean);
+    if (chunks.length) return chunks.join('; ');
+  }
+  return fallback;
+}
+
+function _renderAIModelField(modelValue = AI_DEFAULT_MODEL) {
+  const wrap = document.getElementById('ai-model-field');
+  if (!wrap) return;
+
+  const nextValue = (modelValue || '').trim() || AI_DEFAULT_MODEL;
+  const isCustom = !AI_MODEL_OPTIONS.some(([value]) => value === nextValue);
+  const selectedValue = isCustom ? 'custom' : nextValue;
+  const customValue = isCustom ? nextValue : '';
+  aiSelectedModel = nextValue;
+
+  wrap.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <select id="ai-model-select" class="ai-control">
+        ${AI_MODEL_OPTIONS.map(([val, label]) => `
+          <option value="${val}" ${selectedValue === val ? 'selected' : ''}>${label}</option>
+        `).join('')}
+        <option value="custom" ${selectedValue === 'custom' ? 'selected' : ''}>Custom model…</option>
+      </select>
+      <input id="ai-model-custom" class="ai-control" type="text" autocomplete="off" placeholder="e.g. anthropic/claude-3-opus" value="${escHtml(customValue)}" ${selectedValue !== 'custom' ? 'disabled' : ''} style="display: ${selectedValue === 'custom' ? 'block' : 'none'};">
+    </div>
+  `;
+
+  const select = document.getElementById('ai-model-select');
+  const customInput = document.getElementById('ai-model-custom');
+  if (select && customInput) {
+    select.addEventListener('change', () => {
+      const isCustomSelected = select.value === 'custom';
+      customInput.style.display = isCustomSelected ? 'block' : 'none';
+      customInput.disabled = !isCustomSelected;
+      if (isCustomSelected) {
+        const preservedCustom = !AI_MODEL_OPTIONS.some(([value]) => value === aiSelectedModel) ? aiSelectedModel : '';
+        customInput.value = preservedCustom;
+        aiSelectedModel = customInput.value.trim();
+        customInput.focus();
+        return;
+      }
+      aiSelectedModel = select.value;
+    });
+
+    customInput.addEventListener('input', () => {
+      aiSelectedModel = customInput.value.trim();
+    });
+  }
+}
+
+function _getAIModelValue() {
+  return (aiSelectedModel || '').trim();
+}
+
+function _setAILocked(locked) {
+  aiSettingsLocked = !!locked;
+  const apiKeyEl = document.getElementById('ai-api-key-input');
+  const saveBtn = document.getElementById('btn-save-ai');
+  const changeWrap = document.getElementById('ai-change-wrap');
+
+  if (apiKeyEl) apiKeyEl.disabled = aiSettingsLocked;
+  if (saveBtn) saveBtn.style.display = aiSettingsLocked ? 'none' : 'inline-flex';
+  if (changeWrap) changeWrap.style.display = aiSettingsLocked ? 'block' : 'none';
+}
+
+function toggleAIKeyVisibility() {
+  const inp = document.getElementById('ai-api-key-input');
+  if (!inp) return;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function unlockAISettings() {
+  _setAILocked(false);
+  _setSectionResult('ai-settings-result', '', null);
+}
+
+function _setAIChatConfiguredState(configured) {
+  aiChatConfigured = !!configured;
+  const notice = document.getElementById('ai-chat-unconfigured');
+  const sendBtn = document.getElementById('ai-chat-send');
+  if (notice) notice.style.display = aiChatConfigured ? 'none' : 'block';
+  if (sendBtn) sendBtn.disabled = !aiChatConfigured || aiChatStreaming;
+}
+
+function _aiFmtText(value) {
+  if (value === null || value === undefined) return 'N/A';
+  const text = String(value).trim();
+  return text ? text : 'N/A';
+}
+
+function _aiFmtNum(value, decimals = 2) {
+  if (value === null || value === undefined || value === '') return 'N/A';
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toFixed(decimals) : _aiFmtText(value);
+}
+
+function _aiJointStateLevel(stateValue) {
+  if (stateValue && typeof stateValue === 'object') {
+    return _aiFmtText(stateValue.level);
+  }
+  return _aiFmtText(stateValue);
+}
+
+function _buildAIContextPreviewFromSnapshot(snapshot) {
+  const today = new Date();
+  const todayDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const combined = snapshot?.combined_score || {};
+  const subjective = snapshot?.subjective_breakdown || {};
+  const subjectiveRaw = subjective.raw || {};
+  const soreness = subjectiveRaw.soreness || {};
+  const objective = snapshot?.objective_breakdown || {};
+  const training = snapshot?.training_load || {};
+  const joint = snapshot?.joint_advisory || {};
+  const jointRaw = joint.raw || {};
+  const jointState = joint.state || {};
+  const lines = [
+    'You are an S&C assistant helping interpret this athlete snapshot.',
+    `Date: ${_aiFmtText(snapshot?.date || todayDate)}`,
+    '',
+    'Scores:',
+    `Combined Score: ${_aiFmtNum(combined.combined_score)}`,
+    `Subjective Score: ${_aiFmtNum(combined.subjective_score)}`,
+    `Objective Score: ${_aiFmtNum(combined.objective_score)}`,
+    '',
+    'Check-in Details:',
+  ];
+
+  if (snapshot?.checkin_exists) {
+    lines.push(`Tiredness: ${_aiFmtText(subjectiveRaw.tiredness)}`);
+    lines.push(`Perceived Recovery: ${_aiFmtText(subjectiveRaw.perceived_recovery)}`);
+    lines.push(`Sore Quad: ${_aiFmtText(soreness.sore_quad_dom)}`);
+    lines.push(`Sore Posterior: ${_aiFmtText(soreness.sore_posterior)}`);
+    lines.push(`Sore Upper Push: ${_aiFmtText(soreness.sore_upper_push)}`);
+    lines.push(`Sore Upper Pull: ${_aiFmtText(soreness.sore_upper_pull)}`);
+    lines.push(`Joint Upper Raw: ${_aiFmtText(subjectiveRaw.joint_upper)}`);
+    lines.push(`Joint Lower Raw: ${_aiFmtText(subjectiveRaw.joint_lower)}`);
+  } else {
+    lines.push('No check-in recorded for today');
+  }
+
+  lines.push('');
+  lines.push('Joint Advisory:');
+  lines.push(`Upper Raw: ${_aiFmtText(jointRaw.upper)}`);
+  lines.push(`Lower Raw: ${_aiFmtText(jointRaw.lower)}`);
+  lines.push(`Upper State: ${_aiJointStateLevel(jointState.upper)}`);
+  lines.push(`Lower State: ${_aiJointStateLevel(jointState.lower)}`);
+  lines.push('');
+  lines.push('Training Load:');
+  lines.push(`ATL: ${_aiFmtNum(training.atl)}`);
+  lines.push(`CTL: ${_aiFmtNum(training.ctl)}`);
+  lines.push(`TSB: ${_aiFmtNum(training.tsb)}`);
+  lines.push('');
+  lines.push('Volume Baseline:');
+  lines.push(`7-day Load Volume: ${_aiFmtNum(objective.seven_day_load_volume)}`);
+  lines.push(`6-month Weekly Avg Load Volume: ${_aiFmtNum(objective.six_month_weekly_avg_load_volume)}`);
+  lines.push(`Volume Ratio: ${_aiFmtNum(objective.ratio, 4)}`);
+  lines.push('');
+  lines.push('Last 7 Days Sessions:');
+
+  const recentSessions = [];
+  const sessions = Array.isArray(snapshot?.last_10_session_classifications)
+    ? snapshot.last_10_session_classifications
+    : [];
+  const cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - 6);
+
+  sessions.forEach(session => {
+    const rawDate = session?.workout_date;
+    if (!rawDate) return;
+    const parsed = new Date(`${rawDate}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return;
+    if (parsed >= cutoff) recentSessions.push(session);
+  });
+
+  if (!recentSessions.length) {
+    lines.push('No sessions in the last 7 days');
+  } else {
+    recentSessions.forEach(session => {
+      lines.push(
+        `Session: ${_aiFmtText(session.workout_date)} | ${_aiFmtText(session.workout_title)} | modality=${_aiFmtText(session.modality)} | status=${_aiFmtText(session.verification_status)} | sRPE=${_aiFmtNum(session.srpe)}`
+      );
+    });
+  }
+
+  return lines.join('\n');
+}
+
+function setAIContextPreview(text) {
+  const el = document.getElementById('ai-chat-context-preview');
+  if (!el) return;
+  el.textContent = text || 'Context unavailable.';
+}
+
+function toggleAIContextPreview() {
+  const el = document.getElementById('ai-chat-context-preview');
+  const btn = document.getElementById('ai-chat-context-toggle');
+  if (!el || !btn) return;
+  const visible = el.style.display === 'block';
+  el.style.display = visible ? 'none' : 'block';
+  btn.textContent = visible ? 'show context' : 'hide context';
+}
+
+function _aiEscapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/\n/g, '<br>');
+}
+
+function _appendAIMessage(role, content, streaming = false) {
+  const container = document.getElementById('ai-chat-messages');
+  if (!container) return null;
+  const placeholder = container.querySelector('.ai-chat-placeholder');
+  if (placeholder) placeholder.remove();
+
+  const bubbleContent = role === 'user'
+    ? _aiEscapeHtml(content)
+    : (streaming ? _aiEscapeHtml(content || '') : marked.parse(content || ''));
+
+  const wrapper = document.createElement('div');
+  wrapper.className = `ai-chat-msg ${role}`;
+  wrapper.innerHTML = `
+    <div class="ai-chat-msg-label">${role === 'user' ? 'You' : 'Assistant'}</div>
+    <div class="ai-chat-bubble${streaming ? ' streaming' : ''}">${bubbleContent}</div>
+  `;
+  container.appendChild(wrapper);
+  container.scrollTop = container.scrollHeight;
+  return wrapper.querySelector('.ai-chat-bubble');
+}
+
+function _setAIChatStatus(msg, isError = false) {
+  const el = document.getElementById('ai-chat-status');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.className = 'ai-chat-status' + (isError ? ' error' : '');
+}
+
+function _renderAIChatPlaceholder() {
+  const container = document.getElementById('ai-chat-messages');
+  if (!container) return;
+  container.innerHTML = '<div class="ai-chat-placeholder">Ask anything about today\'s readiness, fatigue profile, and session choices.</div>';
+}
+
+async function loadAIContext() {
+  try {
+    const r = await fetch('/api/diagnostics/snapshot');
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(_extractApiErrorDetail(d.detail, 'Could not load readiness context.'));
+    aiReadinessContext = _buildAIContextPreviewFromSnapshot(d);
+    setAIContextPreview(aiReadinessContext);
+  } catch (e) {
+    aiReadinessContext = null;
+    setAIContextPreview('Could not load readiness context.');
+    _setAIChatStatus(e.message || 'Could not load readiness context.', true);
+  }
+}
+
+function _setAIChatStreaming(active) {
+  aiChatStreaming = !!active;
+  const input = document.getElementById('ai-chat-input');
+  const sendBtn = document.getElementById('ai-chat-send');
+  const clearBtn = document.getElementById('ai-chat-clear');
+  if (input) input.disabled = aiChatStreaming;
+  if (sendBtn) sendBtn.disabled = !aiChatConfigured || aiChatStreaming;
+  if (clearBtn) clearBtn.disabled = aiChatStreaming;
+}
+
+async function sendAIMessage() {
+  const input = document.getElementById('ai-chat-input');
+  if (!input || aiChatStreaming || !aiChatConfigured) return;
+  const message = input.value.trim();
+  const model = _getAIModelValue();
+  if (!message) return;
+  if (!model) {
+    _setAIChatStatus('Model is required.', true);
+    document.getElementById('ai-model-custom')?.focus();
+    return;
+  }
+
+  input.value = '';
+  input.style.height = 'auto';
+  _setAIChatStreaming(true);
+  _setAIChatStatus('Thinking...');
+
+  _appendAIMessage('user', message);
+  const bubbleEl = _appendAIMessage('assistant', '', true);
+  let assistantText = '';
+
+  try {
+    const r = await fetch('/api/ai/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, history: aiChatHistory, model }),
+    });
+
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(_extractApiErrorDetail(err.detail, 'Chat request failed.'));
+    }
+    if (!r.body) throw new Error('No response stream returned by server.');
+
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let doneReceived = false;
+
+    while (!doneReceived) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') {
+          doneReceived = true;
+          break;
+        }
+        try {
+          const parsed = JSON.parse(data);
+          const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.text || '';
+          if (!delta) continue;
+          assistantText += delta;
+          if (bubbleEl) bubbleEl.innerHTML = marked.parse(assistantText);
+          const container = document.getElementById('ai-chat-messages');
+          if (container) container.scrollTop = container.scrollHeight;
+        } catch (_) {
+          continue;
+        }
+      }
+    }
+
+    if (!assistantText.trim()) {
+      assistantText = 'No response content returned.';
+    }
+    if (bubbleEl) {
+      bubbleEl.classList.remove('streaming');
+      bubbleEl.innerHTML = marked.parse(assistantText);
+    }
+
+    aiChatHistory.push({ role: 'user', content: message });
+    aiChatHistory.push({ role: 'assistant', content: assistantText });
+    _setAIChatStatus('');
+  } catch (e) {
+    if (bubbleEl) {
+      bubbleEl.classList.remove('streaming');
+      bubbleEl.innerHTML = `<span style="color:var(--danger)">Error: ${_aiEscapeHtml(e.message || 'Unknown error')}</span>`;
+    }
+    _setAIChatStatus(e.message || 'Chat request failed.', true);
+  } finally {
+    _setAIChatStreaming(false);
+    if (input) input.focus();
+  }
+}
+
+function clearAIChat() {
+  aiChatHistory = [];
+  _renderAIChatPlaceholder();
+  _setAIChatStatus('');
+  const input = document.getElementById('ai-chat-input');
+  if (input) {
+    input.value = '';
+    input.style.height = 'auto';
+  }
+}
+
+function _initAIChatHandlers() {
+  if (aiChatHandlersBound) return;
+  const input = document.getElementById('ai-chat-input');
+  if (!input) return;
+  aiChatHandlersBound = true;
+
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = `${Math.min(input.scrollHeight, 120)}px`;
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!document.getElementById('ai-chat-send')?.disabled) sendAIMessage();
+    }
+  });
+
+  _renderAIChatPlaceholder();
+  _setAIChatConfiguredState(false);
+}
+
+async function loadAISettings() {
+  const keyPreview = document.getElementById('ai-key-current');
+  const keyInput = document.getElementById('ai-api-key-input');
+  if (!keyPreview || !keyInput) {
+    _setAIChatConfiguredState(false);
+    return false;
+  }
+
+  _setSectionResult('ai-settings-result', '', null);
+
+  try {
+    const r = await fetch('/api/settings/ai');
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(_extractApiErrorDetail(d.detail, 'Could not load AI settings.'));
+
+    if (d.configured) {
+      keyPreview.textContent = `Current key: ${d.api_key_preview || 'configured'}`;
+      keyInput.value = '';
+      keyInput.type = 'password';
+      _setAILocked(true);
+      _setAIChatConfiguredState(true);
+      return true;
+    } else {
+      keyPreview.textContent = 'No AI API key saved yet.';
+      keyInput.value = '';
+      keyInput.type = 'password';
+      _setAILocked(false);
+      _setAIChatConfiguredState(false);
+      return false;
+    }
+  } catch (e) {
+    keyPreview.textContent = 'Could not load AI settings.';
+    _setAILocked(false);
+    _setSectionResult('ai-settings-result', `✗ ${e.message || 'Could not load AI settings.'}`, false);
+    _setAIChatConfiguredState(false);
+    return false;
+  }
+}
+
+async function saveAISettings() {
+  const keyInput = document.getElementById('ai-api-key-input');
+  const key = (keyInput?.value || '').trim();
+  const saveBtn = document.getElementById('btn-save-ai');
+  if (!saveBtn || !keyInput) return;
+
+  if (!key) {
+    _setSectionResult('ai-settings-result', 'Please paste your API key first.', false);
+    return;
+  }
+
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving...';
+
+  try {
+    const r = await fetch('/api/settings/ai', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: key }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      throw new Error(_extractApiErrorDetail(d.detail, 'Save failed.'));
+    }
+
+    document.getElementById('ai-key-current').textContent = `Current key: ${d.api_key_preview || 'configured'}`;
+    keyInput.value = '';
+    keyInput.type = 'password';
+    _setSectionResult('ai-settings-result', '✓ AI settings saved.', true);
+    _setAILocked(true);
+  } catch (e) {
+    _setSectionResult('ai-settings-result', `✗ ${e.message || 'Save failed.'}`, false);
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save AI Settings';
+  }
 }
 
 async function saveApiKey() {

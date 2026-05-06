@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date as date_type, timedelta, datetime
 from cryptography.fernet import Fernet
+import httpx
+import json
 import os
 import threading
 
@@ -96,6 +98,21 @@ class ReadinessUpdate(BaseModel):
 
 class SettingsInput(BaseModel):
     hevy_api_key: str
+
+
+class AISettingsInput(BaseModel):
+    api_key: str
+
+
+class AIChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class AIChatRequest(BaseModel):
+    message: str
+    history: list[AIChatMessage] = []
+    model: str = "openai/gpt-4o-mini"
 
 class TrainingStateThresholdsInput(BaseModel):
     tsb_threshold_underloaded: float = Field(8.0, ge=-50.0, le=50.0)
@@ -405,6 +422,113 @@ def _set_setting_value(db: Session, key: str, value: str) -> None:
         db.add(AppSetting(key=key, value=value))
 
 
+def _get_ai_api_key(db: Session) -> str | None:
+    encrypted_api_key = _get_setting_value(db, "ai_api_key")
+    if not encrypted_api_key:
+        return None
+    try:
+        api_key = _decrypt(encrypted_api_key)
+    except Exception:
+        return None
+    if not api_key:
+        return None
+    return api_key
+
+
+def _extract_provider_error_message(response: httpx.Response) -> str:
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = None
+
+    if isinstance(payload, dict):
+        if isinstance(payload.get("error"), dict):
+            msg = payload["error"].get("message") or payload["error"].get("type")
+            if msg:
+                return str(msg)
+        if isinstance(payload.get("error"), str):
+            return payload["error"]
+        if isinstance(payload.get("message"), str):
+            return payload["message"]
+
+    text = (response.text or "").strip()
+    return text if text else f"HTTP {response.status_code}"
+
+
+def _safe_sse_chunk(delta: str) -> str:
+    clean = (delta or "").replace("\r", "")
+    if not clean:
+        return ""
+    return f"data: {clean}\n\n"
+
+
+def _openai_compatible_messages(system_prompt: str, history: list[AIChatMessage], message: str) -> list[dict]:
+    out = [{"role": "system", "content": system_prompt}]
+    for item in history:
+        role = (item.role or "").strip().lower()
+        content = (item.content or "").strip()
+        if role not in {"system", "user", "assistant"} or not content:
+            continue
+        out.append({"role": role, "content": content})
+    out.append({"role": "user", "content": message})
+    return out
+
+
+def _stream_openrouter(model: str, api_key: str, messages: list[dict]) -> StreamingResponse:
+    client = httpx.Client(timeout=httpx.Timeout(90.0, connect=20.0))
+    request = client.build_request(
+        "POST",
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": model,
+            "messages": messages,
+            "stream": True,
+        },
+    )
+    try:
+        response = client.send(request, stream=True)
+    except httpx.HTTPError as exc:
+        client.close()
+        raise HTTPException(status_code=502, detail=f"OpenRouter request failed: {exc}") from exc
+
+    if response.status_code >= 400:
+        response.read()
+        detail = _extract_provider_error_message(response)
+        response.close()
+        client.close()
+        raise HTTPException(status_code=502, detail=f"OpenRouter error: {detail}")
+
+    def _iter():
+        try:
+            buffer = ""
+            for chunk in response.iter_text():
+                buffer += chunk
+                while "\n\n" in buffer:
+                    event, buffer = buffer.split("\n\n", 1)
+                    forwarded = False
+                    for line in event.splitlines():
+                        if not line.startswith("data:"):
+                            continue
+                        raw = line[5:].strip()
+                        if raw == "[DONE]":
+                            yield "data: [DONE]\n\n"
+                            return
+                        yield f"data: {raw}\n\n"
+                        forwarded = True
+                    if forwarded:
+                        continue
+            yield "data: [DONE]\n\n"
+        finally:
+            response.close()
+            client.close()
+
+    return StreamingResponse(_iter(), media_type="text/event-stream")
+
+
 def _seed_and_migrate_session_processing_settings(db: Session) -> None:
     """
     Seed Session Processing defaults for new installs.
@@ -703,6 +827,33 @@ def save_settings(data: SettingsInput, db: Session = Depends(get_db)):
     db.commit()
     preview = "···" + key[-4:] if len(key) >= 4 else "···"
     return {"message": "API key saved.", "api_key_preview": preview}
+
+
+@app.get("/api/settings/ai")
+def get_ai_settings(db: Session = Depends(get_db)):
+    api_key = _get_ai_api_key(db)
+    configured = bool(api_key)
+    api_key_preview = "···" + api_key[-4:] if api_key else None
+    return {
+        "configured": configured,
+        "api_key_preview": api_key_preview,
+    }
+
+
+@app.put("/api/settings/ai")
+def save_ai_settings(data: AISettingsInput, db: Session = Depends(get_db)):
+    api_key = data.api_key.strip()
+
+    if not api_key:
+        raise HTTPException(status_code=422, detail="api_key cannot be empty.")
+
+    _set_setting_value(db, "ai_api_key", _encrypt(api_key))
+    db.commit()
+
+    return {
+        "configured": True,
+        "api_key_preview": "···" + api_key[-4:],
+    }
 
 @app.get("/api/settings/test")
 def test_api_key(db: Session = Depends(get_db)):
@@ -1588,8 +1739,7 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
     }
 
 
-@app.get("/api/diagnostics/snapshot")
-def get_diagnostics_snapshot(db: Session = Depends(get_db)):
+def _build_diagnostics_snapshot(db: Session) -> dict:
     today_date = date_type.today()
     history, _, _ = _compute_training_load(60, db)
     today = history[-1] if history else {
@@ -1788,6 +1938,213 @@ def get_diagnostics_snapshot(db: Session = Depends(get_db)):
             for s in recent_sessions
         ],
     }
+
+
+@app.get("/api/diagnostics/snapshot")
+def get_diagnostics_snapshot(db: Session = Depends(get_db)):
+    return _build_diagnostics_snapshot(db)
+
+
+def _build_ai_system_prompt(db: Session) -> str:
+    snapshot = _build_diagnostics_snapshot(db)
+    today_date = date_type.today()
+
+    def _fmt_text(value: object) -> str:
+        if value is None:
+            return "N/A"
+        text = str(value).strip()
+        return text if text else "N/A"
+
+    def _fmt_num(value: object, decimals: int = 2) -> str:
+        if value is None:
+            return "N/A"
+        if isinstance(value, (int, float)):
+            return f"{value:.{decimals}f}"
+        return _fmt_text(value)
+
+    def _fmt_metric(value: object, decimals: int = 1) -> str:
+        if value is None:
+            return "N/A"
+        if isinstance(value, (int, float)):
+            n = float(value)
+            if abs(n - round(n)) < 1e-9:
+                return f"{int(round(n)):,}"
+            return f"{n:,.{decimals}f}".rstrip("0").rstrip(".")
+        return _fmt_text(value)
+
+    combined = snapshot.get("combined_score", {})
+    subjective = snapshot.get("subjective_breakdown", {})
+    subjective_raw = subjective.get("raw", {})
+    soreness = subjective_raw.get("soreness", {})
+    objective = snapshot.get("objective_breakdown", {})
+    training = snapshot.get("training_load", {})
+    joint = snapshot.get("joint_advisory", {})
+    joint_raw = joint.get("raw", {})
+    joint_state = joint.get("state", {})
+
+    def _joint_state_level(state_value: object) -> str:
+        if isinstance(state_value, dict):
+            return _fmt_text(state_value.get("level"))
+        return _fmt_text(state_value)
+
+    lines = [
+        "You are an S&C assistant helping interpret this athlete snapshot.",
+        f"Date: {_fmt_text(snapshot.get('date', str(today_date)))}",
+        "",
+        "SCALE REFERENCE (critical for correct interpretation):",
+        "",
+        "All subjective inputs use the same scale:",
+        "- 0 = none / fully recovered / no issue",
+        "- 1 = minimal / slight",
+        "- 2 = moderate / normal training fatigue (expected, not concerning)",
+        "- 3 = elevated / approaching caution territory",
+        "- 4 = severe / injury risk / do not train through this",
+        "",
+        "This applies to: Tiredness, Perceived Recovery, all Soreness fields, and Joint Health.",
+        "A score of 1 means minimal fatigue or soreness - nearly fresh.",
+        "A score of 2 is normal post-training state - not a red flag.",
+        "Only scores of 3 or 4 should trigger caution or modification recommendations.",
+        "",
+        "Combined Score and Subjective Score: 0 = fully fresh/recovered, 10 = maximum fatigue.",
+        "",
+        "Objective Score: 0-10, neutral indicator of recent training volume relative to your 6-month weekly baseline.",
+        "- 0 = little to no recent training",
+        "- 5 = training at your historical average",
+        "- 10 = training at 2x or more your historical average",
+        "This is NOT a readiness score. High does not mean recovered, low does not mean fatigued.",
+        "It contributes only 20% to the Combined Score - use it as load context, not a recovery signal.",
+        "",
+        "TSB: positive = more fitness than fatigue (favorable for performance), negative = more fatigue than fitness (caution).",
+        "Volume Ratio: 1.0 = at baseline, >1.0 = above normal load, <1.0 = below normal load.",
+        "",
+        "Scores:",
+        f"Combined Score: {_fmt_num(combined.get('combined_score'))}",
+        f"Subjective Score: {_fmt_num(combined.get('subjective_score'))}",
+        f"Objective Score: {_fmt_num(combined.get('objective_score'))}",
+        "",
+        "Check-in Details:",
+    ]
+
+    if snapshot.get("checkin_exists"):
+        lines.extend([
+            f"Tiredness: {_fmt_text(subjective_raw.get('tiredness'))}",
+            f"Perceived Recovery: {_fmt_text(subjective_raw.get('perceived_recovery'))}",
+            f"Sore Quad: {_fmt_text(soreness.get('sore_quad_dom'))}",
+            f"Sore Posterior: {_fmt_text(soreness.get('sore_posterior'))}",
+            f"Sore Upper Push: {_fmt_text(soreness.get('sore_upper_push'))}",
+            f"Sore Upper Pull: {_fmt_text(soreness.get('sore_upper_pull'))}",
+            f"Joint Upper Raw: {_fmt_text(subjective_raw.get('joint_upper'))}",
+            f"Joint Lower Raw: {_fmt_text(subjective_raw.get('joint_lower'))}",
+        ])
+    else:
+        lines.append("No check-in recorded for today")
+
+    lines.extend([
+        "",
+        "Joint Advisory:",
+        f"Upper Raw: {_fmt_text(joint_raw.get('upper'))}",
+        f"Lower Raw: {_fmt_text(joint_raw.get('lower'))}",
+        f"Upper State: {_joint_state_level(joint_state.get('upper'))}",
+        f"Lower State: {_joint_state_level(joint_state.get('lower'))}",
+        "",
+        "Training Load:",
+        f"ATL: {_fmt_num(training.get('atl'))}",
+        f"CTL: {_fmt_num(training.get('ctl'))}",
+        f"TSB: {_fmt_num(training.get('tsb'))}",
+        "",
+        "Volume Baseline:",
+        f"7-day Load Volume: {_fmt_num(objective.get('seven_day_load_volume'))}",
+        f"6-month Weekly Avg Load Volume: {_fmt_num(objective.get('six_month_weekly_avg_load_volume'))}",
+        f"Volume Ratio: {_fmt_num(objective.get('ratio'), 4)}",
+        "",
+        "Last 3 Sessions:",
+    ])
+
+    recent_sessions = (
+        db.query(WorkoutSession)
+        .filter(WorkoutSession.workout_date.isnot(None))
+        .order_by(WorkoutSession.workout_date.desc(), WorkoutSession.start_time.desc())
+        .limit(3)
+        .all()
+    )
+
+    if not recent_sessions:
+        lines.append("No recent sessions found")
+    else:
+        for session in recent_sessions:
+            modality_text = _fmt_text(session.modality)
+            modality_display = modality_text.title() if modality_text != "N/A" else modality_text
+            duration_display = (
+                f"{int(session.duration_minutes)}min"
+                if session.duration_minutes is not None
+                else "N/A"
+            )
+
+            lines.append(
+                f"- {_fmt_text(session.workout_date)} | "
+                f"{_fmt_text(session.workout_title)} | "
+                f"{modality_display} | "
+                f"{duration_display} | "
+                f"sRPE: {_fmt_num(session.srpe, 1)}"
+            )
+
+            exercise_rows = (
+                db.query(
+                    WorkoutLog.exercise_title.label("exercise_title"),
+                    func.count(WorkoutLog.id).label("set_count"),
+                    func.coalesce(func.sum(WorkoutLog.reps), 0).label("total_reps"),
+                    func.coalesce(
+                        func.sum(
+                            func.coalesce(WorkoutLog.weight_lbs, 0.0) *
+                            func.coalesce(WorkoutLog.reps, 0)
+                        ),
+                        0.0,
+                    ).label("total_volume"),
+                    func.max(WorkoutLog.weight_lbs).label("top_weight"),
+                    func.avg(WorkoutLog.rpe).label("avg_rpe"),
+                    func.min(WorkoutLog.id).label("first_log_id"),
+                )
+                .filter(WorkoutLog.workout_id == session.hevy_workout_id)
+                .group_by(WorkoutLog.exercise_title)
+                .order_by(func.min(WorkoutLog.id))
+                .all()
+            )
+
+            if not exercise_rows:
+                lines.append("  No exercise detail available")
+                continue
+
+            for row in exercise_rows:
+                detail = (
+                    f"  {_fmt_text(row.exercise_title)}: "
+                    f"{int(row.set_count or 0)} sets, "
+                    f"{int(row.total_reps or 0)} reps, "
+                    f"{_fmt_metric(row.total_volume)} lbs volume, "
+                    f"top {_fmt_metric(row.top_weight)} lbs"
+                )
+                if row.avg_rpe is not None:
+                    detail += f", avg RPE {_fmt_num(row.avg_rpe, 1)}"
+                lines.append(detail)
+
+    return "\n".join(lines)
+
+
+@app.post("/api/ai/chat")
+def ai_chat_proxy(data: AIChatRequest, db: Session = Depends(get_db)):
+    api_key = _get_ai_api_key(db)
+    if not api_key:
+        raise HTTPException(status_code=422, detail="AI settings are not configured.")
+
+    message = (data.message or "").strip()
+    if not message:
+        raise HTTPException(status_code=422, detail="message cannot be empty.")
+
+    model = (data.model or "").strip() or "openai/gpt-4o-mini"
+
+    system_prompt = _build_ai_system_prompt(db)
+    history = data.history or []
+    messages = _openai_compatible_messages(system_prompt, history, message)
+    return _stream_openrouter(model, api_key, messages)
 
 
 # ── Readiness history ─────────────────────────────────────────────────────────
