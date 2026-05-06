@@ -3140,14 +3140,55 @@ function _renderAIModelField(modelValue = '') {
   const wrap = document.getElementById('ai-model-field');
   if (!wrap) return;
 
+  // Define dropdown options: [value, label]
+  const options = [
+    ['anthropic/claude-sonnet-4-5', 'claude-sonnet-4-5'],
+    ['anthropic/claude-haiku-4-5', 'claude-haiku-4-5'],
+    ['openai/gpt-4o', 'gpt-4o'],
+    ['openai/gpt-4o-mini', 'gpt-4o-mini'],
+    ['meta-llama/llama-3.3-70b-instruct', 'llama-3.3-70b'],
+    ['deepseek/deepseek-v3.2', 'deepseek-v3.2'],
+  ];
+
+  // Determine if modelValue is a preset option or custom
+  const isCustom = !options.some(opt => opt[0] === modelValue);
+  const selectedValue = isCustom ? 'custom' : modelValue;
+  const customValue = isCustom ? modelValue : '';
+
   wrap.innerHTML = `
-    <input id="ai-model-value" class="ai-control" type="text" autocomplete="off" placeholder="openai/gpt-4o-mini" value="${escHtml(modelValue)}" ${aiSettingsLocked ? 'disabled' : ''}>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <select id="ai-model-select" class="ai-control" ${aiSettingsLocked ? 'disabled' : ''}>
+        ${options.map(([val, label]) => `
+          <option value="${val}" ${selectedValue === val ? 'selected' : ''}>${label}</option>
+        `).join('')}
+        <option value="custom" ${selectedValue === 'custom' ? 'selected' : ''}>Custom model…</option>
+      </select>
+      <input id="ai-model-custom" class="ai-control" type="text" autocomplete="off" placeholder="e.g., anthropic/claude-3-opus" value="${escHtml(customValue)}" ${aiSettingsLocked || selectedValue !== 'custom' ? 'disabled' : ''} style="display: ${selectedValue === 'custom' ? 'block' : 'none'};">
+    </div>
   `;
+
+  // Add event listener to toggle custom input visibility
+  const select = document.getElementById('ai-model-select');
+  const customInput = document.getElementById('ai-model-custom');
+  if (select && customInput) {
+    select.addEventListener('change', () => {
+      const isCustomSelected = select.value === 'custom';
+      customInput.style.display = isCustomSelected ? 'block' : 'none';
+      customInput.disabled = aiSettingsLocked || !isCustomSelected;
+    });
+  }
 }
 
 function _getAIModelValue() {
-  const modelEl = document.getElementById('ai-model-value');
-  return modelEl ? modelEl.value.trim() : '';
+  const select = document.getElementById('ai-model-select');
+  if (!select) return '';
+
+  if (select.value === 'custom') {
+    const customInput = document.getElementById('ai-model-custom');
+    return customInput ? customInput.value.trim() : '';
+  }
+
+  return select.value;
 }
 
 function _setAILocked(locked) {
