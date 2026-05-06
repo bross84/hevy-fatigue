@@ -13,11 +13,11 @@ This document locks implementation to strict stage gates and dependency order.
 ## Latest Maintenance Update (2026-05-06, AI Prompt Scale Reference)
 
 - Added a `SCALE REFERENCE (critical for correct interpretation):` block to `_build_ai_system_prompt()` in `main.py` immediately after the prompt header/date section.
-- The prompt now explicitly defines scoring direction and scale meaning for:
-	- combined, subjective, and objective scores
-	- tiredness and perceived recovery
-	- soreness and joint health
-	- TSB and volume ratio
+- Revised the prompt guidance so AI interpretation follows the intended fatigue semantics:
+	- all subjective inputs share the same 0-4 meaning, with `2` treated as normal post-training fatigue and only `3` or `4` treated as caution territory
+	- combined and subjective scores are defined as `0 = fully fresh/recovered, 10 = maximum fatigue`
+	- objective score is defined as a neutral recent-volume indicator relative to the 6-month baseline, not a readiness score
+	- TSB and volume ratio remain explicit load-context references
 - This change is backend-only and improves model interpretation consistency without changing frontend behavior or API contracts.
 - Validation evidence:
 	- `python -m py_compile main.py` passes
