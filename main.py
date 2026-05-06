@@ -102,7 +102,6 @@ class SettingsInput(BaseModel):
 
 class AISettingsInput(BaseModel):
     api_key: str
-    model: str
 
 
 class AIChatMessage(BaseModel):
@@ -113,6 +112,7 @@ class AIChatMessage(BaseModel):
 class AIChatRequest(BaseModel):
     message: str
     history: list[AIChatMessage] = []
+    model: str = "openai/gpt-4o-mini"
 
 class TrainingStateThresholdsInput(BaseModel):
     tsb_threshold_underloaded: float = Field(8.0, ge=-50.0, le=50.0)
@@ -422,18 +422,17 @@ def _set_setting_value(db: Session, key: str, value: str) -> None:
         db.add(AppSetting(key=key, value=value))
 
 
-def _get_ai_settings(db: Session) -> tuple[str | None, str | None]:
-    model = _get_setting_value(db, "ai_model")
+def _get_ai_api_key(db: Session) -> str | None:
     encrypted_api_key = _get_setting_value(db, "ai_api_key")
-    if not model or not encrypted_api_key:
-        return None, None
+    if not encrypted_api_key:
+        return None
     try:
         api_key = _decrypt(encrypted_api_key)
     except Exception:
-        return None, None
+        return None
     if not api_key:
-        return None, None
-    return model, api_key
+        return None
+    return api_key
 
 
 def _extract_provider_error_message(response: httpx.Response) -> str:
@@ -837,33 +836,27 @@ def save_settings(data: SettingsInput, db: Session = Depends(get_db)):
 
 @app.get("/api/settings/ai")
 def get_ai_settings(db: Session = Depends(get_db)):
-    model, api_key = _get_ai_settings(db)
-    configured = bool(model and api_key)
+    api_key = _get_ai_api_key(db)
+    configured = bool(api_key)
     api_key_preview = "···" + api_key[-4:] if api_key else None
     return {
         "configured": configured,
-        "model": model if configured else None,
         "api_key_preview": api_key_preview,
     }
 
 
 @app.put("/api/settings/ai")
 def save_ai_settings(data: AISettingsInput, db: Session = Depends(get_db)):
-    model = data.model.strip()
     api_key = data.api_key.strip()
 
-    if not model:
-        raise HTTPException(status_code=422, detail="model cannot be empty.")
     if not api_key:
         raise HTTPException(status_code=422, detail="api_key cannot be empty.")
 
-    _set_setting_value(db, "ai_model", model)
     _set_setting_value(db, "ai_api_key", _encrypt(api_key))
     db.commit()
 
     return {
         "configured": True,
-        "model": model,
         "api_key_preview": "···" + api_key[-4:],
     }
 
@@ -2067,13 +2060,15 @@ def _build_ai_system_prompt(db: Session) -> str:
 
 @app.post("/api/ai/chat")
 def ai_chat_proxy(data: AIChatRequest, db: Session = Depends(get_db)):
-    model, api_key = _get_ai_settings(db)
-    if not model or not api_key:
+    api_key = _get_ai_api_key(db)
+    if not api_key:
         raise HTTPException(status_code=422, detail="AI settings are not configured.")
 
     message = (data.message or "").strip()
     if not message:
         raise HTTPException(status_code=422, detail="message cannot be empty.")
+
+    model = (data.model or "").strip() or "openai/gpt-4o-mini"
 
     system_prompt = _build_ai_system_prompt(db)
     history = data.history or []

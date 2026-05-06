@@ -2,6 +2,30 @@
 
 Last updated: 2026-05-03 (Backlog source-of-truth established)
 
+## Latest Maintenance Update (2026-05-06, Session-Scoped AI Model Selection)
+
+- Moved AI model selection out of persisted settings and into the AI chat UI in `static/index.html`:
+	- AI tab now renders a model dropdown above the context preview with six preset OpenRouter models plus `Custom model…`
+	- session-only state is stored in `aiSelectedModel`, defaulting to `openai/gpt-4o-mini` on page load
+	- selecting `Custom model…` reveals a text input and chat requests use that custom string for the current browser session only
+- Simplified the Settings-tab AI card in `static/index.html` to API-key-only:
+	- removed the model selector from Settings
+	- preserved API key preview, encrypted-key save flow, and lock/change behavior
+	- updated copy so Settings manages only the API key while model choice happens in the AI tab
+- Reduced the backend AI settings contract in `main.py`:
+	- `AISettingsInput` now accepts only `api_key`
+	- `GET /api/settings/ai` now returns only `configured` and `api_key_preview`
+	- `PUT /api/settings/ai` now validates/stores only encrypted `ai_api_key`
+	- code no longer reads or writes `ai_model`
+- Updated request-scoped chat model handling in `main.py`:
+	- `AIChatRequest` now includes `model` with default `openai/gpt-4o-mini`
+	- `POST /api/ai/chat` now uses the request model with the stored API key when calling `_stream_openrouter(...)`
+	- `sendAIMessage()` now posts `{ message, history, model }`
+- Validation:
+	- `python -m py_compile main.py` passes
+	- editor diagnostics report no errors in `main.py` or `static/index.html`
+	- isolated API smoke checks confirmed `PUT /api/settings/ai` succeeds with only `api_key`, `GET /api/settings/ai` returns no `model` field, chat requests pass through the selected request model, and only `ai_api_key` is persisted
+
 ## Latest Maintenance Update (2026-05-05, OpenRouter-Only AI Simplification)
 
 - Simplified backend AI integration in `main.py` to OpenRouter-only:

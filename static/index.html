@@ -2442,12 +2442,16 @@ tbody tr:hover td { background: var(--row-hover); }
 <section id="tab-ai" class="tab-content">
   <div class="card settings-card ai-chat-card">
     <div class="card-title">AI Chat</div>
+    <div class="ai-settings-field" style="margin-bottom:12px;">
+      <label class="ai-settings-label" for="ai-model-select">Model</label>
+      <div id="ai-model-field"></div>
+    </div>
     <div class="ai-chat-top">
       <div class="ai-chat-helper">Uses your current readiness context from diagnostics snapshot.</div>
       <button class="ai-chat-context-toggle" id="ai-chat-context-toggle" type="button" onclick="toggleAIContextPreview()">show context</button>
     </div>
     <pre class="ai-chat-context-preview" id="ai-chat-context-preview">Loading readiness context...</pre>
-    <div class="ai-chat-unconfigured" id="ai-chat-unconfigured">Configure OpenRouter model and API key in Settings before sending messages.</div>
+    <div class="ai-chat-unconfigured" id="ai-chat-unconfigured">Configure your OpenRouter API key in Settings before sending messages.</div>
     <div class="ai-chat-messages" id="ai-chat-messages">
       <div class="ai-chat-placeholder">Ask anything about today's readiness, fatigue profile, and session choices.</div>
     </div>
@@ -2517,20 +2521,12 @@ tbody tr:hover td { background: var(--row-hover); }
   <div class="card settings-card ai-settings-card">
     <div class="card-title">AI Settings</div>
     <p class="ai-settings-helper" style="margin-top:-6px;margin-bottom:12px;line-height:1.55;">
-      Configure your OpenRouter model and API key for chat features. API keys are stored encrypted in local app settings.
+      Configure your OpenRouter API key for chat features. Model selection is handled per session in the AI tab. API keys are stored encrypted in local app settings.
     </p>
 
     <div class="ai-preview" id="ai-key-current">No AI API key saved yet.</div>
 
     <div class="ai-settings-grid">
-      <div class="ai-settings-field">
-        <label class="ai-settings-label" for="ai-model-value">Model</label>
-        <div id="ai-model-field"></div>
-        <div class="ai-settings-helper" style="margin-top:6px;">
-          Enter any OpenRouter model string, e.g. openai/gpt-4o-mini
-        </div>
-      </div>
-
       <div class="ai-settings-field">
         <label class="ai-settings-label" for="ai-api-key-input">API Key</label>
         <div class="settings-key-row">
@@ -2862,6 +2858,15 @@ let aiChatStreaming = false;
 let aiChatHandlersBound = false;
 
 const AI_DEFAULT_MODEL = 'openai/gpt-4o-mini';
+const AI_MODEL_OPTIONS = [
+  ['anthropic/claude-sonnet-4-5', 'claude-sonnet-4-5'],
+  ['anthropic/claude-haiku-4-5', 'claude-haiku-4-5'],
+  ['openai/gpt-4o', 'gpt-4o'],
+  ['openai/gpt-4o-mini', 'gpt-4o-mini'],
+  ['meta-llama/llama-3.3-70b-instruct', 'llama-3.3-70b'],
+  ['deepseek/deepseek-v3.2', 'deepseek-v3.2'],
+];
+let aiSelectedModel = AI_DEFAULT_MODEL;
 
 function setMobileNavOpen(isOpen) {
   document.body.classList.toggle('mobile-nav-open', !!isOpen);
@@ -2941,6 +2946,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initTrendRangeSelector();
   _mvtInitHandlers();
   _exOverrideInitHandlers();
+  _renderAIModelField(aiSelectedModel);
   _initAIChatHandlers();
   checkTodayReadiness();
   loadTrainingLoadCard();
@@ -3136,59 +3142,53 @@ function _extractApiErrorDetail(detail, fallback) {
   return fallback;
 }
 
-function _renderAIModelField(modelValue = '') {
+function _renderAIModelField(modelValue = AI_DEFAULT_MODEL) {
   const wrap = document.getElementById('ai-model-field');
   if (!wrap) return;
 
-  // Define dropdown options: [value, label]
-  const options = [
-    ['anthropic/claude-sonnet-4-5', 'claude-sonnet-4-5'],
-    ['anthropic/claude-haiku-4-5', 'claude-haiku-4-5'],
-    ['openai/gpt-4o', 'gpt-4o'],
-    ['openai/gpt-4o-mini', 'gpt-4o-mini'],
-    ['meta-llama/llama-3.3-70b-instruct', 'llama-3.3-70b'],
-    ['deepseek/deepseek-v3.2', 'deepseek-v3.2'],
-  ];
-
-  // Determine if modelValue is a preset option or custom
-  const isCustom = !options.some(opt => opt[0] === modelValue);
-  const selectedValue = isCustom ? 'custom' : modelValue;
-  const customValue = isCustom ? modelValue : '';
+  const nextValue = (modelValue || '').trim() || AI_DEFAULT_MODEL;
+  const isCustom = !AI_MODEL_OPTIONS.some(([value]) => value === nextValue);
+  const selectedValue = isCustom ? 'custom' : nextValue;
+  const customValue = isCustom ? nextValue : '';
+  aiSelectedModel = nextValue;
 
   wrap.innerHTML = `
     <div style="display: flex; flex-direction: column; gap: 8px;">
-      <select id="ai-model-select" class="ai-control" ${aiSettingsLocked ? 'disabled' : ''}>
-        ${options.map(([val, label]) => `
+      <select id="ai-model-select" class="ai-control">
+        ${AI_MODEL_OPTIONS.map(([val, label]) => `
           <option value="${val}" ${selectedValue === val ? 'selected' : ''}>${label}</option>
         `).join('')}
         <option value="custom" ${selectedValue === 'custom' ? 'selected' : ''}>Custom model…</option>
       </select>
-      <input id="ai-model-custom" class="ai-control" type="text" autocomplete="off" placeholder="e.g., anthropic/claude-3-opus" value="${escHtml(customValue)}" ${aiSettingsLocked || selectedValue !== 'custom' ? 'disabled' : ''} style="display: ${selectedValue === 'custom' ? 'block' : 'none'};">
+      <input id="ai-model-custom" class="ai-control" type="text" autocomplete="off" placeholder="e.g. anthropic/claude-3-opus" value="${escHtml(customValue)}" ${selectedValue !== 'custom' ? 'disabled' : ''} style="display: ${selectedValue === 'custom' ? 'block' : 'none'};">
     </div>
   `;
 
-  // Add event listener to toggle custom input visibility
   const select = document.getElementById('ai-model-select');
   const customInput = document.getElementById('ai-model-custom');
   if (select && customInput) {
     select.addEventListener('change', () => {
       const isCustomSelected = select.value === 'custom';
       customInput.style.display = isCustomSelected ? 'block' : 'none';
-      customInput.disabled = aiSettingsLocked || !isCustomSelected;
+      customInput.disabled = !isCustomSelected;
+      if (isCustomSelected) {
+        const preservedCustom = !AI_MODEL_OPTIONS.some(([value]) => value === aiSelectedModel) ? aiSelectedModel : '';
+        customInput.value = preservedCustom;
+        aiSelectedModel = customInput.value.trim();
+        customInput.focus();
+        return;
+      }
+      aiSelectedModel = select.value;
+    });
+
+    customInput.addEventListener('input', () => {
+      aiSelectedModel = customInput.value.trim();
     });
   }
 }
 
 function _getAIModelValue() {
-  const select = document.getElementById('ai-model-select');
-  if (!select) return '';
-
-  if (select.value === 'custom') {
-    const customInput = document.getElementById('ai-model-custom');
-    return customInput ? customInput.value.trim() : '';
-  }
-
-  return select.value;
+  return (aiSelectedModel || '').trim();
 }
 
 function _setAILocked(locked) {
@@ -3200,8 +3200,6 @@ function _setAILocked(locked) {
   if (apiKeyEl) apiKeyEl.disabled = aiSettingsLocked;
   if (saveBtn) saveBtn.style.display = aiSettingsLocked ? 'none' : 'inline-flex';
   if (changeWrap) changeWrap.style.display = aiSettingsLocked ? 'block' : 'none';
-
-  _renderAIModelField(_getAIModelValue());
 }
 
 function toggleAIKeyVisibility() {
@@ -3414,7 +3412,13 @@ async function sendAIMessage() {
   const input = document.getElementById('ai-chat-input');
   if (!input || aiChatStreaming || !aiChatConfigured) return;
   const message = input.value.trim();
+  const model = _getAIModelValue();
   if (!message) return;
+  if (!model) {
+    _setAIChatStatus('Model is required.', true);
+    document.getElementById('ai-model-custom')?.focus();
+    return;
+  }
 
   input.value = '';
   input.style.height = 'auto';
@@ -3429,7 +3433,7 @@ async function sendAIMessage() {
     const r = await fetch('/api/ai/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, history: aiChatHistory }),
+      body: JSON.stringify({ message, history: aiChatHistory, model }),
     });
 
     if (!r.ok) {
@@ -3541,8 +3545,6 @@ async function loadAISettings() {
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(_extractApiErrorDetail(d.detail, 'Could not load AI settings.'));
 
-    _renderAIModelField(d.model || AI_DEFAULT_MODEL);
-
     if (d.configured) {
       keyPreview.textContent = `Current key: ${d.api_key_preview || 'configured'}`;
       keyInput.value = '';
@@ -3568,16 +3570,11 @@ async function loadAISettings() {
 }
 
 async function saveAISettings() {
-  const model = _getAIModelValue();
   const keyInput = document.getElementById('ai-api-key-input');
   const key = (keyInput?.value || '').trim();
   const saveBtn = document.getElementById('btn-save-ai');
   if (!saveBtn || !keyInput) return;
 
-  if (!model) {
-    _setSectionResult('ai-settings-result', 'Model is required.', false);
-    return;
-  }
   if (!key) {
     _setSectionResult('ai-settings-result', 'Please paste your API key first.', false);
     return;
@@ -3590,7 +3587,7 @@ async function saveAISettings() {
     const r = await fetch('/api/settings/ai', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, api_key: key }),
+      body: JSON.stringify({ api_key: key }),
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) {

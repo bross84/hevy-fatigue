@@ -10,6 +10,28 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-06, Session-Scoped AI Model Selection)
+
+- Moved AI model selection from persisted settings into the AI chat UI in `static/index.html`.
+- AI tab now includes a model selector row above the context preview with:
+	- preset options for Claude Sonnet 4.5, Claude Haiku 4.5, GPT-4o, GPT-4o Mini, Llama 3.3 70B, and DeepSeek V3.2
+	- a `Custom model…` option that reveals a free-text input for any OpenRouter model string
+	- session-only state tracked in `aiSelectedModel`, defaulting to `openai/gpt-4o-mini`
+- Simplified the Settings-tab AI card to API-key-only while preserving save and lock/change behavior.
+- Changed backend AI settings contract in `main.py`:
+	- `AISettingsInput` now contains only `api_key`
+	- `GET /api/settings/ai` returns only `configured` and `api_key_preview`
+	- `PUT /api/settings/ai` persists only encrypted `ai_api_key`
+	- `ai_model` is no longer read or written
+- Changed request-scoped chat handling in `main.py`:
+	- `AIChatRequest` now includes `model` with default `openai/gpt-4o-mini`
+	- `POST /api/ai/chat` uses `data.model` instead of stored settings when calling `_stream_openrouter(...)`
+	- frontend `sendAIMessage()` now submits `{ message, history, model }`
+- Validation evidence:
+	- `python -m py_compile main.py` passes
+	- static diagnostics pass for `main.py` and `static/index.html`
+	- isolated API smoke checks confirmed settings PUT/GET no longer return `model`, chat uses the selected request model, and only `ai_api_key` is persisted
+
 ## Latest Maintenance Update (2026-05-05, OpenRouter-Only AI Simplification)
 
 - Simplified backend AI integration in `main.py` to OpenRouter-only.
