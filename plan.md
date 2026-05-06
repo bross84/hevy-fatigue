@@ -2,6 +2,29 @@
 
 Last updated: 2026-05-03 (Backlog source-of-truth established)
 
+## Latest Maintenance Update (2026-05-06, Stage 6: Diagnostic AI Removal)
+
+- Removed the Diagnostics page AI Assistant section from `static/diagnostic.html`.
+- Deleted AI section HTML controls and containers:
+	- model selector
+	- context preview toggle and preview area
+	- chat message window
+	- input row, send/clear controls, and status line
+- Removed AI-only JavaScript from `static/diagnostic.html`:
+	- `OPENROUTER_API_KEY` and `OPENROUTER_URL`
+	- `chatHistory` and `readinessContext`
+	- `buildSystemPrompt()`, `sendMessage()`, `clearChat()`, `appendMessage()`, `escapeHtml()`, `setStatus()`, `setContextPreview()`, and `toggleContextPreview()`
+	- removed readiness-context assignment from `loadAndRender()`
+	- removed AI input listeners from `DOMContentLoaded`
+- Removed AI-only CSS selectors (`.ai-*`) from `static/diagnostic.html`.
+- Removed `marked.js` CDN script tag from `static/diagnostic.html` because no markdown parsing remains in that file.
+- Preserved non-AI diagnostics functionality and controls:
+	- Engine Snapshot render path remains intact
+	- Pattern Sensitivity and Session Processing cards remain unchanged
+- Validation:
+	- static diagnostics report no errors in `static/diagnostic.html`
+	- no `OPENROUTER_API_KEY`, `marked`, or removed AI function/id references remain in `static/diagnostic.html`
+
 ## Latest Maintenance Update (2026-05-06, AI Prompt Recent Session Detail Rewrite)
 
 - Replaced the recent-session section in `_build_ai_system_prompt()` in `main.py` with direct database queries over `WorkoutSession` and `WorkoutLog`.

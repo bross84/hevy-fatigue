@@ -10,6 +10,27 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-06, Stage 6: Diagnostic AI Removal)
+
+- Removed the Diagnostics-page AI assistant from `static/diagnostic.html`.
+- Deleted AI assistant markup and interaction controls (model select, context preview, messages, status, input/send/clear row).
+- Removed AI JavaScript from `static/diagnostic.html`, including:
+	- hardcoded OpenRouter key/url constants
+	- chat state and helper functions
+	- send/clear message pipeline
+	- readiness-context preview assignment logic
+	- DOMContentLoaded AI input event handlers
+- Removed AI-specific CSS (`.ai-*` selectors).
+- Removed `marked.js` CDN include because the diagnostics page no longer uses markdown rendering.
+- Preserved diagnostics and settings behavior outside AI:
+	- Engine Snapshot render flow unchanged
+	- Pattern Sensitivity controls unchanged
+	- Session Processing controls unchanged
+- Validation evidence:
+	- static diagnostics pass for `static/diagnostic.html`
+	- no residual `OPENROUTER_API_KEY` references in file content
+	- no residual AI function/id references in file content
+
 ## Latest Maintenance Update (2026-05-06, AI Prompt Recent Session Detail Rewrite)
 
 - Reworked the recent-session portion of `_build_ai_system_prompt()` in `main.py` to query `WorkoutSession` and `WorkoutLog` directly instead of relying on snapshot session summaries.
