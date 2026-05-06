@@ -504,28 +504,30 @@ def _stream_openrouter(model: str, api_key: str, messages: list[dict]) -> Stream
 
     def _iter():
         try:
-            for line in response.iter_lines():
-                if not line:
-                    continue
-                text = line.decode("utf-8", errors="ignore") if isinstance(line, bytes) else str(line)
-                if not text.startswith("data:"):
-                    continue
-                raw = text[5:].strip()
-                if raw == "[DONE]":
-                    break
-                try:
-                    obj = json.loads(raw)
-                except json.JSONDecodeError:
-                    continue
-                choices = obj.get("choices") or []
-                if not choices:
-                    continue
-                delta = (choices[0].get("delta") or {}).get("content")
-                if not delta:
-                    delta = choices[0].get("text")
-                chunk = _safe_sse_chunk(delta or "")
-                if chunk:
-                    yield chunk
+            buffer = ""
+            for chunk in response.iter_text():
+                buffer += chunk
+                while "\n\n" in buffer:
+                    event, buffer = buffer.split("\n\n", 1)
+                    for line in event.splitlines():
+                        if not line.startswith("data:"):
+                            continue
+                        raw = line[5:].strip()
+                        if raw == "[DONE]":
+                            yield "data: [DONE]\n\n"
+                            return
+                        try:
+                            obj = json.loads(raw)
+                        except json.JSONDecodeError:
+                            continue
+                        choices = obj.get("choices") or []
+                        if not choices:
+                            continue
+                        delta = (choices[0].get("delta") or {}).get("content")
+                        if not delta:
+                            delta = choices[0].get("text")
+                        if delta:
+                            yield _safe_sse_chunk(delta)
             yield "data: [DONE]\n\n"
         finally:
             response.close()
