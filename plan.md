@@ -1,6 +1,24 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-07 (Docs CSS Variable + Importer List Fixes)
+Last updated: 2026-05-07 (AI + Mobile Nav + Settings UI Fixes)
+
+## Latest Maintenance Update (2026-05-07, AI/Settings/Mobile UI Stabilization)
+
+- Updated `static/index.html` to keep top navigation persistently visible on mobile:
+	- set mobile nav to fixed positioning at the top
+	- adjusted `main` top padding at mobile breakpoints to avoid content overlap
+	- simplified very-small-screen nav rules to prevent 2-row wrapping behavior
+- Updated mobile drawer offset so it opens beneath the fixed top nav (`top: 54px`).
+- Fixed AI chat card alignment on desktop:
+	- centered active AI tab content container
+	- constrained chat card width with centered margins
+- Fixed Settings tab layout imbalance:
+	- forced `AI Settings` card to span full grid width on desktop (`grid-column: 1 / -1`)
+- Reduced mobile AI input zoom/keyboard friction:
+	- increased `.ai-chat-input` font size to `16px`
+	- added textarea input attributes (`autocomplete`, `autocorrect`, `autocapitalize`, `spellcheck`, `enterkeyhint`) for better mobile behavior
+- Validation:
+	- static diagnostics report no errors in `static/index.html`
 
 ## Latest Maintenance Update (2026-05-07, Docs CSS Variables and Importer List Styling Fix)
 

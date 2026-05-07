@@ -10,6 +10,22 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-07, AI/Settings/Mobile UI Fix Pass)
+
+- Applied targeted UI fixes in `static/index.html` for four reported issues:
+	- desktop AI chat panel centering
+	- settings-page layout alignment
+	- always-visible mobile top nav
+	- mobile AI text-entry zoom/keyboard behavior mitigation
+- Key implementation details:
+	- fixed mobile nav bar (`position: fixed`) with top padding compensation in `main`
+	- mobile drawer now starts below navbar (`top: 54px`)
+	- `#tab-settings .ai-settings-card` spans full grid width
+	- `.tab-content#tab-ai.active` uses centered flex layout
+	- `.ai-chat-input` font-size raised to `16px`; mobile-friendly textarea attributes added
+- Validation evidence:
+	- static diagnostics pass for `static/index.html`
+
 ## Latest Maintenance Update (2026-05-07, Docs Token Mapping + Importer List Styling)
 
 - Added missing CSS variable mappings in `static/docs.html` wiki `:root` override so legacy references resolve:

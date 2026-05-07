@@ -148,7 +148,7 @@ nav {
 
 .mobile-nav-drawer {
   position: fixed;
-  top: 0;
+  top: 54px;
   left: 0;
   bottom: 0;
   width: 75vw;
@@ -1396,6 +1396,18 @@ tbody tr:hover td { background: var(--row-hover); }
 }
 
 @media (max-width: 767px) {
+  nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 500;
+  }
+
+  main {
+    padding-top: 74px;
+  }
+
   .nav-tabs {
     display: none;
   }
@@ -1594,6 +1606,7 @@ tbody tr:hover td { background: var(--row-hover); }
   gap: 10px;
 }
 .ai-settings-card { max-width: 740px; }
+#tab-settings .ai-settings-card { grid-column: 1 / -1; max-width: none; }
 .ai-settings-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -1632,7 +1645,11 @@ tbody tr:hover td { background: var(--row-hover); }
   color: var(--muted);
   margin-bottom: 8px;
 }
-.ai-chat-card { max-width: 980px; margin-top: 12px; }
+.tab-content#tab-ai.active {
+  display: flex;
+  justify-content: center;
+}
+.ai-chat-card { width: min(980px, 100%); margin: 12px auto 0; }
 .ai-chat-top {
   display: flex;
   justify-content: space-between;
@@ -1782,7 +1799,7 @@ tbody tr:hover td { background: var(--row-hover); }
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 8px 10px;
-  font-size: 13px;
+  font-size: 16px;
   font-family: inherit;
   resize: none;
   min-height: 38px;
@@ -1938,20 +1955,19 @@ tbody tr:hover td { background: var(--row-hover); }
 
   /* ── Nav: logo + theme on row 1, tabs full-width on row 2 ── */
   nav {
-    flex-wrap: wrap;
-    height: auto;
-    padding: 10px 14px;
-    gap: 4px;
-    row-gap: 8px;
+    flex-wrap: nowrap;
+    height: 54px;
+    padding: 0 12px;
+    gap: 10px;
+    row-gap: 0;
   }
-  .logo { font-size: 14px; letter-spacing: 1px; }
+  .logo { font-size: 13px; letter-spacing: .8px; }
   .nav-right { margin-left: auto; }
   .theme-group button { font-size: 11px; padding: 3px 7px; }
-  .nav-tabs { order: 3; width: 100%; }
-  .nav-tab { flex: 1; text-align: center; padding: 7px 4px; font-size: 13px; }
+  .nav-tabs { display: none !important; }
 
   /* ── Layout ── */
-  main { padding: 12px 14px; }
+  main { padding: 74px 14px 12px; }
   .card { padding: 14px; }
 
   .today-state-label { font-size: 24px; }
@@ -2458,7 +2474,7 @@ tbody tr:hover td { background: var(--row-hover); }
     </div>
     <div class="ai-chat-status" id="ai-chat-status"></div>
     <div class="ai-chat-input-row">
-      <textarea class="ai-chat-input" id="ai-chat-input" rows="1" placeholder="e.g. Should I train heavy today? What does my fatigue profile suggest?"></textarea>
+      <textarea class="ai-chat-input" id="ai-chat-input" rows="1" placeholder="e.g. Should I train heavy today? What does my fatigue profile suggest?" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="send"></textarea>
       <button class="btn ai-chat-clear" id="ai-chat-clear" type="button" onclick="clearAIChat()">Clear</button>
       <button class="btn btn-primary ai-chat-send" id="ai-chat-send" type="button" onclick="sendAIMessage()">Send</button>
     </div>
