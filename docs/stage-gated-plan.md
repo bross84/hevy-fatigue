@@ -10,6 +10,66 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-07, AI Chat Surface Token Alignment)
+
+- Updated AI chat CSS in `static/index.html` so `.ai-chat-messages` uses `var(--bg)` with no border or shadow.
+- Updated `#tab-ai #ai-model-field` select/input controls to `background: var(--card)` and `color: var(--text)`.
+- Updated `.ai-chat-input` surface to `var(--card)` with `var(--text)` foreground.
+
+## Latest Maintenance Update (2026-05-07, AI Chat Card Shell Removal)
+
+- Updated AI chat CSS in `static/index.html` to remove visible card chrome from `#tab-ai .ai-chat-card` and enforce override priority with `!important` on background/border.
+- Added compact inline styling for `#tab-ai #ai-model-field` select/input controls.
+- Validation target: no HTML/JS changes and `static/index.html` remains error-free.
+
+## Latest Maintenance Update (2026-05-07, AI Chat Plain Text Stack)
+
+- Updated AI chat CSS in `static/index.html` so messages render as plain text rows without bubble chrome.
+- Switched message wrappers away from flex-row alignment behavior and aligned role text via left/right text alignment.
+- Applied requested card width cap (`760px`) and message pane dimensions/background (`var(--card)`, no border, 520px / 62vh).
+
+## Latest Maintenance Update (2026-05-07, AI Chat Standard UI Revert)
+
+- Reverted AI chat presentation in `static/index.html` to a standard chat interface with themed card/background/border values.
+- Removed terminal-mode remnants (prefixes, hardcoded dark colors, cursor-style animation, clear button markup/CSS).
+- Implemented requested bubble alignment, message-area dimensions/scrollbar, input control styling, label typography, and three-dot typing indicator animation.
+
+## Latest Maintenance Update (2026-05-07, AI Terminal Bar Removal)
+
+- Removed terminal bar markup from the AI chat card in `static/index.html`.
+- Removed all terminal bar/dot CSS selectors from `static/index.html`.
+- Validation target: no `terminal-bar` or `terminal-dot` matches remain and file stays error-free.
+
+## Latest Maintenance Update (2026-05-07, AI Chat UX Alignment Pass)
+
+- Updated `static/index.html` AI chat CSS so user/assistant messages render as non-full-width bubbles with role-based alignment and visual distinction.
+- Added `#ai-typing-indicator` markup and CSS (`.visible` toggle plus animated dots keyframe) without changing JS logic.
+- Updated chat input placeholder text and enforced `font-size: 16px` plus minimum 44px send button height.
+
+## Latest Maintenance Update (2026-05-07, Settings Grid Equal Height)
+
+- Updated `static/index.html` so the active settings grid uses `align-items: stretch`.
+- Added `height: 100%` to `#tab-settings .settings-card` so cards stretch to fill each grid cell.
+- Validation target: `static/index.html` remains error-free and the settings cards can match row height.
+
+## Latest Maintenance Update (2026-05-07, Settings Grid 2x2 Layout)
+
+- Updated `static/index.html` so the active settings tab uses the named grid areas `api`, `sync`, `diagnostics`, and `ai`.
+- Added the `ai` grid-area assignment for `#tab-settings .ai-settings-card` and removed the old full-width override.
+- Validation target: no `grid-column: 1 / -1` remains on the AI settings card and `static/index.html` stays error-free.
+
+## Latest Maintenance Update (2026-05-07, AI Chat Terminal Restyle)
+
+- Restyled the AI chat card in `static/index.html` as a terminal-style panel using scoped selectors under `#tab-ai .ai-chat-card`.
+- Added a `terminal-bar` element before the existing AI chat title and kept all IDs, classes, and JS wiring intact.
+- Validation target: `static/index.html` remains error-free and contains the terminal bar plus terminal-scoped AI chat CSS.
+
+## Latest Maintenance Update (2026-05-07, Mobile Drawer Docs Link)
+
+- Added `Docs` to the mobile drawer nav in `static/index.html`.
+- Kept desktop nav and all other markup unchanged.
+- Validation target: mobile drawer contains `/static/docs.html` after the `Settings` item.
+
 ## Latest Maintenance Update (2026-05-07, AI/Settings/Mobile UI Fix Pass)
 
 - Applied targeted UI fixes in `static/index.html` for four reported issues:

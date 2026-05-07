@@ -1,6 +1,67 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-07 (AI + Mobile Nav + Settings UI Fixes)
+Last updated: 2026-05-07 (AI Chat Surface Token Alignment)
+
+## Latest Maintenance Update (2026-05-07, AI Chat Surface Token Alignment)
+
+- Updated `static/index.html` AI chat message area surface to `var(--bg)` and explicitly removed box shadow while keeping border removed.
+- Updated model selector/input controls in `#ai-model-field` to use `background: var(--card)` and `color: var(--text)`.
+- Updated `.ai-chat-input` to use `background: var(--card)` and `color: var(--text)`.
+
+## Latest Maintenance Update (2026-05-07, AI Chat Card Shell Removal)
+
+- Updated `static/index.html` so `#tab-ai .ai-chat-card` uses a transparent shell (`background: transparent !important; border: none !important; box-shadow: none;`) with centered `max-width: 760px` layout and `padding: 0 16px`.
+- Added compact inline model control styling for `#tab-ai #ai-model-field select` and `#tab-ai #ai-model-field input` (auto width, 160px minimum, compact padding).
+- Scope remained CSS-only with no HTML or JS changes.
+
+## Latest Maintenance Update (2026-05-07, AI Chat Plain Text Stack)
+
+- Updated `static/index.html` AI chat message presentation to plain stacked text (no bubble background, radius, or per-bubble border styling).
+- Removed row-style alignment wrappers by switching message containers to block layout and text alignment by role.
+- Set `#tab-ai .ai-chat-card` to a centered 760px column and adjusted message pane sizing/background to the requested standard chat column style.
+
+## Latest Maintenance Update (2026-05-07, AI Chat Standard UI Revert)
+
+- Reverted `static/index.html` AI chat window from terminal styling to a standard modern chat UI using theme tokens (`var(--card)`, `var(--border)`, `var(--bg)`).
+- Removed terminal artifacts: `$`/`>` prefixes, cursor animation, hardcoded dark colors, and the `ai-chat-clear` button element/CSS.
+- Applied requested message bubble layout, input sizing, model-label typography, scrollbar styling, and three-dot typing indicator styling.
+
+## Latest Maintenance Update (2026-05-07, AI Terminal Bar Removal)
+
+- Removed the `terminal-bar` element and its three colored dot children from the AI chat card in `static/index.html`.
+- Deleted the `.terminal-bar` and `.terminal-dot*` CSS rules from `static/index.html`.
+- Kept all other HTML and CSS unchanged.
+
+## Latest Maintenance Update (2026-05-07, AI Chat UX Alignment Pass)
+
+- Updated `static/index.html` so AI chat messages are constrained to `max-width: 75%`, with user messages right-aligned and assistant messages left-aligned.
+- Preserved terminal-style differentiation with `>` and `$` prefixes and role-specific text colors.
+- Added an `#ai-typing-indicator` element and CSS visibility/animation hooks for in-flight response feedback.
+- Updated AI chat textarea placeholder copy and enforced touch/iOS-safe input/button sizing.
+
+## Latest Maintenance Update (2026-05-07, Settings Grid Equal Height)
+
+- Updated `static/index.html` so `#tab-settings.active` stretches grid items instead of aligning them to the start.
+- Added `height: 100%` to `#tab-settings .settings-card` so each settings card fills its grid cell height.
+- Scope remained CSS-only and limited to the settings grid equal-height behavior.
+
+## Latest Maintenance Update (2026-05-07, Settings Grid 2x2 Layout)
+
+- Updated `static/index.html` so `#tab-settings.active` uses a 2x2 named-area layout: `api`, `sync`, `diagnostics`, and `ai`.
+- Added the missing `#tab-settings .ai-settings-card { grid-area: ai; }` assignment.
+- Removed the full-width AI settings card override so the named grid-area controls placement.
+
+## Latest Maintenance Update (2026-05-07, AI Chat Terminal Restyle)
+
+- Restyled the AI chat card in `static/index.html` to read as a terminal window with a scoped dark shell, title bar, and monospace title treatment.
+- Added a new `terminal-bar` element with red, yellow, and green dots immediately before the existing `AI Chat` title.
+- Flattened user and assistant message bubbles into terminal-style lines with `>` and `$` prefixes while preserving existing AI chat behavior.
+
+## Latest Maintenance Update (2026-05-07, Mobile Drawer Docs Link)
+
+- Added `Docs` link to the mobile drawer in `static/index.html`.
+- Placed the link after the last existing mobile nav tab (`Settings`) and pointed it to `/static/docs.html`.
+- Scope intentionally limited to mobile drawer markup only.
 
 ## Latest Maintenance Update (2026-05-07, AI/Settings/Mobile UI Stabilization)
 
