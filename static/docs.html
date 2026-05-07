@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hevy Fatigue — Methodology & Reference</title>
+<link rel="icon" href="/resources/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="/resources/apple-touch-icon.png">
+<style>
+/* ══════════════════════════════════════════════════════
+   THEME TOKENS
+   Dark palette:  5da9e9 eca72c 2e282a f3f8f2 ef3e36
+   Light palette: 058ed9 ffd166 e1dee3 40476d b9314f
+══════════════════════════════════════════════════════ */
+
+/* Dark (default) */
+:root, [data-theme="dark"] {
+  --bg:           #2e282a;
+  --card:         #3d3638;
+  --border:       #524c4e;
+  --text:         #f3f8f2;
+  --muted:        #a09498;
+  --accent:       #5da9e9;
+  --quad:         #5da9e9;
+  --posterior:    #eca72c;
+  --push:         #4db870;
+  --pull:         #9b7fd4;
+  --danger:       #ef3e36;
+  --accent-sub:   rgba(93,169,233,.13);
+  --btn-shadow:   rgba(0,0,0,.45);
+}
+
+/* Light */
+[data-theme="light"] {
+  --bg:           #e1dee3;
+  --card:         #f5f3f6;
+  --border:       #c8c4ca;
+  --text:         #2e2830;
+  --muted:        #7a6e7c;
+  --accent:       #058ed9;
+  --quad:         #058ed9;
+  --posterior:    #b9314f;
+  --push:         #1a7a3c;
+  --pull:         #6b3fa0;
+  --danger:       #b9314f;
+  --accent-sub:   rgba(5,142,217,.13);
+  --btn-shadow:   rgba(0,0,0,.15);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  overflow-x: auto;
+  width: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+  transition: background .2s, color .2s;
+}
+
+/* ── Nav ─────────────────────────────── */
+nav {
+  width: 100%;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  height: 54px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.logo-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.nav-tabs { display: flex; gap: 2px; flex: 1; }
+.nav-tab {
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 7px 14px;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all .15s;
+}
+.nav-tab:hover  { color: var(--text); background: var(--border); }
+.nav-tab.active { color: var(--accent); background: var(--accent-sub); }
+
+.nav-right { margin-left: auto; }
+.btn-group button {
+  font-size: 13px;
+  padding: 4px 10px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all .15s;
+}
+.btn-group button:hover {
+  color: var(--text);
+  background: var(--border);
+}
+.btn-group button.active {
+  background: var(--card);
+  color: var(--accent);
+  box-shadow: 0 1px 3px var(--btn-shadow);
+}
+
+/* ── Main content ─────────────────────────────────────── */
+main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
+
+  /* ── Sections ─────────────────────────────────────── */
+  .doc-section {
+    margin-bottom: 4rem;
+    scroll-margin-top: 2rem;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-num {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    border-radius: 4px;
+    padding: 2px 7px;
+    flex-shrink: 0;
+  }
+
+  h1 { font-size: 26px; font-weight: 600; color: var(--text-primary); line-height: 1.3; }
+  h2 { font-size: 20px; font-weight: 600; color: var(--text-primary); line-height: 1.35; }
+  h3 { font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 1.5rem 0 0.5rem; }
+
+  p { color: var(--text-secondary); margin-bottom: 0.9rem; }
+  p:last-child { margin-bottom: 0; }
+
+  strong { color: var(--text-primary); font-weight: 600; }
+
+  /* ── Hero ─────────────────────────────────────── */
+  .hero {
+    margin-bottom: 3.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hero-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--green);
+    background: var(--green-dim);
+    border: 1px solid rgba(76,175,130,0.25);
+    border-radius: 4px;
+    padding: 3px 8px;
+    margin-bottom: 1rem;
+  }
+
+  .hero h1 { margin-bottom: 0.75rem; }
+  .hero p { font-size: 16px; color: var(--text-secondary); max-width: 580px; }
+
+  /* ── Formula blocks ─────────────────────────────────────── */
+  .formula-block {
+    background: var(--bg-code);
+    border: 1px solid var(--border-accent);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 1rem 1.25rem;
+    margin: 1.25rem 0;
+    font-family: var(--font-mono);
+    font-size: 13.5px;
+    color: var(--text-primary);
+    overflow-x: auto;
+    line-height: 1.9;
+  }
+
+  .formula-block .comment {
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  .formula-block .var { color: #79b8ff; }
+  .formula-block .op { color: var(--accent); }
+  .formula-block .val { color: var(--amber); }
+
+  /* ── Info cards ─────────────────────────────────────── */
+  .info-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.25rem 0;
+  }
+
+  .info-card.callout-blue  { border-left: 3px solid var(--accent);  background: var(--accent-dim);  }
+  .info-card.callout-amber { border-left: 3px solid var(--amber);   background: var(--amber-dim);  }
+  .info-card.callout-green { border-left: 3px solid var(--green);   background: var(--green-dim);  }
+  .info-card.callout-red   { border-left: 3px solid var(--red);     background: var(--red-dim);    }
+  .info-card.callout-purple{ border-left: 3px solid var(--purple);  background: var(--purple-dim); }
+
+  .callout-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+  }
+
+  .callout-blue   .callout-label { color: var(--accent); }
+  .callout-amber  .callout-label { color: var(--amber); }
+  .callout-green  .callout-label { color: var(--green); }
+  .callout-red    .callout-label { color: var(--red); }
+  .callout-purple .callout-label { color: var(--purple); }
+
+  .info-card p { color: var(--text-secondary); font-size: 14px; }
+  .info-card p strong { color: var(--text-primary); }
+
+  /* ── Tables ─────────────────────────────────────── */
+  .ref-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    margin: 1.25rem 0;
+  }
+
+  .ref-table th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border-accent);
+  }
+
+  .ref-table td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+    vertical-align: top;
+  }
+
+  .ref-table tr:last-child td { border-bottom: none; }
+  .ref-table td:first-child { color: var(--text-primary); font-family: var(--font-mono); font-size: 13px; }
+
+  /* ── Code inline ─────────────────────────────────────── */
+  code {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid var(--border-accent);
+    border-radius: 4px;
+    padding: 1px 5px;
+    color: var(--accent);
+  }
+
+  /* ── Reference list ─────────────────────────────────────── */
+  .ref-list {
+    list-style: none;
+    margin: 1rem 0;
+  }
+
+  .ref-list li {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    display: flex;
+    gap: 1rem;
+    align-items: baseline;
+  }
+
+  .doc-list { margin: 0.75rem 0 0.75rem 1.25rem; }
+  .doc-list li { color: var(--text); font-size: 14px; line-height: 2; }
+
+  .nav-link { color: var(--accent); text-decoration: none; }
+  .nav-link:hover { text-decoration: underline; }
+
+  /* ── Headings & text ─────────────────────────────────────── */
+  h1 { font-size: 32px; font-weight: 700; color: var(--text); margin: 0 0 0.5rem; }
+  h2 { font-size: 24px; font-weight: 700; color: var(--text); margin: 2rem 0 1rem; }
+  h3 { font-size: 16px; font-weight: 600; color: var(--text); margin: 1.5rem 0 0.75rem; }
+  h4 { font-size: 14px; font-weight: 600; color: var(--text); margin: 1rem 0 0.5rem; }
+
+  p { color: var(--text); margin-bottom: 1rem; line-height: 1.6; }
+  strong { color: var(--text); font-weight: 600; }
+  em { color: var(--muted); }
+
+  /* ── Hero ─────────────────────────────────────── */
+  .hero {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-sub);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    padding: 4px 8px;
+    margin-bottom: 1rem;
+  }
+
+  /* ── Wiki Layout Override (desktop + mobile) ───────────────────────── */
+  :root {
+    --text-primary: var(--text);
+    --text-secondary: var(--text);
+    --text-muted: var(--muted);
+    --accent-dim: var(--accent-sub);
+    --border-accent: var(--border);
+    --accent-border: color-mix(in srgb, var(--accent) 40%, transparent);
+    --bg-surface: var(--card);
+    --bg-card: var(--card);
+    --bg-code: color-mix(in srgb, var(--card) 72%, black 28%);
+    --font-mono: 'Courier New', monospace;
+    --amber: #eca72c;
+    --green: #4db870;
+    --red: #ef3e36;
+    --purple: #9b7fd4;
+    --amber-dim: rgba(236, 167, 44, 0.12);
+    --green-dim: rgba(77, 184, 112, 0.12);
+    --red-dim: rgba(239, 62, 54, 0.12);
+    --purple-dim: rgba(155, 127, 212, 0.12);
+  }
+
+  .page-layout {
+    display: flex;
+    min-height: calc(100vh - 54px);
+  }
+
+  .sidebar {
+    width: 250px;
+    flex-shrink: 0;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    position: fixed;
+    top: 54px;
+    left: 0;
+    bottom: 0;
+    overflow-y: auto;
+    padding: 1.25rem 0 2.5rem;
+    z-index: 90;
+  }
+
+  .sidebar-logo {
+    padding: 0 1.25rem 1rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1rem;
+  }
+
+  .sidebar-logo .app-name {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .sidebar-logo .doc-title {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .nav-section {
+    padding: 0 0.8rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .nav-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0.45rem 0.35rem 0.35rem;
+  }
+
+  .sidebar .nav-link {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 0.38rem 0.5rem;
+    border-radius: 5px;
+    line-height: 1.4;
+    transition: color 0.15s, background 0.15s;
+  }
+
+  .sidebar .nav-link:hover {
+    color: var(--text);
+    background: color-mix(in srgb, var(--card) 80%, white 20%);
+  }
+
+  .sidebar .nav-link.active {
+    color: var(--accent);
+    background: var(--accent-sub);
+  }
+
+  .docs-main {
+    margin-left: 250px;
+    flex: 1;
+    max-width: 860px;
+    padding: 2.5rem 3rem 5rem;
+  }
+
+  .mobile-menu-btn {
+    display: none;
+    width: 42px;
+    height: 42px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    border-radius: 8px;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .mobile-nav-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.18s ease;
+    z-index: 400;
+  }
+
+  @media (max-width: 900px) {
+    .mobile-menu-btn {
+      display: inline-flex;
+    }
+
+    .sidebar {
+      top: 54px;
+      width: min(78vw, 300px);
+      transform: translateX(-100%);
+      transition: transform 0.18s ease;
+      z-index: 410;
+      border-right: 1px solid var(--border);
+      pointer-events: none;
+    }
+
+    body.mobile-nav-open .sidebar {
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+
+    body.mobile-nav-open .mobile-nav-overlay {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .docs-main {
+      margin-left: 0;
+      max-width: 100%;
+      padding: 1.6rem 1.15rem 4rem;
+    }
+
+    nav {
+      gap: 10px;
+      padding: 0 12px;
+    }
+
+    .logo {
+      letter-spacing: 0.9px;
+      font-size: 14px;
+    }
+
+    .nav-tabs {
+      display: none;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Navbar ── -->
+<nav>
+  <button class="mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Open contents" aria-expanded="false" aria-controls="docs-sidebar">☰</button>
+  <div class="logo"><img class="logo-icon" src="/resources/favicon.png" alt="Hevy Fatigue icon">HEVY FATIGUE</div>
+  <div class="nav-tabs">
+    <a href="/" class="nav-tab">Today</a>
+    <a href="/static/docs.html" class="nav-tab active">Docs</a>
+  </div>
+  <div class="nav-right">
+    <a href="/" class="nav-tab" style="color: var(--accent); font-weight: 600;">← Dashboard</a>
+  </div>
+</nav>
+
+<div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
+
+<div class="page-layout">
+  <aside class="sidebar" id="docs-sidebar" aria-label="Documentation sections" aria-hidden="false">
+    <div class="sidebar-logo">
+      <div class="app-name">Hevy Fatigue</div>
+      <div class="doc-title">Methodology & Reference</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Overview</div>
+      <a class="nav-link" href="#overview">Design philosophy</a>
+      <a class="nav-link" href="#checkin">Check-in model</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Training load</div>
+      <a class="nav-link" href="#rpe">RPE & sRPE</a>
+      <a class="nav-link" href="#stress-calc">Stress calculation</a>
+      <a class="nav-link" href="#modalities">Session modalities</a>
+      <a class="nav-link" href="#title-tagging">Title tagging</a>
+      <a class="nav-link" href="#importer">Workout importer</a>
+      <a class="nav-link" href="#patterns">Movement patterns</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Metrics</div>
+      <a class="nav-link" href="#ewma">EWMA (ATL / CTL)</a>
+      <a class="nav-link" href="#tsb">TSB & training state</a>
+      <a class="nav-link" href="#fatigue-score">Fatigue score</a>
+      <a class="nav-link" href="#joint">Joint health advisory</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Notes</div>
+      <a class="nav-link" href="#diagnostics">Diagnostics page</a>
+      <a class="nav-link" href="#limitations">Limitations</a>
+      <a class="nav-link" href="#references">References</a>
+    </div>
+  </aside>
+
+<!-- ── Main content ── -->
+<main class="docs-main">
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-badge">Internal reference</div>
+      <h1>Hevy Fatigue — Methodology & Reference</h1>
+      <p>A technical walkthrough of the fatigue monitoring model: how training load is quantified, how metrics are computed, and the research behind each design decision.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- 1. Design philosophy -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section class="doc-section" id="overview">
+      <div class="section-header">
+        <span class="section-num">01</span>
+        <h2>Design philosophy</h2>
+      </div>
+
+      <p>Hevy Fatigue is a <strong>subjective-first fatigue monitoring dashboard</strong>. Daily check-in scores are the primary signal — training load data from Hevy acts as a contextual modifier, not the core driver. The system is designed to surface clear information so that a fatigue-aware athlete can make their own decisions. It does not prescribe training adjustments.</p>
+
+      <p>This philosophy was chosen because objective training load metrics (volume, tonnage, sRPE) are well understood to be incomplete proxies for actual systemic stress. Factors like sleep quality, nutrition, life stress, and individual adaptation rate are captured better through subjective self-assessment than through bar-on-back math alone.</p>
+
+      <div class="info-card callout-blue">
+        <div class="callout-label">Core principle</div>
+        <p>A fatigue number without subjective context is noise. Subjective scores without load context lack resolution. The system combines both.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- 2. Check-in model -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section class="doc-section" id="checkin">
+      <div class="section-header">
+        <span class="section-num">02</span>
+        <h2>Check-in model</h2>
+      </div>
+
+      <p>Each day, the athlete rates several domains on a <strong>1–10 scale</strong> (10 = best / fully recovered). The raw scores are inverted in computation so that higher stress = higher computed fatigue.</p>
+
+      <table class="ref-table">
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>What it captures</th>
+            <th>Role in model</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>sleep_quality</td>
+            <td>Subjective sleep quality and duration perception</td>
+            <td>Primary fatigue formula input</td>
+          </tr>
+          <tr>
+            <td>mood</td>
+            <td>General psychological state and motivation</td>
+            <td>Primary fatigue formula input</td>
+          </tr>
+          <tr>
+            <td>motivation</td>
+            <td>Desire and drive to train</td>
+            <td>Primary fatigue formula input</td>
+          </tr>
+          <tr>
+            <td>energy</td>
+            <td>General physical energy level</td>
+            <td>Primary fatigue formula input</td>
+          </tr>
+          <tr>
+            <td>soreness</td>
+            <td>Delayed onset muscle soreness (DOMS)</td>
+            <td>Primary fatigue formula input</td>
+          </tr>
+          <tr>
+            <td>stress</td>
+            <td>Non-training life stress (work, relationships, etc.)</td>
+            <td>Primary fatigue formula input</td>
+          </tr>
+          <tr>
+            <td>joint_health</td>
+            <td>Aches, pain, or discomfort in joints/connective tissue</td>
+            <td><em>Advisory only</em> — not in fatigue formula</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="info-card callout-amber">
+        <div class="callout-label">Design note — joint health</div>
+        <p><strong>Joint health is excluded from the fatigue formula intentionally.</strong> Joint discomfort is a different biological signal from systemic fatigue — it reflects tissue loading tolerance and injury risk, not necessarily overall recovery status. Including it in a weighted average risks suppressing the fatigue number when joint pain is the dominant concern, or inflating it when a minor ache is present alongside genuine freshness. It is surfaced as a standalone advisory on the dashboard instead.</p>
+      </div>
+
+      <h3>Daily fatigue score</h3>
+      <p>The six primary fields are combined into a single <strong>daily fatigue score (0–10)</strong> where 10 = maximally fatigued. Fields with 1–10 athlete ratings are first inverted, then averaged:</p>
+
+      <div class="formula-block">
+        <span class="comment">// Invert each rating: 10 → 0 (fresh), 1 → 9 (very fatigued)</span><br>
+        <span class="var">inverted_field</span> <span class="op">=</span> <span class="val">10</span> <span class="op">-</span> <span class="var">athlete_rating</span><br><br>
+        <span class="comment">// Average the six inverted scores</span><br>
+        <span class="var">daily_fatigue</span> <span class="op">=</span> mean(<span class="var">sleep_quality</span>, <span class="var">mood</span>, <span class="var">motivation</span>,<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="var">energy</span>, <span class="var">soreness</span>, <span class="var">stress</span>) <span class="op">/</span> <span class="val">9</span><br><br>
+        <span class="comment">// Scale to 0–10</span><br>
+        <span class="var">daily_fatigue_score</span> <span class="op">=</span> <span class="var">daily_fatigue</span> <span class="op">*</span> <span class="val">10</span>
+      </div>
+
+      <p>On days without a workout, the daily fatigue score is computed from check-in alone. On training days, training load is incorporated as a modifier (see §4).</p>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- 3. RPE & sRPE -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section class="doc-section" id="rpe">
+      <div class="section-header">
+        <span class="section-num">03</span>
+        <h2>RPE & session RPE (sRPE)</h2>
+      </div>
+
+      <p>Two rating systems are used depending on session type:</p>
+
+      <h3>RPE — Rate of Perceived Exertion (Borg-derived, 0–10)</h3>
+      <p>Used for individual <strong>strength and hypertrophy sets</strong>. In the powerlifting / RTS context popularized by Mike Tuchscherer, RPE describes proximity to failure on a given set:</p>
+
+      <table class="ref-table">
+        <thead><tr><th>RPE</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>10</td><td>Maximum effort — no reps left in reserve (0 RIR)</td></tr>
+          <tr><td>9</td><td>Could have done 1 more rep (1 RIR)</td></tr>
+          <tr><td>8</td><td>Could have done 2 more reps (2 RIR)</td></tr>
+          <tr><td>7</td><td>Could have done 3 more reps (3 RIR)</td></tr>
+          <tr><td>6</td><td>Could have done 4+ reps; moderate effort</td></tr>
+          <tr><td>&lt;6</td><td>Light / warm-up effort</td></tr>
+        </tbody>
+      </table>
+
+      <div class="info-card callout-blue">
+        <div class="callout-label">Reference</div>
+        <p>RPE for resistance training was formalized by Tuchscherer [1] as an adaptation of Borg's original perceived exertion scale [2]. The reps-in-reserve framing (RIR) is now widely used in sport science [3].</p>
+      </div>
+
+      <h3>sRPE — Session RPE</h3>
+      <p>Used for <strong>conditioning and cardio sessions</strong>. sRPE is a single whole-session perceived effort rating (1–10) collected after the session ends, multiplied by duration to yield a session load score. This method was developed by Foster et al. [4] and has extensive validation across endurance and team sports.</p>
+
+      <div class="formula-block">
+        <span class="var">session_load</span> <span class="op">=</span> <span class="var">sRPE</span> <span class="op">×</span> <span class="var">duration_minutes</span>
+      </div>
+
+      <p>In Hevy Fatigue, sRPE is encoded in session titles using the <code>@N</code> delimiter convention (e.g. <code>CON @7</code> = conditioning session at sRPE 7).</p>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- 4. Stress calculation -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section class="doc-section" id="stress-calc">
+      <div class="section-header">
+        <span class="section-num">04</span>
+        <h2>Stress calculation pathways</h2>
+      </div>
+
+      <p>Three distinct pathways calculate training stress depending on session modality. Each produces a session stress score (SSS) in arbitrary units (AU) that feeds into the EWMA model.</p>
+
+      <h3>Pathway A — Strength & hypertrophy</h3>
+      <p>Stress is computed per set using RPE and tonnage (load × reps). Sets below RPE 6 contribute negligible stress and are filtered or heavily discounted.</p>
+
+      <div class="formula-block">
+        <span class="comment">// Per-set stress</span><br>
+        <span class="var">set_stress</span> <span class="op">=</span> <span class="var">tonnage</span> <span class="op">×</span> <span class="var">RPE_factor</span><br><br>
+        <span class="comment">// tonnage = weight_kg × reps</span><br>
+        <span class="comment">// RPE_factor = exponential curve peaking at RPE 10</span><br><br>
+        <span class="comment">// Session stress = sum of all set stresses</span><br>
+        <span class="var">session_stress</span> <span class="op">=</span> Σ <span class="var">set_stress</span>
+      </div>
+
+      <p>The RPE factor applies a non-linear curve so that the difference between RPE 8 and RPE 10 is much larger than between RPE 6 and RPE 8 — reflecting the disproportionate neural and systemic cost of near-maximal effort.</p>
+
+      <h3>Pathway B — Conditioning</h3>
+      <p>Uses Foster's sRPE method, then normalizes to a target AU range to keep conditioning sessions commensurable with strength sessions on the same scale:</p>
+
+      <div class="formula-block">
+        <span class="var">raw_load</span> <span class="op">=</span> <span class="var">sRPE</span> <span class="op">×</span> <span class="var">duration_minutes</span><br><br>
+        <span class="comment">// Normalize with a scaling factor k</span><br>
+        <span class="var">session_stress</span> <span class="op">=</span> <span class="var">raw_load</span> <span class="op">×</span> <span class="var">k_conditioning</span>
+      </div>
+
+      <div class="info-card callout-amber">
+        <div class="callout-label">Calibration note</div>
+        <p>The conditioning scaling factor <strong>k</strong> is currently set conservatively and will be refined against real session data. The goal is that a hard 45-minute conditioning session at sRPE 8 produces a session stress score roughly comparable to a demanding strength session — not identical, but within the same order of magnitude so neither modality dominates CTL unfairly.</p>
+      </div>
+
+      <h3>Pathway C — Cardio</h3>
+      <p>Identical formula to conditioning (sRPE × duration × scaling factor), but with no movement pattern distribution applied. Cardio sessions contribute to global ATL/CTL but not to individual pattern fatigue buckets.</p>
+
+      <div class="formula-block">
+        <span class="var">session_stress</span> <span class="op">=</span> <span class="var">sRPE</span> <span class="op">×</span> <span class="var">duration_minutes</span> <span class="op">×</span> <span class="var">k_cardio</span>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- 5. Session modalities -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section class="doc-section" id="modalities">
+      <div class="section-header">
+        <span class="section-num">05</span>
+        <h2>Session modality classification</h2>
+      </div>
+
+      <p>Session type determines which stress pathway and which movement pattern distribution applies. Detection is two-layer:</p>
+
+      <p><strong>Layer 1 — Title keyword matching:</strong> Hevy session titles follow a convention using codes that are parsed first. Mixed sessions use the <code>+</code> operator.</p>
+
+      <table class="ref-table">
+        <thead><tr><th>Code</th><th>Modality</th><th>Stress pathway</th></tr></thead>
+        <tbody>
+          <tr><td>ST</td><td>Strength (max effort)</td><td>Pathway A</td></tr>
+          <tr><td>HYP</td><td>Hypertrophy</td><td>Pathway A</td></tr>
+          <tr><td>CON</td><td>Conditioning (CrossFit-style, Strongman)</td><td>Pathway B</td></tr>
+          <tr><td>CAR</td><td>Cardio (running, cycling, rowing, etc.)</td><td>Pathway C</td></tr>
+          <tr><td>ST+CON</td><td>Mixed strength + conditioning</td><td>Pathway A + B</td></tr>
+        </tbody>
+      </table>
+
+      <p><strong>Layer 2 — Exercise-level analysis:</strong> If no recognized code is found in the title, the system analyzes the exercises in the session to infer the most likely modality. This handles legacy sessions and sessions logged without title conventions.</p>
+
+      <div class="info-card callout-green">
+        <div class="callout-label">sRPE encoding</div>
+        <p>For conditioning sessions, the sRPE value is encoded in the title after the <code>@</code> delimiter: <code>CON @7</code> means a conditioning session at sRPE 7. If no <code>@N</code> is present, a default sRPE is applied and flagged.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- 5b. Workout title tagging convention -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section class="doc-section" id="title-tagging">
+      <div class="section-header">
+        <span class="section-num">05b</span>
+        <h2>Workout title tagging convention</h2>
+      </div>
+
+      <p>Hevy Fatigue reads session titles from the Hevy app to determine modality and sRPE. For the system to classify your sessions correctly, titles should follow this convention. Sessions without recognized codes are still processed — the classifier falls back to exercise-level analysis — but title tagging is the most reliable path.</p>
+
+      <h3>Modality codes</h3>
+      <table class="ref-table">
+        <thead><tr><th>Code</th><th>Use for</th><th>Example title</th></tr></thead>
+        <tbody>
+          <tr><td>ST</td><td>Max effort strength (powerlifting-style, heavy singles/triples)</td><td>ST — Back Squat</td></tr>
+          <tr><td>HYP</td><td>Hypertrophy (moderate load, higher rep, bodybuilding-style)</td><td>HYP — Upper Push</td></tr>
+          <tr><td>CON</td><td>Conditioning — CrossFit-style WODs, Strongman, metabolic work</td><td>CON @8 — Yoke + Farmers</td></tr>
+          <tr><td>CAR</td><td>Cardio — running, cycling, rowing, machine-based aerobic work</td><td>CAR @6 — Easy Run</td></tr>
+        </tbody>
+      </table>
+
+      <h3>sRPE encoding for conditioning and cardio</h3>
+      <p>Conditioning and cardio sessions require a session RPE value to calculate load. Encode it in the title using the <code>@N</code> delimiter, where N is your whole-number sRPE (1–10):</p>
+
+      <div class="formula-block">
+        <span class="comment">// Format: [CODE] @[sRPE] — [description]</span><br>
+        CON @8 — Devil Press AMRAP<br>
+        CAR @5 — 30min Easy Row
+      </div>
+
+      <p>If no <code>@N</code> is present on a conditioning or cardio session, the system applies a default sRPE and flags the session in the verification queue for manual review.</p>
+
+      <h3>Mixed sessions</h3>
+      <p>Use the <code>+</code> operator to indicate a session that spans two modalities — for example, a strength block followed by a conditioning finisher:</p>
+
+      <div class="formula-block">
+        ST+CON @7 — Deadlift + Prowler
+      </div>
+
+      <p>Mixed sessions are detected and flagged in the verification queue with a note explaining the split. Each component's stress is calculated through its respective pathway.</p>
+
+      <div class="info-card callout-amber">
+        <div class="callout-label">Strongman sessions</div>
+        <p>Strongman training (yoke, farmers, log press, atlas stones, etc.) is classified under <strong>CON</strong>. The conditioning stress pathway handles the mixed aerobic/strength demand of event training better than the per-set RPE model used for ST/HYP.</p>
+      </div>
+
+      <div class="info-card callout-blue">
+        <div class="callout-label">No code present?</div>
+        <p>If a session title has no recognized code, the classifier analyzes the exercises in the session to infer modality. The inferred result and a confidence score are shown in the verification queue — you confirm or correct it before it affects your metrics. See <a href="#importer" style="color:var(--accent);">§05c Workout importer</a> for details on the verification queue.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- 5c. Workout importer -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section class="doc-section" id="importer">
+      <div class="section-header">
+        <span class="section-num">05c</span>
+        <h2>Workout importer</h2>
+      </div>
+
+      <p>Hevy Fatigue connects to the Hevy API to pull your workout history into the local database. The importer is designed to be lightweight and respect API rate limits — it does not run automatically in the background on a continuous schedule.</p>
+
+      <h3>How sync works</h3>
+      <p>Sync is triggered manually via the Sync button on the Workouts tab. Each sync pulls the most recent 7 sessions from Hevy using the <code>workouts/events</code> endpoint, which returns only changes since the last sync rather than re-fetching your entire history. On first-ever sync, a full historical fetch is performed to populate the database.</p>
+
+      <p>A cooldown period is enforced between syncs to prevent API rate limit issues. If you trigger a sync and see a cooldown message, wait the indicated time before retrying.</p>
+
+      <h3>Verification queue</h3>
+      <p>Every imported session lands in the <strong>verification queue</strong> on the Workouts tab — including sessions with clear title codes. This is intentional. Auto-classification is never trusted blindly: a misclassified session with an incorrect modality or missing sRPE will corrupt your stress calculations silently. Manual verification takes seconds and ensures the data feeding your metrics is correct.</p>
+
+      <p>For each queued session you will see:</p>
+      <ul class="doc-list">
+        <li>The detected modality and confidence score</li>
+        <li>A note if a mixed session was detected or sRPE was missing</li>
+        <li>A dropdown to correct the modality if the classifier got it wrong</li>
+        <li>A duration field and conditional sRPE field for conditioning/cardio sessions</li>
+      </ul>
+
+      <p>Verified sessions are written to the stress model and begin contributing to your ATL, CTL, and TSB. Unverified sessions in the queue do not affect your metrics.</p>
+
+      <h3>Reclassification without re-syncing</h3>
+      <p>If you update the title tagging convention on old sessions in Hevy, or want to re-run the classifier after a settings change, use the <strong>Reclassify Sessions</strong> button in Settings → Session Processing. This re-runs the classifier against all locally stored sessions without hitting the Hevy API and without consuming your sync cooldown. Manually verified sessions are not overwritten unless you explicitly request a full reclassify.</p>
+
+      <div class="info-card callout-purple">
+        <div class="callout-label">Diagnostics page</div>
+        <p>The <strong>Diagnostics page</strong> (<code>/static/diagnostic.html</code>) provides a lower-level view of what the importer has pulled: session volume, 7-day and 28-day workout summaries, and raw session data. If something looks wrong in your metrics and you're not sure why, diagnostics is the first place to look — it shows you exactly what data the system is working with. See <a href="#diagnostics" style="color:var(--accent);">§10 Diagnostics page</a> for the full workflow.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- 6. Movement patterns -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section class="doc-section" id="patterns">
+      <div class="section-header">
+        <span class="section-num">06</span>
+        <h2>Movement pattern buckets</h2>
+      </div>
+
+      <p>To track fatigue at a finer granularity than "total load," session stress is distributed across five movement pattern buckets. This allows the system to detect, for example, that posterior chain fatigue is accumulating even when overall training volume appears moderate.</p>
+
+      <div class="pattern-grid">
+        <div class="pattern-card">
+          <div class="pattern-name">Knee dominant</div>
+          <div class="pattern-weight" style="color:#5b8dee">30%</div>
+          <div class="pattern-desc">Squat, lunge, leg press patterns</div>
+        </div>
+        <div class="pattern-card">
+          <div class="pattern-name">Hip dominant</div>
+          <div class="pattern-weight" style="color:#5b8dee">30%</div>
+          <div class="pattern-desc">Deadlift, hinge, hip extension</div>
+        </div>
+        <div class="pattern-card">
+          <div class="pattern-name">Push</div>
+          <div class="pattern-weight" style="color:#4caf82">20%</div>
+          <div class="pattern-desc">Press, push-up, dip patterns</div>
+        </div>
+        <div class="pattern-card">
+          <div class="pattern-name">Pull</div>
+          <div class="pattern-weight" style="color:#4caf82">20%</div>
+          <div class="pattern-desc">Row, pull-up, curl patterns</div>
+        </div>
+        <div class="pattern-card">
+          <div class="pattern-name">Full body</div>
+          <div class="pattern-weight" style="color:#9b7fe8">—</div>
+          <div class="pattern-desc">Olympic lifts, carries, complex movements</div>
+        </div>
+      </div>
+
+      <p>The 30/30/20/20 default distribution reflects a typical strength training emphasis on compound lower-body movements (squat + hinge). The actual distribution within a given session is computed from exercise classification — these percentages are a fallback when classification confidence is low.</p>
+
+      <p>Each pattern bucket runs its own parallel EWMA, producing per-pattern ATL, CTL, and TSB. This powers pattern-level trend visualization on the dashboard.</p>
+
+      <div class="info-card callout-purple">
+        <div class="callout-label">Full body pattern</div>
+        <p>Exercises classified as "full body" (Olympic lifts, farmers carries, thrusters, etc.) distribute their stress across all four primary buckets proportionally rather than being isolated to one bucket. The "full body" designation is a classification flag, not a fifth independent accumulator.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- 7. EWMA / ATL / CTL -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section class="doc-section" id="ewma">
+      <div class="section-header">
+        <span class="section-num">07</span>
+        <h2>EWMA — ATL, CTL, and the time constants</h2>
+      </div>
+
+      <p>The core of the load model is an <strong>Exponentially Weighted Moving Average (EWMA)</strong>. Two EWMAs with different decay rates are computed in parallel:</p>
+
+      <table class="ref-table">
+        <thead><tr><th>Metric</th><th>Full name</th><th>Time constant (τ)</th><th>What it captures</th></tr></thead>
+        <tbody>
+          <tr><td>ATL</td><td>Acute Training Load</td><td>7 days</td><td>Recent fatigue / short-term stress</td></tr>
+          <tr><td>CTL</td><td>Chronic Training Load</td><td>42 days</td><td>Fitness / long-term training capacity</td></tr>
+        </tbody>
+      </table>
+
+      <h3>EWMA recurrence formula</h3>
+
+      <div class="formula-block">
+        <span class="comment">// Decay factor from time constant τ (days)</span><br>
+        <span class="var">λ</span> <span class="op">=</span> <span class="val">2</span> <span class="op">/</span> (<span class="var">τ</span> <span class="op">+</span> <span class="val">1</span>)<br><br>
+        <span class="comment">// EWMA update rule (run daily)</span><br>
+        <span class="var">EWMA_today</span> <span class="op">=</span> <span class="var">load_today</span> <span class="op">×</span> <span class="var">λ</span> <span class="op">+</span> <span class="var">EWMA_yesterday</span> <span class="op">×</span> (<span class="val">1</span> <span class="op">-</span> <span class="var">λ</span>)<br><br>
+        <span class="comment">// For ATL: λ = 2/(7+1) = 0.25</span><br>
+        <span class="comment">// For CTL: λ = 2/(42+1) ≈ 0.0465</span>
+      </div>
+
+      <p>On rest days, <code>load_today = 0</code>, so both ATL and CTL decay toward zero over time. ATL decays quickly (7-day window), CTL decays slowly (42-day window).</p>
+
+      <div class="info-card callout-blue">
+        <div class="callout-label">Origin of these constants</div>
+        <p>The 7-day and 42-day time constants derive from Banister's Impulse-Response model [5], adapted into training software by Coggan and Allen [6] for cycling power data. They are widely used heuristics — not derived from first principles — and their validity has been debated in the literature [7]. This system uses them as a reasonable starting point, not as precise biological claims.</p>
+      </div>
+
+      <h3>Stabilization period</h3>
+      <p>Because CTL has a 42-day window, the model requires approximately <strong>6–8 weeks of consistent check-in history</strong> before CTL values are meaningful. Early CTL readings are systematically underestimated (the EWMA hasn't "filled up" yet). Values should be interpreted with caution during this ramp-up period.</p>
+
+      <div class="info-card callout-red">
+        <div class="callout-label">Important</div>
+        <p>CTL is still building during the initial deployment period. Numbers will stabilize meaningfully after 6–8 weeks of consistent data. Early TSB readings should be treated as directional, not precise.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- 8. TSB & training state -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section class="doc-section" id="tsb">
+      <div class="section-header">
+        <span class="section-num">08</span>
+        <h2>TSB & training state</h2>
+      </div>
+
+      <h3>Training Stress Balance (TSB)</h3>
+      <p>TSB is the difference between fitness (CTL) and fatigue (ATL). It represents the net "readiness" signal from the load model alone:</p>
+
+      <div class="formula-block">
+        <span class="var">TSB</span> <span class="op">=</span> <span class="var">CTL</span> <span class="op">-</span> <span class="var">ATL</span>
+      </div>
+
+      <table class="ref-table">
+        <thead><tr><th>TSB range</th><th>Interpretation</th></tr></thead>
+        <tbody>
+          <tr><td>TSB &gt; +10</td><td>Fresh / detraining risk — fitness may be declining</td></tr>
+          <tr><td>TSB +5 to +10</td><td>Peaking — approaching optimal readiness</td></tr>
+          <tr><td>TSB -5 to +5</td><td>Maintenance / neutral zone</td></tr>
+          <tr><td>TSB -10 to -5</td><td>Productive overreach — training adaptation stimulus</td></tr>
+          <tr><td>TSB &lt; -10</td><td>Excessive load — overreaching / overtraining risk</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Training state labels</h3>
+      <p>TSB is combined with subjective fatigue to produce a composite training state label. The label reflects <em>current load relative to capacity</em>, not a directive:</p>
+
+      <div style="margin: 1.25rem 0;">
+        <div class="state-row">
+          <div class="state-badge" style="background:var(--red-dim); color:var(--red); border:1px solid rgba(224,92,92,0.3)">Overreached</div>
+          <div class="state-desc">ATL substantially exceeds CTL; subjective scores suppressed. Recovery is the priority.</div>
+        </div>
+        <div class="state-row">
+          <div class="state-badge" style="background:var(--amber-dim); color:var(--amber); border:1px solid rgba(224,164,58,0.3)">Heavy load</div>
+          <div class="state-desc">High acute load relative to baseline. Monitor subjective scores closely.</div>
+        </div>
+        <div class="state-row">
+          <div class="state-badge" style="background:var(--green-dim); color:var(--green); border:1px solid rgba(76,175,130,0.3)">Productive load</div>
+          <div class="state-desc">ATL and CTL well-matched. Adaptation stimulus is present without excessive fatigue.</div>
+        </div>
+        <div class="state-row">
+          <div class="state-badge" style="background:var(--accent-dim); color:var(--accent); border:1px solid rgba(91,141,238,0.3)">Peaking</div>
+          <div class="state-desc">Fatigue is clearing relative to fitness base. Good conditions for high performance.</div>
+        </div>
+        <div class="state-row">
+          <div class="state-badge" style="background:var(--purple-dim); color:var(--purple); border:1px solid rgba(155,127,232,0.3)">Detraining risk</div>
+          <div class="state-desc">CTL dropping with extended low ATL. Fitness may be receding.</div>
+        </div>
+      </div>
+
+      <div class="info-card callout-amber">
+        <div class="callout-label">Display note</div>
+        <p>TSB-derived state and subjective fatigue score are intentionally displayed separately on the dashboard. They measure different things: TSB reflects objective load history; the fatigue score reflects how the athlete actually feels. A low TSB (high fatigue load) alongside a subjectively good check-in is useful information — not a contradiction to be resolved.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- 8b. Fatigue score display -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section class="doc-section" id="fatigue-score">
+      <div class="section-header">
+        <span class="section-num">08b</span>
+        <h2>Fatigue score display</h2>
+      </div>
+
+      <p>The fatigue score is displayed in the format <strong>X / 10</strong>, where 10 is maximum fatigue. This reinforces the scale's meaning at a glance — a score of 7.2 reads as "7.2 out of 10" rather than an opaque raw number.</p>
+
+      <p>On training days, the raw check-in fatigue score is adjusted by a training load modifier before display:</p>
+
+      <div class="formula-block">
+        <span class="comment">// Load modifier: how hard was today's session relative to baseline?</span><br>
+        <span class="var">load_modifier</span> <span class="op">=</span> f(<span class="var">session_stress</span>, <span class="var">ATL_baseline</span>)<br><br>
+        <span class="comment">// Final displayed score (clamped 0–10)</span><br>
+        <span class="var">adjusted_fatigue</span> <span class="op">=</span> clamp(<span class="var">check_in_score</span> <span class="op">+</span> <span class="var">load_modifier</span>, <span class="val">0</span>, <span class="val">10</span>)
+      </div>
+
+      <p>The modifier is intentionally small — it nudges the check-in-derived score upward after an unusually hard session, but never overrides it. The subjective score remains dominant.</p>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- 9. Joint health -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section class="doc-section" id="joint">
+      <div class="section-header">
+        <span class="section-num">09</span>
+        <h2>Joint health advisory</h2>
+      </div>
+
+      <p>Joint health is collected at check-in on the same 1–10 scale (10 = fully healthy, 1 = severe pain/limitation) but is processed and displayed separately from the fatigue formula.</p>
+
+      <p>On the dashboard, joint health appears as a standalone advisory indicator. It is interpreted as a tissue loading signal:</p>
+
+      <table class="ref-table">
+        <thead><tr><th>Joint health score</th><th>Advisory</th></tr></thead>
+        <tbody>
+          <tr><td>8–10</td><td>No restriction — proceed with planned training</td></tr>
+          <tr><td>6–7</td><td>Monitor — consider reducing intensity on affected movements</td></tr>
+          <tr><td>4–5</td><td>Caution — modification of loading likely warranted</td></tr>
+          <tr><td>1–3</td><td>Significant concern — consider consulting a professional</td></tr>
+        </tbody>
+      </table>
+
+      <p>The advisory is informational only. The system makes no assumptions about which joints are affected or which exercises should be modified — that judgment belongs to the athlete.</p>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- 10. Diagnostics page -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section class="doc-section" id="diagnostics">
+      <div class="section-header">
+        <span class="section-num">10</span>
+        <h2>Diagnostics page</h2>
+      </div>
+
+      <p>The Diagnostics page (<code>/static/diagnostic.html</code>) is the system's troubleshooting console. It gives you a transparent view of imported data and intermediate processing results so you can quickly identify why a metric looks off.</p>
+
+      <h3>When to use it</h3>
+      <ul>
+        <li>Imported sessions seem missing, duplicated, or incorrectly classified</li>
+        <li>ATL/CTL/TSB values shift unexpectedly after sync</li>
+        <li>A workout appears in Hevy but not in the verification queue</li>
+        <li>You changed session-processing settings and want to verify impact</li>
+      </ul>
+
+      <h3>What it outlines</h3>
+      <table class="ref-table">
+        <thead><tr><th>Panel</th><th>What it shows</th><th>Why it matters</th></tr></thead>
+        <tbody>
+          <tr><td>Session volume</td><td>Imported workout/session counts and recent ingest activity</td><td>Confirms sync actually pulled data</td></tr>
+          <tr><td>7-day summary</td><td>Short-window distribution of sessions and stress inputs</td><td>Explains sudden acute-load behavior</td></tr>
+          <tr><td>28-day summary</td><td>Medium-window aggregate trends</td><td>Context for CTL and trend direction</td></tr>
+          <tr><td>Raw session data</td><td>Per-session fields used by classifier and stress pathways</td><td>Pinpoints bad source fields or parsing issues</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Recommended debugging flow</h3>
+      <div class="formula-block">
+        <span class="comment">// 1) Verify the session exists in diagnostics raw data</span><br>
+        <span class="comment">// 2) Confirm modality/sRPE fields match expected title parsing</span><br>
+        <span class="comment">// 3) Reclassify sessions if rules/settings changed</span><br>
+        <span class="comment">// 4) Re-check 7-day/28-day summaries for downstream impact</span>
+      </div>
+
+      <div class="info-card callout-blue">
+        <div class="callout-label">Practical note</div>
+        <p>Diagnostics is observational by design: it helps you verify and trace what happened, while corrections are made through session verification, title updates, and reclassification controls in the main app.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- 11. Limitations -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section class="doc-section" id="limitations">
+      <div class="section-header">
+        <span class="section-num">11</span>
+        <h2>Known limitations</h2>
+      </div>
+
+      <p><strong>EWMA stabilization:</strong> Both ATL and CTL require historical data to stabilize. Expect 2–3 weeks before ATL is reliable and 6–8 weeks before CTL is meaningful. Early TSB values are directional only.</p>
+
+      <p><strong>sRPE accuracy:</strong> Session RPE is a subjective self-report and is known to be influenced by mood, expectations, and recall timing. Foster et al. recommend collecting sRPE 30 minutes post-session to reduce bias [4].</p>
+
+      <p><strong>Conditioning scaling:</strong> The factor <code>k</code> used to normalize conditioning load to strength load units is a calibration estimate. It should be revisited after several weeks of mixed-modality data.</p>
+
+      <p><strong>Individual variation:</strong> All time constants (7-day ATL, 42-day CTL) are population-level heuristics. Individual adaptation rates vary — some athletes recover faster, some slower. These defaults are a starting point.</p>
+
+      <p><strong>Exercise classification:</strong> Automatic movement pattern classification relies on exercise name matching. Novel exercises, variant naming, or exercises not in the classification dictionary may be misclassified or unclassified.</p>
+
+      <p><strong>No injury prediction:</strong> This system does not predict injury risk. Joint health advisory scores are self-reported and are informational context, not diagnostic output.</p>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- 12. References -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section class="doc-section" id="references">
+      <div class="section-header">
+        <span class="section-num">12</span>
+        <h2>References</h2>
+      </div>
+
+      <ul class="ref-list">
+        <li>
+          <span class="ref-num">[1]</span>
+          <span>Tuchscherer, M. <em>The Reactive Training Manual.</em> Reactive Training Systems, 2008. Foundational text establishing RPE-based autoregulation for powerlifting.</span>
+        </li>
+        <li>
+          <span class="ref-num">[2]</span>
+          <span>Borg, G. <em>Borg's Perceived Exertion and Pain Scales.</em> Human Kinetics, 1998. Original formalization of perceived exertion as a psychophysiological construct.</span>
+        </li>
+        <li>
+          <span class="ref-num">[3]</span>
+          <span>Zourdos, M.C. et al. "Novel resistance training-specific RPE scale measuring repetitions in reserve." <em>Journal of Strength and Conditioning Research</em>, 30(1), 2016. Validation of RIR-based RPE for resistance training.</span>
+        </li>
+        <li>
+          <span class="ref-num">[4]</span>
+          <span>Foster, C. et al. "A new approach to monitoring exercise training." <em>Journal of Strength and Conditioning Research</em>, 15(1):109–115, 2001. Original sRPE paper; establishes session load = RPE × duration and validates the method against physiological markers.</span>
+        </li>
+        <li>
+          <span class="ref-num">[5]</span>
+          <span>Banister, E.W. et al. "A systems model of training for athletic performance." <em>Australian Journal of Sports Medicine</em>, 7:57–61, 1975. Original Impulse-Response model; source of the fitness-fatigue framework underlying ATL/CTL/TSB.</span>
+        </li>
+        <li>
+          <span class="ref-num">[6]</span>
+          <span>Allen, H. & Coggan, A. <em>Training and Racing with a Power Meter.</em> VeloPress, 2010. Popularized the ATL/CTL/TSB terminology and 7/42-day EWMA constants for endurance athletes using power meters.</span>
+        </li>
+        <li>
+          <span class="ref-num">[7]</span>
+          <span>Bourdon, P.C. et al. "Monitoring Athlete Training Loads: Consensus Statement." <em>International Journal of Sports Physiology and Performance</em>, 12(S2):S2-161–S2-170, 2017. Comprehensive consensus on the evidence base and limitations of training load monitoring methods.</span>
+        </li>
+        <li>
+          <span class="ref-num">[8]</span>
+          <span>Tuchscherer, M. <em>TRAC — Training Readiness and Autoregulation Calculator.</em> Reactive Training Systems. Internal software tool; methodology published in RTS training articles at <a href="https://www.reactivetrainingsystems.com" target="_blank">reactivetrainingsystems.com</a>.</span>
+        </li>
+      </ul>
+    </section>
+
+</main>
+
+</div>
+
+<script>
+const navLinks = Array.from(document.querySelectorAll('.sidebar .nav-link'));
+const sections = Array.from(document.querySelectorAll('.doc-section'));
+const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+const mobileOverlay = document.getElementById('mobile-nav-overlay');
+const docsSidebar = document.getElementById('docs-sidebar');
+
+function setActiveNav(sectionId) {
+  navLinks.forEach((link) => {
+    const isActive = link.getAttribute('href') === `#${sectionId}`;
+    link.classList.toggle('active', isActive);
+  });
+}
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) {
+      setActiveNav(entry.target.id);
+    }
+  });
+}, { rootMargin: '-18% 0px -72% 0px', threshold: 0.01 });
+
+sections.forEach((section) => observer.observe(section));
+
+function closeMobileNav() {
+  document.body.classList.remove('mobile-nav-open');
+  mobileMenuBtn.setAttribute('aria-expanded', 'false');
+  docsSidebar.setAttribute('aria-hidden', window.innerWidth <= 900 ? 'true' : 'false');
+}
+
+function openMobileNav() {
+  document.body.classList.add('mobile-nav-open');
+  mobileMenuBtn.setAttribute('aria-expanded', 'true');
+  docsSidebar.setAttribute('aria-hidden', 'false');
+}
+
+function syncSidebarA11y() {
+  if (window.innerWidth > 900) {
+    document.body.classList.remove('mobile-nav-open');
+    mobileMenuBtn.setAttribute('aria-expanded', 'false');
+    docsSidebar.setAttribute('aria-hidden', 'false');
+  } else if (!document.body.classList.contains('mobile-nav-open')) {
+    docsSidebar.setAttribute('aria-hidden', 'true');
+  }
+}
+
+mobileMenuBtn.addEventListener('click', () => {
+  if (document.body.classList.contains('mobile-nav-open')) {
+    closeMobileNav();
+  } else {
+    openMobileNav();
+  }
+});
+
+mobileOverlay.addEventListener('click', closeMobileNav);
+
+navLinks.forEach((link) => {
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    const target = document.querySelector(link.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setActiveNav(target.id);
+      if (window.innerWidth <= 900) {
+        closeMobileNav();
+      }
+    }
+  });
+});
+
+window.addEventListener('resize', syncSidebarA11y);
+syncSidebarA11y();
+</script>
+
+</body>
+</html>

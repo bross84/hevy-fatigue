@@ -10,6 +10,76 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-07, Docs Token Mapping + Importer List Styling)
+
+- Added missing CSS variable mappings in `static/docs.html` wiki `:root` override so legacy references resolve:
+	- `--text-primary`, `--text-secondary`, `--text-muted`
+	- `--bg-code`, `--border-accent`, `--accent-border`
+- Added `.doc-list` style rules and applied `class="doc-list"` to the importer section unordered list only.
+- Verified section badge ordering remains correct around importer flow:
+	- `05` -> `05b` -> `05c` -> `06`
+- Validation evidence:
+	- grep confirms all requested variable mappings and class usage in `static/docs.html`
+	- static diagnostics pass for `static/docs.html`
+
+## Latest Maintenance Update (2026-05-07, Diagnostics Page Documentation Section Added)
+
+- Added a full `Diagnostics page` section in `static/docs.html` (`id="diagnostics"`) to explicitly outline diagnostics behavior and troubleshooting workflow.
+- Added Notes TOC entry in the docs sidebar linking to `#diagnostics`.
+- Updated Workout importer diagnostics callout to cross-link to the new dedicated section.
+- Renumbered following sections for continuity after inserting the new section:
+	- Limitations: `10` -> `11`
+	- References: `11` -> `12`
+- Validation evidence:
+	- diagnostics TOC anchor and section ID both present
+	- no static diagnostics errors in `static/docs.html`
+
+## Latest Maintenance Update (2026-05-07, Remove Divergences Section from Docs)
+
+- Removed `Divergences from RTS TRAC` from `static/docs.html` and deleted its TOC sidebar link.
+- Removed the remaining Overview cross-reference that pointed to `#divergences`.
+- Renumbered trailing docs sections to preserve sequence continuity:
+	- Limitations: `11` -> `10`
+	- References: `12` -> `11`
+- Validation evidence:
+	- `grep` finds no `divergences` matches in `static/docs.html`
+	- static diagnostics pass for `static/docs.html`
+
+## Latest Maintenance Update (2026-05-07, Docs Wiki Sidebar + Mobile Navigation)
+
+- Updated `static/docs.html` to use a wiki-style documentation layout with section TOC sidebar while keeping index theme colors.
+- Implemented responsive navigation behavior:
+	- fixed sidebar on desktop
+	- hamburger-triggered drawer sidebar on mobile
+	- overlay close behavior and ARIA sync for accessibility
+- Added requested sidebar links under Training load:
+	- `#title-tagging`
+	- `#importer`
+- Inserted two new documentation sections between §05 and §06:
+	- `05b Workout title tagging convention`
+	- `05c Workout importer`
+- Added active-section link highlighting using `IntersectionObserver` and smooth anchor scrolling for sidebar links.
+- Validation: `static/docs.html` now contains both new section IDs and matching sidebar anchors.
+
+## Latest Maintenance Update (2026-05-07, Docs Page Navbar Integration & Styling Alignment)
+
+- Added "Docs" link to navbar in `static/index.html`
+  - Positioned as external link in nav-tabs section, styled consistently with existing nav buttons
+- Refactored `static/docs.html` to align with `static/index.html` visual design:
+  - **Color scheme**: Replaced custom GitHub-inspired palette with index.html's theme variables
+    - Dark theme: bg `#2e282a`, cards `#3d3638`, borders `#524c4e`, text `#f3f8f2`, accent `#5da9e9`
+  - **Navigation**: Added sticky navbar with logo, nav links (Today, Docs), and "← Dashboard" return button
+  - **Layout**: Removed fixed sidebar; converted to centered main content (`max-width: 900px`)
+  - **Typography**: Updated heading sizes and colors to match index.html styling
+  - **Components**:
+    - Formula blocks: Updated background, borders, and color tokens
+    - Info cards: Changed styling to use theme variables
+    - Tables: Recolored headers and cells
+    - Inline code: Updated background and text colors
+  - **JavaScript**: Removed sidebar nav link tracking logic; retained smooth scroll for anchor links
+  - **Responsive**: Updated mobile breakpoints for new navbar-centric layout
+- Validation: Both files now use consistent theme tokens; navbar styling matches across pages
+
 ## Latest Maintenance Update (2026-05-06, Stage 6: Diagnostic AI Removal)
 
 - Removed the Diagnostics-page AI assistant from `static/diagnostic.html`.

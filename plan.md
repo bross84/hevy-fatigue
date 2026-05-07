@@ -1,8 +1,87 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-03 (Backlog source-of-truth established)
+Last updated: 2026-05-07 (Docs CSS Variable + Importer List Fixes)
 
-## Latest Maintenance Update (2026-05-06, Stage 6: Diagnostic AI Removal)
+## Latest Maintenance Update (2026-05-07, Docs CSS Variables and Importer List Styling Fix)
+
+- Updated `static/docs.html` `:root` wiki override mappings to define missing variables used by existing styles:
+	- `--text-primary: var(--text)`
+	- `--text-secondary: var(--text)`
+	- `--text-muted: var(--muted)`
+	- `--bg-code: color-mix(in srgb, var(--card) 72%, black 28%)`
+	- `--border-accent: var(--border)`
+	- `--accent-border: color-mix(in srgb, var(--accent) 40%, transparent)`
+- Added `.doc-list` and `.doc-list li` CSS rules to standardize importer bullet styling.
+- Applied `class="doc-list"` to the unordered list in the `#importer` section only.
+- Verified section badge sequencing remains correct:
+	- `05` (modalities), `05b` (title tagging), `05c` (importer), `06` (movement patterns)
+- Validation: static diagnostics report no errors in `static/docs.html`.
+
+## Latest Maintenance Update (2026-05-07, Diagnostics Page Outlined in Docs)
+
+- Added a dedicated `Diagnostics page` section to `static/docs.html` (`id="diagnostics"`) to clearly document purpose and usage.
+- Added a new Notes sidebar link to `#diagnostics` for quick wiki-style navigation.
+- Expanded documentation coverage with:
+	- when to use diagnostics
+	- panel-by-panel outline (session volume, 7-day, 28-day, raw session data)
+	- a recommended debugging workflow block
+	- practical note about observational vs corrective actions
+- Updated importer Diagnostics callout to link to the full diagnostics section (`§10 Diagnostics page`).
+- Renumbered trailing sections to preserve order:
+	- Limitations: `10` -> `11`
+	- References: `11` -> `12`
+- Validation:
+	- diagnostics sidebar link and section anchor both present in `static/docs.html`
+	- static diagnostics report no errors in `static/docs.html`
+
+## Latest Maintenance Update (2026-05-07, Remove Divergences from RTS TRAC Section)
+
+- Removed the entire `Divergences from RTS TRAC` section from `static/docs.html`.
+- Removed the corresponding sidebar TOC link to `#divergences` in the Notes group.
+- Updated an Overview paragraph to remove the in-page link to the removed section.
+- Renumbered subsequent sections to keep ordering contiguous:
+	- `Known limitations` changed from section 11 to 10
+	- `References` changed from section 12 to 11
+- Validation:
+	- no remaining `divergences` references in `static/docs.html`
+	- static diagnostics report no errors in `static/docs.html`
+
+## Latest Maintenance Update (2026-05-07, Docs Wiki Sidebar Restoration)
+
+- Reworked `static/docs.html` to restore wiki-style section navigation while retaining index theme colors.
+- Added a fixed left sidebar Table of Contents on desktop and a slide-in mobile drawer on small screens.
+- Added mobile navigation controls:
+	- hamburger menu button in top nav
+	- tap-to-close overlay
+	- responsive open/close behavior with ARIA state updates
+- Added requested Training load TOC links in sidebar:
+	- `Title tagging` (`#title-tagging`)
+	- `Workout importer` (`#importer`)
+- Added new docs sections between §05 and §06:
+	- `§05b Workout title tagging convention`
+	- `§05c Workout importer`
+- Added section-aware sidebar highlighting via `IntersectionObserver` and smooth-scroll behavior for TOC links.
+- Kept index-compatible visual theme tokens (`--bg`, `--card`, `--border`, `--text`, `--accent`, etc.) while preserving docs-specific layout.
+
+## Latest Maintenance Update (2026-05-07, Docs Page Navbar Integration)
+
+- Added "Docs" link to the navbar in `static/index.html` 
+  - Added as an external link in the nav-tabs section, styled to match existing nav elements
+- Refactored `static/docs.html` to match `static/index.html` styling:
+  - Replaced custom color scheme with index.html's theme variables (dark: `#2e282a`, `#3d3638`, etc.)
+  - Added sticky navbar at top with logo, nav links, and "← Dashboard" return button
+  - Removed sidebar layout (previously a fixed left sidebar with navigation sections)
+  - Converted main content area from `margin-left: var(--sidebar-w)` to centered `main` with `max-width: 900px`
+  - Updated typography: headings, body text, and inline code now use index.html's font sizes and colors
+  - Updated component styling:
+    - Formula blocks: new background/border colors matching theme
+    - Info cards: updated with new color scheme
+    - Tables: header and cell styling aligned with index.html
+    - Inline code: updated background/border/text colors
+  - Updated mobile responsiveness for new navbar layout
+  - Simplified JavaScript: removed sidebar nav link tracking, kept only smooth scroll for anchor links
+
+## Latest Maintenance Update (2026-05-03, Backlog source-of-truth established)
 
 - Removed the Diagnostics page AI Assistant section from `static/diagnostic.html`.
 - Deleted AI section HTML controls and containers:
