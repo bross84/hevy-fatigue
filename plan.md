@@ -1,6 +1,26 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-07 (AI Chat Surface Token Alignment)
+Last updated: 2026-05-08 (AI Tab Overflow Height Handoff)
+
+## Latest Maintenance Update (2026-05-08, AI Tab Overflow Height Handoff)
+
+- Updated `static/index.html` so `body.ai-open` now sets both `overflow: hidden` and `height: 100vh`.
+- Added `body.ai-open main` constraints (`padding: 0`, `overflow: hidden`, `height: calc(100vh - 54px)`, flex column, full width behavior) to prevent page-level scroll conflict while AI tab is open.
+- Updated `.tab-content#tab-ai.active` to `flex: 1`, `height: 100%`, and `overflow: hidden`, removing previous `calc(100vh - 54px)` dependency.
+- Updated mobile AI override to use `height: 100%` for `.tab-content#tab-ai.active`.
+
+## Latest Maintenance Update (2026-05-07, AI Tab Body Overflow Lock)
+
+- Added `body.ai-open { overflow: hidden; }` in `static/index.html` to lock page scroll while AI tab is active.
+- Updated AI tab activation path in `activateTab(tabName)` to toggle `document.body.classList` with `ai-open` for AI vs non-AI tabs.
+- Kept `tab-content#tab-ai.active` height/overflow rule intact and scoped changes to requested CSS/JS only.
+
+## Latest Maintenance Update (2026-05-07, AI Chat Full Height Sticky Layout)
+
+- Replaced `static/index.html` AI tab active layout with a full-height column (`height: calc(100vh - 54px)`) and hidden overflow.
+- Replaced AI chat card and message area rules to a full-height scrollable layout with sticky input row and no legacy fixed message-area heights.
+- Updated user/assistant message-role rules to the requested subtle right bubble for user and no-bubble full-width assistant style.
+- Updated `@media (max-width: 900px)` AI overrides to only enforce tab height and `ai-chat-messages { min-height: 0; }`.
 
 ## Latest Maintenance Update (2026-05-07, AI Chat Surface Token Alignment)
 

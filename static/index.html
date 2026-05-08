@@ -1648,7 +1648,20 @@ tbody tr:hover td { background: var(--row-hover); }
 }
 .tab-content#tab-ai.active {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+body.ai-open { overflow: hidden; height: 100vh; }
+body.ai-open main {
+  padding: 0;
+  overflow: hidden;
+  height: calc(100vh - 54px);
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
 }
 .ai-chat-card { width: min(980px, 100%); margin: 12px auto 0; }
 .ai-chat-top {
@@ -1696,22 +1709,20 @@ tbody tr:hover td { background: var(--row-hover); }
   margin-bottom: 10px;
 }
 .ai-chat-messages {
-  height: 520px;
-  max-height: 62vh;
-  min-height: 0;
+  flex: 1;
   overflow-y: auto;
-  border: none;
-  box-shadow: none;
-  border-radius: 8px;
-  background: var(--bg);
-  padding: 20px;
+  padding: 12px 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  min-height: 0;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
-.ai-chat-messages::-webkit-scrollbar { width: 8px; }
+.ai-chat-messages::-webkit-scrollbar { width: 4px; }
 .ai-chat-messages::-webkit-scrollbar-track { background: transparent; }
 .ai-chat-messages::-webkit-scrollbar-thumb {
   background: var(--border);
@@ -1729,10 +1740,15 @@ tbody tr:hover td { background: var(--row-hover); }
   width: auto;
   max-width: 100%;
 }
-.ai-chat-msg.user { text-align: right; }
-.ai-chat-msg.assistant { text-align: left; }
+.ai-chat-msg.user {
+  display: flex;
+  justify-content: flex-end;
+}
+.ai-chat-msg.assistant {
+  display: flex;
+  justify-content: flex-start;
+}
 .ai-chat-msg-label { display: none; }
-.ai-msg,
 .ai-chat-bubble {
   background: none;
   border: none;
@@ -1744,14 +1760,25 @@ tbody tr:hover td { background: var(--row-hover); }
   word-break: break-word;
   font-family: inherit;
 }
-.ai-msg.user,
 .ai-chat-msg.user .ai-chat-bubble {
+  background: var(--accent-sub);
+  border: 1px solid rgba(93,169,233,0.2);
   color: var(--text);
-  text-align: right;
+  border-radius: 16px 16px 4px 16px;
+  padding: 8px 14px;
+  max-width: 80%;
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: left;
 }
-.ai-msg.assistant,
 .ai-chat-msg.assistant .ai-chat-bubble {
+  background: none;
+  border: none;
   color: var(--text);
+  padding: 4px 0;
+  max-width: 100%;
+  font-size: 14px;
+  line-height: 1.6;
   text-align: left;
 }
 .ai-chat-bubble p { margin: 0 0 0.5em 0; }
@@ -1792,23 +1819,26 @@ tbody tr:hover td { background: var(--row-hover); }
 }
 .ai-chat-status.error { color: var(--danger); }
 .ai-chat-input-row {
-  margin-top: 8px;
   display: flex;
-  gap: 8px;
   align-items: flex-end;
+  gap: 8px;
+  padding: 12px 0 16px;
+  background: var(--bg);
+  position: sticky;
+  bottom: 0;
 }
 .ai-chat-input {
   flex: 1;
   background: var(--card);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 10px;
-  font-size: 16px;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 14px;
   font-family: inherit;
   resize: none;
   min-height: 44px;
-  max-height: 120px;
+  max-height: 160px;
   line-height: 1.5;
 }
 .ai-chat-input:focus { outline: none; border-color: var(--accent); }
@@ -1825,13 +1855,17 @@ tbody tr:hover td { background: var(--row-hover); }
   cursor: not-allowed;
 }
 #tab-ai .ai-chat-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   width: 100%;
   max-width: 760px;
   margin: 0 auto;
+  padding: 16px 16px 0;
   background: transparent !important;
   border: none !important;
-  box-shadow: none;
-  padding: 0 16px;
+  box-shadow: none !important;
+  overflow: hidden;
 }
 #tab-ai .ai-chat-card .card-title {
   color: var(--text);
@@ -1901,12 +1935,8 @@ tbody tr:hover td { background: var(--row-hover); }
   #tab-settings .settings-card-diagnostics { grid-area: auto; }
   .ai-settings-card { max-width: none; }
   .ai-chat-card { max-width: none; }
-  .ai-chat-messages {
-    height: 280px;
-    max-height: 46vh;
-    min-height: 220px;
-  }
-  .ai-chat-msg { max-width: 100%; }
+  .tab-content#tab-ai.active { height: 100%; }
+  .ai-chat-messages { min-height: 0; }
 }
 
 /* ── Movement Trend card ── */
@@ -2960,6 +2990,7 @@ function activateTab(tabName) {
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
   document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
   document.getElementById('tab-' + tabName).classList.add('active');
+  document.body.classList.toggle('ai-open', tabName === 'ai');
   if (tabName === 'dashboard') { loadTrainingLoadCard(); checkTodayReadiness(); }
   if (tabName === 'trend')                               activateTrendTab();
   if (tabName === 'exercises')                           { loadExerciseConflicts(); if (exercises.length === 0) loadExercises(); }

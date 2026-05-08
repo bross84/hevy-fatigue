@@ -10,6 +10,24 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-08, AI Tab Overflow Height Handoff)
+
+- Updated AI-open overflow lock in `static/index.html` to include `height: 100vh` on `body.ai-open`.
+- Added `body.ai-open main` layout/overflow constraints to make main the height owner while AI tab is active.
+- Updated `.tab-content#tab-ai.active` to `flex: 1` + `height: 100%` and removed calc-height dependency (including mobile AI override).
+
+## Latest Maintenance Update (2026-05-07, AI Tab Body Overflow Lock)
+
+- Added `body.ai-open` overflow lock CSS in `static/index.html`.
+- Updated `activateTab(tabName)` in `static/index.html` to add/remove `ai-open` on `document.body` based on active tab.
+- Validation target: AI tab activation toggles body lock and `static/index.html` remains error-free.
+
+## Latest Maintenance Update (2026-05-07, AI Chat Full Height Sticky Layout)
+
+- Replaced AI chat layout CSS in `static/index.html` with full-height tab/card flow and sticky bottom input behavior.
+- Replaced `.ai-chat-messages`, `.ai-chat-msg.user/.assistant`, role bubble rules, and `.ai-chat-input-row` with the requested values.
+- Removed leftover fixed `height/max-height/min-height` constraints from the base `.ai-chat-messages` rule and updated mobile AI overrides accordingly.
+
 ## Latest Maintenance Update (2026-05-07, AI Chat Surface Token Alignment)
 
 - Updated AI chat CSS in `static/index.html` so `.ai-chat-messages` uses `var(--bg)` with no border or shadow.
