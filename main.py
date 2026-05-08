@@ -1011,7 +1011,7 @@ def _compute_training_load(days: int, db: Session) -> list[dict]:
     moving averages of the combined daily stress score (central + peripheral).
 
     ATL (Acute Training Load)   — 7-day EWMA  — short-term fatigue
-    CTL (Chronic Training Load) — 28-day EWMA — long-term fitness baseline
+    CTL (Chronic Training Load) — 42-day EWMA — long-term fitness baseline (Allen 2019 / TrainingPeaks standard)
     TSB (Training Stress Balance) = CTL - ATL  — positive = fresh, negative = fatigued
 
     Also computes four parallel pattern EWMAs (knee/hip/push/pull) using the
@@ -1019,10 +1019,10 @@ def _compute_training_load(days: int, db: Session) -> list[dict]:
     Pattern loads are included in each history item as "pattern_loads".
     """
     k_atl = 2 / (7  + 1)   # ≈ 0.250
-    k_ctl = 2 / (28 + 1)   # ≈ 0.069
+    k_ctl = 2 / (42 + 1)   # ≈ 0.046
 
     # Pull enough history for CTL to converge (at least 90 days behind)
-    lookback = max(days + 90, 120)
+    lookback = max(days + 150, 180)
     from_date = date_type.today() - timedelta(days=lookback)
 
     # Get every distinct workout date in the lookback window
