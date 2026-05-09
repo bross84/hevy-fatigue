@@ -141,6 +141,8 @@ class MappingUpdate(BaseModel):
     pct_upper_pull: float = Field(ge=0.0, le=1.0)
     is_conditioning: bool = False
     is_reviewed: bool = True
+    exercise_id: Optional[str] = None
+    canonical_name: Optional[str] = None
 
 
 class SessionVerificationUpdate(BaseModel):
@@ -2831,17 +2833,43 @@ def get_exercise_mappings(unreviewed: bool = False, db: Session = Depends(get_db
 
     # Pull set count and most-recent date for every exercise in one query
     usage_rows = db.query(
-        WorkoutLog.exercise_title,
+        func.lower(WorkoutLog.exercise_title).label("title_lc"),
         func.count(WorkoutLog.id).label("use_count"),
         func.max(WorkoutLog.date).label("last_used"),
-    ).group_by(WorkoutLog.exercise_title).all()
+    ).filter(WorkoutLog.exercise_title.isnot(None)).group_by(func.lower(WorkoutLog.exercise_title)).all()
 
-    usage = {r.exercise_title: {"use_count": r.use_count, "last_used": str(r.last_used)} for r in usage_rows}
+    usage = {r.title_lc: {"use_count": r.use_count, "last_used": str(r.last_used)} for r in usage_rows}
+
+    latest_title_subquery = (
+        db.query(
+            func.lower(WorkoutLog.exercise_title).label("title_lc"),
+            WorkoutLog.exercise_id.label("exercise_id"),
+            func.row_number().over(
+                partition_by=func.lower(WorkoutLog.exercise_title),
+                order_by=(WorkoutLog.date.desc(), WorkoutLog.id.desc()),
+            ).label("row_num"),
+        )
+        .filter(WorkoutLog.exercise_title.isnot(None))
+        .filter(WorkoutLog.exercise_id.isnot(None))
+        .subquery()
+    )
+
+    title_identity_rows = (
+        db.query(latest_title_subquery.c.title_lc, latest_title_subquery.c.exercise_id)
+        .filter(latest_title_subquery.c.row_num == 1)
+        .all()
+    )
+    title_to_exercise_id = {r.title_lc: r.exercise_id for r in title_identity_rows}
+
+    canonical_rows = db.query(ExerciseCanonical.exercise_id, ExerciseCanonical.canonical_title).all()
+    canonical_by_exercise_id = {r.exercise_id: r.canonical_title for r in canonical_rows}
 
     return [
         {
             "id": m.id,
             "exercise_title": m.exercise_title,
+            "exercise_id": title_to_exercise_id.get((m.exercise_title or "").lower()),
+            "canonical_name": canonical_by_exercise_id.get(title_to_exercise_id.get((m.exercise_title or "").lower())),
             "pct_quad_dom": m.pct_quad_dom,
             "pct_posterior": m.pct_posterior,
             "pct_upper_push": m.pct_upper_push,
@@ -2849,22 +2877,69 @@ def get_exercise_mappings(unreviewed: bool = False, db: Session = Depends(get_db
             "is_conditioning": m.is_conditioning,
             "source": m.source,
             "is_reviewed": m.is_reviewed,
-            "use_count": usage.get(m.exercise_title, {}).get("use_count", 0),
-            "last_used": usage.get(m.exercise_title, {}).get("last_used", None),
+            "use_count": usage.get((m.exercise_title or "").lower(), {}).get("use_count", 0),
+            "last_used": usage.get((m.exercise_title or "").lower(), {}).get("last_used", None),
         }
         for m in mappings
     ]
 
-@app.put("/api/exercises/mappings/{mapping_id}")
+@app.put("/api/exercises/mappings/{mapping_key}")
 def update_exercise_mapping(
-    mapping_id: int, data: MappingUpdate, db: Session = Depends(get_db)
+    mapping_key: str, data: MappingUpdate, db: Session = Depends(get_db)
 ):
-    """Update a movement pattern mapping by numeric ID. Marks source as 'user' and is_reviewed as True."""
-    mapping = db.query(ExerciseMapping).filter(
-        ExerciseMapping.id == mapping_id
-    ).first()
-    if not mapping:
-        raise HTTPException(status_code=404, detail=f"Exercise mapping #{mapping_id} not found.")
+    """Update a movement pattern mapping and optionally canonical title using mapping ID or exercise ID."""
+    key = (mapping_key or "").strip()
+    provided_exercise_id = (data.exercise_id or "").strip()
+    mapping = None
+    resolved_exercise_id = provided_exercise_id or None
+
+    if key.isdigit():
+        mapping = db.query(ExerciseMapping).filter(ExerciseMapping.id == int(key)).first()
+        if not mapping:
+            raise HTTPException(status_code=404, detail=f"Exercise mapping #{key} not found.")
+    else:
+        resolved_exercise_id = key
+
+    if resolved_exercise_id and mapping is None:
+        canonical_row = (
+            db.query(ExerciseCanonical)
+            .filter(ExerciseCanonical.exercise_id == resolved_exercise_id)
+            .first()
+        )
+        if canonical_row and canonical_row.canonical_title:
+            mapping = (
+                db.query(ExerciseMapping)
+                .filter(func.lower(ExerciseMapping.exercise_title) == canonical_row.canonical_title.strip().lower())
+                .first()
+            )
+
+        if mapping is None:
+            latest_title_row = (
+                db.query(WorkoutLog.exercise_title)
+                .filter(WorkoutLog.exercise_id == resolved_exercise_id)
+                .filter(WorkoutLog.exercise_title.isnot(None))
+                .order_by(WorkoutLog.date.desc(), WorkoutLog.id.desc())
+                .first()
+            )
+            if latest_title_row and latest_title_row[0]:
+                mapping = (
+                    db.query(ExerciseMapping)
+                    .filter(func.lower(ExerciseMapping.exercise_title) == latest_title_row[0].strip().lower())
+                    .first()
+                )
+
+    if mapping is None:
+        raise HTTPException(status_code=404, detail="Exercise mapping not found for that identifier.")
+
+    if not resolved_exercise_id:
+        latest_id_row = (
+            db.query(WorkoutLog.exercise_id)
+            .filter(func.lower(WorkoutLog.exercise_title) == (mapping.exercise_title or "").lower())
+            .filter(WorkoutLog.exercise_id.isnot(None))
+            .order_by(WorkoutLog.date.desc(), WorkoutLog.id.desc())
+            .first()
+        )
+        resolved_exercise_id = latest_id_row[0].strip() if latest_id_row and latest_id_row[0] else None
 
     total_pct = data.pct_quad_dom + data.pct_posterior + data.pct_upper_push + data.pct_upper_pull
     if data.is_conditioning:
@@ -2891,18 +2966,90 @@ def update_exercise_mapping(
     mapping.is_conditioning = data.is_conditioning
     mapping.is_reviewed     = data.is_reviewed
     mapping.source          = "user"
+
+    canonical_name = data.canonical_name
+    if canonical_name is not None:
+        if not resolved_exercise_id:
+            raise HTTPException(
+                status_code=422,
+                detail="exercise_id is required to update canonical_name for this exercise.",
+            )
+
+        canonical_name_stripped = canonical_name.strip()
+        if canonical_name_stripped:
+            previous_row = (
+                db.query(ExerciseCanonical)
+                .filter(ExerciseCanonical.exercise_id == resolved_exercise_id)
+                .first()
+            )
+            previous_canonical_title = previous_row.canonical_title if previous_row else None
+
+            now = datetime.utcnow()
+            stmt = sqlite_insert(ExerciseCanonical).values(
+                exercise_id=resolved_exercise_id,
+                canonical_title=canonical_name_stripped,
+                created_at=now,
+                updated_at=now,
+            ).on_conflict_do_update(
+                index_elements=[ExerciseCanonical.exercise_id],
+                set_={
+                    "canonical_title": canonical_name_stripped,
+                    "updated_at": now,
+                },
+            )
+            db.execute(stmt)
+
+            _sync_mapping_to_canonical_title(
+                db=db,
+                exercise_id=resolved_exercise_id,
+                canonical_title=canonical_name_stripped,
+                old_canonical_title=previous_canonical_title,
+            )
+
+            (
+                db.query(WorkoutLog)
+                .filter(WorkoutLog.exercise_id == resolved_exercise_id)
+                .update({WorkoutLog.exercise_title: canonical_name_stripped}, synchronize_session=False)
+            )
+        else:
+            (
+                db.query(ExerciseCanonical)
+                .filter(ExerciseCanonical.exercise_id == resolved_exercise_id)
+                .delete(synchronize_session=False)
+            )
+
     db.commit()
 
+    response_mapping = mapping
+    current_canonical_name = None
+    if resolved_exercise_id:
+        canonical_row = (
+            db.query(ExerciseCanonical)
+            .filter(ExerciseCanonical.exercise_id == resolved_exercise_id)
+            .first()
+        )
+        current_canonical_name = canonical_row.canonical_title if canonical_row else None
+        if current_canonical_name:
+            canonical_mapping = (
+                db.query(ExerciseMapping)
+                .filter(func.lower(ExerciseMapping.exercise_title) == current_canonical_name.strip().lower())
+                .first()
+            )
+            if canonical_mapping:
+                response_mapping = canonical_mapping
+
     return {
-        "id": mapping.id,
-        "exercise_title": mapping.exercise_title,
-        "pct_quad_dom": mapping.pct_quad_dom,
-        "pct_posterior": mapping.pct_posterior,
-        "pct_upper_push": mapping.pct_upper_push,
-        "pct_upper_pull": mapping.pct_upper_pull,
-        "is_conditioning": mapping.is_conditioning,
-        "source": mapping.source,
-        "is_reviewed": mapping.is_reviewed,
+        "id": response_mapping.id,
+        "exercise_title": response_mapping.exercise_title,
+        "exercise_id": resolved_exercise_id,
+        "canonical_name": current_canonical_name,
+        "pct_quad_dom": response_mapping.pct_quad_dom,
+        "pct_posterior": response_mapping.pct_posterior,
+        "pct_upper_push": response_mapping.pct_upper_push,
+        "pct_upper_pull": response_mapping.pct_upper_pull,
+        "is_conditioning": response_mapping.is_conditioning,
+        "source": response_mapping.source,
+        "is_reviewed": response_mapping.is_reviewed,
     }
 
 

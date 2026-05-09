@@ -1,6 +1,23 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-09 (Canonical Mapping Sync + Startup Mapping Migration)
+Last updated: 2026-05-09 (Exercise Edit Canonical Name Field)
+
+## Latest Maintenance Update (2026-05-09, Exercise Edit Canonical Name Field)
+
+- Implemented canonical name support directly in the exercise edit modal in `static/index.html`:
+	- added `Canonical Name` free-text input in the existing mapping edit form
+	- modal now pre-populates from `canonical_name` returned by mappings API
+	- save payload now includes `exercise_id` and `canonical_name`
+- Updated mappings API contract in `main.py`:
+	- `GET /api/exercises/mappings` now returns `exercise_id` and `canonical_name` per row
+	- `PUT /api/exercises/mappings/{mapping_key}` now accepts canonical fields and supports both mapping ID and exercise ID keys
+- Implemented canonical save behavior in `main.py` mapping update flow:
+	- non-blank canonical: upsert `exercise_canonical`, run immediate `workout_logs.exercise_title` backfill by `exercise_id`, and sync mapping title via existing canonical helper
+	- blank canonical: delete only `exercise_canonical` row for that `exercise_id`
+	- canonical clear does not rewrite `workout_logs` and does not retitle `exercise_mappings`
+- Validation status:
+	- static diagnostics report no errors in edited files
+	- `python -m py_compile main.py` passes
 
 ## Latest Maintenance Update (2026-05-09, Canonical Mapping Sync + Startup Mapping Migration)
 

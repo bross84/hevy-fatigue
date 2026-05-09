@@ -2664,6 +2664,11 @@ body.ai-open main {
     <div class="modal-title" id="modal-title">Edit Mapping</div>
     <div class="modal-subtitle" id="modal-auto-note"></div>
 
+    <div class="form-row">
+      <div class="form-label">Canonical Name</div>
+      <input type="text" id="mv-canonical-name" class="search-input" placeholder="Leave blank to remove canonical name" autocomplete="off">
+    </div>
+
     <div class="pattern-examples">
       <div class="ex-row"><span class="dot dot-quad"></span><strong style="color:var(--quad)">Quad</strong><span class="ex-list">squat, leg press, hack squat, lunge</span></div>
       <div class="ex-row"><span class="dot dot-posterior"></span><strong style="color:var(--posterior)">Hip</strong><span class="ex-list">deadlift, RDL, good morning, hip thrust, leg curl</span></div>
@@ -2928,6 +2933,7 @@ if (window.ResizeObserver) {
 }
 let editingTitle   = null;
 let editingId      = null;
+let editingExerciseId = null;
 let workoutsLoaded = false;
 let logLoaded      = false;
 let logEditDate    = null;
@@ -5426,6 +5432,7 @@ function openModal(ex) {
   if (!ex) return;
   editingTitle = ex.exercise_title;
   editingId    = ex.id;
+  editingExerciseId = ex.exercise_id || null;
   document.getElementById('modal-title').textContent = ex.exercise_title;
   const note = document.getElementById('modal-auto-note');
   note.style.marginBottom = '12px';
@@ -5443,6 +5450,7 @@ function openModal(ex) {
     document.getElementById(`mv-${key}`).value     = val;
     document.getElementById(`mv-${key}-num`).value = val;
   }
+  document.getElementById('mv-canonical-name').value = ex.canonical_name || '';
   document.getElementById('mv-cond').checked = ex.is_conditioning;
   syncModal();
   document.getElementById('edit-modal').classList.add('open');
@@ -5452,6 +5460,8 @@ function closeModal() {
   document.getElementById('edit-modal').classList.remove('open');
   editingTitle = null;
   editingId    = null;
+  editingExerciseId = null;
+  document.getElementById('mv-canonical-name').value = '';
 }
 
 document.getElementById('edit-modal').addEventListener('click', e => {
@@ -6271,6 +6281,8 @@ async function saveMapping() {
   const btn = document.getElementById('modal-save');
   btn.disabled = true; btn.textContent = 'Saving…';
 
+  const canonicalInput = document.getElementById('mv-canonical-name');
+
   const payload = {
     pct_quad_dom:    +document.getElementById('mv-quad').value / 100,
     pct_posterior:   +document.getElementById('mv-post').value / 100,
@@ -6278,23 +6290,22 @@ async function saveMapping() {
     pct_upper_pull:  +document.getElementById('mv-pull').value / 100,
     is_conditioning: document.getElementById('mv-cond').checked,
     is_reviewed:     true,
+    exercise_id:     editingExerciseId,
+    canonical_name:  canonicalInput ? canonicalInput.value : '',
   };
 
+  const mappingKey = editingExerciseId || String(editingId);
+
   try {
-    const r = await fetch(`/api/exercises/mappings/${editingId}`, {
+    const r = await fetch(`/api/exercises/mappings/${encodeURIComponent(mappingKey)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     if (r.ok) {
-      const updated = await r.json();
-      const idx = exercises.findIndex(e => e.exercise_title === editingTitle);
-      if (idx >= 0) {
-        // Merge updated fields back; preserve use_count / last_used from local state
-        exercises[idx] = { ...exercises[idx], ...updated };
-      }
+      await r.json();
       closeModal();
-      renderExTable();
+      await loadExercises();
     } else {
       const err = await r.json().catch(() => ({}));
       alert(`Save failed (${r.status}): ${err.detail || r.statusText}`);

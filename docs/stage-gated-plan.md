@@ -10,6 +10,21 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-09, Exercise Edit Canonical Name Field)
+
+- Implemented canonical name editing directly in the existing exercise mapping modal in `static/index.html`.
+- Added free-text `Canonical Name` input to the modal and wired pre-population from mappings API data.
+- Updated mappings API in `main.py`:
+	- `GET /api/exercises/mappings` now includes `exercise_id` and `canonical_name`.
+	- `PUT /api/exercises/mappings/{mapping_key}` now accepts `exercise_id` and `canonical_name` and resolves identifier by mapping ID or exercise ID.
+- Save behavior implemented in mapping update endpoint:
+	- non-blank canonical -> upsert `exercise_canonical`, sync mapping title via `_sync_mapping_to_canonical_title`, and backfill `workout_logs.exercise_title` for the exercise.
+	- blank canonical -> delete only `exercise_canonical` row.
+	- blank canonical does not mutate `workout_logs` titles and does not retitle `exercise_mappings`.
+- Validation evidence:
+	- static diagnostics report no errors in edited files
+	- `python -m py_compile main.py` passes
+
 ## Latest Maintenance Update (2026-05-09, Canonical Mapping Sync + Startup Mapping Migration)
 
 - Implemented canonical save-time mapping synchronization in `main.py` for:
