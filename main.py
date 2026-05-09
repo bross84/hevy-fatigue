@@ -2986,6 +2986,13 @@ def update_exercise_mapping(
     mapping.is_conditioning = data.is_conditioning
     mapping.is_reviewed     = data.is_reviewed
     mapping.source          = "user"
+    original_mapping_id     = mapping.id
+
+    # Flush base mapping changes to DB under the existing row identity before any
+    # canonical sync runs. _sync_mapping_to_canonical_title may delete this row
+    # (treating it as the "source" mapping) and recreate it under the canonical
+    # title, which would make the ORM object stale if we hadn't flushed first.
+    db.flush()
 
     canonical_name = data.canonical_name
     if canonical_name is not None:
@@ -3019,6 +3026,9 @@ def update_exercise_mapping(
             )
             db.execute(stmt)
 
+            # This may delete the source mapping row and create/rename to the
+            # canonical title. The base flush above ensures pattern changes are
+            # persisted under the source row before it is moved.
             _sync_mapping_to_canonical_title(
                 db=db,
                 exercise_id=resolved_exercise_id,
@@ -3040,8 +3050,10 @@ def update_exercise_mapping(
 
     db.commit()
 
-    response_mapping = mapping
+    # Re-query response mapping fresh after commit to avoid using a potentially
+    # stale ORM object (the source row may have been deleted by canonical sync).
     current_canonical_name = None
+    response_mapping = None
     if resolved_exercise_id:
         canonical_row = (
             db.query(ExerciseCanonical)
@@ -3050,13 +3062,18 @@ def update_exercise_mapping(
         )
         current_canonical_name = canonical_row.canonical_title if canonical_row else None
         if current_canonical_name:
-            canonical_mapping = (
+            response_mapping = (
                 db.query(ExerciseMapping)
                 .filter(func.lower(ExerciseMapping.exercise_title) == current_canonical_name.strip().lower())
                 .first()
             )
-            if canonical_mapping:
-                response_mapping = canonical_mapping
+
+    if response_mapping is None:
+        # No canonical sync happened (or canonical was cleared): re-query by PK.
+        response_mapping = db.query(ExerciseMapping).filter(ExerciseMapping.id == original_mapping_id).first()
+
+    if response_mapping is None:
+        raise HTTPException(status_code=500, detail="Mapping row not found after save.")
 
     return {
         "id": response_mapping.id,
