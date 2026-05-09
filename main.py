@@ -2996,6 +2996,106 @@ def get_exercise_canonical_rows(db: Session = Depends(get_db)):
     ]
 
 
+def _sync_mapping_to_canonical_title(
+    db: Session,
+    exercise_id: str,
+    canonical_title: str,
+    old_canonical_title: str | None,
+):
+    canonical_title_stripped = canonical_title.strip()
+    canonical_title_lc = canonical_title_stripped.lower()
+
+    source_titles: list[str] = []
+    if old_canonical_title:
+        old_title_stripped = old_canonical_title.strip()
+        if old_title_stripped and old_title_stripped.lower() != canonical_title_lc:
+            source_titles.append(old_title_stripped)
+
+    latest_log_row = (
+        db.query(WorkoutLog.exercise_title)
+        .filter(WorkoutLog.exercise_id == exercise_id)
+        .filter(WorkoutLog.exercise_title.isnot(None))
+        .order_by(WorkoutLog.date.desc(), WorkoutLog.id.desc())
+        .first()
+    )
+    if latest_log_row and latest_log_row[0]:
+        latest_title = latest_log_row[0].strip()
+        if latest_title and latest_title.lower() != canonical_title_lc:
+            source_titles.append(latest_title)
+
+    # Keep source_titles order while removing case-insensitive duplicates.
+    deduped_source_titles: list[str] = []
+    seen = set()
+    for title in source_titles:
+        key = title.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped_source_titles.append(title)
+
+    canonical_mapping = (
+        db.query(ExerciseMapping)
+        .filter(func.lower(ExerciseMapping.exercise_title) == canonical_title_lc)
+        .first()
+    )
+
+    source_mapping = None
+    source_mapping_title_lc = None
+    for title in deduped_source_titles:
+        title_lc = title.lower()
+        mapping_row = (
+            db.query(ExerciseMapping)
+            .filter(func.lower(ExerciseMapping.exercise_title) == title_lc)
+            .first()
+        )
+        if mapping_row:
+            source_mapping = mapping_row
+            source_mapping_title_lc = title_lc
+            break
+
+    if source_mapping:
+        if canonical_mapping is None:
+            canonical_mapping = ExerciseMapping(
+                exercise_title=canonical_title_stripped,
+                pct_quad_dom=source_mapping.pct_quad_dom,
+                pct_posterior=source_mapping.pct_posterior,
+                pct_upper_push=source_mapping.pct_upper_push,
+                pct_upper_pull=source_mapping.pct_upper_pull,
+                source=source_mapping.source,
+                is_reviewed=source_mapping.is_reviewed,
+                is_conditioning=source_mapping.is_conditioning,
+            )
+            db.add(canonical_mapping)
+        else:
+            canonical_mapping.pct_quad_dom = source_mapping.pct_quad_dom
+            canonical_mapping.pct_posterior = source_mapping.pct_posterior
+            canonical_mapping.pct_upper_push = source_mapping.pct_upper_push
+            canonical_mapping.pct_upper_pull = source_mapping.pct_upper_pull
+            canonical_mapping.source = source_mapping.source
+            canonical_mapping.is_reviewed = source_mapping.is_reviewed
+            canonical_mapping.is_conditioning = source_mapping.is_conditioning
+    elif canonical_mapping is None:
+        canonical_mapping = ExerciseMapping(
+            exercise_title=canonical_title_stripped,
+            pct_quad_dom=0.0,
+            pct_posterior=0.0,
+            pct_upper_push=0.0,
+            pct_upper_pull=0.0,
+            source="auto",
+            is_reviewed=False,
+            is_conditioning=False,
+        )
+        db.add(canonical_mapping)
+
+    removable_title_lc = source_mapping_title_lc
+    if removable_title_lc and removable_title_lc != canonical_title_lc:
+        (
+            db.query(ExerciseMapping)
+            .filter(func.lower(ExerciseMapping.exercise_title) == removable_title_lc)
+            .delete(synchronize_session=False)
+        )
+
+
 @app.post("/api/exercises/canonical")
 def save_exercise_canonical(data: ExerciseCanonicalInput, db: Session = Depends(get_db)):
     exercise_id = data.exercise_id.strip()
@@ -3003,6 +3103,9 @@ def save_exercise_canonical(data: ExerciseCanonicalInput, db: Session = Depends(
 
     if not exercise_id or not canonical_title:
         raise HTTPException(status_code=400, detail="exercise_id and canonical_title are required.")
+
+    previous_row = db.query(ExerciseCanonical).filter(ExerciseCanonical.exercise_id == exercise_id).first()
+    previous_canonical_title = previous_row.canonical_title if previous_row else None
 
     now = datetime.utcnow()
     stmt = sqlite_insert(ExerciseCanonical).values(
@@ -3018,6 +3121,14 @@ def save_exercise_canonical(data: ExerciseCanonicalInput, db: Session = Depends(
         },
     )
     db.execute(stmt)
+
+    _sync_mapping_to_canonical_title(
+        db=db,
+        exercise_id=exercise_id,
+        canonical_title=canonical_title,
+        old_canonical_title=previous_canonical_title,
+    )
+
     db.commit()
 
     row = db.query(ExerciseCanonical).filter(ExerciseCanonical.exercise_id == exercise_id).first()
@@ -3075,6 +3186,9 @@ def resolve_exercise_conflict(
     if not canonical_title:
         raise HTTPException(status_code=422, detail="canonical_title must not be empty.")
 
+    previous_row = db.query(ExerciseCanonical).filter(ExerciseCanonical.exercise_id == exercise_id).first()
+    previous_canonical_title = previous_row.canonical_title if previous_row else None
+
     from sqlalchemy.dialects.sqlite import insert as sqlite_insert
     from datetime import datetime as _dt
     stmt = sqlite_insert(ExerciseCanonical).values(
@@ -3087,6 +3201,13 @@ def resolve_exercise_conflict(
         set_={"canonical_title": canonical_title, "updated_at": _dt.utcnow()},
     )
     db.execute(stmt)
+
+    _sync_mapping_to_canonical_title(
+        db=db,
+        exercise_id=exercise_id,
+        canonical_title=canonical_title,
+        old_canonical_title=previous_canonical_title,
+    )
 
     conflict.resolved = True
     conflict.resolved_at = _dt.utcnow()

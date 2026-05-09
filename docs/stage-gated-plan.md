@@ -10,6 +10,20 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-09, Canonical Mapping Sync + Startup Mapping Migration)
+
+- Implemented canonical save-time mapping synchronization in `main.py` for:
+	- `POST /api/exercises/canonical`
+	- `POST /api/exercises/conflicts/{exercise_id}/resolve`
+- Canonical mapping sync behavior now:
+	- carries forward existing mapping pattern metadata when available
+	- creates an unassigned mapping row when no pattern exists
+	- removes the prior mapping title entry after migration to canonical title
+- Added startup migration `migration_canonical_mapping_sync_v1` in `database.py`.
+- Migration inserts unassigned rows into `exercise_mappings` for any canonical title not already present (case-insensitive check).
+- Validation evidence:
+	- `python -m py_compile main.py database.py` passes.
+
 ## Latest Maintenance Update (2026-05-09, Canonical Sync Root-Cause + Movement Trend ID Join + Backfill)
 
 - Implemented sync-time canonical root-cause fix in `importer.py` without post-write rewrites:

@@ -1,6 +1,18 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-09 (Canonical Sync Root-Cause + Movement Trend ID Join + Backfill)
+Last updated: 2026-05-09 (Canonical Mapping Sync + Startup Mapping Migration)
+
+## Latest Maintenance Update (2026-05-09, Canonical Mapping Sync + Startup Mapping Migration)
+
+- Updated canonical save flows in `main.py` so when a canonical title is saved (direct canonical API and conflict resolve API), the canonical title is synchronized into `exercise_mappings`.
+- New canonical-to-mapping sync behavior:
+	- carries over an existing mapping pattern when one exists (prefers previous canonical title mapping, then latest Hevy title mapping for the same `exercise_id`)
+	- inserts an unassigned mapping row when no prior pattern exists
+	- removes the old mapping title entry after carry-over so canonical title becomes the active mapping key
+- Added startup migration flag `migration_canonical_mapping_sync_v1` in `database.py`.
+- Migration behavior inserts unassigned `exercise_mappings` rows for canonical titles that are missing from `exercise_mappings` (case-insensitive existence check).
+- Validation status:
+	- `python -m py_compile main.py database.py` passes
 
 ## Latest Maintenance Update (2026-05-09, Canonical Sync Root-Cause + Movement Trend ID Join + Backfill)
 

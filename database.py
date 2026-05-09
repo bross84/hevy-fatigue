@@ -267,6 +267,51 @@ def init_db():
             )
             conn.commit()
 
+        canonical_mapping_sync_flag_key = "migration_canonical_mapping_sync_v1"
+        canonical_mapping_sync_flag_exists = conn.execute(
+            text("SELECT key FROM app_settings WHERE key = :key"),
+            {"key": canonical_mapping_sync_flag_key},
+        ).first()
+        if not canonical_mapping_sync_flag_exists:
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO exercise_mappings (
+                        exercise_title,
+                        pct_quad_dom,
+                        pct_posterior,
+                        pct_upper_push,
+                        pct_upper_pull,
+                        source,
+                        is_reviewed,
+                        is_conditioning
+                    )
+                    SELECT
+                        ec.canonical_title,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        'auto',
+                        0,
+                        0
+                    FROM exercise_canonical ec
+                    WHERE ec.canonical_title IS NOT NULL
+                      AND TRIM(ec.canonical_title) <> ''
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM exercise_mappings em
+                          WHERE LOWER(em.exercise_title) = LOWER(ec.canonical_title)
+                      )
+                    """
+                )
+            )
+            conn.execute(
+                text("INSERT INTO app_settings (key, value) VALUES (:key, :value)"),
+                {"key": canonical_mapping_sync_flag_key, "value": "1"},
+            )
+            conn.commit()
+
     # app_settings table is created by create_all above (new installs and existing DBs)
 if __name__ == "__main__":
     init_db()
