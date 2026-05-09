@@ -8,6 +8,7 @@ import requests
 
 import importer
 from database import AppSetting, ExerciseCanonical, SessionLocal, WorkoutLog, WorkoutSession
+from sqlalchemy import text
 
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
@@ -107,11 +108,20 @@ def simulate_import(exercise_id, workout_id, api_title):
         importer.HevyClient = original_client
 
 
-def get_stored_workout_title(workout_id):
+def get_stored_titles_for_exercise(exercise_id):
     db = SessionLocal()
     try:
-        row = db.query(WorkoutLog).filter(WorkoutLog.workout_id == workout_id).first()
-        return row.exercise_title if row else None
+        rows = db.execute(
+            text(
+                """
+                SELECT DISTINCT exercise_title
+                FROM workout_logs
+                WHERE exercise_id = :exercise_id
+                """
+            ),
+            {"exercise_id": exercise_id},
+        ).fetchall()
+        return sorted(str(row[0]) for row in rows if row and row[0])
     finally:
         db.close()
 
@@ -166,9 +176,9 @@ def main():
 
         try:
             result = simulate_import(exercise_id, workout_id, api_title)
-            stored_title = get_stored_workout_title(workout_id)
-            passed = result.get("new_sets", 0) >= 1 and stored_title == initial_title
-            detail = f"import_result={result}, stored_title={stored_title}, api_title={api_title}"
+            stored_titles = get_stored_titles_for_exercise(exercise_id)
+            passed = result.get("new_sets", 0) >= 1 and stored_titles == [initial_title]
+            detail = f"import_result={result}, stored_titles={stored_titles}, api_title={api_title}"
             runner.record(3, "Simulated import stores canonical title", passed, detail)
         except Exception as exc:
             runner.record(3, "Simulated import stores canonical title", False, str(exc))
@@ -181,14 +191,14 @@ def main():
             )
             payload = response.json()
             result = simulate_import(exercise_id, workout_id, api_title)
-            stored_title = get_stored_workout_title(workout_id)
+            stored_titles = get_stored_titles_for_exercise(exercise_id)
             passed = (
                 response.status_code == 200
                 and payload.get("canonical_title") == updated_title
-                and stored_title == updated_title
+                and stored_titles == [updated_title]
                 and result.get("new_sets", 0) >= 1
             )
-            detail = f"status={response.status_code}, payload={payload}, stored_title={stored_title}"
+            detail = f"status={response.status_code}, payload={payload}, stored_titles={stored_titles}"
             runner.record(4, "POST upsert updates canonical row", passed, detail)
         except Exception as exc:
             runner.record(4, "POST upsert updates canonical row", False, str(exc))

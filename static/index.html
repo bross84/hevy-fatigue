@@ -2948,7 +2948,8 @@ let sessionLogHasMore = false;
 let sessionLogFilter = 'all';
 let sessionLogFatiguePayload = null;
 let sessionDetailCache = {};
-let mvtSelectedMovement = null;
+let mvtSelectedMovementId = null;
+let mvtSelectedMovementTitle = null;
 let mvtMetric = 'e1rm';
 let mvtWindow = '6m';
 let mvtSearchTimer = null;
@@ -4186,35 +4187,45 @@ async function _mvtSearch(q) {
     const r = await fetch(`/api/movements/search?q=${encodeURIComponent(q)}`);
     if (reqId !== mvtSearchReqId) return;
     const d = await r.json();
-    _mvtRenderDropdown(d.results || []);
+    const rawItems = Array.isArray(d.items) ? d.items : [];
+    const fallbackTitles = Array.isArray(d.results) ? d.results : [];
+    const normalized = rawItems.length
+      ? rawItems.map(item => ({
+          exercise_id: String(item.exercise_id || ''),
+          title: String(item.title || ''),
+        })).filter(item => item.title)
+      : fallbackTitles.map(title => ({ exercise_id: '', title: String(title || '') })).filter(item => item.title);
+    _mvtRenderDropdown(normalized);
   } catch (_) {
     if (reqId !== mvtSearchReqId) return;
     _mvtCloseDropdown();
   }
 }
 
-function _mvtRenderDropdown(results) {
+function _mvtRenderDropdown(items) {
   const dd = document.getElementById('mvt-dropdown');
   if (!dd) return;
-  if (!results.length) {
+  if (!items.length) {
     _mvtCloseDropdown();
     return;
   }
-  dd.innerHTML = results.map(r =>
-    `<div class="mvt-dropdown-item" data-title="${escHtml(r)}">${escHtml(r)}</div>`
+  dd.innerHTML = items.map(item =>
+    `<div class="mvt-dropdown-item" data-exercise-id="${escHtml(item.exercise_id || '')}" data-title="${escHtml(item.title || '')}">${escHtml(item.title || '')}</div>`
   ).join('');
   dd.style.display = 'block';
 }
 
-function _mvtSelectMovement(title) {
-  mvtSelectedMovement = title;
-  document.getElementById('mvt-search-input').value = title;
+function _mvtSelectMovement(selection) {
+  mvtSelectedMovementId = selection.exercise_id || null;
+  mvtSelectedMovementTitle = selection.title || null;
+  document.getElementById('mvt-search-input').value = selection.title || '';
   _mvtCloseDropdown();
   _mvtLoadTrend();
 }
 
 function _mvtClear() {
-  mvtSelectedMovement = null;
+  mvtSelectedMovementId = null;
+  mvtSelectedMovementTitle = null;
   mvtLastData = null;
   mvtSearchReqId += 1;
   clearTimeout(mvtSearchTimer);
@@ -4226,16 +4237,18 @@ function _mvtClear() {
 }
 
 async function _mvtLoadTrend() {
-  if (!mvtSelectedMovement) return;
+  if (!mvtSelectedMovementId && !mvtSelectedMovementTitle) return;
   _destroyMvtChart();
   _mvtSetState('loading');
 
   const usingVolume = mvtMetric === 'volume';
   const endpoint = usingVolume ? '/api/movements/volume-trend' : '/api/movements/session-trend';
-  const qs = `exercise=${encodeURIComponent(mvtSelectedMovement)}&window=${encodeURIComponent(mvtWindow)}`;
+  const params = new URLSearchParams({ window: mvtWindow });
+  if (mvtSelectedMovementId) params.set('exercise_id', mvtSelectedMovementId);
+  else if (mvtSelectedMovementTitle) params.set('exercise', mvtSelectedMovementTitle);
 
   try {
-    const url = `${endpoint}?${qs}`;
+    const url = `${endpoint}?${params.toString()}`;
     const r = await fetch(url);
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
@@ -4386,7 +4399,11 @@ function _mvtInitHandlers() {
 
   document.getElementById('mvt-dropdown').addEventListener('click', e => {
     const item = e.target.closest('.mvt-dropdown-item');
-    if (item) _mvtSelectMovement(item.dataset.title);
+    if (!item) return;
+    _mvtSelectMovement({
+      exercise_id: item.dataset.exerciseId || '',
+      title: item.dataset.title || '',
+    });
   });
 
   document.getElementById('mvt-clear-btn').addEventListener('click', () => _mvtClear());
@@ -4400,7 +4417,7 @@ function _mvtInitHandlers() {
     document.querySelectorAll('#mvt-metric-selector button').forEach(b =>
       b.classList.toggle('active', b.dataset.metric === mvtMetric)
     );
-    if (mvtSelectedMovement) _mvtLoadTrend();
+    if (mvtSelectedMovementId || mvtSelectedMovementTitle) _mvtLoadTrend();
   });
 
   document.getElementById('mvt-window-selector').addEventListener('click', e => {
@@ -4412,7 +4429,7 @@ function _mvtInitHandlers() {
     document.querySelectorAll('#mvt-window-selector button').forEach(b =>
       b.classList.toggle('active', b.dataset.window === mvtWindow)
     );
-    if (mvtSelectedMovement) _mvtLoadTrend();
+    if (mvtSelectedMovementId || mvtSelectedMovementTitle) _mvtLoadTrend();
   });
 }
 

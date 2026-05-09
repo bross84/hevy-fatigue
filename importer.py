@@ -275,6 +275,25 @@ def load_canonical_map(db) -> dict[str, str]:
     }
 
 
+def _resolve_canonical_title(db, canonical_map: dict[str, str], exercise_id, fallback_title):
+    if not exercise_id:
+        return fallback_title
+
+    # Query canonical on each exercise instance so edits made during a long sync
+    # are visible immediately instead of waiting for the next import run.
+    canonical_row = (
+        db.query(ExerciseCanonical.canonical_title)
+        .filter(ExerciseCanonical.exercise_id == exercise_id)
+        .first()
+    )
+    if canonical_row and canonical_row[0]:
+        canonical_title = canonical_row[0]
+        canonical_map[exercise_id] = canonical_title
+        return canonical_title
+
+    return canonical_map.get(exercise_id, fallback_title)
+
+
 def _get_import_context(db) -> dict:
     context = db.info.get(_IMPORT_CONTEXT_KEY)
     if context is None:
@@ -407,7 +426,12 @@ def _process_workout(db, workout, canonical_map):
 
     for exercise in exercises:
         exercise_id = exercise.get('exercise_template_id')
-        title = canonical_map.get(exercise_id, exercise.get('title'))
+        title = _resolve_canonical_title(
+            db=db,
+            canonical_map=canonical_map,
+            exercise_id=exercise_id,
+            fallback_title=exercise.get('title'),
+        )
 
         is_conditioning = exercise_conditioning_cache.get(exercise.get('title'), False)
 
@@ -434,8 +458,7 @@ def _process_workout(db, workout, canonical_map):
                 db=db
             )
 
-            # Upsert set rows: preserve training data fields but allow title renames
-            # from Hevy to propagate to existing stored sets.
+            # Upsert set rows with the canonicalized title when available.
             stmt = sqlite_insert(WorkoutLog).values(
                 date=workout_date,
                 workout_id=workout_id,

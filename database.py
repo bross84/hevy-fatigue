@@ -237,6 +237,36 @@ def init_db():
             )
             conn.commit()
 
+        canonical_backfill_flag_key = "migration_canonical_title_backfill_v1"
+        canonical_backfill_flag_exists = conn.execute(
+            text("SELECT key FROM app_settings WHERE key = :key"),
+            {"key": canonical_backfill_flag_key},
+        ).first()
+        if not canonical_backfill_flag_exists:
+            conn.execute(
+                text(
+                    """
+                    UPDATE workout_logs
+                    SET exercise_title = (
+                        SELECT ec.canonical_title
+                        FROM exercise_canonical ec
+                        WHERE ec.exercise_id = workout_logs.exercise_id
+                    )
+                    WHERE exercise_id IS NOT NULL
+                      AND EXISTS (
+                          SELECT 1
+                          FROM exercise_canonical ec2
+                          WHERE ec2.exercise_id = workout_logs.exercise_id
+                      )
+                    """
+                )
+            )
+            conn.execute(
+                text("INSERT INTO app_settings (key, value) VALUES (:key, :value)"),
+                {"key": canonical_backfill_flag_key, "value": "1"},
+            )
+            conn.commit()
+
     # app_settings table is created by create_all above (new installs and existing DBs)
 if __name__ == "__main__":
     init_db()

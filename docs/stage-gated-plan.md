@@ -10,6 +10,24 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-09, Canonical Sync Root-Cause + Movement Trend ID Join + Backfill)
+
+- Implemented sync-time canonical root-cause fix in `importer.py` without post-write rewrites:
+	- canonical title resolution now re-checks `exercise_canonical` by `exercise_id` during processing to avoid stale startup map behavior in long runs.
+- Implemented Movement Trend API architecture updates in `main.py`:
+	- `/api/movements/search` now resolves display names through canonical + mapping joins and returns stable `items` keyed by `exercise_id`.
+	- `/api/movements/session-trend` and `/api/movements/volume-trend` now support `exercise_id` query flow and resolve movement identity through canonical/mapping joins (legacy title fallback preserved).
+- Implemented frontend selection contract update in `static/index.html`:
+	- movement autocomplete selection stores both `exercise_id` and title.
+	- trend requests now prefer `exercise_id` parameter.
+- Added one-time historical canonical backfill migration in `database.py` via `migration_canonical_title_backfill_v1` to rewrite existing `workout_logs.exercise_title` from canonical by `exercise_id`.
+- Updated gates:
+	- `canonical_gate.py` now validates canonical storage via direct SQL on `workout_logs` filtered by `exercise_id`.
+	- added `movement_trend_gate.py` with Gate #3 asserting post-backfill exercise_id trend aggregation.
+- Validation state:
+	- edited files report no static/syntax errors.
+	- runtime gate execution pending local API availability on `127.0.0.1:8000`.
+
 ## Latest Maintenance Update (2026-05-08, AI Tab Overflow Height Handoff)
 
 - Updated AI-open overflow lock in `static/index.html` to include `height: 100vh` on `body.ai-open`.

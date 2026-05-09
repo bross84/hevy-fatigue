@@ -1,6 +1,20 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-08 (AI Tab Overflow Height Handoff)
+Last updated: 2026-05-09 (Canonical Sync Root-Cause + Movement Trend ID Join + Backfill)
+
+## Latest Maintenance Update (2026-05-09, Canonical Sync Root-Cause + Movement Trend ID Join + Backfill)
+
+- Updated `importer.py` pre-write canonical resolution to re-check `exercise_canonical` by `exercise_id` during sync processing, addressing stale map timing within long import runs without adding any post-write rewrite path.
+- Updated movement analytics APIs in `main.py`:
+	- `/api/movements/search` now resolves display titles via canonical + mapping join path and returns `items[{exercise_id,title}]` for stable selection.
+	- `/api/movements/session-trend` and `/api/movements/volume-trend` now support `exercise_id` filtering and resolve movement titles through canonical/mapping joins instead of raw title equality.
+- Updated Movement Trend UI wiring in `static/index.html` to select/store `exercise_id` from autocomplete items and query trend endpoints via `exercise_id` (with title fallback for compatibility).
+- Added one-time historical canonical backfill migration in `database.py` (`migration_canonical_title_backfill_v1`) that updates `workout_logs.exercise_title` from `exercise_canonical.canonical_title` where `exercise_id` matches.
+- Updated `canonical_gate.py` Gate checks to verify canonical storage using direct SQL against `workout_logs` filtered by `exercise_id`.
+- Added `movement_trend_gate.py` with Gate #3 validating exercise_id-based session trend aggregation after backfill.
+- Validation status:
+	- static/file diagnostics report no syntax errors in edited files
+	- live gate scripts are blocked until local API is running at `http://127.0.0.1:8000`
 
 ## Latest Maintenance Update (2026-05-08, AI Tab Overflow Height Handoff)
 

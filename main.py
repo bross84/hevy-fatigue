@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 from sqlalchemy import func
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from pydantic import BaseModel, Field
@@ -3121,20 +3121,53 @@ def search_movements(q: str = "", db: Session = Depends(get_db)):
     if len(q_stripped) < 2:
         return {"results": [], "items": []}
 
-    rows = (
-        db.query(WorkoutLog.exercise_id, WorkoutLog.exercise_title)
-        .filter(WorkoutLog.exercise_title.ilike(f"%{q_stripped}%"))
+    latest_by_exercise_subquery = (
+        db.query(
+            WorkoutLog.exercise_id.label("exercise_id"),
+            func.max(WorkoutLog.id).label("latest_log_id"),
+        )
         .filter(WorkoutLog.exercise_id.isnot(None))
-        .group_by(WorkoutLog.exercise_id, WorkoutLog.exercise_title)
-        .order_by(WorkoutLog.exercise_title.asc())
+        .group_by(WorkoutLog.exercise_id)
+        .subquery()
+    )
+
+    latest_log = aliased(WorkoutLog)
+    display_title_expr = func.coalesce(
+        ExerciseCanonical.canonical_title,
+        ExerciseMapping.exercise_title,
+        latest_log.exercise_title,
+    )
+
+    rows = (
+        db.query(
+            latest_log.exercise_id.label("exercise_id"),
+            display_title_expr.label("title"),
+        )
+        .join(
+            latest_by_exercise_subquery,
+            latest_log.id == latest_by_exercise_subquery.c.latest_log_id,
+        )
+        .outerjoin(
+            ExerciseCanonical,
+            ExerciseCanonical.exercise_id == latest_log.exercise_id,
+        )
+        .outerjoin(
+            ExerciseMapping,
+            ExerciseMapping.exercise_title == func.coalesce(
+                ExerciseCanonical.canonical_title,
+                latest_log.exercise_title,
+            ),
+        )
+        .filter(display_title_expr.ilike(f"%{q_stripped}%"))
+        .order_by(func.lower(display_title_expr).asc())
         .limit(20)
         .all()
     )
 
     items = [
-        {"exercise_id": row.exercise_id, "title": row.exercise_title}
+        {"exercise_id": row.exercise_id, "title": row.title}
         for row in rows
-        if row.exercise_id and row.exercise_title
+        if row.exercise_id and row.title
     ]
     return {
         "results": [item["title"] for item in items],
@@ -3158,26 +3191,49 @@ def _movements_window_start(window: str):
 
 @app.get("/api/movements/session-trend")
 def movements_session_trend(
+    exercise_id: str = "",
     exercise: str = "",
     window: str = "6m",
     db: Session = Depends(get_db),
 ):
     """Return per-session top-set, avg-weight, and best e1RM for a movement (verified sessions only)."""
+    exercise_id_stripped = exercise_id.strip()
     exercise_stripped = exercise.strip()
-    if not exercise_stripped:
-        raise HTTPException(status_code=400, detail="exercise parameter is required.")
+    if not exercise_id_stripped and not exercise_stripped:
+        raise HTTPException(status_code=400, detail="exercise_id or exercise parameter is required.")
     window_stripped = window.strip().lower()
     range_start = _movements_window_start(window_stripped)
 
+    display_title_expr = func.coalesce(
+        ExerciseCanonical.canonical_title,
+        ExerciseMapping.exercise_title,
+        WorkoutLog.exercise_title,
+    )
+
     query = (
-        db.query(WorkoutLog, WorkoutSession)
+        db.query(
+            WorkoutLog,
+            WorkoutSession,
+            display_title_expr.label("display_title"),
+        )
         .join(WorkoutSession, WorkoutLog.workout_id == WorkoutSession.hevy_workout_id)
+        .outerjoin(ExerciseCanonical, ExerciseCanonical.exercise_id == WorkoutLog.exercise_id)
+        .outerjoin(
+            ExerciseMapping,
+            ExerciseMapping.exercise_title == func.coalesce(
+                ExerciseCanonical.canonical_title,
+                WorkoutLog.exercise_title,
+            ),
+        )
         .filter(
-            func.lower(WorkoutLog.exercise_title) == exercise_stripped.lower(),
             WorkoutSession.verification_status == "verified",
         )
         .order_by(WorkoutSession.workout_date.asc(), WorkoutSession.hevy_workout_id.asc(), WorkoutLog.set_number.asc())
     )
+    if exercise_id_stripped:
+        query = query.filter(WorkoutLog.exercise_id == exercise_id_stripped)
+    else:
+        query = query.filter(func.lower(display_title_expr) == exercise_stripped.lower())
     if range_start is not None:
         query = query.filter(WorkoutSession.workout_date >= range_start)
 
@@ -3186,10 +3242,13 @@ def movements_session_trend(
     from collections import defaultdict
     session_sets = defaultdict(list)
     session_dates = {}
-    for log_row, session_row in rows:
+    movement_title = None
+    for log_row, session_row, display_title in rows:
         sid = session_row.hevy_workout_id
         session_sets[sid].append(log_row)
         session_dates[sid] = session_row.workout_date
+        if movement_title is None and display_title:
+            movement_title = display_title
 
     result = []
     for sid in sorted(session_sets.keys(), key=lambda s: (session_dates[s], s)):
@@ -3213,6 +3272,8 @@ def movements_session_trend(
 
         result.append({
             "session_date": str(session_dates[sid]),
+            "exercise_id": exercise_id_stripped or set_rows[0].exercise_id,
+            "movement_title": movement_title or set_rows[0].exercise_title,
             "top_set": top_set,
             "avg_weight": avg_weight,
             "e1rm": round(best_e1rm, 1) if best_e1rm is not None else None,
@@ -3223,26 +3284,49 @@ def movements_session_trend(
 
 @app.get("/api/movements/volume-trend")
 def movements_volume_trend(
+    exercise_id: str = "",
     exercise: str = "",
     window: str = "6m",
     db: Session = Depends(get_db),
 ):
     """Return per-week volume for a movement grouped by Monday-start ISO week (verified sessions only)."""
+    exercise_id_stripped = exercise_id.strip()
     exercise_stripped = exercise.strip()
-    if not exercise_stripped:
-        raise HTTPException(status_code=400, detail="exercise parameter is required.")
+    if not exercise_id_stripped and not exercise_stripped:
+        raise HTTPException(status_code=400, detail="exercise_id or exercise parameter is required.")
     window_stripped = window.strip().lower()
     range_start = _movements_window_start(window_stripped)
 
+    display_title_expr = func.coalesce(
+        ExerciseCanonical.canonical_title,
+        ExerciseMapping.exercise_title,
+        WorkoutLog.exercise_title,
+    )
+
     query = (
-        db.query(WorkoutLog, WorkoutSession)
+        db.query(
+            WorkoutLog,
+            WorkoutSession,
+            display_title_expr.label("display_title"),
+        )
         .join(WorkoutSession, WorkoutLog.workout_id == WorkoutSession.hevy_workout_id)
+        .outerjoin(ExerciseCanonical, ExerciseCanonical.exercise_id == WorkoutLog.exercise_id)
+        .outerjoin(
+            ExerciseMapping,
+            ExerciseMapping.exercise_title == func.coalesce(
+                ExerciseCanonical.canonical_title,
+                WorkoutLog.exercise_title,
+            ),
+        )
         .filter(
-            func.lower(WorkoutLog.exercise_title) == exercise_stripped.lower(),
             WorkoutSession.verification_status == "verified",
         )
         .order_by(WorkoutSession.workout_date.asc(), WorkoutLog.set_number.asc())
     )
+    if exercise_id_stripped:
+        query = query.filter(WorkoutLog.exercise_id == exercise_id_stripped)
+    else:
+        query = query.filter(func.lower(display_title_expr) == exercise_stripped.lower())
     if range_start is not None:
         query = query.filter(WorkoutSession.workout_date >= range_start)
 
@@ -3250,13 +3334,18 @@ def movements_volume_trend(
 
     from collections import defaultdict
     weekly_volume = defaultdict(float)
-    for log_row, session_row in rows:
+    movement_title = None
+    for log_row, session_row, display_title in rows:
         ws = session_row.workout_date - timedelta(days=session_row.workout_date.weekday())
         weekly_volume[ws] += float(log_row.weight_lbs or 0) * int(log_row.reps or 0)
+        if movement_title is None and display_title:
+            movement_title = display_title
 
     result = [
         {
             "week_start": str(ws),
+            "exercise_id": exercise_id_stripped,
+            "movement_title": movement_title,
             "weekly_volume": round(weekly_volume[ws], 1),
         }
         for ws in sorted(weekly_volume.keys())
