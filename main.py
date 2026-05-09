@@ -8,6 +8,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date as date_type, timedelta, datetime
+from uuid import UUID
 from cryptography.fernet import Fernet
 import httpx
 import json
@@ -2893,40 +2894,59 @@ def update_exercise_mapping(
     mapping = None
     resolved_exercise_id = provided_exercise_id or None
 
-    if key.isdigit():
+    def _looks_like_uuid(value: str) -> bool:
+        try:
+            UUID(value)
+            return True
+        except (ValueError, TypeError):
+            return False
+
+    def _resolve_mapping_from_exercise_id(exercise_id: str):
+        canonical_row = (
+            db.query(ExerciseCanonical)
+            .filter(ExerciseCanonical.exercise_id == exercise_id)
+            .first()
+        )
+        if canonical_row and canonical_row.canonical_title:
+            canonical_mapping = (
+                db.query(ExerciseMapping)
+                .filter(func.lower(ExerciseMapping.exercise_title) == canonical_row.canonical_title.strip().lower())
+                .first()
+            )
+            if canonical_mapping:
+                return canonical_mapping
+
+        latest_title_row = (
+            db.query(WorkoutLog.exercise_title)
+            .filter(WorkoutLog.exercise_id == exercise_id)
+            .filter(WorkoutLog.exercise_title.isnot(None))
+            .order_by(WorkoutLog.date.desc(), WorkoutLog.id.desc())
+            .first()
+        )
+        if latest_title_row and latest_title_row[0]:
+            return (
+                db.query(ExerciseMapping)
+                .filter(func.lower(ExerciseMapping.exercise_title) == latest_title_row[0].strip().lower())
+                .first()
+            )
+
+        return None
+
+    # Frontend now sends UUID exercise_id in the route key. Resolve that path
+    # first so we target the right mapping row before issuing ORM updates.
+    if _looks_like_uuid(key):
+        resolved_exercise_id = key
+        mapping = _resolve_mapping_from_exercise_id(resolved_exercise_id)
+    elif key.isdigit():
         mapping = db.query(ExerciseMapping).filter(ExerciseMapping.id == int(key)).first()
         if not mapping:
             raise HTTPException(status_code=404, detail=f"Exercise mapping #{key} not found.")
     else:
         resolved_exercise_id = key
+        mapping = _resolve_mapping_from_exercise_id(resolved_exercise_id)
 
     if resolved_exercise_id and mapping is None:
-        canonical_row = (
-            db.query(ExerciseCanonical)
-            .filter(ExerciseCanonical.exercise_id == resolved_exercise_id)
-            .first()
-        )
-        if canonical_row and canonical_row.canonical_title:
-            mapping = (
-                db.query(ExerciseMapping)
-                .filter(func.lower(ExerciseMapping.exercise_title) == canonical_row.canonical_title.strip().lower())
-                .first()
-            )
-
-        if mapping is None:
-            latest_title_row = (
-                db.query(WorkoutLog.exercise_title)
-                .filter(WorkoutLog.exercise_id == resolved_exercise_id)
-                .filter(WorkoutLog.exercise_title.isnot(None))
-                .order_by(WorkoutLog.date.desc(), WorkoutLog.id.desc())
-                .first()
-            )
-            if latest_title_row and latest_title_row[0]:
-                mapping = (
-                    db.query(ExerciseMapping)
-                    .filter(func.lower(ExerciseMapping.exercise_title) == latest_title_row[0].strip().lower())
-                    .first()
-                )
+        mapping = _resolve_mapping_from_exercise_id(resolved_exercise_id)
 
     if mapping is None:
         raise HTTPException(status_code=404, detail="Exercise mapping not found for that identifier.")
