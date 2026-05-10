@@ -10,6 +10,17 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-09, Theme-Specific Nav Logos)
+
+- Updated nav branding in `static/index.html` and `static/docs.html` to use theme-specific assets:
+	- dark mode: `/resources/HF_LOGO_DARK.png`
+	- light mode: `/resources/HF_LOGO_LIGHT.png`
+- Replaced single-image nav logo markup with paired dark/light logo images and CSS visibility rules driven by `data-theme`.
+- Preserved existing "Today" navigation behavior when clicking the nav logo.
+- Scaled logo display for the 350x150 source asset to nav-safe sizes:
+	- desktop: `34px` height
+	- mobile: `28px` height
+
 ## Latest Maintenance Update (2026-05-09, Exercise Edit Canonical Name Field)
 
 - Implemented canonical name editing directly in the existing exercise mapping modal in `static/index.html`.
