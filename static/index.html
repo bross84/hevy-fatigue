@@ -6306,7 +6306,7 @@ async function saveMapping() {
     canonical_name:  canonicalInput ? canonicalInput.value : '',
   };
 
-  const mappingKey = editingExerciseId || String(editingId);
+  const mappingKey = String(editingId);
 
   try {
     const r = await fetch(`/api/exercises/mappings/${encodeURIComponent(mappingKey)}`, {
