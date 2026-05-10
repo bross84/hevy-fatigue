@@ -1,6 +1,17 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-09 (Exercise Edit Canonical Name Field)
+Last updated: 2026-05-09 (Theme-Specific Nav Logos)
+
+## Latest Maintenance Update (2026-05-09, Theme-Specific Nav Logos)
+
+- Updated nav branding in `static/index.html` and `static/docs.html` to use mode-specific logo assets:
+	- dark mode displays `/resources/HF_LOGO_DARK.png`
+	- light mode displays `/resources/HF_LOGO_LIGHT.png`
+- Replaced single-image nav logo markup with paired dark/light logo images and CSS visibility rules keyed to `data-theme`.
+- Kept existing "Today" logo-link behavior in both pages.
+- Scaled logo rendering from 350x150 source assets to nav-appropriate dimensions:
+	- desktop: `34px` height (auto width preserves aspect ratio)
+	- mobile: `28px` height
 
 ## Latest Maintenance Update (2026-05-09, Exercise Edit Canonical Name Field)
 

@@ -94,17 +94,23 @@ nav {
 .logo {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 1.5px;
-  color: var(--accent);
-  white-space: nowrap;
-}
-.logo-icon {
-  width: 16px;
-  height: 16px;
+  text-decoration: none;
   flex-shrink: 0;
+}
+.logo-icon-dark,
+.logo-icon-light {
+  height: 34px;
+  width: auto;
+  flex-shrink: 0;
+  display: block;
+}
+.logo-icon-light { display: none; }
+[data-theme="light"] .logo-icon-dark { display: none; }
+[data-theme="light"] .logo-icon-light { display: block; }
+[data-theme="auto"] .logo-icon-light { display: none; }
+@media (prefers-color-scheme: light) {
+  [data-theme="auto"] .logo-icon-dark { display: none; }
+  [data-theme="auto"] .logo-icon-light { display: block; }
 }
 .nav-tabs { display: flex; gap: 2px; flex: 1; }
 .nav-tab {
@@ -779,8 +785,9 @@ th {
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: .5px;
-  color: var(--muted);
+  .logo { height: 28px; }
+  .logo-icon-dark,
+  .logo-icon-light { height: 28px; }
   border-bottom: 1px solid var(--border);
 }
 td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
@@ -2052,7 +2059,9 @@ body.ai-open main {
     gap: 10px;
     row-gap: 0;
   }
-  .logo { font-size: 13px; letter-spacing: .8px; }
+  .logo { height: 28px; }
+  .logo-icon-dark,
+  .logo-icon-light { height: 28px; }
   .nav-right { margin-left: auto; }
   .theme-group button { font-size: 11px; padding: 3px 7px; }
   .nav-tabs { display: none !important; }
@@ -2176,7 +2185,10 @@ body.ai-open main {
 
 <nav>
   <button class="mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-nav-drawer">☰</button>
-  <div class="logo"><img class="logo-icon" src="/resources/favicon.png" alt="Hevy Fatigue icon">HEVY FATIGUE</div>
+  <a class="logo" href="#" onclick="activateTab('dashboard'); return false;" title="Today">
+    <img class="logo-icon-dark" src="/resources/HF_LOGO_DARK.png" alt="Hevy Fatigue">
+    <img class="logo-icon-light" src="/resources/HF_LOGO_LIGHT.png" alt="Hevy Fatigue">
+  </a>
   <div class="nav-tabs">
     <button class="nav-tab" data-tab="dashboard">Today</button>
     <button class="nav-tab" data-tab="trend">Trend</button>
