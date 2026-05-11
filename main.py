@@ -753,6 +753,24 @@ def _get_calibration_settings(db: Session) -> dict:
     }
     return cfg
 
+# --- Sync Executor (shared by incremental and full sync) ---
+
+def _execute_sync_pipeline(db: Session) -> dict:
+    """
+    Core sync pipeline: resolve API key, call importer, update status, return response payload.
+    Called by both trigger_sync (incremental) and trigger_sync_full (full reimport).
+    Assumes lock is already acquired by the caller.
+    """
+    api_key = _get_db_api_key(db)
+    db.info["hevy_api_key"] = api_key
+    result = import_hevy_data(db)
+    _sync_status["last_result"] = result
+    _sync_status["last_run"] = datetime.utcnow()
+    return {
+        "status": "complete",
+        "synced_at": _sync_status["last_run"].isoformat() + "Z",
+    }
+
 # --- Routes ---
 
 @app.get("/", include_in_schema=False)
@@ -765,7 +783,7 @@ def serve_frontend():
 @app.post("/api/sync")
 def trigger_sync(force: bool = False, db: Session = Depends(get_db)):
     """
-    Pull latest workouts from the Hevy API into the local database.
+    Incremental sync: pull latest workouts from Hevy API since last sync.
     Rejects if a sync is already running.
     """
     if not _sync_lock.acquire(blocking=False):
@@ -773,20 +791,67 @@ def trigger_sync(force: bool = False, db: Session = Depends(get_db)):
 
     try:
         _sync_status["running"] = True
-        # Resolve API key: DB setting first, then file/env fallback inside HevyClient
-        api_key = _get_db_api_key(db)
-        db.info["hevy_api_key"] = api_key
-        result = import_hevy_data(db)
-        _sync_status["last_result"] = result
-        _sync_status["last_run"] = datetime.utcnow()
-        return {
-            "status": "complete",
-            "synced_at": _sync_status["last_run"].isoformat() + "Z",
-        }
+        return _execute_sync_pipeline(db)
     except Exception as e:
         _sync_status["last_result"] = {"error": str(e)}
         raise HTTPException(status_code=500, detail=f"Sync failed: {e}")
     finally:
+        _sync_status["running"] = False
+        _sync_lock.release()
+
+@app.post("/api/sync/full")
+def trigger_sync_full(db: Session = Depends(get_db)):
+    """
+    Full sync: wipe imported workout data and reimport entire history from Hevy.
+    Intended for recovery after canonical renames or data integrity issues.
+    Preserves daily check-ins, exercise mappings, and canonical names.
+    Rejects if a sync is already running.
+    """
+    if not _sync_lock.acquire(blocking=False):
+        return {"status": "already_running"}
+
+    try:
+        # Step 1: Log current app_settings sync keys for auditing
+        all_keys = db.query(AppSetting.key).order_by(AppSetting.key).all()
+        logged_keys = [row[0] for row in all_keys]
+        print(f"[Full Sync] Current app_settings keys before reset: {logged_keys}")
+
+        # Step 2-4: Begin transaction for atomic key-clear + data-wipe
+        try:
+            # Clear sync-state keys from app_settings
+            db.query(AppSetting).filter(AppSetting.key == "last_sync").delete(synchronize_session=False)
+            db.query(AppSetting).filter(AppSetting.key == "migration_incremental_sync_v1").delete(synchronize_session=False)
+            
+            # Wipe imported workout data (FK-safe order: workout_logs first, then sessions)
+            db.query(WorkoutLog).delete(synchronize_session=False)
+            db.query(WorkoutSession).delete(synchronize_session=False)
+            
+            db.commit()
+            print("[Full Sync] Successfully cleared sync state and wiped workout data")
+        except Exception as reset_err:
+            db.rollback()
+            print(f"[Full Sync] Reset transaction failed, no changes applied: {reset_err}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Full sync reset failed: {reset_err}. No data was changed. Please try again."
+            )
+
+        # Step 5: Call shared sync executor to reimport data
+        _sync_status["running"] = True
+        try:
+            return _execute_sync_pipeline(db)
+        except Exception as import_err:
+            # Step 6: If import fails after wipe, set error state and return explicit message
+            print(f"[Full Sync] Import failed after data wipe: {import_err}")
+            _set_setting_value(db, "sync_full_error_state", str(import_err))
+            db.commit()
+            _sync_status["last_result"] = {"error": str(import_err)}
+            raise HTTPException(
+                status_code=500,
+                detail="Full sync failed after data wipe — use Sync Now to retry or restore from backup"
+            )
+    finally:
+        # Step 7: Release lock
         _sync_status["running"] = False
         _sync_lock.release()
 

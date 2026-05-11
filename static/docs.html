@@ -890,6 +890,13 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       <h3>Reclassification without re-syncing</h3>
       <p>If you update the title tagging convention on old sessions in Hevy, or want to re-run the classifier after a settings change, use the <strong>Reclassify Sessions</strong> button in Settings → Session Processing. This re-runs the classifier against all locally stored sessions without hitting the Hevy API and without consuming your sync cooldown. Manually verified sessions are not overwritten unless you explicitly request a full reclassify.</p>
 
+      <h3>Force Full Sync (recovery)</h3>
+      <p>Normally, <strong>Sync Now</strong> is incremental: it pulls only changes since the last sync, which is fast and API-friendly. In rare cases — after a data integrity issue, a botched canonical rename, or if you suspect orphaned or stale sessions — you can perform a <strong>Force Full Sync</strong> to delete and reimport your entire workout history from Hevy.</p>
+
+      <p><strong>Important:</strong> Force Full Sync deletes all imported sessions and sets, then re-downloads everything. Your daily check-in history and canonical exercise names are always preserved. When you click Force Full Sync, a confirmation dialog appears. Confirm only if you understand the implications.</p>
+
+      <p>Force Full Sync is found in Settings → Hevy Sync, styled as a secondary button to discourage accidental use. Once initiated, both the Sync Now and Force Full Sync buttons become inactive until the reimport completes. If a full sync fails partway through (e.g., API timeout), an error message will tell you to retry or restore from backup — the system never silently leaves you with an empty workout table.</p>
+
       <div class="info-card callout-purple">
         <div class="callout-label">Diagnostics page</div>
         <p>The <strong>Diagnostics page</strong> (<code>/static/diagnostic.html</code>) provides a lower-level view of what the importer has pulled: session volume, 7-day and 28-day workout summaries, and raw session data. If something looks wrong in your metrics and you're not sure why, diagnostics is the first place to look — it shows you exactly what data the system is working with. See <a href="#diagnostics" style="color:var(--accent);">§10 Diagnostics page</a> for the full workflow.</p>

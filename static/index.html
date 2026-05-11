@@ -704,6 +704,17 @@ select:focus { outline: none; border-color: var(--accent); }
   color: var(--text);
 }
 .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.btn-secondary.btn-danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.btn-secondary.btn-danger:hover { 
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+}
+.btn-secondary.btn-danger:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
 .btn-sm { padding: 4px 10px; font-size: 12px; }
 
 /* ── Alerts ──────────────────────────── */
@@ -2631,6 +2642,7 @@ body.ai-open main {
     </p>
     <div id="sync-status" style="margin-bottom:10px;"></div>
     <button class="btn btn-secondary" id="sync-btn" onclick="runSync()" style="width:100%;">⟳ Sync Now</button>
+    <button class="btn btn-secondary btn-danger" id="sync-full-btn" onclick="runFullSync()" style="width:100%;margin-top:8px;">⟻ Force Full Sync</button>
   </div>
 
   <div class="card settings-card settings-card-diagnostics">
@@ -3939,13 +3951,25 @@ document.getElementById('checkin-form').addEventListener('submit', async e => {
 
 
 // ═══ Hevy Sync ════════════════════════════════════════
+// Helper: manage busy state for both sync buttons
+function _setSyncButtonsDisabled(disabled, syncText = null, fullSyncText = null) {
+  const syncBtn = document.getElementById('sync-btn');
+  const fullSyncBtn = document.getElementById('sync-full-btn');
+  if (syncBtn) {
+    syncBtn.disabled = disabled;
+    if (syncText) syncBtn.textContent = syncText;
+  }
+  if (fullSyncBtn) {
+    fullSyncBtn.disabled = disabled;
+    if (fullSyncText) fullSyncBtn.textContent = fullSyncText;
+  }
+}
+
 async function runSync({ silent = false } = {}) {
-  const btn       = document.getElementById('sync-btn');
-  const statusEl  = document.getElementById('sync-status');
+  const statusEl = document.getElementById('sync-status');
 
   if (!silent) {
-    btn.disabled = true;
-    btn.textContent = '⟳ Syncing…';
+    _setSyncButtonsDisabled(true, '⟳ Syncing…', '⟻ Force Full Sync');
     statusEl.innerHTML = '';
   }
 
@@ -3987,9 +4011,53 @@ async function runSync({ silent = false } = {}) {
     }
   } finally {
     if (!silent) {
-      btn.disabled = false;
-      btn.textContent = '⟳ Sync Now';
+      _setSyncButtonsDisabled(false, '⟳ Sync Now', '⟻ Force Full Sync');
     }
+  }
+}
+
+async function runFullSync() {
+  const statusEl = document.getElementById('sync-status');
+  
+  // Show confirmation dialog
+  const confirmed = window.confirm(
+    'This will delete and reimport all workout data from Hevy.\n\nCheck-in history and canonical names will be preserved.\n\nContinue?'
+  );
+  if (!confirmed) return;
+
+  _setSyncButtonsDisabled(true, '⟳ Sync Now', '⟻ Reimporting all data…');
+  statusEl.innerHTML = '';
+
+  try {
+    const r = await fetch('/api/sync/full', { method: 'POST' });
+    const d = await r.json();
+
+    if (d.status === 'already_running') {
+      statusEl.innerHTML = '<div class="alert alert-info">Sync already in progress…</div>';
+    } else if (r.ok) {
+      const syncedLabel = d.synced_at
+        ? new Date(d.synced_at).toLocaleString()
+        : 'unknown time';
+      const msg = `✓ Full sync complete — ${syncedLabel}`;
+      statusEl.innerHTML = `<div class="alert alert-success">${msg}</div>`;
+      localStorage.setItem('hevy_last_sync_iso', d.synced_at || new Date().toISOString());
+      invalidateTodayCaches();
+      // Refresh all data surfaces
+      loadTrainingLoadCard();
+      if (document.getElementById('tab-trend')?.classList.contains('active')) {
+        renderTrendView();
+      }
+      if (exercises.length || document.getElementById('tab-exercises').classList.contains('active')) {
+        loadExercises();
+      }
+      if (workoutsLoaded) loadWorkouts();
+    } else {
+      statusEl.innerHTML = `<div class="alert alert-error">Sync failed: ${d.detail || 'Unknown error'}</div>`;
+    }
+  } catch (err) {
+    statusEl.innerHTML = `<div class="alert alert-error">Network error — is the server running?</div>`;
+  } finally {
+    _setSyncButtonsDisabled(false, '⟳ Sync Now', '⟻ Force Full Sync');
   }
 }
 
