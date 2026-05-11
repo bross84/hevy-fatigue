@@ -129,6 +129,7 @@ class PatternSensitivityInput(BaseModel):
 
 class SessionProcessingInput(BaseModel):
     conditioning_stress_scaling_factor: float = Field(29.0, gt=0.0, le=200.0)
+    hypertrophy_stress_scaling_factor: float = Field(29.0, gt=0.0, le=200.0)
     auto_verify_confidence_threshold: float = Field(0.87, ge=0.50, le=1.00)
 
 
@@ -200,6 +201,8 @@ def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
     Multiple sessions on the same date are summed.
     Returns {"central": float, "peripheral": float, "knee": float, "hip": float, "push": float, "pull": float}
     """
+    HYP_FALLBACK_THRESHOLD = 0.50
+
     sets = db.query(WorkoutLog).filter(WorkoutLog.date == target_date).all()
 
     # ── Pathway 1: Strength / Hypertrophy ────────────────────────────────────
@@ -314,6 +317,97 @@ def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
             peripheral += raw * 0.70
             # Cardio contributes zero to pattern buckets
 
+    # ── Pathway 4: Hypertrophy sRPE Fallback ─────────────────────────
+    # Applies when a verified HYP session has sRPE + duration logged
+    # but >=50% of its sets are missing RPE values.
+    # Uses same formula as conditioning but with a separate scale factor.
+    hyp_scaling_factor = _get_hypertrophy_scaling_factor(db)
+
+    hyp_sessions = (
+        db.query(WorkoutSession)
+        .filter(
+            WorkoutSession.workout_date == target_date,
+            WorkoutSession.verification_status == "verified",
+            WorkoutSession.srpe.isnot(None),
+            WorkoutSession.duration_minutes.isnot(None),
+            WorkoutSession.modality == "hypertrophy",
+        )
+        .all()
+    )
+
+    for session in hyp_sessions:
+        # Check per-set RPE coverage for this session's sets
+        session_sets = [
+            s for s in working_sets
+            if s.workout_id == session.hevy_workout_id
+        ]
+        if not session_sets:
+            # No sets found in working_sets for this session -
+            # all sets may have been excluded as conditioning.
+            # Still attempt fallback using all sets on the date
+            # that match this workout_id.
+            session_sets = [
+                s for s in sets
+                if s.workout_id == session.hevy_workout_id
+            ]
+
+        total_sets = len(session_sets)
+        if total_sets == 0:
+            continue
+
+        missing_rpe = sum(
+            1 for s in session_sets
+            if s.rpe is None or s.rpe == 0.0
+        )
+        missing_ratio = missing_rpe / total_sets
+
+        if missing_ratio < HYP_FALLBACK_THRESHOLD:
+            # Per-set RPE data is sufficient - Pathway 1 already
+            # handled this session. Skip fallback.
+            continue
+
+        # Fallback: sRPE x duration x (1 / hyp_scaling_factor)
+        raw = (session.srpe * session.duration_minutes) / hyp_scaling_factor
+
+        # Pattern distribution - same approach as conditioning Pathway 2.
+        # Use average ExerciseMapping pcts from this session's sets.
+        session_titles = {
+            s.exercise_title for s in session_sets if s.exercise_title
+        }
+        avg_quad = avg_post = avg_push = avg_pull = 0.0
+        pct_c_weight = pct_p_weight = 0.0
+
+        if session_titles:
+            maps = (
+                db.query(ExerciseMapping)
+                .filter(ExerciseMapping.exercise_title.in_(session_titles))
+                .all()
+            )
+            if maps:
+                n = len(maps)
+                avg_quad = sum(m.pct_quad_dom   or 0.0 for m in maps) / n
+                avg_post = sum(m.pct_posterior  or 0.0 for m in maps) / n
+                avg_push = sum(m.pct_upper_push or 0.0 for m in maps) / n
+                avg_pull = sum(m.pct_upper_pull or 0.0 for m in maps) / n
+                pct_c_weight = (
+                    avg_quad**2 + avg_post**2 +
+                    avg_push**2 + avg_pull**2
+                )
+                pct_p_weight = avg_quad + avg_post + avg_push + avg_pull
+
+        if pct_c_weight == 0.0 and pct_p_weight == 0.0:
+            # Fallback: equal distribution across four patterns
+            avg_quad = avg_post = avg_push = avg_pull = 0.25
+            pct_c_weight = 4 * (0.25 ** 2)
+            pct_p_weight = 4 * 0.25
+
+        central    += raw * pct_c_weight
+        peripheral += raw * pct_p_weight
+        knee += raw * avg_quad
+        hip  += raw * avg_post
+        push += raw * avg_push
+        pull += raw * avg_pull
+
     return {
         "central":    round(central,    3),
         "peripheral": round(peripheral, 3),
@@ -357,6 +451,7 @@ def _get_db_api_key(db: Session) -> str | None:
         return legacy_plaintext
 
 _CONDITIONING_SCALING_DEFAULT = 29.0
+_HYP_SCALING_DEFAULT = 29.0
 _AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT = 0.87
 
 _V2_SETTINGS_DEFAULTS = {
@@ -367,6 +462,7 @@ _V2_SETTINGS_DEFAULTS = {
     "tsb_threshold_balanced": -5.0,
     "tsb_threshold_slightly_fatigued": -10.0,
     "conditioning_stress_scaling_factor": _CONDITIONING_SCALING_DEFAULT,
+    "hypertrophy_stress_scaling_factor": _HYP_SCALING_DEFAULT,
     "auto_verify_confidence_threshold": _AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT,
 }
 
@@ -565,6 +661,24 @@ def _get_conditioning_scaling_factor(db: Session) -> float:
         return _CONDITIONING_SCALING_DEFAULT
 
 
+def _get_hypertrophy_scaling_factor(db: Session) -> float:
+    """
+    Read hypertrophy_stress_scaling_factor from app_settings.
+    Normalises (sRPE x duration_minutes) onto the same scale as
+    strength stress for HYP sessions where per-set RPEs are absent.
+    Default 29 - neutral prior, equal to conditioning scale.
+    Calibrate via Settings after running the calibration protocol.
+    """
+    raw = _get_setting_value(db, "hypertrophy_stress_scaling_factor")
+    if raw is None:
+        return _HYP_SCALING_DEFAULT
+    try:
+        v = float(raw)
+        return v if v > 0 else _HYP_SCALING_DEFAULT
+    except (TypeError, ValueError):
+        return _HYP_SCALING_DEFAULT
+
+
 def _get_auto_verify_confidence_threshold(db: Session) -> float:
     raw = _get_setting_value(db, "auto_verify_confidence_threshold")
     if raw is None:
@@ -608,6 +722,15 @@ def _validate_conditioning_scale(cfg: dict) -> None:
         raise HTTPException(
             status_code=422,
             detail="Conditioning load scale must be greater than 0",
+        )
+
+
+def _validate_hypertrophy_scale(cfg: dict) -> None:
+    scale = float(cfg["hypertrophy_stress_scaling_factor"])
+    if scale <= 0.0:
+        raise HTTPException(
+            status_code=422,
+            detail="Hypertrophy load scale must be greater than 0",
         )
 
 
@@ -658,6 +781,10 @@ def _get_v2_settings(db: Session) -> dict:
             _get_setting_value(db, "conditioning_stress_scaling_factor"),
             _V2_SETTINGS_DEFAULTS["conditioning_stress_scaling_factor"],
         ),
+        "hypertrophy_stress_scaling_factor": _safe_float(
+            _get_setting_value(db, "hypertrophy_stress_scaling_factor"),
+            _V2_SETTINGS_DEFAULTS["hypertrophy_stress_scaling_factor"],
+        ),
         "auto_verify_confidence_threshold": _safe_float(
             _get_setting_value(db, "auto_verify_confidence_threshold"),
             _V2_SETTINGS_DEFAULTS["auto_verify_confidence_threshold"],
@@ -666,6 +793,7 @@ def _get_v2_settings(db: Session) -> dict:
     _validate_tsb_thresholds(cfg)
     _validate_pattern_thresholds(cfg)
     _validate_conditioning_scale(cfg)
+    _validate_hypertrophy_scale(cfg)
     _validate_auto_verify_threshold(cfg)
     return cfg
 
@@ -978,11 +1106,14 @@ def save_pattern_sensitivity(data: PatternSensitivityInput, db: Session = Depend
 def save_session_processing(data: SessionProcessingInput, db: Session = Depends(get_db)):
     cfg = {
         "conditioning_stress_scaling_factor": round(float(data.conditioning_stress_scaling_factor), 3),
+        "hypertrophy_stress_scaling_factor": round(float(data.hypertrophy_stress_scaling_factor), 3),
         "auto_verify_confidence_threshold": round(float(data.auto_verify_confidence_threshold), 2),
     }
     _validate_conditioning_scale(cfg)
+    _validate_hypertrophy_scale(cfg)
     _validate_auto_verify_threshold(cfg)
     _set_setting_value(db, "conditioning_stress_scaling_factor", str(cfg["conditioning_stress_scaling_factor"]))
+    _set_setting_value(db, "hypertrophy_stress_scaling_factor", str(cfg["hypertrophy_stress_scaling_factor"]))
     _set_setting_value(db, "auto_verify_confidence_threshold", str(cfg["auto_verify_confidence_threshold"]))
     db.commit()
     return {"message": "Session processing settings saved.", **cfg}
