@@ -4546,9 +4546,8 @@ function _sessionFatigueAnnotation(session) {
   const history = sessionLogFatiguePayload?.history || [];
   const item = history.find(entry => entry.date === session.workout_date);
   if (!item) return 'Fatigue annotation unavailable for this date.';
-  const label = _resolveStateLabel(item, sessionLogFatiguePayload?.thresholds || {});
   const score = Number(item.fatigue_score ?? 0);
-  return `${label} · Fatigue ${_fmt1(score)} · ATL ${_fmt1(item.atl)} · CTL ${_fmt1(item.ctl)} · TSB ${_fmt1(item.tsb)}`;
+  return `Fatigue ${_fmt1(score)} · ATL ${_fmt1(item.atl)} · CTL ${_fmt1(item.ctl)} · TSB ${_fmt1(item.tsb)}`;
 }
 
 function _sessionStatusNote(session) {
@@ -6213,10 +6212,7 @@ function _renderTrendMainChart(history, thresholds) {
               if (ctxItem.dataset.label === 'Fitness') return `Fitness: ${_fmt1(plotted)}`;
               return `Form: ${_fmt1(plotted)}`;
             },
-            afterBody(items) {
-              const idx = items?.[0]?.dataIndex ?? 0;
-              return [`State: ${_resolveStateLabel(history[idx], thresholds)}`];
-            },
+
           },
         },
       },
