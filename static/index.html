@@ -94,17 +94,23 @@ nav {
 .logo {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 1.5px;
-  color: var(--accent);
-  white-space: nowrap;
-}
-.logo-icon {
-  width: 16px;
-  height: 16px;
+  text-decoration: none;
   flex-shrink: 0;
+}
+.logo-icon-dark,
+.logo-icon-light {
+  height: 34px;
+  width: auto;
+  flex-shrink: 0;
+  display: block;
+}
+.logo-icon-light { display: none; }
+[data-theme="light"] .logo-icon-dark { display: none; }
+[data-theme="light"] .logo-icon-light { display: block; }
+[data-theme="auto"] .logo-icon-light { display: none; }
+@media (prefers-color-scheme: light) {
+  [data-theme="auto"] .logo-icon-dark { display: none; }
+  [data-theme="auto"] .logo-icon-light { display: block; }
 }
 .nav-tabs { display: flex; gap: 2px; flex: 1; }
 .nav-tab {
@@ -698,6 +704,17 @@ select:focus { outline: none; border-color: var(--accent); }
   color: var(--text);
 }
 .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.btn-secondary.btn-danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.btn-secondary.btn-danger:hover { 
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+}
+.btn-secondary.btn-danger:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
 .btn-sm { padding: 4px 10px; font-size: 12px; }
 
 /* ── Alerts ──────────────────────────── */
@@ -779,8 +796,9 @@ th {
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: .5px;
-  color: var(--muted);
+  .logo { height: 28px; }
+  .logo-icon-dark,
+  .logo-icon-light { height: 28px; }
   border-bottom: 1px solid var(--border);
 }
 td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
@@ -2052,7 +2070,9 @@ body.ai-open main {
     gap: 10px;
     row-gap: 0;
   }
-  .logo { font-size: 13px; letter-spacing: .8px; }
+  .logo { height: 28px; }
+  .logo-icon-dark,
+  .logo-icon-light { height: 28px; }
   .nav-right { margin-left: auto; }
   .theme-group button { font-size: 11px; padding: 3px 7px; }
   .nav-tabs { display: none !important; }
@@ -2176,7 +2196,10 @@ body.ai-open main {
 
 <nav>
   <button class="mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-nav-drawer">☰</button>
-  <div class="logo"><img class="logo-icon" src="/resources/favicon.png" alt="Hevy Fatigue icon">HEVY FATIGUE</div>
+  <a class="logo" href="#" onclick="activateTab('dashboard'); return false;" title="Today">
+    <img class="logo-icon-dark" src="/resources/HF_LOGO_DARK.png" alt="Hevy Fatigue">
+    <img class="logo-icon-light" src="/resources/HF_LOGO_LIGHT.png" alt="Hevy Fatigue">
+  </a>
   <div class="nav-tabs">
     <button class="nav-tab" data-tab="dashboard">Today</button>
     <button class="nav-tab" data-tab="trend">Trend</button>
@@ -2619,6 +2642,7 @@ body.ai-open main {
     </p>
     <div id="sync-status" style="margin-bottom:10px;"></div>
     <button class="btn btn-secondary" id="sync-btn" onclick="runSync()" style="width:100%;">⟳ Sync Now</button>
+    <button class="btn btn-secondary btn-danger" id="sync-full-btn" onclick="runFullSync()" style="width:100%;margin-top:8px;">⟻ Force Full Sync</button>
   </div>
 
   <div class="card settings-card settings-card-diagnostics">
@@ -2663,6 +2687,11 @@ body.ai-open main {
   <div class="modal">
     <div class="modal-title" id="modal-title">Edit Mapping</div>
     <div class="modal-subtitle" id="modal-auto-note"></div>
+
+    <div class="form-row">
+      <div class="form-label">Canonical Name</div>
+      <input type="text" id="mv-canonical-name" class="search-input" placeholder="Leave blank to remove canonical name" autocomplete="off">
+    </div>
 
     <div class="pattern-examples">
       <div class="ex-row"><span class="dot dot-quad"></span><strong style="color:var(--quad)">Quad</strong><span class="ex-list">squat, leg press, hack squat, lunge</span></div>
@@ -2928,6 +2957,7 @@ if (window.ResizeObserver) {
 }
 let editingTitle   = null;
 let editingId      = null;
+let editingExerciseId = null;
 let workoutsLoaded = false;
 let logLoaded      = false;
 let logEditDate    = null;
@@ -3921,13 +3951,25 @@ document.getElementById('checkin-form').addEventListener('submit', async e => {
 
 
 // ═══ Hevy Sync ════════════════════════════════════════
+// Helper: manage busy state for both sync buttons
+function _setSyncButtonsDisabled(disabled, syncText = null, fullSyncText = null) {
+  const syncBtn = document.getElementById('sync-btn');
+  const fullSyncBtn = document.getElementById('sync-full-btn');
+  if (syncBtn) {
+    syncBtn.disabled = disabled;
+    if (syncText) syncBtn.textContent = syncText;
+  }
+  if (fullSyncBtn) {
+    fullSyncBtn.disabled = disabled;
+    if (fullSyncText) fullSyncBtn.textContent = fullSyncText;
+  }
+}
+
 async function runSync({ silent = false } = {}) {
-  const btn       = document.getElementById('sync-btn');
-  const statusEl  = document.getElementById('sync-status');
+  const statusEl = document.getElementById('sync-status');
 
   if (!silent) {
-    btn.disabled = true;
-    btn.textContent = '⟳ Syncing…';
+    _setSyncButtonsDisabled(true, '⟳ Syncing…', '⟻ Force Full Sync');
     statusEl.innerHTML = '';
   }
 
@@ -3969,9 +4011,53 @@ async function runSync({ silent = false } = {}) {
     }
   } finally {
     if (!silent) {
-      btn.disabled = false;
-      btn.textContent = '⟳ Sync Now';
+      _setSyncButtonsDisabled(false, '⟳ Sync Now', '⟻ Force Full Sync');
     }
+  }
+}
+
+async function runFullSync() {
+  const statusEl = document.getElementById('sync-status');
+  
+  // Show confirmation dialog
+  const confirmed = window.confirm(
+    'This will delete and reimport all workout data from Hevy.\n\nCheck-in history and canonical names will be preserved.\n\nContinue?'
+  );
+  if (!confirmed) return;
+
+  _setSyncButtonsDisabled(true, '⟳ Sync Now', '⟻ Reimporting all data…');
+  statusEl.innerHTML = '';
+
+  try {
+    const r = await fetch('/api/sync/full', { method: 'POST' });
+    const d = await r.json();
+
+    if (d.status === 'already_running') {
+      statusEl.innerHTML = '<div class="alert alert-info">Sync already in progress…</div>';
+    } else if (r.ok) {
+      const syncedLabel = d.synced_at
+        ? new Date(d.synced_at).toLocaleString()
+        : 'unknown time';
+      const msg = `✓ Full sync complete — ${syncedLabel}`;
+      statusEl.innerHTML = `<div class="alert alert-success">${msg}</div>`;
+      localStorage.setItem('hevy_last_sync_iso', d.synced_at || new Date().toISOString());
+      invalidateTodayCaches();
+      // Refresh all data surfaces
+      loadTrainingLoadCard();
+      if (document.getElementById('tab-trend')?.classList.contains('active')) {
+        renderTrendView();
+      }
+      if (exercises.length || document.getElementById('tab-exercises').classList.contains('active')) {
+        loadExercises();
+      }
+      if (workoutsLoaded) loadWorkouts();
+    } else {
+      statusEl.innerHTML = `<div class="alert alert-error">Sync failed: ${d.detail || 'Unknown error'}</div>`;
+    }
+  } catch (err) {
+    statusEl.innerHTML = `<div class="alert alert-error">Network error — is the server running?</div>`;
+  } finally {
+    _setSyncButtonsDisabled(false, '⟳ Sync Now', '⟻ Force Full Sync');
   }
 }
 
@@ -4460,9 +4546,8 @@ function _sessionFatigueAnnotation(session) {
   const history = sessionLogFatiguePayload?.history || [];
   const item = history.find(entry => entry.date === session.workout_date);
   if (!item) return 'Fatigue annotation unavailable for this date.';
-  const label = _resolveStateLabel(item, sessionLogFatiguePayload?.thresholds || {});
   const score = Number(item.fatigue_score ?? 0);
-  return `${label} · Fatigue ${_fmt1(score)} · ATL ${_fmt1(item.atl)} · CTL ${_fmt1(item.ctl)} · TSB ${_fmt1(item.tsb)}`;
+  return `Fatigue ${_fmt1(score)} · ATL ${_fmt1(item.atl)} · CTL ${_fmt1(item.ctl)} · TSB ${_fmt1(item.tsb)}`;
 }
 
 function _sessionStatusNote(session) {
@@ -5426,6 +5511,7 @@ function openModal(ex) {
   if (!ex) return;
   editingTitle = ex.exercise_title;
   editingId    = ex.id;
+  editingExerciseId = ex.exercise_id || null;
   document.getElementById('modal-title').textContent = ex.exercise_title;
   const note = document.getElementById('modal-auto-note');
   note.style.marginBottom = '12px';
@@ -5443,6 +5529,7 @@ function openModal(ex) {
     document.getElementById(`mv-${key}`).value     = val;
     document.getElementById(`mv-${key}-num`).value = val;
   }
+  document.getElementById('mv-canonical-name').value = ex.canonical_name || '';
   document.getElementById('mv-cond').checked = ex.is_conditioning;
   syncModal();
   document.getElementById('edit-modal').classList.add('open');
@@ -5452,6 +5539,8 @@ function closeModal() {
   document.getElementById('edit-modal').classList.remove('open');
   editingTitle = null;
   editingId    = null;
+  editingExerciseId = null;
+  document.getElementById('mv-canonical-name').value = '';
 }
 
 document.getElementById('edit-modal').addEventListener('click', e => {
@@ -6123,10 +6212,7 @@ function _renderTrendMainChart(history, thresholds) {
               if (ctxItem.dataset.label === 'Fitness') return `Fitness: ${_fmt1(plotted)}`;
               return `Form: ${_fmt1(plotted)}`;
             },
-            afterBody(items) {
-              const idx = items?.[0]?.dataIndex ?? 0;
-              return [`State: ${_resolveStateLabel(history[idx], thresholds)}`];
-            },
+
           },
         },
       },
@@ -6271,6 +6357,8 @@ async function saveMapping() {
   const btn = document.getElementById('modal-save');
   btn.disabled = true; btn.textContent = 'Saving…';
 
+  const canonicalInput = document.getElementById('mv-canonical-name');
+
   const payload = {
     pct_quad_dom:    +document.getElementById('mv-quad').value / 100,
     pct_posterior:   +document.getElementById('mv-post').value / 100,
@@ -6278,23 +6366,22 @@ async function saveMapping() {
     pct_upper_pull:  +document.getElementById('mv-pull').value / 100,
     is_conditioning: document.getElementById('mv-cond').checked,
     is_reviewed:     true,
+    exercise_id:     editingExerciseId,
+    canonical_name:  canonicalInput ? canonicalInput.value : '',
   };
 
+  const mappingKey = String(editingId);
+
   try {
-    const r = await fetch(`/api/exercises/mappings/${editingId}`, {
+    const r = await fetch(`/api/exercises/mappings/${encodeURIComponent(mappingKey)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     if (r.ok) {
-      const updated = await r.json();
-      const idx = exercises.findIndex(e => e.exercise_title === editingTitle);
-      if (idx >= 0) {
-        // Merge updated fields back; preserve use_count / last_used from local state
-        exercises[idx] = { ...exercises[idx], ...updated };
-      }
+      await r.json();
       closeModal();
-      renderExTable();
+      await loadExercises();
     } else {
       const err = await r.json().catch(() => ({}));
       alert(`Save failed (${r.status}): ${err.detail || r.statusText}`);

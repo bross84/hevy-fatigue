@@ -8,6 +8,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date as date_type, timedelta, datetime
+from uuid import UUID
 from cryptography.fernet import Fernet
 import httpx
 import json
@@ -128,6 +129,7 @@ class PatternSensitivityInput(BaseModel):
 
 class SessionProcessingInput(BaseModel):
     conditioning_stress_scaling_factor: float = Field(29.0, gt=0.0, le=200.0)
+    hypertrophy_stress_scaling_factor: float = Field(29.0, gt=0.0, le=200.0)
     auto_verify_confidence_threshold: float = Field(0.87, ge=0.50, le=1.00)
 
 
@@ -141,6 +143,8 @@ class MappingUpdate(BaseModel):
     pct_upper_pull: float = Field(ge=0.0, le=1.0)
     is_conditioning: bool = False
     is_reviewed: bool = True
+    exercise_id: Optional[str] = None
+    canonical_name: Optional[str] = None
 
 
 class SessionVerificationUpdate(BaseModel):
@@ -197,6 +201,8 @@ def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
     Multiple sessions on the same date are summed.
     Returns {"central": float, "peripheral": float, "knee": float, "hip": float, "push": float, "pull": float}
     """
+    HYP_FALLBACK_THRESHOLD = 0.50
+
     sets = db.query(WorkoutLog).filter(WorkoutLog.date == target_date).all()
 
     # ── Pathway 1: Strength / Hypertrophy ────────────────────────────────────
@@ -311,6 +317,97 @@ def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
             peripheral += raw * 0.70
             # Cardio contributes zero to pattern buckets
 
+    # ── Pathway 4: Hypertrophy sRPE Fallback ─────────────────────────
+    # Applies when a verified HYP session has sRPE + duration logged
+    # but >=50% of its sets are missing RPE values.
+    # Uses same formula as conditioning but with a separate scale factor.
+    hyp_scaling_factor = _get_hypertrophy_scaling_factor(db)
+
+    hyp_sessions = (
+        db.query(WorkoutSession)
+        .filter(
+            WorkoutSession.workout_date == target_date,
+            WorkoutSession.verification_status == "verified",
+            WorkoutSession.srpe.isnot(None),
+            WorkoutSession.duration_minutes.isnot(None),
+            WorkoutSession.modality == "hypertrophy",
+        )
+        .all()
+    )
+
+    for session in hyp_sessions:
+        # Check per-set RPE coverage for this session's sets
+        session_sets = [
+            s for s in working_sets
+            if s.workout_id == session.hevy_workout_id
+        ]
+        if not session_sets:
+            # No sets found in working_sets for this session -
+            # all sets may have been excluded as conditioning.
+            # Still attempt fallback using all sets on the date
+            # that match this workout_id.
+            session_sets = [
+                s for s in sets
+                if s.workout_id == session.hevy_workout_id
+            ]
+
+        total_sets = len(session_sets)
+        if total_sets == 0:
+            continue
+
+        missing_rpe = sum(
+            1 for s in session_sets
+            if s.rpe is None or s.rpe == 0.0
+        )
+        missing_ratio = missing_rpe / total_sets
+
+        if missing_ratio < HYP_FALLBACK_THRESHOLD:
+            # Per-set RPE data is sufficient - Pathway 1 already
+            # handled this session. Skip fallback.
+            continue
+
+        # Fallback: sRPE x duration x (1 / hyp_scaling_factor)
+        raw = (session.srpe * session.duration_minutes) / hyp_scaling_factor
+
+        # Pattern distribution - same approach as conditioning Pathway 2.
+        # Use average ExerciseMapping pcts from this session's sets.
+        session_titles = {
+            s.exercise_title for s in session_sets if s.exercise_title
+        }
+        avg_quad = avg_post = avg_push = avg_pull = 0.0
+        pct_c_weight = pct_p_weight = 0.0
+
+        if session_titles:
+            maps = (
+                db.query(ExerciseMapping)
+                .filter(ExerciseMapping.exercise_title.in_(session_titles))
+                .all()
+            )
+            if maps:
+                n = len(maps)
+                avg_quad = sum(m.pct_quad_dom   or 0.0 for m in maps) / n
+                avg_post = sum(m.pct_posterior  or 0.0 for m in maps) / n
+                avg_push = sum(m.pct_upper_push or 0.0 for m in maps) / n
+                avg_pull = sum(m.pct_upper_pull or 0.0 for m in maps) / n
+                pct_c_weight = (
+                    avg_quad**2 + avg_post**2 +
+                    avg_push**2 + avg_pull**2
+                )
+                pct_p_weight = avg_quad + avg_post + avg_push + avg_pull
+
+        if pct_c_weight == 0.0 and pct_p_weight == 0.0:
+            # Fallback: equal distribution across four patterns
+            avg_quad = avg_post = avg_push = avg_pull = 0.25
+            pct_c_weight = 4 * (0.25 ** 2)
+            pct_p_weight = 4 * 0.25
+
+        central    += raw * pct_c_weight
+        peripheral += raw * pct_p_weight
+        knee += raw * avg_quad
+        hip  += raw * avg_post
+        push += raw * avg_push
+        pull += raw * avg_pull
+
     return {
         "central":    round(central,    3),
         "peripheral": round(peripheral, 3),
@@ -354,6 +451,7 @@ def _get_db_api_key(db: Session) -> str | None:
         return legacy_plaintext
 
 _CONDITIONING_SCALING_DEFAULT = 29.0
+_HYP_SCALING_DEFAULT = 29.0
 _AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT = 0.87
 
 _V2_SETTINGS_DEFAULTS = {
@@ -364,6 +462,7 @@ _V2_SETTINGS_DEFAULTS = {
     "tsb_threshold_balanced": -5.0,
     "tsb_threshold_slightly_fatigued": -10.0,
     "conditioning_stress_scaling_factor": _CONDITIONING_SCALING_DEFAULT,
+    "hypertrophy_stress_scaling_factor": _HYP_SCALING_DEFAULT,
     "auto_verify_confidence_threshold": _AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT,
 }
 
@@ -562,6 +661,24 @@ def _get_conditioning_scaling_factor(db: Session) -> float:
         return _CONDITIONING_SCALING_DEFAULT
 
 
+def _get_hypertrophy_scaling_factor(db: Session) -> float:
+    """
+    Read hypertrophy_stress_scaling_factor from app_settings.
+    Normalises (sRPE x duration_minutes) onto the same scale as
+    strength stress for HYP sessions where per-set RPEs are absent.
+    Default 29 - neutral prior, equal to conditioning scale.
+    Calibrate via Settings after running the calibration protocol.
+    """
+    raw = _get_setting_value(db, "hypertrophy_stress_scaling_factor")
+    if raw is None:
+        return _HYP_SCALING_DEFAULT
+    try:
+        v = float(raw)
+        return v if v > 0 else _HYP_SCALING_DEFAULT
+    except (TypeError, ValueError):
+        return _HYP_SCALING_DEFAULT
+
+
 def _get_auto_verify_confidence_threshold(db: Session) -> float:
     raw = _get_setting_value(db, "auto_verify_confidence_threshold")
     if raw is None:
@@ -605,6 +722,15 @@ def _validate_conditioning_scale(cfg: dict) -> None:
         raise HTTPException(
             status_code=422,
             detail="Conditioning load scale must be greater than 0",
+        )
+
+
+def _validate_hypertrophy_scale(cfg: dict) -> None:
+    scale = float(cfg["hypertrophy_stress_scaling_factor"])
+    if scale <= 0.0:
+        raise HTTPException(
+            status_code=422,
+            detail="Hypertrophy load scale must be greater than 0",
         )
 
 
@@ -655,6 +781,10 @@ def _get_v2_settings(db: Session) -> dict:
             _get_setting_value(db, "conditioning_stress_scaling_factor"),
             _V2_SETTINGS_DEFAULTS["conditioning_stress_scaling_factor"],
         ),
+        "hypertrophy_stress_scaling_factor": _safe_float(
+            _get_setting_value(db, "hypertrophy_stress_scaling_factor"),
+            _V2_SETTINGS_DEFAULTS["hypertrophy_stress_scaling_factor"],
+        ),
         "auto_verify_confidence_threshold": _safe_float(
             _get_setting_value(db, "auto_verify_confidence_threshold"),
             _V2_SETTINGS_DEFAULTS["auto_verify_confidence_threshold"],
@@ -663,6 +793,7 @@ def _get_v2_settings(db: Session) -> dict:
     _validate_tsb_thresholds(cfg)
     _validate_pattern_thresholds(cfg)
     _validate_conditioning_scale(cfg)
+    _validate_hypertrophy_scale(cfg)
     _validate_auto_verify_threshold(cfg)
     return cfg
 
@@ -750,6 +881,24 @@ def _get_calibration_settings(db: Session) -> dict:
     }
     return cfg
 
+# --- Sync Executor (shared by incremental and full sync) ---
+
+def _execute_sync_pipeline(db: Session) -> dict:
+    """
+    Core sync pipeline: resolve API key, call importer, update status, return response payload.
+    Called by both trigger_sync (incremental) and trigger_sync_full (full reimport).
+    Assumes lock is already acquired by the caller.
+    """
+    api_key = _get_db_api_key(db)
+    db.info["hevy_api_key"] = api_key
+    result = import_hevy_data(db)
+    _sync_status["last_result"] = result
+    _sync_status["last_run"] = datetime.utcnow()
+    return {
+        "status": "complete",
+        "synced_at": _sync_status["last_run"].isoformat() + "Z",
+    }
+
 # --- Routes ---
 
 @app.get("/", include_in_schema=False)
@@ -762,7 +911,7 @@ def serve_frontend():
 @app.post("/api/sync")
 def trigger_sync(force: bool = False, db: Session = Depends(get_db)):
     """
-    Pull latest workouts from the Hevy API into the local database.
+    Incremental sync: pull latest workouts from Hevy API since last sync.
     Rejects if a sync is already running.
     """
     if not _sync_lock.acquire(blocking=False):
@@ -770,20 +919,67 @@ def trigger_sync(force: bool = False, db: Session = Depends(get_db)):
 
     try:
         _sync_status["running"] = True
-        # Resolve API key: DB setting first, then file/env fallback inside HevyClient
-        api_key = _get_db_api_key(db)
-        db.info["hevy_api_key"] = api_key
-        result = import_hevy_data(db)
-        _sync_status["last_result"] = result
-        _sync_status["last_run"] = datetime.utcnow()
-        return {
-            "status": "complete",
-            "synced_at": _sync_status["last_run"].isoformat() + "Z",
-        }
+        return _execute_sync_pipeline(db)
     except Exception as e:
         _sync_status["last_result"] = {"error": str(e)}
         raise HTTPException(status_code=500, detail=f"Sync failed: {e}")
     finally:
+        _sync_status["running"] = False
+        _sync_lock.release()
+
+@app.post("/api/sync/full")
+def trigger_sync_full(db: Session = Depends(get_db)):
+    """
+    Full sync: wipe imported workout data and reimport entire history from Hevy.
+    Intended for recovery after canonical renames or data integrity issues.
+    Preserves daily check-ins, exercise mappings, and canonical names.
+    Rejects if a sync is already running.
+    """
+    if not _sync_lock.acquire(blocking=False):
+        return {"status": "already_running"}
+
+    try:
+        # Step 1: Log current app_settings sync keys for auditing
+        all_keys = db.query(AppSetting.key).order_by(AppSetting.key).all()
+        logged_keys = [row[0] for row in all_keys]
+        print(f"[Full Sync] Current app_settings keys before reset: {logged_keys}")
+
+        # Step 2-4: Begin transaction for atomic key-clear + data-wipe
+        try:
+            # Clear sync-state keys from app_settings
+            db.query(AppSetting).filter(AppSetting.key == "last_sync").delete(synchronize_session=False)
+            db.query(AppSetting).filter(AppSetting.key == "migration_incremental_sync_v1").delete(synchronize_session=False)
+            
+            # Wipe imported workout data (FK-safe order: workout_logs first, then sessions)
+            db.query(WorkoutLog).delete(synchronize_session=False)
+            db.query(WorkoutSession).delete(synchronize_session=False)
+            
+            db.commit()
+            print("[Full Sync] Successfully cleared sync state and wiped workout data")
+        except Exception as reset_err:
+            db.rollback()
+            print(f"[Full Sync] Reset transaction failed, no changes applied: {reset_err}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Full sync reset failed: {reset_err}. No data was changed. Please try again."
+            )
+
+        # Step 5: Call shared sync executor to reimport data
+        _sync_status["running"] = True
+        try:
+            return _execute_sync_pipeline(db)
+        except Exception as import_err:
+            # Step 6: If import fails after wipe, set error state and return explicit message
+            print(f"[Full Sync] Import failed after data wipe: {import_err}")
+            _set_setting_value(db, "sync_full_error_state", str(import_err))
+            db.commit()
+            _sync_status["last_result"] = {"error": str(import_err)}
+            raise HTTPException(
+                status_code=500,
+                detail="Full sync failed after data wipe — use Sync Now to retry or restore from backup"
+            )
+    finally:
+        # Step 7: Release lock
         _sync_status["running"] = False
         _sync_lock.release()
 
@@ -910,11 +1106,14 @@ def save_pattern_sensitivity(data: PatternSensitivityInput, db: Session = Depend
 def save_session_processing(data: SessionProcessingInput, db: Session = Depends(get_db)):
     cfg = {
         "conditioning_stress_scaling_factor": round(float(data.conditioning_stress_scaling_factor), 3),
+        "hypertrophy_stress_scaling_factor": round(float(data.hypertrophy_stress_scaling_factor), 3),
         "auto_verify_confidence_threshold": round(float(data.auto_verify_confidence_threshold), 2),
     }
     _validate_conditioning_scale(cfg)
+    _validate_hypertrophy_scale(cfg)
     _validate_auto_verify_threshold(cfg)
     _set_setting_value(db, "conditioning_stress_scaling_factor", str(cfg["conditioning_stress_scaling_factor"]))
+    _set_setting_value(db, "hypertrophy_stress_scaling_factor", str(cfg["hypertrophy_stress_scaling_factor"]))
     _set_setting_value(db, "auto_verify_confidence_threshold", str(cfg["auto_verify_confidence_threshold"]))
     db.commit()
     return {"message": "Session processing settings saved.", **cfg}
@@ -2831,17 +3030,43 @@ def get_exercise_mappings(unreviewed: bool = False, db: Session = Depends(get_db
 
     # Pull set count and most-recent date for every exercise in one query
     usage_rows = db.query(
-        WorkoutLog.exercise_title,
+        func.lower(WorkoutLog.exercise_title).label("title_lc"),
         func.count(WorkoutLog.id).label("use_count"),
         func.max(WorkoutLog.date).label("last_used"),
-    ).group_by(WorkoutLog.exercise_title).all()
+    ).filter(WorkoutLog.exercise_title.isnot(None)).group_by(func.lower(WorkoutLog.exercise_title)).all()
 
-    usage = {r.exercise_title: {"use_count": r.use_count, "last_used": str(r.last_used)} for r in usage_rows}
+    usage = {r.title_lc: {"use_count": r.use_count, "last_used": str(r.last_used)} for r in usage_rows}
+
+    latest_title_subquery = (
+        db.query(
+            func.lower(WorkoutLog.exercise_title).label("title_lc"),
+            WorkoutLog.exercise_id.label("exercise_id"),
+            func.row_number().over(
+                partition_by=func.lower(WorkoutLog.exercise_title),
+                order_by=(WorkoutLog.date.desc(), WorkoutLog.id.desc()),
+            ).label("row_num"),
+        )
+        .filter(WorkoutLog.exercise_title.isnot(None))
+        .filter(WorkoutLog.exercise_id.isnot(None))
+        .subquery()
+    )
+
+    title_identity_rows = (
+        db.query(latest_title_subquery.c.title_lc, latest_title_subquery.c.exercise_id)
+        .filter(latest_title_subquery.c.row_num == 1)
+        .all()
+    )
+    title_to_exercise_id = {r.title_lc: r.exercise_id for r in title_identity_rows}
+
+    canonical_rows = db.query(ExerciseCanonical.exercise_id, ExerciseCanonical.canonical_title).all()
+    canonical_by_exercise_id = {r.exercise_id: r.canonical_title for r in canonical_rows}
 
     return [
         {
             "id": m.id,
             "exercise_title": m.exercise_title,
+            "exercise_id": title_to_exercise_id.get((m.exercise_title or "").lower()),
+            "canonical_name": canonical_by_exercise_id.get(title_to_exercise_id.get((m.exercise_title or "").lower())),
             "pct_quad_dom": m.pct_quad_dom,
             "pct_posterior": m.pct_posterior,
             "pct_upper_push": m.pct_upper_push,
@@ -2849,22 +3074,88 @@ def get_exercise_mappings(unreviewed: bool = False, db: Session = Depends(get_db
             "is_conditioning": m.is_conditioning,
             "source": m.source,
             "is_reviewed": m.is_reviewed,
-            "use_count": usage.get(m.exercise_title, {}).get("use_count", 0),
-            "last_used": usage.get(m.exercise_title, {}).get("last_used", None),
+            "use_count": usage.get((m.exercise_title or "").lower(), {}).get("use_count", 0),
+            "last_used": usage.get((m.exercise_title or "").lower(), {}).get("last_used", None),
         }
         for m in mappings
     ]
 
-@app.put("/api/exercises/mappings/{mapping_id}")
+@app.put("/api/exercises/mappings/{mapping_key}")
 def update_exercise_mapping(
-    mapping_id: int, data: MappingUpdate, db: Session = Depends(get_db)
+    mapping_key: str, data: MappingUpdate, db: Session = Depends(get_db)
 ):
-    """Update a movement pattern mapping by numeric ID. Marks source as 'user' and is_reviewed as True."""
-    mapping = db.query(ExerciseMapping).filter(
-        ExerciseMapping.id == mapping_id
-    ).first()
-    if not mapping:
-        raise HTTPException(status_code=404, detail=f"Exercise mapping #{mapping_id} not found.")
+    """Update a movement pattern mapping and optionally canonical title using mapping ID or exercise ID."""
+    key = (mapping_key or "").strip()
+    provided_exercise_id = (data.exercise_id or "").strip()
+    mapping = None
+    resolved_exercise_id = provided_exercise_id or None
+
+    def _looks_like_uuid(value: str) -> bool:
+        try:
+            UUID(value)
+            return True
+        except (ValueError, TypeError):
+            return False
+
+    def _resolve_mapping_from_exercise_id(exercise_id: str):
+        canonical_row = (
+            db.query(ExerciseCanonical)
+            .filter(ExerciseCanonical.exercise_id == exercise_id)
+            .first()
+        )
+        if canonical_row and canonical_row.canonical_title:
+            canonical_mapping = (
+                db.query(ExerciseMapping)
+                .filter(func.lower(ExerciseMapping.exercise_title) == canonical_row.canonical_title.strip().lower())
+                .first()
+            )
+            if canonical_mapping:
+                return canonical_mapping
+
+        latest_title_row = (
+            db.query(WorkoutLog.exercise_title)
+            .filter(WorkoutLog.exercise_id == exercise_id)
+            .filter(WorkoutLog.exercise_title.isnot(None))
+            .order_by(WorkoutLog.date.desc(), WorkoutLog.id.desc())
+            .first()
+        )
+        if latest_title_row and latest_title_row[0]:
+            return (
+                db.query(ExerciseMapping)
+                .filter(func.lower(ExerciseMapping.exercise_title) == latest_title_row[0].strip().lower())
+                .first()
+            )
+
+        return None
+
+    # Frontend now sends UUID exercise_id in the route key. Resolve that path
+    # first so we target the right mapping row before issuing ORM updates.
+    if _looks_like_uuid(key):
+        resolved_exercise_id = key
+        mapping = _resolve_mapping_from_exercise_id(resolved_exercise_id)
+    elif key.isdigit():
+        mapping = db.query(ExerciseMapping).filter(ExerciseMapping.id == int(key)).first()
+        if not mapping:
+            raise HTTPException(status_code=404, detail=f"Exercise mapping #{key} not found.")
+    else:
+        resolved_exercise_id = key
+        mapping = _resolve_mapping_from_exercise_id(resolved_exercise_id)
+
+    if resolved_exercise_id and mapping is None:
+        mapping = _resolve_mapping_from_exercise_id(resolved_exercise_id)
+
+    if mapping is None:
+        raise HTTPException(status_code=404, detail="Exercise mapping not found for that identifier.")
+
+    if not resolved_exercise_id:
+        latest_id_row = (
+            db.query(WorkoutLog.exercise_id)
+            .filter(func.lower(WorkoutLog.exercise_title) == (mapping.exercise_title or "").lower())
+            .filter(WorkoutLog.exercise_id.isnot(None))
+            .order_by(WorkoutLog.date.desc(), WorkoutLog.id.desc())
+            .first()
+        )
+        resolved_exercise_id = latest_id_row[0].strip() if latest_id_row and latest_id_row[0] else None
 
     total_pct = data.pct_quad_dom + data.pct_posterior + data.pct_upper_push + data.pct_upper_pull
     if data.is_conditioning:
@@ -2891,18 +3182,107 @@ def update_exercise_mapping(
     mapping.is_conditioning = data.is_conditioning
     mapping.is_reviewed     = data.is_reviewed
     mapping.source          = "user"
+    original_mapping_id     = mapping.id
+
+    # Flush base mapping changes to DB under the existing row identity before any
+    # canonical sync runs. _sync_mapping_to_canonical_title may delete this row
+    # (treating it as the "source" mapping) and recreate it under the canonical
+    # title, which would make the ORM object stale if we hadn't flushed first.
+    db.flush()
+
+    canonical_name = data.canonical_name
+    if canonical_name is not None:
+        if not resolved_exercise_id:
+            raise HTTPException(
+                status_code=422,
+                detail="exercise_id is required to update canonical_name for this exercise.",
+            )
+
+        canonical_name_stripped = canonical_name.strip()
+        if canonical_name_stripped:
+            previous_row = (
+                db.query(ExerciseCanonical)
+                .filter(ExerciseCanonical.exercise_id == resolved_exercise_id)
+                .first()
+            )
+            previous_canonical_title = previous_row.canonical_title if previous_row else None
+
+            now = datetime.utcnow()
+            stmt = sqlite_insert(ExerciseCanonical).values(
+                exercise_id=resolved_exercise_id,
+                canonical_title=canonical_name_stripped,
+                created_at=now,
+                updated_at=now,
+            ).on_conflict_do_update(
+                index_elements=[ExerciseCanonical.exercise_id],
+                set_={
+                    "canonical_title": canonical_name_stripped,
+                    "updated_at": now,
+                },
+            )
+            db.execute(stmt)
+
+            # This may delete the source mapping row and create/rename to the
+            # canonical title. The base flush above ensures pattern changes are
+            # persisted under the source row before it is moved.
+            _sync_mapping_to_canonical_title(
+                db=db,
+                exercise_id=resolved_exercise_id,
+                canonical_title=canonical_name_stripped,
+                old_canonical_title=previous_canonical_title,
+            )
+
+            (
+                db.query(WorkoutLog)
+                .filter(WorkoutLog.exercise_id == resolved_exercise_id)
+                .update({WorkoutLog.exercise_title: canonical_name_stripped}, synchronize_session=False)
+            )
+        else:
+            (
+                db.query(ExerciseCanonical)
+                .filter(ExerciseCanonical.exercise_id == resolved_exercise_id)
+                .delete(synchronize_session=False)
+            )
+
     db.commit()
 
+    # Re-query response mapping fresh after commit to avoid using a potentially
+    # stale ORM object (the source row may have been deleted by canonical sync).
+    current_canonical_name = None
+    response_mapping = None
+    if resolved_exercise_id:
+        canonical_row = (
+            db.query(ExerciseCanonical)
+            .filter(ExerciseCanonical.exercise_id == resolved_exercise_id)
+            .first()
+        )
+        current_canonical_name = canonical_row.canonical_title if canonical_row else None
+        if current_canonical_name:
+            response_mapping = (
+                db.query(ExerciseMapping)
+                .filter(func.lower(ExerciseMapping.exercise_title) == current_canonical_name.strip().lower())
+                .first()
+            )
+
+    if response_mapping is None:
+        # No canonical sync happened (or canonical was cleared): re-query by PK.
+        response_mapping = db.query(ExerciseMapping).filter(ExerciseMapping.id == original_mapping_id).first()
+
+    if response_mapping is None:
+        raise HTTPException(status_code=500, detail="Mapping row not found after save.")
+
     return {
-        "id": mapping.id,
-        "exercise_title": mapping.exercise_title,
-        "pct_quad_dom": mapping.pct_quad_dom,
-        "pct_posterior": mapping.pct_posterior,
-        "pct_upper_push": mapping.pct_upper_push,
-        "pct_upper_pull": mapping.pct_upper_pull,
-        "is_conditioning": mapping.is_conditioning,
-        "source": mapping.source,
-        "is_reviewed": mapping.is_reviewed,
+        "id": response_mapping.id,
+        "exercise_title": response_mapping.exercise_title,
+        "exercise_id": resolved_exercise_id,
+        "canonical_name": current_canonical_name,
+        "pct_quad_dom": response_mapping.pct_quad_dom,
+        "pct_posterior": response_mapping.pct_posterior,
+        "pct_upper_push": response_mapping.pct_upper_push,
+        "pct_upper_pull": response_mapping.pct_upper_pull,
+        "is_conditioning": response_mapping.is_conditioning,
+        "source": response_mapping.source,
+        "is_reviewed": response_mapping.is_reviewed,
     }
 
 

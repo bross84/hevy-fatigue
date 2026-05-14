@@ -9,25 +9,24 @@
 <style>
 /* ══════════════════════════════════════════════════════
    THEME TOKENS
-   Dark palette:  5da9e9 eca72c 2e282a f3f8f2 ef3e36
    Light palette: 058ed9 ffd166 e1dee3 40476d b9314f
 ══════════════════════════════════════════════════════ */
 
 /* Dark (default) */
 :root, [data-theme="dark"] {
-  --bg:           #2e282a;
-  --card:         #3d3638;
-  --border:       #524c4e;
-  --text:         #f3f8f2;
-  --muted:        #a09498;
-  --accent:       #5da9e9;
-  --quad:         #5da9e9;
-  --posterior:    #eca72c;
-  --push:         #4db870;
-  --pull:         #9b7fd4;
-  --danger:       #ef3e36;
-  --accent-sub:   rgba(93,169,233,.13);
-  --btn-shadow:   rgba(0,0,0,.45);
+  --bg:           #0d1117;
+  --card:         #161b22;
+  --border:       #30363d;
+  --text:         #e6edf3;
+  --muted:        #7d8590;
+  --accent:       #58a6ff;
+  --quad:         #58a6ff;
+  --posterior:    #f0883e;
+  --push:         #3fb950;
+  --pull:         #bc8cff;
+  --danger:       #f85149;
+  --accent-sub:   rgba(88,166,255,.13);
+  --btn-shadow:   rgba(0,0,0,.6);
 }
 
 /* Light */
@@ -77,17 +76,23 @@ nav {
 .logo {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 1.5px;
-  color: var(--accent);
-  white-space: nowrap;
-}
-.logo-icon {
-  width: 16px;
-  height: 16px;
+  text-decoration: none;
   flex-shrink: 0;
+}
+.logo-icon-dark,
+.logo-icon-light {
+  height: 34px;
+  width: auto;
+  flex-shrink: 0;
+  display: block;
+}
+.logo-icon-light { display: none; }
+[data-theme="light"] .logo-icon-dark { display: none; }
+[data-theme="light"] .logo-icon-light { display: block; }
+[data-theme="auto"] .logo-icon-light { display: none; }
+@media (prefers-color-scheme: light) {
+  [data-theme="auto"] .logo-icon-dark { display: none; }
+  [data-theme="auto"] .logo-icon-light { display: block; }
 }
 .nav-tabs { display: flex; gap: 2px; flex: 1; }
 .nav-tab {
@@ -348,14 +353,14 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
     --bg-card: var(--card);
     --bg-code: color-mix(in srgb, var(--card) 72%, black 28%);
     --font-mono: 'Courier New', monospace;
-    --amber: #eca72c;
-    --green: #4db870;
-    --red: #ef3e36;
-    --purple: #9b7fd4;
-    --amber-dim: rgba(236, 167, 44, 0.12);
-    --green-dim: rgba(77, 184, 112, 0.12);
-    --red-dim: rgba(239, 62, 54, 0.12);
-    --purple-dim: rgba(155, 127, 212, 0.12);
+    --amber: #f0883e;
+    --green: #3fb950;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --amber-dim: rgba(240, 136, 62, 0.12);
+    --green-dim: rgba(63, 185, 80, 0.12);
+    --red-dim: rgba(248, 81, 73, 0.12);
+    --purple-dim: rgba(188, 140, 255, 0.12);
   }
 
   .page-layout {
@@ -502,10 +507,9 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       padding: 0 12px;
     }
 
-    .logo {
-      letter-spacing: 0.9px;
-      font-size: 14px;
-    }
+    .logo { height: 28px; }
+    .logo-icon-dark,
+    .logo-icon-light { height: 28px; }
 
     .nav-tabs {
       display: none;
@@ -518,7 +522,10 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
 <!-- ── Navbar ── -->
 <nav>
   <button class="mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Open contents" aria-expanded="false" aria-controls="docs-sidebar">☰</button>
-  <div class="logo"><img class="logo-icon" src="/resources/favicon.png" alt="Hevy Fatigue icon">HEVY FATIGUE</div>
+  <a class="logo" href="/" title="Today">
+    <img class="logo-icon-dark" src="/resources/HF_LOGO_DARK.png" alt="Hevy Fatigue">
+    <img class="logo-icon-light" src="/resources/HF_LOGO_LIGHT.png" alt="Hevy Fatigue">
+  </a>
   <div class="nav-tabs">
     <a href="/" class="nav-tab">Today</a>
     <a href="/static/docs.html" class="nav-tab active">Docs</a>
@@ -551,6 +558,7 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       <a class="nav-link" href="#title-tagging">Title tagging</a>
       <a class="nav-link" href="#importer">Workout importer</a>
       <a class="nav-link" href="#patterns">Movement patterns</a>
+      <a class="nav-link" href="#canonical">Canonical exercise names</a>
     </div>
 
     <div class="nav-section">
@@ -882,6 +890,13 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       <h3>Reclassification without re-syncing</h3>
       <p>If you update the title tagging convention on old sessions in Hevy, or want to re-run the classifier after a settings change, use the <strong>Reclassify Sessions</strong> button in Settings → Session Processing. This re-runs the classifier against all locally stored sessions without hitting the Hevy API and without consuming your sync cooldown. Manually verified sessions are not overwritten unless you explicitly request a full reclassify.</p>
 
+      <h3>Force Full Sync (recovery)</h3>
+      <p>Normally, <strong>Sync Now</strong> is incremental: it pulls only changes since the last sync, which is fast and API-friendly. In rare cases — after a data integrity issue, a botched canonical rename, or if you suspect orphaned or stale sessions — you can perform a <strong>Force Full Sync</strong> to delete and reimport your entire workout history from Hevy.</p>
+
+      <p><strong>Important:</strong> Force Full Sync deletes all imported sessions and sets, then re-downloads everything. Your daily check-in history and canonical exercise names are always preserved. When you click Force Full Sync, a confirmation dialog appears. Confirm only if you understand the implications.</p>
+
+      <p>Force Full Sync is found in Settings → Hevy Sync, styled as a secondary button to discourage accidental use. Once initiated, both the Sync Now and Force Full Sync buttons become inactive until the reimport completes. If a full sync fails partway through (e.g., API timeout), an error message will tell you to retry or restore from backup — the system never silently leaves you with an empty workout table.</p>
+
       <div class="info-card callout-purple">
         <div class="callout-label">Diagnostics page</div>
         <p>The <strong>Diagnostics page</strong> (<code>/static/diagnostic.html</code>) provides a lower-level view of what the importer has pulled: session volume, 7-day and 28-day workout summaries, and raw session data. If something looks wrong in your metrics and you're not sure why, diagnostics is the first place to look — it shows you exactly what data the system is working with. See <a href="#diagnostics" style="color:var(--accent);">§10 Diagnostics page</a> for the full workflow.</p>
@@ -902,27 +917,27 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       <div class="pattern-grid">
         <div class="pattern-card">
           <div class="pattern-name">Knee dominant</div>
-          <div class="pattern-weight" style="color:#5b8dee">30%</div>
+          <div class="pattern-weight" style="color:#58a6ff">30%</div>
           <div class="pattern-desc">Squat, lunge, leg press patterns</div>
         </div>
         <div class="pattern-card">
           <div class="pattern-name">Hip dominant</div>
-          <div class="pattern-weight" style="color:#5b8dee">30%</div>
+          <div class="pattern-weight" style="color:#58a6ff">30%</div>
           <div class="pattern-desc">Deadlift, hinge, hip extension</div>
         </div>
         <div class="pattern-card">
           <div class="pattern-name">Push</div>
-          <div class="pattern-weight" style="color:#4caf82">20%</div>
+          <div class="pattern-weight" style="color:#3fb950">20%</div>
           <div class="pattern-desc">Press, push-up, dip patterns</div>
         </div>
         <div class="pattern-card">
           <div class="pattern-name">Pull</div>
-          <div class="pattern-weight" style="color:#4caf82">20%</div>
+          <div class="pattern-weight" style="color:#3fb950">20%</div>
           <div class="pattern-desc">Row, pull-up, curl patterns</div>
         </div>
         <div class="pattern-card">
           <div class="pattern-name">Full body</div>
-          <div class="pattern-weight" style="color:#9b7fe8">—</div>
+          <div class="pattern-weight" style="color:#bc8cff">—</div>
           <div class="pattern-desc">Olympic lifts, carries, complex movements</div>
         </div>
       </div>
@@ -934,6 +949,50 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       <div class="info-card callout-purple">
         <div class="callout-label">Full body pattern</div>
         <p>Exercises classified as "full body" (Olympic lifts, farmers carries, thrusters, etc.) distribute their stress across all four primary buckets proportionally rather than being isolated to one bucket. The "full body" designation is a classification flag, not a fifth independent accumulator.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- 6b. Canonical exercise names -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section class="doc-section" id="canonical">
+      <div class="section-header">
+        <span class="section-num">06b</span>
+        <h2>Canonical exercise names</h2>
+      </div>
+
+      <p>The canonical naming tool lets you assign a preferred display name to any exercise, overriding whatever name Hevy uses. This is useful when Hevy's default exercise names don't match your naming convention, or when you've renamed a custom exercise in Hevy but want Hevy Fatigue to reflect the new name immediately.</p>
+
+      <h3>How it works</h3>
+      <p>Hevy Fatigue tracks exercises by their internal Hevy ID, not by title. When you set a canonical name for an exercise, Hevy Fatigue stores the alias and uses it everywhere — in Movement Trend, exercise mappings, and stress calculations — regardless of what name Hevy sends during sync.</p>
+
+      <h3>When to use it</h3>
+      <ul class="doc-list">
+        <li>A default Hevy exercise has a name you want to standardize (e.g. <em>"Incline Bench Press (Dumbbells)"</em> → <em>"Bench Press, Dumbbell, Incline"</em>)</li>
+        <li>You renamed a custom exercise in Hevy but Hevy Fatigue still shows the old name</li>
+        <li>You want all historical data for an exercise to reflect a new name without waiting for a future workout to sync</li>
+      </ul>
+
+      <h3>How to set a canonical name</h3>
+      <ol class="doc-list">
+        <li>Go to <strong>Exercise Movement Mappings</strong></li>
+        <li>Find the exercise and click <strong>Edit</strong></li>
+        <li>Enter your preferred name in the <strong>Canonical Name</strong> field</li>
+        <li>Save — Hevy Fatigue immediately updates all historical workout data for that exercise to the canonical name</li>
+      </ol>
+
+      <h3>What happens on sync</h3>
+      <p>Every time Hevy Fatigue syncs with Hevy, incoming exercise titles are checked against the canonical table by exercise ID. If a canonical name exists, it overwrites whatever title Hevy sent — so the canonical name always wins.</p>
+
+      <h3>Clearing a canonical name</h3>
+      <p>Leave the <strong>Canonical Name</strong> field blank and save. Hevy Fatigue removes the alias and reverts to using whatever title Hevy sends on the next sync. Your pattern mapping is preserved.</p>
+
+      <div class="info-card callout-purple">
+        <div class="callout-label">Limitations</div>
+        <ul class="doc-list" style="margin-top:6px">
+          <li>Canonical names only work for exercises that have been synced at least once — Hevy Fatigue needs the Hevy exercise ID to create the alias.</li>
+          <li>Exercises with a <code>null</code> exercise ID from the Hevy API cannot be canonically named. These are rare but will be flagged in the exercise list.</li>
+        </ul>
       </div>
     </section>
 
@@ -1282,3 +1341,4 @@ syncSidebarA11y();
 
 </body>
 </html>
+
