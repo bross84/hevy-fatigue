@@ -10,6 +10,21 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-14, Critical Bug-Hunt Skill Added)
+
+- Added a reusable workspace skill file at `.github/skills/critical-bug-hunt/SKILL.md`.
+- Encoded a strict high-severity-only investigation workflow for recent commit inspection:
+	- scope restricted to data loss/corruption, critical crashes, security/auth bypass, and significant breakage
+	- requires full call-path tracing and a concrete production trigger scenario
+	- excludes style-only and low-severity findings
+- Encoded safety and release gates:
+	- no PR unless bug reality and fix correctness are both high confidence
+	- uncertain findings should be reported without PR
+	- minimal fix scope and targeted validation requirements
+- Output contract documented for both outcomes:
+	- fixed: bug/impact, root cause, fix, validation
+	- no critical bug: short no-critical-bugs-found summary
+
 ## Latest Maintenance Update (2026-05-09, Canonical Mapping Sync + Startup Mapping Migration)
 
 - Implemented canonical save-time mapping synchronization in `main.py` for:

@@ -1,6 +1,22 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-09 (Canonical Mapping Sync + Startup Mapping Migration)
+Last updated: 2026-05-14 (Critical Bug-Hunt Skill Added)
+
+## Latest Maintenance Update (2026-05-14, Critical Bug-Hunt Skill Added)
+
+- Added a new workspace skill at `.github/skills/critical-bug-hunt/SKILL.md`.
+- Skill captures a reusable high-severity bug-finding workflow focused on concrete-trigger correctness failures:
+	- data loss/corruption
+	- crash in critical paths
+	- auth/permission bypass and security exposure
+	- significant user-facing breakage
+- Includes explicit decision gates for:
+	- criticality threshold (concrete trigger + high impact)
+	- fix vs report-only behavior when confidence is uncertain
+	- PR safety bar (high confidence required)
+- Includes output contract for both outcomes:
+	- fixed bug report with impact, root cause, fix, and validation
+	- no-critical-bugs-found summary
 
 ## Latest Maintenance Update (2026-05-09, Canonical Mapping Sync + Startup Mapping Migration)
 
