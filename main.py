@@ -1725,7 +1725,7 @@ def _resolve_joint_advisory(joint_upper: int, joint_lower: int) -> dict:
     }
 
 
-def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness | None, calibration: dict | None = None, db: Session | None = None, today_date: date_type | None = None, today_tsb: float = 0.0, fatigue_score: float = 0.0, subjective_score: float = 10.0, objective_score: float = 0.0, combined_score: float = 0.0) -> dict:
+def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness | None, calibration: dict | None = None, db: Session | None = None, today_date: date_type | None = None, today_tsb: float = 0.0, fatigue_score: float = 0.0, subjective_score: float | None = None, objective_score: float = 0.0, combined_score: float = 0.0) -> dict:
     """
     Stage 6 recommendation engine using pattern ATL/CTL/TSB and same-day soreness.
     Produces a pattern-aware recommendation without implying hidden physiology.
@@ -1787,7 +1787,7 @@ def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness 
         "training_state_detail": training_state_detail,
         "combined_score": round(float(combined_score), 2),
         "objective_score": round(float(objective_score), 2),
-        "subjective_score": round(float(subjective_score), 2),
+        "subjective_score": round(float(subjective_score), 2) if subjective_score is not None else None,
         "tsb": round(float(today_tsb), 3),
         "fatigue_score": round(float(fatigue_score), 2),
         "fatigue_tier": fatigue_tier,
@@ -1862,8 +1862,9 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
         0.0,
         20.0,
     ), 2)
-    subjective_score = round(float(subj) * 20, 2) if checkin and subj is not None else 10.0
-    combined_score = round((0.80 * subjective_score) + (0.20 * objective_score), 2)
+    subjective_score = round(float(subj) * 20, 2) if checkin and subj is not None else None
+    _subj_for_combined = subjective_score if subjective_score is not None else 10.0
+    combined_score = round((0.80 * _subj_for_combined) + (0.20 * objective_score), 2)
 
     calibration = _get_calibration_settings(db)
     thresholds = _resolve_recommendation_thresholds(db, calibration)

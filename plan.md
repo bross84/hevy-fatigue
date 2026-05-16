@@ -1,6 +1,21 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-16 (Pattern Cell Dot-Band Colors + Label Size)
+Last updated: 2026-05-16 (No-Check-In Pending State + Null Subjective)
+
+## Latest Maintenance Update (2026-05-16, No-Check-In Pending State + Null Subjective)
+
+- Updated backend subjective fallback handling in `main.py` so no-check-in state returns `recommendation_v2.subjective_score = null` instead of `10.0`.
+- Updated `_build_recommendation_v2(...)` signature to accept `subjective_score: float | None = None`.
+- Updated recommendation payload mapping to preserve null subjective score (`None` stays `None`).
+- Updated combined-score computation path in `get_training_load()` to use a neutral subjective fallback (`10.0`) only for math when subjective is null.
+- Updated frontend pending-state behavior in `static/index.html`:
+	- added `.today-pattern-pending` muted pattern card class
+	- force-neutral pattern cards now render pending style instead of fresh style
+	- no-check-in pattern dots render empty and stress label renders as `—`
+	- subjective score now renders pending placeholder `—` when no check-in exists
+	- combined score renders as unconfirmed `value*` with pending style when no check-in exists
+	- explainer copy switches to check-in prompt when subjective is unavailable
+- Explicit non-change preserved: "No check-in today - pattern signals based on training load only" footer note remains in place.
 
 ## Latest Maintenance Update (2026-05-16, Pattern Cell Dot-Band Colors + Label Size)
 

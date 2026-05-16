@@ -291,6 +291,10 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
   line-height: 1;
   font-weight: 800;
 }
+.today-score-pending {
+  color: var(--muted);
+  font-style: italic;
+}
 .today-score-explainer {
   margin-top: 8px;
   font-size: 0.75rem;
@@ -335,8 +339,8 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
   border: 1px solid var(--border);
   border-left: 4px solid var(--border);
   border-radius: 8px;
-  padding: 10px;
-  min-height: 142px;
+  padding: 8px 10px;
+  min-height: 100px;
   display: grid;
   gap: 8px;
   align-content: start;
@@ -357,6 +361,11 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
 .today-pattern-stressed {
   border-left-color: var(--danger);
   background: color-mix(in srgb, var(--danger) 13%, transparent);
+}
+.today-pattern-pending {
+  border-left-color: var(--muted);
+  background: transparent;
+  opacity: 0.6;
 }
 .today-pattern-name {
   font-size: 11px;
@@ -2088,7 +2097,7 @@ body.ai-open main {
   .today-state-label { font-size: 24px; }
   .today-footer { grid-template-columns: 1fr; }
   .today-footer-item { min-height: 48px; }
-  .today-pattern-cell { min-height: 134px; }
+  .today-pattern-cell { min-height: 90px; }
   #tab-dashboard { overflow-x: hidden; }
   .today-card { padding: 12px; }
   .today-wrap { gap: 12px; }
@@ -5648,7 +5657,7 @@ function _stateClass(state) {
 }
 
 function _patternCellClass(status, dotsFilledCount = 1, forceNeutral = false) {
-  if (forceNeutral) return 'today-pattern-cell today-pattern-fresh';
+  if (forceNeutral) return 'today-pattern-cell today-pattern-pending';
   const d = Math.max(1, Math.min(5, dotsFilledCount));
   if (d <= 1) return 'today-pattern-cell today-pattern-fresh';
   if (d <= 3) return 'today-pattern-cell today-pattern-neutral';
@@ -5745,11 +5754,17 @@ function _renderTodayCards(data, pendingCount) {
   const subjScore = recV2?.subjective_score ?? null;
   const objScore = recV2?.objective_score ?? null;
   const combScore = recV2?.combined_score ?? null;
-  const scoresHtml = (subjScore !== null && objScore !== null) ? `
+  const subjDisplay = (subjScore !== null && checkinExists)
+    ? Number(subjScore).toFixed(1)
+    : '<span class="today-score-pending" title="Log today\'s check-in to confirm">—</span>';
+  const combDisplay = checkinExists
+    ? Number(combScore ?? 0).toFixed(1)
+    : '<span class="today-score-pending" title="Combined score unconfirmed until check-in logged">' + Number(combScore ?? 0).toFixed(1) + '*</span>';
+  const scoresHtml = (objScore !== null) ? `
     <div class="today-scores-row">
       <div class="today-score">
         <div class="today-score-label">Subjective</div>
-        <div class="today-score-value">${Number(subjScore).toFixed(1)}</div>
+        <div class="today-score-value">${subjDisplay}</div>
       </div>
       <div class="today-score">
         <div class="today-score-label">Objective</div>
@@ -5757,10 +5772,13 @@ function _renderTodayCards(data, pendingCount) {
       </div>
       <div class="today-score today-score-combined">
         <div class="today-score-label">Combined</div>
-        <div class="today-score-value">${Number(combScore ?? 0).toFixed(1)}</div>
+        <div class="today-score-value">${combDisplay}</div>
       </div>
     </div>
-    <div class="today-score-explainer">Combined = (Subjective &times; 80%) + (Objective Load &times; 20%)</div>
+    <div class="today-score-explainer">${checkinExists
+      ? 'Combined = (Subjective &times; 80%) + (Objective Load &times; 20%)'
+      : 'Log today\'s check-in to calculate your subjective score'
+    }</div>
   ` : '';
   document.getElementById('today-state-card').innerHTML = `
     <div class="today-state-label ${_stateClass(stateKey)}">${escHtml(stateLabel)}</div>
@@ -5772,13 +5790,16 @@ function _renderTodayCards(data, pendingCount) {
   const forceNeutral = !checkinExists;
   const grid = ['knee','hip','push','pull'].map(p => {
     const d = patterns[p];
-    const dots = Array.from({ length: 5 }, (_, i) => `<span class="today-dot ${i < d.dots_filled ? 'today-dot-filled' : ''}"></span>`).join('');
+    const dots = forceNeutral
+      ? Array.from({ length: 5 }, () => `<span class="today-dot"></span>`).join('')
+      : Array.from({ length: 5 }, (_, i) => `<span class="today-dot ${i < d.dots_filled ? 'today-dot-filled' : ''}"></span>`).join('');
+    const levelLabel = forceNeutral ? '—' : (d.stress_level_label || 'Moderate');
     return `
       <div class="${_patternCellClass(d.status, d.dots_filled, forceNeutral)}">
         <div class="today-pattern-name">${p.toUpperCase()}</div>
         <div class="today-pattern-days">${escHtml(_formatDaysSinceLoaded(d.days_since_loaded))}</div>
         <div class="today-dots" aria-label="${p} stress dots">${dots}</div>
-        <div class="today-pattern-level">${escHtml(d.stress_level_label || 'Moderate')}</div>
+        <div class="today-pattern-level">${escHtml(levelLabel)}</div>
       </div>
     `;
   }).join('');

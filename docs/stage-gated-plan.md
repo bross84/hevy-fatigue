@@ -10,6 +10,22 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-16, No-Check-In Pending State + Null Subjective)
+
+- Backend update in `main.py`:
+	- changed no-check-in subjective fallback from `10.0` to `None`
+	- updated `_build_recommendation_v2(...)` parameter to `subjective_score: float | None = None`
+	- updated recommendation payload to return `subjective_score: null` when absent
+	- preserved combined-score calculation by using neutral fallback (`10.0`) only inside combined-score math
+- Frontend update in `static/index.html`:
+	- added `.today-pattern-pending` muted card style for no-check-in state
+	- force-neutral pattern-card class now maps to pending (not fresh)
+	- no-check-in state now renders empty dots and `—` stress labels across pattern cards
+	- subjective score now renders as pending placeholder `—` when check-in is missing
+	- combined score now renders as muted/unconfirmed `value*` when check-in is missing
+	- score explainer text now prompts for check-in when subjective score is unavailable
+- Preserved existing no-check-in footer note under pattern grid.
+
 ## Latest Maintenance Update (2026-05-16, Pattern Cell Dot-Band Colors + Label Size)
 
 - Updated pattern stress card styling and class mapping in `static/index.html`.
