@@ -1,6 +1,21 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-16 (Pattern Stress Dots TSB Signal)
+Last updated: 2026-05-16 (Pattern Cell Dot-Band Colors + Label Size)
+
+## Latest Maintenance Update (2026-05-16, Pattern Cell Dot-Band Colors + Label Size)
+
+- Updated pattern-cell visual state classes in `static/index.html`:
+	- replaced `today-pattern-available` with `today-pattern-fresh` (accent)
+	- remapped `today-pattern-neutral` to success tone
+	- added `today-pattern-elevated` for warn tone
+	- kept `today-pattern-stressed` as danger tone
+- Replaced `_patternCellClass(...)` to derive visual class from `dots_filled` count bands:
+	- 1 dot -> fresh
+	- 2-3 dots -> neutral
+	- 4 dots -> elevated
+	- 5 dots -> stressed
+- Updated pattern card call site to pass `d.dots_filled` into `_patternCellClass(...)`.
+- Increased `.today-pattern-level` typography to `font-size: 15px` and `font-weight: 700`.
 
 ## Latest Maintenance Update (2026-05-16, Pattern Stress Dots TSB Signal)
 

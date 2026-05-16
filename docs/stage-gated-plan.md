@@ -10,6 +10,18 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-16, Pattern Cell Dot-Band Colors + Label Size)
+
+- Updated pattern stress card styling and class mapping in `static/index.html`.
+- Replaced pattern color classes to introduce four explicit visual bands:
+	- `today-pattern-fresh` (accent)
+	- `today-pattern-neutral` (success)
+	- `today-pattern-elevated` (warn)
+	- `today-pattern-stressed` (danger)
+- Replaced `_patternCellClass(status, forceNeutral)` with `_patternCellClass(status, dotsFilledCount, forceNeutral)` to classify card color from `dots_filled` bands (`1`, `2-3`, `4`, `5`).
+- Updated rendering call site to pass `d.dots_filled` into `_patternCellClass(...)`.
+- Increased `.today-pattern-level` text prominence to `15px` and `700` weight.
+
 ## Latest Maintenance Update (2026-05-16, Pattern Stress Dots TSB Signal)
 
 - Replaced pattern stress-dot helper in `main.py` from ATL/CTL ratio mapping to TSB-driven stress mapping.

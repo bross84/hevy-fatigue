@@ -342,11 +342,15 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
   align-content: start;
   min-width: 0;
 }
-.today-pattern-available {
+.today-pattern-fresh {
+  border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
+}
+.today-pattern-neutral {
   border-left-color: var(--success);
   background: color-mix(in srgb, var(--success) 12%, transparent);
 }
-.today-pattern-neutral {
+.today-pattern-elevated {
   border-left-color: var(--warn);
   background: color-mix(in srgb, var(--warn) 14%, transparent);
 }
@@ -388,8 +392,8 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
   border-color: var(--text);
 }
 .today-pattern-level {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -5643,11 +5647,13 @@ function _stateClass(state) {
   return 'today-state-nodata';
 }
 
-function _patternCellClass(status, forceNeutral = false) {
-  if (forceNeutral) return 'today-pattern-cell today-pattern-neutral';
-  if (status === 'available') return 'today-pattern-cell today-pattern-available';
-  if (status === 'stressed') return 'today-pattern-cell today-pattern-stressed';
-  return 'today-pattern-cell today-pattern-neutral';
+function _patternCellClass(status, dotsFilledCount = 1, forceNeutral = false) {
+  if (forceNeutral) return 'today-pattern-cell today-pattern-fresh';
+  const d = Math.max(1, Math.min(5, dotsFilledCount));
+  if (d <= 1) return 'today-pattern-cell today-pattern-fresh';
+  if (d <= 3) return 'today-pattern-cell today-pattern-neutral';
+  if (d === 4) return 'today-pattern-cell today-pattern-elevated';
+  return 'today-pattern-cell today-pattern-stressed';
 }
 
 function _tips(label) {
@@ -5768,7 +5774,7 @@ function _renderTodayCards(data, pendingCount) {
     const d = patterns[p];
     const dots = Array.from({ length: 5 }, (_, i) => `<span class="today-dot ${i < d.dots_filled ? 'today-dot-filled' : ''}"></span>`).join('');
     return `
-      <div class="${_patternCellClass(d.status, forceNeutral)}">
+      <div class="${_patternCellClass(d.status, d.dots_filled, forceNeutral)}">
         <div class="today-pattern-name">${p.toUpperCase()}</div>
         <div class="today-pattern-days">${escHtml(_formatDaysSinceLoaded(d.days_since_loaded))}</div>
         <div class="today-dots" aria-label="${p} stress dots">${dots}</div>
