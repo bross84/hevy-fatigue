@@ -1,6 +1,26 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-14 (Critical Bug-Hunt Skill Added)
+Last updated: 2026-05-15 (Scoring Scale 0-20 Migration)
+
+## Latest Maintenance Update (2026-05-15, Scoring Scale 0-20 Migration)
+
+- Migrated readiness scoring scale in `main.py` from 0-10 to 0-20 by updating multiplier call sites that consume `_subjective_fatigue()` output.
+- Updated fatigue threshold defaults in `_CALIBRATION_DEFAULTS`:
+	- large decrease: `15.0`
+	- decrease: `13.0`
+	- continue: `8.0`
+	- increase: `6.0`
+- Updated `_combined_recommendation()` band thresholds to 0-20 equivalents.
+- Updated objective score scaling factors and clamp ranges used in readiness endpoints and diagnostics (`*10` objective ratio scale and `0.0..20.0` clamps).
+- Updated neutral subjective fallback defaults from `5.0` to `10.0` where combined/fatigue score paths require a midpoint fallback.
+- Kept `_subjective_fatigue()` unchanged (still returns `0.0..1.0`).
+- Kept training modifier behavior and bounds unchanged (`±1.5`).
+- Updated chart rendering scale in `static/index.html`:
+	- ATL/CTL bar percentage denominator from 10 to 20
+	- readiness background bands to new 0-20 tier boundaries
+	- readiness chart y-axis max from 10 to 20
+- Validation status:
+	- static diagnostics report no errors in `main.py` and `static/index.html`
 
 ## Latest Maintenance Update (2026-05-14, Critical Bug-Hunt Skill Added)
 

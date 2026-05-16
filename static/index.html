@@ -5837,9 +5837,9 @@ function switchToWorkoutsFromToday() {
   activateTab('workouts');
 }
 
-// Vertical bar for ATL / CTL — fills from bottom up, score is 0–10
+// Vertical bar for ATL / CTL — fills from bottom up, score is 0–20
 function _tlBar(score, color) {
-  const pct = (score / 10 * 100).toFixed(1);
+  const pct = (score / 20 * 100).toFixed(1);
   return `<div class="tl-bar-wrap">
     <div class="tl-bar-fill" style="height:${pct}%;background:${color};"></div>
   </div>`;
@@ -5950,11 +5950,11 @@ function _todayReadinessBandsPlugin() {
       const { ctx, chartArea, scales } = chart;
       if (!chartArea || !scales?.y) return;
       const bands = [
-        { from: 0.0, to: 2.5, color: 'rgba(2, 47, 64, 0.40)' },
-        { from: 2.5, to: 4.0, color: 'rgba(82, 178, 207, 0.35)' },
-        { from: 4.0, to: 6.0, color: 'rgba(79, 180, 119, 0.40)' },
-        { from: 6.0, to: 7.5, color: 'rgba(255, 178, 15, 0.35)' },
-        { from: 7.5, to: 10.0, color: 'rgba(158, 43, 37, 0.35)' },
+        { from: 0.0, to: 6.0, color: 'rgba(2, 47, 64, 0.40)' },
+        { from: 6.0, to: 8.0, color: 'rgba(82, 178, 207, 0.35)' },
+        { from: 8.0, to: 13.0, color: 'rgba(79, 180, 119, 0.40)' },
+        { from: 13.0, to: 14.0, color: 'rgba(255, 178, 15, 0.35)' },
+        { from: 14.0, to: 20.0, color: 'rgba(158, 43, 37, 0.35)' },
       ];
       ctx.save();
       for (const band of bands) {
@@ -6049,7 +6049,7 @@ function renderTodayReadinessChart(history) {
         y: {
           ..._trendChartBaseOptions().scales.y,
           min: 0,
-          max: 10,
+          max: 20,
           grid: { color: 'rgba(128,128,128,0.15)' },
           ticks: { ..._trendChartBaseOptions().scales.y.ticks, stepSize: 1 },
         },

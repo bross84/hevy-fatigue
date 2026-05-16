@@ -10,6 +10,31 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-15, Scoring Scale 0-20 Migration)
+
+- Implemented a readiness scoring scale migration from 0-10 to 0-20 in `main.py` and `static/index.html`.
+- Updated backend score construction and clamp paths tied to subjective/objective/combined readiness scores:
+	- subjective multiplier call sites changed from `*10` to `*20`
+	- objective scaling changed from `*5` to `*10` where objective score targets the full readiness range
+	- clamp ranges changed from `0.0..10.0` to `0.0..20.0` for readiness/fatigue score outputs
+	- neutral fallback values changed from `5.0` to `10.0`
+- Updated `_CALIBRATION_DEFAULTS` recommendation thresholds to 0-20 defaults:
+	- `threshold_large_decrease=15.0`
+	- `threshold_decrease=13.0`
+	- `threshold_continue=8.0`
+	- `threshold_increase=6.0`
+- Updated `_combined_recommendation()` boundaries to the new 0-20 banding.
+- Frontend chart updates in `static/index.html`:
+	- readiness y-axis max set to `20`
+	- readiness background bands updated to `[0-6], [6-8], [8-13], [13-14], [14-20]`
+	- ATL/CTL bar normalization denominator updated from `10` to `20`
+- Explicit non-changes preserved:
+	- `_subjective_fatigue()` output scale (`0.0..1.0`)
+	- training modifier behavior and `±1.5` clamp bounds
+	- sRPE validation boundaries and TSB threshold system
+- Validation evidence:
+	- static diagnostics show no errors in edited files.
+
 ## Latest Maintenance Update (2026-05-14, Critical Bug-Hunt Skill Added)
 
 - Added a reusable workspace skill file at `.github/skills/critical-bug-hunt/SKILL.md`.

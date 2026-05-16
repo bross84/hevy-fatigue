@@ -472,10 +472,10 @@ _V2_SETTINGS_DEFAULTS = {
 
 _CALIBRATION_DEFAULTS = {
     "enabled": False,
-    "threshold_large_decrease": 8.0,
-    "threshold_decrease": 6.5,
-    "threshold_continue": 4.5,
-    "threshold_increase": 3.0,
+    "threshold_large_decrease": 15.0,
+    "threshold_decrease": 13.0,
+    "threshold_continue": 8.0,
+    "threshold_increase": 6.0,
     "v2_threshold_stressed": 0.75,
     "v2_threshold_neutral": 0.50,
     "tsb_threshold_underloaded": 8.0,
@@ -1367,7 +1367,7 @@ def _training_modifier_for_index(stresses: list[float], idx: int) -> float:
     return round(_clamp(relative_delta * 1.2, -1.5, 1.5), 2)
 
 def _fatigue_recommendation(fatigue_score: float, thresholds: dict | None = None) -> str:
-    """Map 0-10 fatigue score (10 = worst) to recommendation buckets."""
+    """Map 0-20 fatigue score (20 = worst) to recommendation buckets."""
     cfg = thresholds or _CALIBRATION_DEFAULTS
     ld = float(cfg.get("threshold_large_decrease", _CALIBRATION_DEFAULTS["threshold_large_decrease"]))
     d = float(cfg.get("threshold_decrease", _CALIBRATION_DEFAULTS["threshold_decrease"]))
@@ -1407,7 +1407,7 @@ def _percentile(values: list[float], p: float) -> float:
     return (ordered[lower] * (1 - frac)) + (ordered[upper] * frac)
 
 def _recent_fatigue_scores_for_adaptive(db: Session, lookback_days: int) -> list[float]:
-    """Compute recent fatigue scores (0..10) from readiness entries for adaptive thresholds."""
+    """Compute recent fatigue scores (0..20) from readiness entries for adaptive thresholds."""
     from_date = date_type.today() - timedelta(days=max(1, lookback_days) - 1)
     readiness_rows = (
         db.query(DailyReadiness)
@@ -1428,7 +1428,7 @@ def _recent_fatigue_scores_for_adaptive(db: Session, lookback_days: int) -> list
         subj = _subjective_fatigue(entry)
         idx = history_index.get(date_key)
         training_mod = _training_modifier_for_index(stress_series, idx) if idx is not None else 0.0
-        score = _clamp((subj * 10) + training_mod, 0.0, 10.0)
+        score = _clamp((subj * 20) + training_mod, 0.0, 20.0)
         scores.append(round(score, 2))
     return scores
 
@@ -1577,9 +1577,9 @@ def _objective_score_for_date(target_date: date_type, db: Session) -> float:
     six_month_weekly_avg = six_month_volume / 26 if six_month_volume > 0 else 0
 
     return round(_clamp(
-        (seven_day_volume / six_month_weekly_avg * 5) if six_month_weekly_avg > 0 else 0,
+        (seven_day_volume / six_month_weekly_avg * 10) if six_month_weekly_avg > 0 else 0,
         0.0,
-        10.0,
+        20.0,
     ), 2)
 
 
@@ -1588,14 +1588,13 @@ def _combined_recommendation(combined_score: float) -> tuple[str, str, str]:
     # Minimum combined score step = ~0.50 pts (single soreness field, 80/20 blend).
     # Maximum single-field step   = ~0.90 pts (tiredness field).
     # All transitional bands are >=1.5 pts so no single field change can skip a tier.
-    # Continue band is symmetric around 5.0 (4.0–6.0).
-    if combined_score <= 2.5:
-        return "large_increase", "Large Increase", "Low fatigue - push hard and increase training load"
-    if combined_score <= 4.0:
-        return "increase", "Increase", "Below baseline - good time to add volume or intensity"
     if combined_score <= 6.0:
+        return "large_increase", "Large Increase", "Low fatigue - push hard and increase training load"
+    if combined_score <= 8.0:
+        return "increase", "Increase", "Below baseline - good time to add volume or intensity"
+    if combined_score <= 13.0:
         return "continue", "Continue", "Training load well managed - maintain current approach"
-    if combined_score <= 7.5:
+    if combined_score <= 14.0:
         return "decrease", "Decrease", "Fatigue elevated - reduce volume or intensity today"
     return "large_decrease", "Large Decrease", "High fatigue - rest or very light activity only"
 
@@ -1719,7 +1718,7 @@ def _resolve_joint_advisory(joint_upper: int, joint_lower: int) -> dict:
     }
 
 
-def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness | None, calibration: dict | None = None, db: Session | None = None, today_date: date_type | None = None, today_tsb: float = 0.0, fatigue_score: float = 0.0, subjective_score: float = 5.0, objective_score: float = 0.0, combined_score: float = 0.0) -> dict:
+def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness | None, calibration: dict | None = None, db: Session | None = None, today_date: date_type | None = None, today_tsb: float = 0.0, fatigue_score: float = 0.0, subjective_score: float = 10.0, objective_score: float = 0.0, combined_score: float = 0.0) -> dict:
     """
     Stage 6 recommendation engine using pattern ATL/CTL/TSB and same-day soreness.
     Produces a pattern-aware recommendation without implying hidden physiology.
@@ -1827,14 +1826,14 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
     ).first()
     if checkin:
         subj = _subjective_fatigue(checkin)
-        subjective_base_score = round(subj * 10, 2)
-        fatigue_score = round(_clamp(subjective_base_score + training_mod, 0.0, 10.0), 2)
+        subjective_base_score = round(subj * 20, 2)
+        fatigue_score = round(_clamp(subjective_base_score + training_mod, 0.0, 20.0), 2)
         score_source = "subjective_plus_training"
     else:
         subj = None
         subjective_base_score = None
         # If no check-in exists today, provide a neutral fallback adjusted by training.
-        fatigue_score = round(_clamp(5.0 + training_mod, 0.0, 10.0), 2)
+        fatigue_score = round(_clamp(10.0 + training_mod, 0.0, 20.0), 2)
         score_source = "training_fallback"
 
     seven_day_sessions = (
@@ -1852,11 +1851,11 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
     six_month_weekly_avg = six_month_volume / 26 if six_month_volume > 0 else 0
 
     objective_score = round(_clamp(
-        (seven_day_volume / six_month_weekly_avg * 5) if six_month_weekly_avg > 0 else 0,
+        (seven_day_volume / six_month_weekly_avg * 10) if six_month_weekly_avg > 0 else 0,
         0.0,
-        10.0,
+        20.0,
     ), 2)
-    subjective_score = round(float(subj) * 10, 2) if checkin and subj is not None else 5.0
+    subjective_score = round(float(subj) * 20, 2) if checkin and subj is not None else 10.0
     combined_score = round((0.80 * subjective_score) + (0.20 * objective_score), 2)
 
     calibration = _get_calibration_settings(db)
@@ -1896,9 +1895,9 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
         t_mod = _training_modifier_for_index(stress_series_hist, idx)
         if r_entry:
             h_subj = _subjective_fatigue(r_entry)
-            h_fatigue = round(_clamp(h_subj * 10 + t_mod, 0.0, 10.0), 2)
+            h_fatigue = round(_clamp(h_subj * 20 + t_mod, 0.0, 20.0), 2)
         else:
-            h_fatigue = round(_clamp(5.0 + t_mod, 0.0, 10.0), 2)
+            h_fatigue = round(_clamp(10.0 + t_mod, 0.0, 20.0), 2)
         item["fatigue_score"] = h_fatigue
         item["recommendation_adjusted"] = _fatigue_recommendation(h_fatigue, thresholds)
 
@@ -1992,8 +1991,8 @@ def _build_diagnostics_snapshot(db: Session) -> dict:
     )
 
     if checkin:
-        tiredness_contribution = round(0.45 * ((checkin.tiredness or 0) / 4.0) * 10.0, 3)
-        recovery_contribution = round(0.30 * ((checkin.perceived_recovery or 0) / 4.0) * 10.0, 3)
+        tiredness_contribution = round(0.45 * ((checkin.tiredness or 0) / 4.0) * 20.0, 3)
+        recovery_contribution = round(0.30 * ((checkin.perceived_recovery or 0) / 4.0) * 20.0, 3)
         soreness_contribution = round(
             0.25
             * (
@@ -2004,10 +2003,10 @@ def _build_diagnostics_snapshot(db: Session) -> dict:
                     + (checkin.sore_upper_pull or 0)
                 ) / 16.0
             )
-            * 10.0,
+            * 20.0,
             3,
         )
-        subjective_score_from_checkin = round(_subjective_fatigue(checkin) * 10.0, 2)
+        subjective_score_from_checkin = round(_subjective_fatigue(checkin) * 20.0, 2)
     else:
         tiredness_contribution = None
         recovery_contribution = None
@@ -2041,18 +2040,18 @@ def _build_diagnostics_snapshot(db: Session) -> dict:
         else None
     )
     objective_score = round(
-        _clamp((objective_ratio * 5.0) if objective_ratio is not None else 0.0, 0.0, 10.0),
+        _clamp((objective_ratio * 10.0) if objective_ratio is not None else 0.0, 0.0, 20.0),
         2,
     )
 
-    subjective_score_effective = round(float(subjective_score_from_checkin) if checkin and subjective_score_from_checkin is not None else 5.0, 2)
+    subjective_score_effective = round(float(subjective_score_from_checkin) if checkin and subjective_score_from_checkin is not None else 10.0, 2)
     combined_score = round((0.80 * subjective_score_effective) + (0.20 * objective_score), 2)
 
     fatigue_score = round(
         _clamp(
-            (float(subjective_score_from_checkin) if checkin and subjective_score_from_checkin is not None else 5.0) + training_mod,
+            (float(subjective_score_from_checkin) if checkin and subjective_score_from_checkin is not None else 10.0) + training_mod,
             0.0,
-            10.0,
+            20.0,
         ),
         2,
     )
@@ -2407,7 +2406,7 @@ def get_readiness_combined_history(days: int = 7, db: Session = Depends(get_db))
     while current <= today:
         checkin = readiness_by_date.get(current)
         objective_score = _objective_score_for_date(current, db)
-        subjective_score = round(_subjective_fatigue(checkin) * 10.0, 2) if checkin else None
+        subjective_score = round(_subjective_fatigue(checkin) * 20.0, 2) if checkin else None
         combined_score = (
             round((0.80 * subjective_score) + (0.20 * objective_score), 2)
             if subjective_score is not None
@@ -2584,11 +2583,11 @@ def get_readiness_log(db: Session = Depends(get_db)):
         tsb = tsb_by_date.get(date_key, 0.0)
         base_rec = _tsb_recommendation(tsb)
         subj = _subjective_fatigue(e)
-        subj_base_score = round(subj * 10, 2)
+        subj_base_score = round(subj * 20, 2)
 
         idx = history_index.get(date_key)
         training_mod = _training_modifier_for_index(stress_series, idx) if idx is not None else 0.0
-        fatigue_score = round(_clamp(subj_base_score + training_mod, 0.0, 10.0), 2)
+        fatigue_score = round(_clamp(subj_base_score + training_mod, 0.0, 20.0), 2)
         adj_rec = _fatigue_recommendation(fatigue_score, thresholds)
 
         result.append({
