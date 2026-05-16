@@ -10,6 +10,19 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-16, Pattern Stress Dots TSB Signal)
+
+- Replaced pattern stress-dot helper in `main.py` from ATL/CTL ratio mapping to TSB-driven stress mapping.
+- Renamed helper from `_pattern_load_signal(atl, ctl)` to `_pattern_tsb_signal(tsb, ctl)`.
+- New stress signal semantics:
+	- if `ctl <= 0.0`, returns `0.0`
+	- else computes `clamp(-tsb / ctl, 0..1)` and rounds to 3 decimals
+- Updated `_build_recommendation_v2()` to call the new helper with existing per-pattern `tsb` and `ctl` values.
+- Explicit non-changes preserved:
+	- no schema or migration changes
+	- no additional DB queries
+	- no changes to `_dots_filled()`, `_stress_level_label()`, or the 70/30 load/soreness signal mix
+
 ## Latest Maintenance Update (2026-05-15, Scoring Scale 0-20 Migration)
 
 - Implemented a readiness scoring scale migration from 0-10 to 0-20 in `main.py` and `static/index.html`.

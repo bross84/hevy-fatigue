@@ -1660,23 +1660,30 @@ def _pattern_soreness_signals(checkin: DailyReadiness | None) -> dict:
     }
 
 
-def _pattern_load_signal(atl: float, ctl: float) -> float:
+def _pattern_tsb_signal(tsb: float, ctl: float) -> float:
     """
-    Convert pattern ATL/CTL into a 0..1 stress signal.
+    Convert per-pattern TSB into a 0..1 stress signal for dot display.
 
-    Edge handling when CTL is zero:
-    - atl <= 0 => signal 0
-    - atl > 0  => signal scales quickly toward 1 (new/unaccustomed load)
+    TSB = CTL - ATL. Negative TSB = more fatigue than fitness (stressed).
+    Positive TSB = more fitness than fatigue (fresh/underloaded).
+
+    Normalise by CTL so the signal is relative to the athlete's own
+    fitness baseline, not an arbitrary absolute scale.
+
+    Signal = 0 when TSB >= 0 (fresh or underloaded).
+    Signal approaches 1 when TSB ~= -CTL (ATL ~= 2x CTL, very high acute load).
+
+    Edge case - CTL is zero (no training history for this pattern yet):
+      return 0 regardless of TSB.
     """
-    atl = max(0.0, float(atl or 0.0))
     ctl = max(0.0, float(ctl or 0.0))
+    tsb = float(tsb or 0.0)
 
     if ctl <= 0.0:
-        return round(_clamp(atl / 4.0, 0.0, 1.0), 3)
+        return 0.0
 
-    ratio = atl / ctl
-    signal = (ratio - 0.85) / 0.75
-    return round(_clamp(signal, 0.0, 1.0), 3)
+    signal = _clamp(-tsb / ctl, 0.0, 1.0)
+    return round(signal, 3)
 
 
 def _state_from_signal(signal: float, thresholds: dict) -> str:
@@ -1737,7 +1744,7 @@ def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness 
         ctl = float(pl.get("ctl", 0.0) or 0.0)
         tsb = float(pl.get("tsb", ctl - atl) or 0.0)
 
-        load_signal = _pattern_load_signal(atl, ctl)
+        load_signal = _pattern_tsb_signal(tsb, ctl)
         soreness_signal = float(soreness[p])
         combined_signal = round(_clamp((0.70 * load_signal) + (0.30 * soreness_signal), 0.0, 1.0), 3)
         state = _state_from_signal(combined_signal, thresholds)

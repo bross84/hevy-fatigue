@@ -1,6 +1,19 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-15 (Scoring Scale 0-20 Migration)
+Last updated: 2026-05-16 (Pattern Stress Dots TSB Signal)
+
+## Latest Maintenance Update (2026-05-16, Pattern Stress Dots TSB Signal)
+
+- Replaced pattern stress-dot load helper in `main.py` from ATL/CTL ratio logic to per-pattern TSB-driven logic.
+- Renamed helper from `_pattern_load_signal(atl, ctl)` to `_pattern_tsb_signal(tsb, ctl)`.
+- New signal behavior:
+	- returns `0.0` when `ctl <= 0.0`
+	- otherwise computes `clamp(-tsb / ctl, 0..1)` and rounds to 3 decimals
+- Updated `_build_recommendation_v2()` call site to pass `tsb` and `ctl` into the new helper.
+- Explicit non-changes preserved:
+	- no schema changes
+	- no new database queries
+	- no changes to `_dots_filled()`, `_stress_level_label()`, or the 70/30 combined signal split
 
 ## Latest Maintenance Update (2026-05-15, Scoring Scale 0-20 Migration)
 
