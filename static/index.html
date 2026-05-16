@@ -87,8 +87,10 @@ nav {
   align-items: center;
   gap: 20px;
   height: 54px;
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
 }
 .logo {
@@ -301,6 +303,9 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
   opacity: 0.6;
   text-align: center;
   line-height: 1.4;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
 }
 .today-chart-wrap {
   position: relative;
@@ -1436,7 +1441,7 @@ tbody tr:hover td { background: var(--row-hover); }
   }
 
   main {
-    padding-top: 74px;
+    padding-top: 54px;
   }
 
   .nav-tabs {
@@ -3019,7 +3024,7 @@ const AI_MODEL_OPTIONS = [
   ['meta-llama/llama-3.3-70b-instruct', 'llama-3.3-70b'],
   ['deepseek/deepseek-v3.2', 'deepseek-v3.2'],
 ];
-let aiSelectedModel = AI_DEFAULT_MODEL;
+let aiSelectedModel = localStorage.getItem('ai_preferred_model') || AI_DEFAULT_MODEL;
 
 function setMobileNavOpen(isOpen) {
   document.body.classList.toggle('mobile-nav-open', !!isOpen);
@@ -3333,10 +3338,12 @@ function _renderAIModelField(modelValue = AI_DEFAULT_MODEL) {
         return;
       }
       aiSelectedModel = select.value;
+      localStorage.setItem('ai_preferred_model', aiSelectedModel);
     });
 
     customInput.addEventListener('input', () => {
       aiSelectedModel = customInput.value.trim();
+      if (aiSelectedModel) localStorage.setItem('ai_preferred_model', aiSelectedModel);
     });
   }
 }

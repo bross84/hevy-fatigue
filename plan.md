@@ -1,6 +1,14 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-16 (No-Check-In Pending State + Null Subjective)
+Last updated: 2026-05-16 (Sticky AI Model Selection via localStorage)
+
+## Latest Maintenance Update (2026-05-16, Sticky AI Model Selection via localStorage)
+
+- Updated AI model preference persistence in `static/index.html` using browser `localStorage` only (no backend changes).
+- Changed module-level initialization to hydrate `aiSelectedModel` from `localStorage.getItem('ai_preferred_model')` with fallback to `AI_DEFAULT_MODEL`.
+- Updated AI model select change handler to persist selected preset model to `localStorage` under key `ai_preferred_model`.
+- Updated custom model input handler to persist non-empty custom model values to the same `ai_preferred_model` key.
+- Preserved existing `theme` persistence behavior and key usage (`theme`) with no overlap.
 
 ## Latest Maintenance Update (2026-05-16, No-Check-In Pending State + Null Subjective)
 

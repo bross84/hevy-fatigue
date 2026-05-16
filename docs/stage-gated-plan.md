@@ -10,6 +10,17 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-16, Sticky AI Model Selection via localStorage)
+
+- Implemented sticky AI model UI preference in `static/index.html` via browser `localStorage` key `ai_preferred_model`.
+- Updated module-level `aiSelectedModel` initialization to load persisted value with default fallback.
+- Updated preset model select change handler to persist selected value.
+- Updated custom model input handler to persist non-empty custom values.
+- Explicit non-changes preserved:
+	- no backend API changes
+	- no settings schema/database migration changes
+	- no conflict with existing theme persistence key (`theme`)
+
 ## Latest Maintenance Update (2026-05-16, No-Check-In Pending State + Null Subjective)
 
 - Backend update in `main.py`:
