@@ -215,7 +215,7 @@ def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
             db.query(ExerciseMapping.exercise_title)
             .filter(
                 ExerciseMapping.exercise_title.in_(exercise_titles),
-                ExerciseMapping.is_conditioning == True,
+                ExerciseMapping.is_conditioning,
             )
             .all()
         )
@@ -270,6 +270,8 @@ def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
     )
 
     for session in cond_sessions:
+        if session.srpe is None or session.duration_minutes is None:
+            continue
         raw = (session.srpe * session.duration_minutes) / scaling_factor
 
         if session.modality == "conditioning":
@@ -367,6 +369,8 @@ def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
             continue
 
         # Fallback: sRPE x duration x (1 / hyp_scaling_factor)
+        if session.srpe is None or session.duration_minutes is None:
+            continue
         raw = (session.srpe * session.duration_minutes) / hyp_scaling_factor
 
         # Pattern distribution - same approach as conditioning Pathway 2.
@@ -1204,7 +1208,7 @@ def _training_stress_included_through(db: Session) -> date_type:
         return latest_readiness - timedelta(days=1)
     return date_type.today() - timedelta(days=1)
 
-def _compute_training_load(days: int, db: Session) -> list[dict]:
+def _compute_training_load(days: int, db: Session) -> tuple[list[dict], float, float]:
     """
     Calculate ATL, CTL, and TSB for each day using exponentially weighted
     moving averages of the combined daily stress score (central + peripheral).
@@ -1580,13 +1584,18 @@ def _objective_score_for_date(target_date: date_type, db: Session) -> float:
 
 
 def _combined_recommendation(combined_score: float) -> tuple[str, str, str]:
-    if combined_score <= 3.0:
+    # Band boundaries derived from check-in input resolution.
+    # Minimum combined score step = ~0.50 pts (single soreness field, 80/20 blend).
+    # Maximum single-field step   = ~0.90 pts (tiredness field).
+    # All transitional bands are >=1.5 pts so no single field change can skip a tier.
+    # Continue band is symmetric around 5.0 (4.0–6.0).
+    if combined_score <= 2.5:
         return "large_increase", "Large Increase", "Low fatigue - push hard and increase training load"
     if combined_score <= 4.0:
         return "increase", "Increase", "Below baseline - good time to add volume or intensity"
     if combined_score <= 6.0:
         return "continue", "Continue", "Training load well managed - maintain current approach"
-    if combined_score <= 6.5:
+    if combined_score <= 7.5:
         return "decrease", "Decrease", "Fatigue elevated - reduce volume or intensity today"
     return "large_decrease", "Large Decrease", "High fatigue - rest or very light activity only"
 
@@ -1847,7 +1856,7 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
         0.0,
         10.0,
     ), 2)
-    subjective_score = round(subj * 10, 2) if checkin else 5.0
+    subjective_score = round(float(subj) * 10, 2) if checkin and subj is not None else 5.0
     combined_score = round((0.80 * subjective_score) + (0.20 * objective_score), 2)
 
     calibration = _get_calibration_settings(db)
@@ -2036,12 +2045,12 @@ def _build_diagnostics_snapshot(db: Session) -> dict:
         2,
     )
 
-    subjective_score_effective = round(subjective_score_from_checkin if checkin else 5.0, 2)
+    subjective_score_effective = round(float(subjective_score_from_checkin) if checkin and subjective_score_from_checkin is not None else 5.0, 2)
     combined_score = round((0.80 * subjective_score_effective) + (0.20 * objective_score), 2)
 
     fatigue_score = round(
         _clamp(
-            (subjective_score_from_checkin if checkin else 5.0) + training_mod,
+            (float(subjective_score_from_checkin) if checkin and subjective_score_from_checkin is not None else 5.0) + training_mod,
             0.0,
             10.0,
         ),
@@ -3512,6 +3521,8 @@ def save_exercise_canonical(data: ExerciseCanonicalInput, db: Session = Depends(
     db.commit()
 
     row = db.query(ExerciseCanonical).filter(ExerciseCanonical.exercise_id == exercise_id).first()
+    if row is None:
+        raise HTTPException(status_code=500, detail="Failed to retrieve canonical entry after upsert.")
     return {
         "exercise_id": row.exercise_id,
         "canonical_title": row.canonical_title,
