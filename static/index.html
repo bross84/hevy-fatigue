@@ -5766,7 +5766,7 @@ function _renderTodayCards(data, pendingCount) {
     : '<span class="today-score-pending" title="Log today\'s check-in to confirm">—</span>';
   const combDisplay = checkinExists
     ? Number(combScore ?? 0).toFixed(1)
-    : '<span class="today-score-pending" title="Combined score unconfirmed until check-in logged">' + Number(combScore ?? 0).toFixed(1) + '*</span>';
+    : '<span class="today-score-pending" title="Log today\'s check-in to confirm">—</span>';
   const scoresHtml = (objScore !== null) ? `
     <div class="today-scores-row">
       <div class="today-score">
