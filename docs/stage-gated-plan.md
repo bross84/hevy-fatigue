@@ -10,6 +10,24 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-19, Training Load Performance Phases 1-3)
+
+- Implemented Phase 1 in `main.py` to remove duplicate stress-score recomputation on `GET /api/training-load`:
+	- `_compute_training_load(...)` now returns precomputed `stress_by_date` and `pattern_stress_by_date` maps.
+	- `_pattern_last_loaded_dates(...)` accepts those maps and uses them on the hot path.
+	- `get_training_load(...)` and `_build_recommendation_v2(...)` now pass the maps through.
+- Implemented Phase 2 in `main.py` to replace `_session_volume` N+1 loops in `get_training_load(...)`:
+	- replaced per-session volume reads with grouped `workout_logs` aggregation by `workout_id` for both 7-day and 6-month windows.
+	- migrated to dictionary lookups with default `0.0` behavior.
+- Implemented Phase 3 in `main.py` to remove repeated per-date `app_settings` queries in stress scoring:
+	- updated `calculate_stress_scores(...)` to take `conditioning_scale` and `hyp_scale` keyword args with fallback defaults.
+	- `_compute_training_load(...)` now resolves scale constants once and passes them into each stress call.
+	- `_pattern_last_loaded_dates(...)` now enforces a 330-day date floor to match compute lookback and prevent old-date fallback churn.
+- Validation evidence captured during implementation:
+	- `python -m py_compile main.py` passed after each phase.
+	- `GET /api/training-load?days=180` returned `200` with history and pattern payloads present.
+	- verification confirmed `calculate_stress_scores(...)` no longer performs app-settings helper lookups.
+
 ## Latest Maintenance Update (2026-05-19, AGENTS Constraint-Overload Reduction)
 
 - Updated `AGENTS.md` with a compact quick-start checklist to group high-priority rules by operational category.

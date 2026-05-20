@@ -1,6 +1,24 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-16 (Sticky AI Model Selection via localStorage)
+Last updated: 2026-05-19 (Training Load Performance Phases 1-3)
+
+## Latest Maintenance Update (2026-05-19, Training Load Performance Phases 1-3)
+
+- Implemented Phase 1 in `main.py` to eliminate duplicate stress-score recomputation during `GET /api/training-load`:
+	- `_compute_training_load(...)` now returns precomputed `stress_by_date` and `pattern_stress_by_date` maps.
+	- `_pattern_last_loaded_dates(...)` accepts and uses precomputed pattern maps on the hot path.
+	- `get_training_load(...)` and `_build_recommendation_v2(...)` now thread those maps forward.
+- Implemented Phase 2 in `main.py` to remove `_session_volume` N+1 usage inside `get_training_load(...)`:
+	- replaced per-session volume loops with grouped `workout_logs` aggregation by `workout_id` for both 7-day and 6-month windows.
+	- switched volume assembly to dictionary lookups with `0.0` default.
+- Implemented Phase 3 in `main.py` to remove repeated per-date `app_settings` reads in stress scoring:
+	- updated `calculate_stress_scores(...)` to accept `conditioning_scale` and `hyp_scale` keyword args with fallback defaults.
+	- `_compute_training_load(...)` now fetches scale settings once via settings dict and passes constants into each per-date stress call.
+	- `_pattern_last_loaded_dates(...)` now applies a 330-day floor (`today - 330d`) to align with compute window and avoid older-date fallback churn.
+- Validation evidence captured during implementation:
+	- `python -m py_compile main.py` passed after each phase.
+	- `GET /api/training-load?days=180` returned `200` with history and pattern payloads.
+	- function-scope verification confirmed `calculate_stress_scores(...)` no longer calls app-settings helper lookups.
 
 ## Latest Maintenance Update (2026-05-19, AGENTS Constraint-Overload Reduction)
 
