@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session, aliased
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -3108,6 +3108,246 @@ def get_workout_summary(days: int = 30, db: Session = Depends(get_db)):
         }
         for row in rows
     ]
+
+def _derive_pattern(pct_quad, pct_post, pct_push, pct_pull, is_cond):
+    """Return a human-readable pattern label from exercise_mappings pct columns."""
+    if is_cond:
+        return "Conditioning"
+    vals = {
+        "Knee": pct_quad or 0.0,
+        "Hip": pct_post or 0.0,
+        "Push": pct_push or 0.0,
+        "Pull": pct_pull or 0.0,
+    }
+    best = max(vals, key=lambda k: vals[k])
+    return best if vals[best] > 0 else None
+
+
+@app.get("/api/exercises/metrics")
+def get_exercise_metrics(
+    exercise_id: Optional[str] = None,
+    filter: str = "all",
+    window_days: int = 0,
+    db: Session = Depends(get_db),
+):
+    """Return exercise-level performance metrics. List or detail depending on exercise_id."""
+    today = date_type.today()
+
+    if exercise_id:
+        # ── Detail mode ────────────────────────────────────────────────────
+        eid = exercise_id.strip()
+
+        # Basic info row
+        base_row = db.execute(text("""
+            WITH exercise_base AS (
+                SELECT
+                    wl.exercise_id,
+                    MAX(ws.workout_date) AS last_date,
+                    COUNT(DISTINCT wl.workout_id) AS total_sessions
+                FROM workout_logs wl
+                JOIN workout_sessions ws ON wl.workout_id = ws.hevy_workout_id
+                WHERE wl.exercise_id = :eid
+                GROUP BY wl.exercise_id
+            ),
+            recent_title AS (
+                SELECT wl.exercise_title
+                FROM workout_logs wl
+                WHERE wl.exercise_id = :eid
+                ORDER BY wl.date DESC
+                LIMIT 1
+            )
+            SELECT
+                eb.last_date,
+                eb.total_sessions,
+                rt.exercise_title AS recent_title,
+                ec.canonical_title,
+                em.pct_quad_dom,
+                em.pct_posterior,
+                em.pct_upper_push,
+                em.pct_upper_pull,
+                em.is_conditioning
+            FROM exercise_base eb
+            LEFT JOIN recent_title rt ON 1=1
+            LEFT JOIN exercise_canonical ec ON ec.exercise_id = :eid
+            LEFT JOIN exercise_mappings em
+                ON LOWER(rt.exercise_title) = LOWER(em.exercise_title)
+        """), {"eid": eid}).fetchone()
+
+        if not base_row:
+            raise HTTPException(status_code=404, detail="exercise_id not found")
+
+        last_date = base_row.last_date
+        days_ago = (today - date_type.fromisoformat(str(last_date))).days if last_date else None
+        title = base_row.canonical_title or base_row.recent_title
+        pattern = _derive_pattern(
+            base_row.pct_quad_dom, base_row.pct_posterior,
+            base_row.pct_upper_push, base_row.pct_upper_pull,
+            base_row.is_conditioning,
+        )
+
+        # Personal records (all-time)
+        pr_row = db.execute(text("""
+            SELECT
+                MAX(CASE
+                    WHEN reps >= 1 AND reps <= 10 AND weight_lbs > 0
+                    THEN weight_lbs / (1.0278 - 0.0278 * reps)
+                    ELSE NULL
+                END) AS estimated_1rm,
+                MAX(weight_lbs * reps) AS best_set_volume,
+                MAX(weight_lbs) AS max_weight
+            FROM workout_logs
+            WHERE exercise_id = :eid
+              AND weight_lbs IS NOT NULL
+              AND reps IS NOT NULL
+        """), {"eid": eid}).fetchone()
+
+        personal_records = {
+            "estimated_1rm": round(pr_row.estimated_1rm, 1) if pr_row.estimated_1rm else None,
+            "best_set_volume": round(pr_row.best_set_volume, 1) if pr_row.best_set_volume else None,
+            "max_weight": round(pr_row.max_weight, 1) if pr_row.max_weight else None,
+        }
+
+        # Top 3 best sets by volume (all-time)
+        top_sets_rows = db.execute(text("""
+            SELECT
+                ws.workout_date AS date,
+                wl.weight_lbs,
+                wl.reps,
+                (wl.weight_lbs * wl.reps) AS set_vol
+            FROM workout_logs wl
+            JOIN workout_sessions ws ON wl.workout_id = ws.hevy_workout_id
+            WHERE wl.exercise_id = :eid
+              AND wl.weight_lbs IS NOT NULL
+              AND wl.reps IS NOT NULL
+            ORDER BY set_vol DESC
+            LIMIT 3
+        """), {"eid": eid}).fetchall()
+
+        top_3_best_sets = [
+            {
+                "date": str(r.date),
+                "weight_lbs": round(float(r.weight_lbs), 1),
+                "reps": r.reps,
+            }
+            for r in top_sets_rows
+        ]
+
+        # Chart data — optionally windowed
+        chart_params: dict = {"eid": eid}
+        window_clause = ""
+        if window_days and window_days > 0:
+            since = today - timedelta(days=window_days)
+            window_clause = "AND ws.workout_date >= :since"
+            chart_params["since"] = str(since)
+
+        chart_rows = db.execute(text(f"""
+            SELECT
+                ws.workout_date AS date,
+                MAX(wl.weight_lbs) AS max_weight,
+                SUM(wl.weight_lbs * wl.reps) AS session_vol,
+                CAST(SUM(wl.weight_lbs * wl.reps) AS REAL) / COUNT(*) AS avg_vol_per_set
+            FROM workout_logs wl
+            JOIN workout_sessions ws ON wl.workout_id = ws.hevy_workout_id
+            WHERE wl.exercise_id = :eid
+              AND wl.weight_lbs IS NOT NULL
+              AND wl.reps IS NOT NULL
+              {window_clause}
+            GROUP BY ws.workout_date
+            ORDER BY ws.workout_date ASC
+        """), chart_params).fetchall()
+
+        charts = {
+            "max_weight_over_time": [
+                {"date": str(r.date), "value": round(float(r.max_weight), 1)}
+                for r in chart_rows
+            ],
+            "avg_volume_per_set": [
+                {"date": str(r.date), "value": round(float(r.avg_vol_per_set), 1)}
+                for r in chart_rows
+            ],
+            "session_volume": [
+                {"date": str(r.date), "value": round(float(r.session_vol), 1)}
+                for r in chart_rows
+            ],
+        }
+
+        return {
+            "exercise_id": eid,
+            "title": title,
+            "pattern": pattern,
+            "last_trained_days_ago": days_ago,
+            "total_sessions": base_row.total_sessions,
+            "personal_records": personal_records,
+            "top_3_best_sets": top_3_best_sets,
+            "charts": charts,
+        }
+
+    # ── List mode ──────────────────────────────────────────────────────────
+    list_rows = db.execute(text("""
+        WITH exercise_base AS (
+            SELECT
+                wl.exercise_id,
+                MAX(ws.workout_date) AS last_date,
+                COUNT(DISTINCT wl.workout_id) AS total_sessions
+            FROM workout_logs wl
+            JOIN workout_sessions ws ON wl.workout_id = ws.hevy_workout_id
+            WHERE wl.exercise_id IS NOT NULL
+            GROUP BY wl.exercise_id
+        ),
+        recent_title AS (
+            SELECT
+                wl.exercise_id,
+                wl.exercise_title,
+                ROW_NUMBER() OVER (
+                    PARTITION BY wl.exercise_id
+                    ORDER BY wl.date DESC
+                ) AS rn
+            FROM workout_logs wl
+            WHERE wl.exercise_id IS NOT NULL
+        )
+        SELECT
+            eb.exercise_id,
+            eb.last_date,
+            eb.total_sessions,
+            rt.exercise_title AS recent_title,
+            ec.canonical_title,
+            em.pct_quad_dom,
+            em.pct_posterior,
+            em.pct_upper_push,
+            em.pct_upper_pull,
+            em.is_conditioning
+        FROM exercise_base eb
+        LEFT JOIN recent_title rt
+            ON eb.exercise_id = rt.exercise_id AND rt.rn = 1
+        LEFT JOIN exercise_canonical ec ON ec.exercise_id = eb.exercise_id
+        LEFT JOIN exercise_mappings em
+            ON LOWER(rt.exercise_title) = LOWER(em.exercise_title)
+        ORDER BY eb.last_date DESC
+    """)).fetchall()
+
+    result = []
+    for r in list_rows:
+        last_date = r.last_date
+        days_ago = (today - date_type.fromisoformat(str(last_date))).days if last_date else None
+        is_active = days_ago is not None and days_ago <= 56
+        if filter == "active" and not is_active:
+            continue
+        pattern = _derive_pattern(
+            r.pct_quad_dom, r.pct_posterior,
+            r.pct_upper_push, r.pct_upper_pull,
+            r.is_conditioning,
+        )
+        result.append({
+            "exercise_id": r.exercise_id,
+            "title": r.canonical_title or r.recent_title,
+            "pattern": pattern,
+            "last_trained_days_ago": days_ago,
+            "total_sessions": r.total_sessions,
+            "is_active": is_active,
+        })
+
+    return {"exercises": result}
+
 
 @app.get("/api/exercises/mappings")
 def get_exercise_mappings(unreviewed: bool = False, db: Session = Depends(get_db)):

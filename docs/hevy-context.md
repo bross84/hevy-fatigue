@@ -22,6 +22,7 @@ Hevy Fatigue is a personal training load and fatigue monitoring dashboard. It sy
 | ORM | SQLAlchemy (Core + ORM) |
 | Database | SQLite at `/data/hevy_fatigue.db` inside Docker |
 | Frontend | Vanilla JS, single-file `index.html`, Chart.js, marked.js |
+| Main nav tabs (current) | Today · Trend · Workouts · Exercises (metrics browser) · Patterns (exercise mappings, canonical names, conflict resolution) · Settings · AI |
 | AI tab | OpenRouter, backend proxy, encrypted key storage |
 | Deployment | Docker + docker-compose |
 
@@ -59,11 +60,14 @@ Hevy Fatigue is a personal training load and fatigue monitoring dashboard. It sy
 
 ### Verified Column Names
 
-| Column | Correct | Wrong guess |
-|---|---|---|
-| Set weight | `workout_logs.weight_lbs` | `weight_kg` |
-| Workout name | `workout_sessions.workout_title` | `title` |
-| Session FK on logs | `workout_logs.workout_id` | `session_id` |
+| Table | Verified columns (PRAGMA) |
+|---|---|
+| `workout_logs` | `id`, `date`, `workout_title`, `exercise_title`, `set_number`, `workout_id`, `exercise_id`, `notes`, `weight_lbs`, `reps`, `rpe`, `rir`, `estimated_1rm`, `is_conditioning` |
+| `workout_sessions` | `id`, `hevy_workout_id`, `workout_date`, `workout_title`, `start_time`, `end_time`, `duration_minutes`, `modality`, `modality_confidence`, `verification_status`, `verified_at`, `srpe`, `created_at`, `updated_at`, `modality_note` |
+| `exercise_mappings` | `id`, `exercise_title`, `pct_quad_dom`, `pct_posterior`, `pct_upper_push`, `pct_upper_pull`, `source`, `is_reviewed`, `is_conditioning` (`pattern` string is not stored; label is derived at runtime from `pct_*` columns) |
+| `exercise_canonical` | `exercise_id`, `canonical_title`, `created_at`, `updated_at` |
+
+Join note: `workout_logs.workout_id` joins to `workout_sessions.hevy_workout_id` (not `workout_sessions.id`).
 
 ### DB Access
 
@@ -94,7 +98,7 @@ docker exec -it hevy-fatigue sqlite3 /data/hevy_fatigue.db
 
 ### Movement Patterns
 
-Five patterns: Knee, Hip, Push, Pull, Full Body. Each runs its own ATL/CTL/TSB via parallel EWMA.
+Four patterns: Knee, Hip, Push, Pull. There is no fifth pattern bucket. Each exercise in `exercise_mappings` carries percentage weights across four columns (`pct_quad_dom`, `pct_posterior`, `pct_upper_push`, `pct_upper_pull`). Session stress is distributed to pattern buckets proportionally based on these weights. For conditioning sessions with no mapped exercises, the system falls back to 25/25/25/25 equal distribution.
 
 Pattern stress dots use `_pattern_tsb_signal(tsb, ctl)` — not an ATL/CTL ratio. Do not substitute.
 
@@ -137,7 +141,7 @@ Do not touch without an explicit spec. Log any incidental observation under "Out
 
 | Bug | Location | Status |
 |---|---|---|
-| Pattern stress dots show "Fresh" while Per-Pattern Trend shows high load | `_pattern_load_signal()` in `main.py` | Fix spec written (TSB-based signal), not yet implemented |
+| Pattern stress dots | `_pattern_tsb_signal(tsb, ctl)` in `main.py` | Resolved — implemented and merged May 16 2026 |
 | Combined score formula label truncates at narrow viewport widths | `index.html` | Open |
 | Pattern stress card uses yellow for "Normal Stress" — should be green | `index.html` | Open |
 

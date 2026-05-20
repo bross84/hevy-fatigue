@@ -1,8 +1,56 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-19 (Training Load Performance Phases 1-3)
+Last updated: 2026-05-20 (Documentation Refresh — static/docs.html)
 
-## Latest Maintenance Update (2026-05-19, Training Load Performance Phases 1-3)
+## Latest Update (2026-05-20, Documentation Refresh)
+
+- Updated `static/docs.html` to reflect the current source values and UI structure for check-in scoring, stress pathways, movement pattern dots, fatigue display, readiness trend, AI assistant, and exercise metrics.
+- Added the new pending-state, exercise metrics, readiness trend, and AI assistant sections, plus the corresponding sidebar links.
+- Kept the changes scope-limited to documentation and validated the file for structural correctness.
+
+## Latest Update (2026-05-19, Exercise Metrics Feature — Phase 5: CSS)
+
+- Added a clearly marked `/* === EXERCISE METRICS TAB === */` stylesheet section in `static/index.html`.
+- Aligned the exercise metrics styles to the requested `exm-*` selectors: header, search, filter buttons, summary, list cards, detail view, back button, stats row, PR pills, window toggle, and chart grid.
+- Kept all color usage on theme variables / `color-mix(...)`; no hardcoded hex values were introduced in the new section.
+- Updated the detail-view markup/classes to use the new selector names so the CSS applies cleanly.
+
+## Latest Update (2026-05-19, Exercise Metrics Feature — Phase 4: Frontend Detail View)
+
+- Added CSS for `.exm-detail-header/title/last`, `.exm-detail-sesscount`, `.exm-stats-row`, `.exm-top-sets-section/table`, `.exm-pr-section/list/item/label/value`, `.exm-window-toggle/btn`, `.exm-chart-grid`, `.exm-chart-wrap/full/canvas-wrap`; with `@media (max-width:900px)` stack override.
+- Added `exmCharts` object and `_exmCurrentExerciseId` module-level state.
+- Added `_exmDestroyCharts()`, `_exmFmtVal()`, `_exmBuildLineChart()`, `_exmBuildBarChart()` helpers.
+- Replaced Phase 3 stub with full `loadExerciseDetail(exerciseId, windowDays=0)`: fetches API, builds header/stats/top-sets/PRs/window-toggle/chart canvases HTML, then renders three Chart.js instances (max weight line, avg vol/set line, session volume bar).
+- Added `_exmWindowClick(days)` to re-call detail with new window.
+- Updated back-button listener to call `_exmDestroyCharts()` before hiding detail.
+
+## Previous Update (2026-05-19, Exercise Metrics Feature — Phases 1, 2 & 3)
+
+- Fixed Phase 1 bug: `data-tab` on new nav buttons corrected from `tab-exercise-metrics` → `exercise-metrics` so `activateTab` resolves `id="tab-exercise-metrics"` correctly.
+- Added CSS block for `.exm-header`, `#exm-search`, `.exm-filter-btn`, `.exm-summary`, `#exm-list`, `.exm-card`, `.exm-card-left/.title/.meta`, `.exm-chevron`, `.exm-detail-view`, `#exm-back-btn`.
+- Hooked `activateTab` to call `loadExerciseMetrics('all')` when `exercise-metrics` tab activates.
+- Added `loadExerciseMetrics(filter)`: fetches `/api/exercises/metrics`, stores full list in `_exmAllExercises`, renders summary (`Total: N · Active: N`), then calls `filterAndRenderExerciseList()`.
+- Added `filterAndRenderExerciseList()`: client-side filter by active button state and case-insensitive search on title; re-renders `#exm-list`.
+- Days formatting: Today / Yesterday / X days ago / X weeks ago (rounded, threshold 14 days).
+- Pattern pills use existing `.chip-quad/posterior/push/pull/cond` CSS classes.
+- Filter button click handler toggles `.active` and calls `filterAndRenderExerciseList()`.
+- Search input fires `filterAndRenderExerciseList` on `input` event.
+- `loadExerciseDetail(exerciseId)` stub: hides list+header, shows detail panel. Back button reverses.
+
+## Previous Update (2026-05-19, Exercise Metrics Feature — Phases 1 & 2)
+
+- Phase 1 — Nav & scaffold (`static/index.html`):
+	- Renamed existing `data-tab="exercises"` button label from "Exercises" → "Patterns" in both desktop `.nav-tabs` and mobile `.mobile-drawer-nav`. `data-tab` and badge spans unchanged.
+	- Added new `<button class="nav-tab" data-tab="tab-exercise-metrics">Exercises</button>` before the Patterns button in both navs.
+	- Added `<section id="tab-exercise-metrics" class="tab-content">` shell with `.exm-header`, `#exm-list`, and `#exm-detail` inner structure.
+- Phase 2 — Backend endpoint (`main.py`):
+	- Added helper `_derive_pattern(...)` that converts exercise_mappings pct columns to a human-readable label (Knee/Hip/Push/Pull/Conditioning).
+	- Added `GET /api/exercises/metrics` endpoint supporting list mode and detail mode via optional `exercise_id` param.
+	- List mode: returns all exercises from workout_logs joined to workout_sessions, exercise_canonical, exercise_mappings; sorted by most recent session; supports `filter=active` (56-day window).
+	- Detail mode: returns personal records (Brzycki 1RM, best set volume, max weight), top 3 best sets, and three chart series (max_weight_over_time, avg_volume_per_set, session_volume) with optional `window_days` filter.
+	- All queries use raw SQLAlchemy `text(...)`. `py_compile` passed.
+
+## Previous Maintenance Update (2026-05-19, Training Load Performance Phases 1-3)
 
 - Implemented Phase 1 in `main.py` to eliminate duplicate stress-score recomputation during `GET /api/training-load`:
 	- `_compute_training_load(...)` now returns precomputed `stress_by_date` and `pattern_stress_by_date` maps.
