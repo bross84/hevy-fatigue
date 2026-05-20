@@ -249,6 +249,46 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
   .info-card p { color: var(--text-secondary); font-size: 14px; }
   .info-card p strong { color: var(--text-primary); }
 
+  /* ── Pattern grid ─────────────────────────────────────── */
+  .pattern-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin: 1.25rem 0;
+  }
+  .pattern-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+  }
+  .pattern-name { font-weight: 600; font-size: 14px; color: var(--text); margin-bottom: 0.25rem; }
+  .pattern-weight { font-size: 22px; font-weight: 700; margin-bottom: 0.25rem; }
+  .pattern-desc { font-size: 12.5px; color: var(--muted); }
+
+  /* ── Training state badges ────────────────────────────── */
+  .state-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .state-badge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: 130px;
+    text-align: center;
+  }
+  .state-desc {
+    font-size: 13.5px;
+    color: var(--text);
+    padding-top: 2px;
+  }
+
   /* ── Tables ─────────────────────────────────────── */
   .ref-table {
     width: 100%;
@@ -548,6 +588,7 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       <div class="nav-section-label">Overview</div>
       <a class="nav-link" href="#overview">Design philosophy</a>
       <a class="nav-link" href="#checkin">Check-in model</a>
+      <a class="nav-link" href="#pending-state">No check-in state</a>
     </div>
 
     <div class="nav-section">
@@ -559,6 +600,7 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       <a class="nav-link" href="#importer">Workout importer</a>
       <a class="nav-link" href="#patterns">Movement patterns</a>
       <a class="nav-link" href="#canonical">Canonical exercise names</a>
+      <a class="nav-link" href="#exercise-metrics">Exercise metrics</a>
     </div>
 
     <div class="nav-section">
@@ -566,11 +608,13 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       <a class="nav-link" href="#ewma">EWMA (ATL / CTL)</a>
       <a class="nav-link" href="#tsb">TSB & training state</a>
       <a class="nav-link" href="#fatigue-score">Fatigue score</a>
+      <a class="nav-link" href="#readiness-trend">7-day trend</a>
       <a class="nav-link" href="#joint">Joint health advisory</a>
     </div>
 
     <div class="nav-section">
       <div class="nav-section-label">Notes</div>
+      <a class="nav-link" href="#ai-tab">AI assistant</a>
       <a class="nav-link" href="#diagnostics">Diagnostics page</a>
       <a class="nav-link" href="#limitations">Limitations</a>
       <a class="nav-link" href="#references">References</a>
@@ -670,7 +714,7 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       </div>
 
       <h3>Daily fatigue score</h3>
-      <p>The six primary fields are combined into a single <strong>daily fatigue score (0–10)</strong> where 10 = maximally fatigued. Fields with 1–10 athlete ratings are first inverted, then averaged:</p>
+      <p>The six primary fields are combined into a single <strong>daily fatigue score (0–20)</strong> where 20 = maximally fatigued. Fields with 1–10 athlete ratings are first inverted, then averaged:</p>
 
       <div class="formula-block">
         <span class="comment">// Invert each rating: 10 → 0 (fresh), 1 → 9 (very fatigued)</span><br>
@@ -678,11 +722,35 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         <span class="comment">// Average the six inverted scores</span><br>
         <span class="var">daily_fatigue</span> <span class="op">=</span> mean(<span class="var">sleep_quality</span>, <span class="var">mood</span>, <span class="var">motivation</span>,<br>
         &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="var">energy</span>, <span class="var">soreness</span>, <span class="var">stress</span>) <span class="op">/</span> <span class="val">9</span><br><br>
-        <span class="comment">// Scale to 0–10</span><br>
-        <span class="var">daily_fatigue_score</span> <span class="op">=</span> <span class="var">daily_fatigue</span> <span class="op">*</span> <span class="val">10</span>
+        <span class="comment">// Scale to 0–20</span><br>
+        <span class="var">daily_fatigue_score</span> <span class="op">=</span> <span class="var">daily_fatigue</span> <span class="op">*</span> <span class="val">20</span>
       </div>
 
       <p>On days without a workout, the daily fatigue score is computed from check-in alone. On training days, training load is incorporated as a modifier (see §4).</p>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- 2b. No check-in pending state -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section class="doc-section" id="pending-state">
+      <div class="section-header">
+        <span class="section-num">02b</span>
+        <h2>No check-in — pending state</h2>
+      </div>
+
+      <p>When no check-in exists for the current day, the dashboard switches into a neutral pending state. The subjective score shows as <code>—</code>, the combined score shows as <code>value*</code> with a muted/unconfirmed treatment, and the recommendation copy changes from a fatigue-based recommendation to a check-in prompt.</p>
+
+      <ul class="doc-list">
+        <li>Pattern stress cards render with muted styling and empty dots.</li>
+        <li>The stress label shows <code>—</code> instead of a numeric score.</li>
+        <li>Training load signals still compute normally from workout history; only the subjective component is absent.</li>
+        <li>The footer note remains: <code>No check-in today — pattern signals based on training load only</code>.</li>
+      </ul>
+
+      <div class="info-card callout-blue">
+        <div class="callout-label">Design rationale</div>
+        <p>A neutral fallback of <strong>10.0</strong> is used for math only when the subjective score is null. It is never displayed as a real score, and it exists solely to keep the combined readiness math stable until the athlete completes today's check-in.</p>
+      </div>
     </section>
 
     <!-- ═══════════════════════════════════════════ -->
@@ -735,7 +803,7 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         <h2>Stress calculation pathways</h2>
       </div>
 
-      <p>Three distinct pathways calculate training stress depending on session modality. Each produces a session stress score (SSS) in arbitrary units (AU) that feeds into the EWMA model.</p>
+      <p>Four distinct pathways calculate training stress depending on session modality. Each produces a session stress score (SSS) in arbitrary units (AU) that feeds into the EWMA model.</p>
 
       <h3>Pathway A — Strength & hypertrophy</h3>
       <p>Stress is computed per set using RPE and tonnage (load × reps). Sets below RPE 6 contribute negligible stress and are filtered or heavily discounted.</p>
@@ -743,7 +811,7 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       <div class="formula-block">
         <span class="comment">// Per-set stress</span><br>
         <span class="var">set_stress</span> <span class="op">=</span> <span class="var">tonnage</span> <span class="op">×</span> <span class="var">RPE_factor</span><br><br>
-        <span class="comment">// tonnage = weight_kg × reps</span><br>
+        <span class="comment">// tonnage = weight_lbs × reps</span><br>
         <span class="comment">// RPE_factor = exponential curve peaking at RPE 10</span><br><br>
         <span class="comment">// Session stress = sum of all set stresses</span><br>
         <span class="var">session_stress</span> <span class="op">=</span> Σ <span class="var">set_stress</span>
@@ -751,25 +819,41 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
 
       <p>The RPE factor applies a non-linear curve so that the difference between RPE 8 and RPE 10 is much larger than between RPE 6 and RPE 8 — reflecting the disproportionate neural and systemic cost of near-maximal effort.</p>
 
+      <h3>Pathway A2 — HYP sRPE fallback</h3>
+      <p>When a verified HYP session has duration and sRPE logged but at least half of its sets are missing RPE values, the session falls back to a session-level sRPE proxy. This covers circuit-style hypertrophy work and pump sessions where per-set RPE is often incomplete.</p>
+
+      <div class="formula-block">
+        <span class="comment">// Trigger: ≥50% of sets in the HYP session lack RPE values</span><br>
+        <span class="var">fallback_load</span> <span class="op">=</span> (<span class="var">sRPE</span> <span class="op">×</span> <span class="var">duration_minutes</span>) <span class="op">/</span> <span class="var">HYP_SRPE_SCALE</span><br><br>
+        <span class="comment">// HYP_SRPE_SCALE = 29.0 in app settings defaults</span><br>
+        <span class="var">session_stress</span> <span class="op">=</span> <span class="var">fallback_load</span>
+      </div>
+
+      <div class="info-card callout-blue">
+        <div class="callout-label">Why this exists</div>
+        <p>Hypertrophy sessions often blend circuits, short rests, and pump work that do not map cleanly to per-set RPE logging. Session-level sRPE gives the model a reasonable proxy so those workouts still contribute to stress without requiring perfect set-by-set input.</p>
+      </div>
+
       <h3>Pathway B — Conditioning</h3>
       <p>Uses Foster's sRPE method, then normalizes to a target AU range to keep conditioning sessions commensurable with strength sessions on the same scale:</p>
 
       <div class="formula-block">
         <span class="var">raw_load</span> <span class="op">=</span> <span class="var">sRPE</span> <span class="op">×</span> <span class="var">duration_minutes</span><br><br>
-        <span class="comment">// Normalize with a scaling factor k</span><br>
-        <span class="var">session_stress</span> <span class="op">=</span> <span class="var">raw_load</span> <span class="op">×</span> <span class="var">k_conditioning</span>
+        <span class="comment">// Normalize with conditioning_scale (default 29.0)</span><br>
+        <span class="var">session_stress</span> <span class="op">=</span> <span class="var">raw_load</span> <span class="op">/</span> <span class="var">conditioning_scale</span>
       </div>
 
       <div class="info-card callout-amber">
         <div class="callout-label">Calibration note</div>
-        <p>The conditioning scaling factor <strong>k</strong> is currently set conservatively and will be refined against real session data. The goal is that a hard 45-minute conditioning session at sRPE 8 produces a session stress score roughly comparable to a demanding strength session — not identical, but within the same order of magnitude so neither modality dominates CTL unfairly.</p>
+        <p>The conditioning scaling factor is currently set conservatively and will be refined against real session data. The goal is that a hard 45-minute conditioning session at sRPE 8 produces a session stress score roughly comparable to a demanding strength session — not identical, but within the same order of magnitude so neither modality dominates CTL unfairly.</p>
       </div>
 
       <h3>Pathway C — Cardio</h3>
-      <p>Identical formula to conditioning (sRPE × duration × scaling factor), but with no movement pattern distribution applied. Cardio sessions contribute to global ATL/CTL but not to individual pattern fatigue buckets.</p>
+      <p>Uses the same sRPE × duration normalization as conditioning, but applies a flat 30% central / 70% peripheral stress split and contributes zero stress to any pattern bucket. Cardio affects global ATL/CTL only.</p>
 
       <div class="formula-block">
-        <span class="var">session_stress</span> <span class="op">=</span> <span class="var">sRPE</span> <span class="op">×</span> <span class="var">duration_minutes</span> <span class="op">×</span> <span class="var">k_cardio</span>
+        <span class="comment">// Cardio reuses the same conditioning_scale normalization</span><br>
+        <span class="var">session_stress</span> <span class="op">=</span> (<span class="var">sRPE</span> <span class="op">×</span> <span class="var">duration_minutes</span>) <span class="op">/</span> <span class="var">conditioning_scale</span>
       </div>
     </section>
 
@@ -912,7 +996,7 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         <h2>Movement pattern buckets</h2>
       </div>
 
-      <p>To track fatigue at a finer granularity than "total load," session stress is distributed across five movement pattern buckets. This allows the system to detect, for example, that posterior chain fatigue is accumulating even when overall training volume appears moderate.</p>
+      <p>To track fatigue at a finer granularity than "total load," session stress is distributed across four movement pattern buckets. This allows the system to detect, for example, that posterior chain fatigue is accumulating even when overall training volume appears moderate.</p>
 
       <div class="pattern-grid">
         <div class="pattern-card">
@@ -935,20 +1019,52 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
           <div class="pattern-weight" style="color:#3fb950">20%</div>
           <div class="pattern-desc">Row, pull-up, curl patterns</div>
         </div>
-        <div class="pattern-card">
-          <div class="pattern-name">Full body</div>
-          <div class="pattern-weight" style="color:#bc8cff">—</div>
-          <div class="pattern-desc">Olympic lifts, carries, complex movements</div>
-        </div>
       </div>
 
-      <p>The 30/30/20/20 default distribution reflects a typical strength training emphasis on compound lower-body movements (squat + hinge). The actual distribution within a given session is computed from exercise classification — these percentages are a fallback when classification confidence is low.</p>
+      <p>Each exercise in exercise_mappings carries percentage weights across the four pattern columns (pct_quad_dom, pct_posterior, pct_upper_push, pct_upper_pull). Session stress is apportioned to each pattern bucket proportionally based on these weights. For conditioning sessions where no exercise mappings exist, the system falls back to an equal 25/25/25/25 distribution across all four buckets.</p>
 
       <p>Each pattern bucket runs its own parallel EWMA, producing per-pattern ATL, CTL, and TSB. This powers pattern-level trend visualization on the dashboard.</p>
 
-      <div class="info-card callout-purple">
-        <div class="callout-label">Full body pattern</div>
-        <p>Exercises classified as "full body" (Olympic lifts, farmers carries, thrusters, etc.) distribute their stress across all four primary buckets proportionally rather than being isolated to one bucket. The "full body" designation is a classification flag, not a fifth independent accumulator.</p>
+      <h3>Pattern stress dots</h3>
+      <p>Pattern stress dots use <code>_pattern_tsb_signal(tsb, ctl)</code> to turn per-pattern TSB into a normalized stress signal. The implementation is: <code>clamp(-tsb / ctl, 0.0, 1.0)</code>, rounded to 3 decimal places, and it returns <code>0.0</code> when CTL &le; 0.</p>
+
+      <div class="formula-block">
+        <span class="comment">// Per-pattern stress signal</span><br>
+        <span class="var">signal</span> <span class="op">=</span> clamp(<span class="op">-</span><span class="var">tsb</span> <span class="op">/</span> <span class="var">ctl</span>, <span class="val">0.0</span>, <span class="val">1.0</span>)<br>
+        <span class="comment">// Return 0.0 when CTL ≤ 0; round to 3 decimals</span>
+      </div>
+
+      <table class="ref-table">
+        <thead><tr><th>Dots</th><th>Label</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Fresh</td><td>Fresh / underloaded</td></tr>
+          <tr><td>2</td><td>Min. Stress</td><td>Light strain, mostly green</td></tr>
+          <tr><td>3</td><td>Normal Stress</td><td>Expected training load</td></tr>
+          <tr><td>4</td><td>Moderate Stress</td><td>Approaching caution territory</td></tr>
+          <tr><td>5</td><td>High Stress</td><td>High fatigue / red flag</td></tr>
+        </tbody>
+      </table>
+
+      <div class="info-card callout-amber">
+        <div class="callout-label">Dot colors</div>
+        <p>One-dot freshness uses the accent color. Two- and three-dot states use the success/green family. Four-dot stress uses the warn/amber color. Five-dot stress uses the danger/red color.</p>
+      </div>
+
+      <h3>How pattern labels are derived</h3>
+      <p>Pattern labels are not stored as a separate string in <code>exercise_mappings</code>. The app derives them from the pct columns using the movement split stored in the mapping table:</p>
+
+      <table class="ref-table">
+        <thead><tr><th>Condition</th><th>Label</th></tr></thead>
+        <tbody>
+          <tr><td><code>is_conditioning</code> = true</td><td>Conditioning</td></tr>
+          <tr><td>Otherwise, argmax across <code>pct_quad_dom</code>, <code>pct_posterior</code>, <code>pct_upper_push</code>, <code>pct_upper_pull</code></td><td>Knee / Hip / Push / Pull</td></tr>
+          <tr><td>All pct values are zero</td><td>Unassigned</td></tr>
+        </tbody>
+      </table>
+
+      <div class="info-card callout-blue">
+        <div class="callout-label">Tie-break order</div>
+        <p>If two or more pct columns are tied for the maximum value, the app uses insertion order to break the tie: Knee → Hip → Push → Pull.</p>
       </div>
     </section>
 
@@ -975,7 +1091,7 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
 
       <h3>How to set a canonical name</h3>
       <ol class="doc-list">
-        <li>Go to <strong>Exercise Movement Mappings</strong></li>
+        <li>Go to <strong>Patterns</strong></li>
         <li>Find the exercise and click <strong>Edit</strong></li>
         <li>Enter your preferred name in the <strong>Canonical Name</strong> field</li>
         <li>Save — Hevy Fatigue immediately updates all historical workout data for that exercise to the canonical name</li>
@@ -993,6 +1109,43 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
           <li>Canonical names only work for exercises that have been synced at least once — Hevy Fatigue needs the Hevy exercise ID to create the alias.</li>
           <li>Exercises with a <code>null</code> exercise ID from the Hevy API cannot be canonically named. These are rare but will be flagged in the exercise list.</li>
         </ul>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- 6c. Exercise metrics -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section class="doc-section" id="exercise-metrics">
+      <div class="section-header">
+        <span class="section-num">06c</span>
+        <h2>Exercise metrics</h2>
+      </div>
+
+      <p>The new <strong>Exercises</strong> tab is a per-exercise performance browser. The older pattern-assignment tab is now labeled <strong>Patterns</strong> in the main app nav; the metrics browser lives in its own tab so the two workflows stay separate.</p>
+
+      <ul class="doc-list">
+        <li>Exercises are sorted by recency, with the most recently trained exercise first.</li>
+        <li>The list supports <strong>All</strong> and <strong>Active</strong> filters, where active means trained within the last 8 weeks.</li>
+        <li>Name search is a case-insensitive substring match against the exercise title.</li>
+        <li>Each exercise card shows the name, derived pattern label, and last trained age in days / weeks.</li>
+      </ul>
+
+      <p>Clicking a card opens a detail view with all-time personal records, the top 3 best sets, total session count, and chart history. The charts offer 30d / 60d / 90d / 1y / All time toggles, and the PR area remains all-time regardless of the selected chart window.</p>
+
+      <table class="ref-table">
+        <thead><tr><th>Metric</th><th>Definition</th></tr></thead>
+        <tbody>
+          <tr><td>Estimated 1RM</td><td>Brzycki formula: weight / (1.0278 - 0.0278 × reps), valid for reps 1–10</td></tr>
+          <tr><td>Best Set Volume</td><td>weight × reps</td></tr>
+          <tr><td>Max Weight</td><td>Maximum set load</td></tr>
+          <tr><td>Top 3 Best Sets</td><td>Best sets by set volume, shown with date, weight, and reps</td></tr>
+          <tr><td>Charts</td><td>Max Weight Over Time, Avg Volume per Set, Session Volume</td></tr>
+        </tbody>
+      </table>
+
+      <div class="info-card callout-blue">
+        <div class="callout-label">Data source</div>
+        <p>The browser uses <code>GET /api/exercises/metrics</code> for the list and <code>GET /api/exercises/metrics?exercise_id=&lt;id&gt;</code> for the detail view. Pattern labels follow the same derivation rules described in §6.</p>
       </div>
     </section>
 
@@ -1110,18 +1263,49 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         <h2>Fatigue score display</h2>
       </div>
 
-      <p>The fatigue score is displayed in the format <strong>X / 10</strong>, where 10 is maximum fatigue. This reinforces the scale's meaning at a glance — a score of 7.2 reads as "7.2 out of 10" rather than an opaque raw number.</p>
+      <p>The fatigue score is displayed in the format <strong>X / 20</strong>, where 20 is maximum fatigue. This reinforces the scale's meaning at a glance — a score of 14.4 reads as "14.4 out of 20" rather than an opaque raw number.</p>
 
       <p>On training days, the raw check-in fatigue score is adjusted by a training load modifier before display:</p>
 
       <div class="formula-block">
         <span class="comment">// Load modifier: how hard was today's session relative to baseline?</span><br>
-        <span class="var">load_modifier</span> <span class="op">=</span> f(<span class="var">session_stress</span>, <span class="var">ATL_baseline</span>)<br><br>
-        <span class="comment">// Final displayed score (clamped 0–10)</span><br>
-        <span class="var">adjusted_fatigue</span> <span class="op">=</span> clamp(<span class="var">check_in_score</span> <span class="op">+</span> <span class="var">load_modifier</span>, <span class="val">0</span>, <span class="val">10</span>)
+        <span class="var">load_modifier</span> <span class="op">=</span> clamp(<span class="var">relative_delta</span> <span class="op">×</span> <span class="val">1.2</span>, <span class="val">-1.5</span>, <span class="val">1.5</span>)<br><br>
+        <span class="comment">// Bounds in main.py: −1.5 to +1.5 points</span><br>
+        <span class="comment">// Final displayed score (clamped 0–20)</span><br>
+        <span class="var">adjusted_fatigue</span> <span class="op">=</span> clamp(<span class="var">check_in_score</span> <span class="op">+</span> <span class="var">load_modifier</span>, <span class="val">0</span>, <span class="val">20</span>)
       </div>
 
       <p>The modifier is intentionally small — it nudges the check-in-derived score upward after an unusually hard session, but never overrides it. The subjective score remains dominant.</p>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- 08c. 7-day Readiness Trend -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section class="doc-section" id="readiness-trend">
+      <div class="section-header">
+        <span class="section-num">08c</span>
+        <h2>7-day Readiness Trend</h2>
+      </div>
+
+      <p>The Today tab includes a Chart.js line chart showing the <strong>combined readiness score</strong> for the past 7 days. The x-axis uses short weekday labels and the y-axis runs from 0–20.</p>
+
+      <p>Days without a check-in render as null gaps, so the line breaks instead of connecting across missing data.</p>
+
+      <table class="ref-table">
+        <thead><tr><th>Band</th><th>Range</th><th>Color</th></tr></thead>
+        <tbody>
+          <tr><td>Fresh / low load</td><td>0–6</td><td>Dark teal band</td></tr>
+          <tr><td>Light readiness band</td><td>6–8</td><td>Light cyan band</td></tr>
+          <tr><td>Productive range</td><td>8–13</td><td>Green band</td></tr>
+          <tr><td>Transition / caution</td><td>13–14</td><td>Amber band</td></tr>
+          <tr><td>High fatigue</td><td>14–20</td><td>Red band</td></tr>
+        </tbody>
+      </table>
+
+      <div class="info-card callout-blue">
+        <div class="callout-label">Data source</div>
+        <p>The chart is populated from <code>GET /api/readiness/combined-history</code> and uses the same 80/20 subjective/objective combined score that powers the Today tab summary.</p>
+      </div>
     </section>
 
     <!-- ═══════════════════════════════════════════ -->
@@ -1191,6 +1375,32 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       <div class="info-card callout-blue">
         <div class="callout-label">Practical note</div>
         <p>Diagnostics is observational by design: it helps you verify and trace what happened, while corrections are made through session verification, title updates, and reclassification controls in the main app.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- 10b. AI assistant -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section class="doc-section" id="ai-tab">
+      <div class="section-header">
+        <span class="section-num">10b</span>
+        <h2>AI assistant</h2>
+      </div>
+
+      <p>The AI tab provides a chat interface for training-context questions. It is a backend-proxied OpenRouter client: the user's API key is stored encrypted server-side and is never exposed to the browser.</p>
+
+      <p>The model picker offers preset OpenRouter models plus a custom model input. The current selection persists across sessions via <code>localStorage</code> under <code>ai_preferred_model</code>.</p>
+
+      <p>Assistant responses are rendered with <code>marked.js</code>, so markdown formatting is preserved in the chat output.</p>
+
+      <div class="info-card callout-blue">
+        <div class="callout-label">System context</div>
+        <p>The system prompt is built from the current fatigue state, ATL / CTL / TSB, the latest check-in scores, and the last 3 sessions with per-exercise volume detail. The assistant is context-aware but not prescriptive — it informs, it does not instruct.</p>
+      </div>
+
+      <div class="info-card callout-amber">
+        <div class="callout-label">Requirement</div>
+        <p>The AI assistant requires an OpenRouter API key configured in Settings before it can send messages.</p>
       </div>
     </section>
 

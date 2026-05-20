@@ -860,131 +860,318 @@ tbody tr:hover td { background: var(--row-hover); }
 .badge-unreviewed { background: color-mix(in srgb, var(--danger)  12%, transparent); color: var(--danger); }
 .badge-conflict   { background: var(--danger); color: #fff; border-radius: 10px; font-size: 10px; padding: 1px 5px; }
 
-/* ── Modal ───────────────────────────── */
-.modal-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: var(--modal-scrim);
-  z-index: 200;
+/* ── Exercise Metrics tab ─────────────── */
+.exm-header {
+  padding: 16px 20px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   align-items: center;
-  justify-content: center;
+  border-bottom: 1px solid var(--border);
 }
-.modal-overlay.open { display: flex; }
-.modal {
+#exm-search {
+  flex: 1 1 220px;
+  min-width: 160px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 14px;
+  padding: 6px 10px;
+}
+#exm-search:focus { outline: none; border-color: var(--accent); }
+.exm-filters { display: flex; gap: 6px; }
+.exm-filter-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.exm-filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+.exm-filter-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-sub); }
+.exm-summary { font-size: 12px; color: var(--muted); white-space: nowrap; }
+#exm-list { padding: 10px 16px; display: flex; flex-direction: column; gap: 6px; }
+.exm-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 22px;
-  width: 440px;
-  max-width: 95vw;
-  max-height: 90vh;
-  overflow-y: auto;
-  transition: background .2s;
-}
-.modal-title { font-weight: 600; font-size: 15px; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.modal-subtitle { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
-.modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
-.pct-feedback { font-size: 12px; margin-top: 8px; min-height: 18px; }
-.pct-ok   { color: var(--success); }
-.pct-warn { color: var(--warn); }
-.pct-err  { color: var(--danger); }
-
-/* preset buttons */
-.presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
-.preset-btn {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--muted);
-  padding: 4px 10px;
-  border-radius: 5px;
+  border-radius: 8px;
+  padding: 12px 14px;
   cursor: pointer;
-  font-size: 11px;
-  font-weight: 500;
-  transition: all .15s;
-}
-.preset-btn:hover { border-color: var(--accent); color: var(--text); }
-
-/* split bar */
-.split-bar {
-  display: flex;
-  height: 6px;
-  border-radius: 3px;
-  overflow: hidden;
-  margin-top: 10px;
-  background: var(--border);
-}
-.split-seg  { transition: width .2s; }
-.split-quad { background: var(--quad); }
-.split-post { background: var(--posterior); }
-.split-push { background: var(--push); }
-.split-pull { background: var(--pull); }
-
-/* slider + number input */
-.slider-num-row { display: flex; align-items: center; gap: 8px; }
-.slider-num-row input[type="range"] { flex: 1; }
-.pct-num-input {
-  width: 58px !important;
-  text-align: center;
-  padding: 4px 8px !important;
-  font-size: 16px !important;
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
-.pct-num-input::-webkit-inner-spin-button,
-.pct-num-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-.pct-sym { color: var(--muted); font-size: 12px; }
-
-/* pattern examples */
-.pattern-examples {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 10px 12px;
-  margin-bottom: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-.ex-row { display: flex; align-items: baseline; gap: 6px; font-size: 12px; }
-.ex-row strong { min-width: 40px; }
-.ex-list { color: var(--muted); }
-
-/* ── Workouts tab ─────────────────────── */
-.workout-stress-val { font-weight: 700; font-size: 15px; }
-.stress-note { font-size: 11px; color: var(--muted); margin-top: 14px; line-height: 1.6; }
-
-.verify-list {
-  display: flex;
-  flex-direction: column;
+  transition: border-color .15s;
   gap: 10px;
 }
-.verify-item {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
+.exm-card:hover { border-color: var(--accent); }
+.exm-card-left { flex: 1; min-width: 0; }
+.exm-card-title { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.exm-card-meta { font-size: 12px; color: var(--muted); margin-top: 3px; display: flex; align-items: center; gap: 6px; }
+.exm-card-chevron { color: var(--muted); font-size: 14px; flex-shrink: 0; }
+.exm-detail-view { padding: 14px 20px; }
+.exm-back-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 13px;
+  padding: 0;
+  cursor: pointer;
+  margin-bottom: 14px;
 }
-.verify-head {
+.exm-back-btn:hover { text-decoration: underline; }
+.exm-detail-header {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
   align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.exm-detail-title { font-size: 17px; font-weight: 700; }
+.exm-detail-last  { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.exm-detail-sesscount { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+.exm-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.exm-top-sets-section, .exm-pr-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.exm-top-sets-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 8px;
+}
+.exm-top-sets-table th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 500;
+  padding: 0 6px 5px 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.exm-top-sets-table td { padding: 3px 6px 3px 0; }
+.exm-pr-list { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+.exm-pr-item { display: flex; justify-content: space-between; font-size: 13px; }
+.exm-pr-label { color: var(--muted); font-size: 12px; }
+.exm-pr-pill {
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.exm-window-toggle {
+  display: inline-flex;
+  gap: 2px;
+  background: var(--bg);
+  border-radius: 7px;
+  padding: 3px;
+  margin-bottom: 14px;
   flex-wrap: wrap;
 }
-.verify-title {
-  font-weight: 600;
-  font-size: 13px;
-}
-.verify-meta {
-  font-size: 11px;
+.exm-window-btn {
+  background: none;
+  border: none;
   color: var(--muted);
+  font-size: 12px;
+  padding: 4px 11px;
+  cursor: pointer;
+  border-radius: 5px;
+  font-weight: 500;
+  transition: all .15s;
+  white-space: nowrap;
 }
-.verify-fields {
+.exm-window-btn:hover { color: var(--text); }
+.exm-window-btn.active { background: var(--card); color: var(--accent); box-shadow: 0 1px 3px var(--btn-shadow); }
+.exm-chart-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 10px;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.exm-chart-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.exm-chart-full { margin-bottom: 20px; }
+.exm-chart-canvas-wrap { position: relative; height: 180px; margin-top: 8px; }
+@media (max-width: 900px) {
+  .exm-stats-row, .exm-chart-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Modal ───────────────────────────── */
+.modal-overlay {
+
+/* === EXERCISE METRICS TAB === */
+.exm-header {
+  position: sticky;
+  top: 54px;
+  z-index: 10;
+  background: var(--bg);
+  padding: 14px 20px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+.exm-filters {
+  display: inline-flex;
+  gap: 2px;
+  background: var(--bg);
+  border-radius: 7px;
+  padding: 3px;
+}
+.exm-filter-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 4px 11px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.exm-filter-btn:hover { color: var(--text); }
+.exm-filter-btn.active { background: var(--card); color: var(--accent); box-shadow: 0 1px 3px var(--btn-shadow); }
+.exm-summary { font-size: 12px; color: var(--muted); white-space: nowrap; margin-left: auto; }
+#exm-list { padding: 10px 16px 16px; display: flex; flex-direction: column; gap: 6px; }
+.exm-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color .15s, transform .15s, background-color .15s;
+  gap: 10px;
+}
+.exm-card:hover { border-color: var(--accent); background: color-mix(in srgb, var(--card) 88%, var(--accent) 12%); }
+.exm-card-left { flex: 1; min-width: 0; }
+.exm-card-title { font-weight: 600; font-size: 14px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.exm-card-meta { font-size: 12px; color: var(--muted); margin-top: 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.exm-card-chevron { color: var(--muted); font-size: 14px; flex-shrink: 0; }
+.exm-detail-view { width: 100%; padding: 14px 20px 20px; }
+.exm-back-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 13px;
+  padding: 0;
+  cursor: pointer;
+  margin-bottom: 14px;
+}
+.exm-back-btn:hover { text-decoration: underline; }
+.exm-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.exm-detail-title { font-size: 17px; font-weight: 700; color: var(--text); }
+.exm-detail-last  { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.exm-detail-sesscount { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+.exm-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.exm-top-sets-section, .exm-pr-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.exm-top-sets-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 8px;
+}
+.exm-top-sets-table th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 500;
+  padding: 0 6px 5px 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.exm-top-sets-table td { padding: 3px 6px 3px 0; }
+.exm-pr-list { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+.exm-pr-item { display: flex; justify-content: space-between; font-size: 13px; gap: 10px; }
+.exm-pr-label { color: var(--muted); font-size: 12px; }
+.exm-pr-pill {
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.exm-window-toggle {
+  display: inline-flex;
+  gap: 2px;
+  background: var(--bg);
+  border-radius: 7px;
+  padding: 3px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.exm-window-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 4px 11px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.exm-window-btn:hover { color: var(--text); }
+.exm-window-btn.active { background: var(--card); color: var(--accent); box-shadow: 0 1px 3px var(--btn-shadow); }
+.exm-chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.exm-chart-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.exm-chart-full { margin-bottom: 20px; }
+.exm-chart-canvas-wrap { position: relative; height: 180px; margin-top: 8px; }
+@media (max-width: 900px) {
+  .exm-stats-row, .exm-chart-grid { grid-template-columns: 1fr; }
 }
 .verify-field label {
   display: block;
@@ -2227,7 +2414,8 @@ body.ai-open main {
     <button class="nav-tab" data-tab="dashboard">Today</button>
     <button class="nav-tab" data-tab="trend">Trend</button>
     <button class="nav-tab" data-tab="workouts">Workouts</button>
-    <button class="nav-tab" data-tab="exercises">Exercises<span id="ex-conflict-badge" class="badge badge-conflict" style="display:none;margin-left:5px;"></span></button>
+    <button class="nav-tab" data-tab="exercise-metrics">Exercises</button>
+    <button class="nav-tab" data-tab="exercises">Patterns<span id="ex-conflict-badge" class="badge badge-conflict" style="display:none;margin-left:5px;"></span></button>
     <button class="nav-tab" data-tab="ai">AI</button>
     <button class="nav-tab" data-tab="log">Log</button>
     <button class="nav-tab" data-tab="settings">Settings</button>
@@ -2248,7 +2436,8 @@ body.ai-open main {
     <button class="nav-tab" data-tab="dashboard">Today</button>
     <button class="nav-tab" data-tab="trend">Trend</button>
     <button class="nav-tab" data-tab="workouts">Workouts</button>
-    <button class="nav-tab" data-tab="exercises">Exercises<span id="ex-conflict-badge-mobile" class="badge" style="display:none;margin-left:5px;"></span></button>
+    <button class="nav-tab" data-tab="exercise-metrics">Exercises</button>
+    <button class="nav-tab" data-tab="exercises">Patterns<span id="ex-conflict-badge-mobile" class="badge" style="display:none;margin-left:5px;"></span></button>
     <button class="nav-tab" data-tab="ai">AI</button>
     <button class="nav-tab" data-tab="log">Log</button>
     <button class="nav-tab" data-tab="settings">Settings</button>
@@ -2509,6 +2698,25 @@ body.ai-open main {
 </section>
 
 
+<!-- ══════════════ EXERCISE METRICS TAB ══════════════ -->
+<section id="tab-exercise-metrics" class="tab-content">
+  <div class="exm-header">
+    <input type="text" id="exm-search" placeholder="Search exercises by name…" autocomplete="off">
+    <div class="exm-filters">
+      <button class="exm-filter-btn active" data-filter="all">All</button>
+      <button class="exm-filter-btn" data-filter="active">Active (8 wks)</button>
+    </div>
+    <div class="exm-summary" id="exm-summary"><!-- populated by JS --></div>
+  </div>
+  <div id="exm-list"><!-- exercise cards populated by JS --></div>
+
+  <!-- Detail view (hidden by default) -->
+  <div id="exm-detail" class="exm-detail-view" style="display:none;">
+    <button id="exm-back-btn" class="exm-back-btn">← Back to Exercises</button>
+    <div id="exm-detail-content"><!-- populated by JS --></div>
+  </div>
+</section>
+
 <!-- ══════════════ EXERCISES TAB ══════════════ -->
 <section id="tab-exercises" class="tab-content">
   <div class="card" id="ex-conflict-card">
@@ -2741,6 +2949,7 @@ body.ai-open main {
       <button class="preset-btn" onclick="setPreset(0,100,0,0)">100% Hip</button>
       <button class="preset-btn" onclick="setPreset(0,0,100,0)">100% Push</button>
       <button class="preset-btn" onclick="setPreset(0,0,0,100)">100% Pull</button>
+      <button class="preset-btn" onclick="setPreset(25,25,25,25)">Full Body</button>
       <button class="preset-btn" onclick="setPreset(20,80,0,0)">20/80 Quad/Hip</button>
       <button class="preset-btn" onclick="setPreset(30,70,0,0)">30/70 Quad/Hip</button>
       <button class="preset-btn" onclick="setPreset(50,50,0,0)">50/50 Quad/Hip</button>
@@ -3048,6 +3257,7 @@ function activateTab(tabName) {
   if (tabName === 'dashboard') { loadTrainingLoadCard(); checkTodayReadiness(); }
   if (tabName === 'trend')                               activateTrendTab();
   if (tabName === 'exercises')                           { loadExerciseConflicts(); if (exercises.length === 0) loadExercises(); }
+  if (tabName === 'exercise-metrics')                    loadExerciseMetrics('all');
   if (tabName === 'workouts'  && !workoutsLoaded)        loadWorkouts();
   if (tabName === 'ai')                                   loadAISettings().then(() => loadAIContext());
   if (tabName === 'log'       && !logLoaded)             loadLog();
@@ -6429,6 +6639,338 @@ async function saveMapping() {
 
   btn.disabled = false; btn.textContent = 'Save & Mark Reviewed';
 }
+
+// ═══ Exercise Metrics Tab ════════════════════════════════════════════════
+
+let _exmAllExercises = [];   // full list from last fetch
+
+function _exmDaysLabel(days) {
+  if (days === null || days === undefined) return 'never';
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days <= 14) return `${days} days ago`;
+  return `${Math.round(days / 7)} weeks ago`;
+}
+
+const _EXM_PATTERN_CHIP = {
+  'Knee':          'chip-quad',
+  'Hip':           'chip-posterior',
+  'Push':          'chip-push',
+  'Pull':          'chip-pull',
+  'Conditioning':  'chip-cond',
+};
+
+function _exmPatternPill(pattern) {
+  if (!pattern) return '';
+  const cls = _EXM_PATTERN_CHIP[pattern] || 'chip-unassigned';
+  return `<span class="chip ${cls}">${pattern}</span>`;
+}
+
+function filterAndRenderExerciseList() {
+  const activeBtn = document.querySelector('.exm-filter-btn.active');
+  const filterVal = activeBtn ? activeBtn.dataset.filter : 'all';
+  const search = (document.getElementById('exm-search')?.value || '').toLowerCase().trim();
+
+  let list = _exmAllExercises;
+  if (filterVal === 'active') list = list.filter(e => e.is_active);
+  if (search) list = list.filter(e => (e.title || '').toLowerCase().includes(search));
+
+  const container = document.getElementById('exm-list');
+  if (!container) return;
+
+  if (list.length === 0) {
+    container.innerHTML = '<div style="padding:20px;color:var(--muted);text-align:center;">No exercises match.</div>';
+    return;
+  }
+
+  container.innerHTML = list.map(ex => `
+    <div class="exm-card" onclick="loadExerciseDetail(${JSON.stringify(ex.exercise_id)})">
+      <div class="exm-card-left">
+        <div class="exm-card-title">${ex.title || ex.exercise_id}</div>
+        <div class="exm-card-meta">
+          <span>${_exmDaysLabel(ex.last_trained_days_ago)}</span>
+          ${ex.pattern ? `<span>·</span>${_exmPatternPill(ex.pattern)}` : ''}
+        </div>
+      </div>
+      <span class="exm-card-chevron">►</span>
+    </div>
+  `).join('');
+}
+
+async function loadExerciseMetrics(filter) {
+  const list = document.getElementById('exm-list');
+  const summary = document.getElementById('exm-summary');
+  if (list) list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);"><span class="spinner"></span> Loading…</div>';
+  if (summary) summary.textContent = '';
+
+  // Reset filter buttons to match the requested filter
+  document.querySelectorAll('.exm-filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === filter);
+  });
+
+  try {
+    const res = await fetch(`/api/exercises/metrics?filter=${encodeURIComponent(filter)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    _exmAllExercises = data.exercises || [];
+
+    const total = _exmAllExercises.length;
+    const active = _exmAllExercises.filter(e => e.is_active).length;
+    if (summary) summary.textContent = `Total: ${total} · Active: ${active}`;
+
+    filterAndRenderExerciseList();
+  } catch (e) {
+    if (list) list.innerHTML = `<div style="padding:20px;color:var(--danger);">Failed to load exercises: ${e.message}</div>`;
+  }
+}
+
+const exmCharts = {};
+let _exmCurrentExerciseId = null;
+
+function _exmDestroyCharts() {
+  Object.keys(exmCharts).forEach(k => { exmCharts[k]?.destroy(); delete exmCharts[k]; });
+}
+
+function _exmFmtVal(v) {
+  if (v === null || v === undefined) return '—';
+  return Number(v).toLocaleString(undefined, { maximumFractionDigits: 1 });
+}
+
+function _exmBuildLineChart(canvasId, points, color, yLabel) {
+  const c = themeColors();
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  exmCharts[canvasId]?.destroy();
+  exmCharts[canvasId] = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: points.map(p => _dateLabel(p.date)),
+      datasets: [{
+        label: yLabel,
+        data: points.map(p => p.value),
+        borderColor: color,
+        backgroundColor: color + '33',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        pointBackgroundColor: color,
+        pointBorderColor: c.card,
+        pointBorderWidth: 1,
+        tension: 0.3,
+        spanGaps: false,
+        fill: false,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: c.card,
+          borderColor: c.border,
+          borderWidth: 1,
+          titleColor: c.text,
+          bodyColor: c.muted,
+          padding: 10,
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: c.muted, font: { size: 10 }, maxTicksLimit: 7 },
+          grid: { color: 'rgba(128,128,128,0.08)' },
+        },
+        y: {
+          ticks: { color: c.muted, font: { size: 10 }, maxTicksLimit: 5 },
+          grid: { color: 'rgba(128,128,128,0.08)' },
+        },
+      },
+    },
+  });
+}
+
+function _exmBuildBarChart(canvasId, points, color, yLabel) {
+  const c = themeColors();
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  exmCharts[canvasId]?.destroy();
+  exmCharts[canvasId] = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: points.map(p => _dateLabel(p.date)),
+      datasets: [{
+        label: yLabel,
+        data: points.map(p => p.value),
+        backgroundColor: color + '99',
+        borderColor: color,
+        borderWidth: 1,
+        borderRadius: 3,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: c.card,
+          borderColor: c.border,
+          borderWidth: 1,
+          titleColor: c.text,
+          bodyColor: c.muted,
+          padding: 10,
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: c.muted, font: { size: 10 }, maxTicksLimit: 7 },
+          grid: { color: 'rgba(128,128,128,0.08)' },
+        },
+        y: {
+          ticks: { color: c.muted, font: { size: 10 }, maxTicksLimit: 5 },
+          grid: { color: 'rgba(128,128,128,0.08)' },
+          beginAtZero: true,
+        },
+      },
+    },
+  });
+}
+
+async function loadExerciseDetail(exerciseId, windowDays = 0) {
+  _exmCurrentExerciseId = exerciseId;
+  _exmDestroyCharts();
+
+  const detail  = document.getElementById('exm-detail');
+  const listEl  = document.getElementById('exm-list');
+  const header  = document.querySelector('.exm-header');
+  if (!detail) return;
+  if (listEl)  listEl.style.display  = 'none';
+  if (header)  header.style.display  = 'none';
+  detail.style.display = 'block';
+
+  const content = document.getElementById('exm-detail-content');
+  content.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);"><span class="spinner"></span> Loading\u2026</div>';
+
+  let data;
+  try {
+    const url = `/api/exercises/metrics?exercise_id=${encodeURIComponent(exerciseId)}&window_days=${windowDays}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    data = await res.json();
+  } catch (e) {
+    content.innerHTML = `<div style="padding:20px;color:var(--danger);">Failed to load: ${e.message}</div>`;
+    return;
+  }
+
+  const pr     = data.personal_records || {};
+  const top3   = data.top_3_best_sets  || [];
+  const charts = data.charts           || {};
+
+  const topSetsRows = top3.map(s => `
+    <tr>
+      <td>${_dateLabel(s.date)}</td>
+      <td>${_exmFmtVal(s.weight_lbs)} lbs</td>
+      <td>${s.reps} reps</td>
+    </tr>
+  `).join('') || '<tr><td colspan="3" style="color:var(--muted)">No data</td></tr>';
+
+  const winBtns = [
+    { label: '30d', days: 30  },
+    { label: '60d', days: 60  },
+    { label: '90d', days: 90  },
+    { label: '1y',  days: 365 },
+    { label: 'All', days: 0   },
+  ].map(b => `
+    <button class="exm-window-btn${b.days === windowDays ? ' active' : ''}"
+            onclick="_exmWindowClick(${b.days})">${b.label}</button>
+  `).join('');
+
+  content.innerHTML = `
+    <div class="exm-detail-header">
+      <div class="exm-detail-title">${data.title || exerciseId}</div>
+      <div class="exm-detail-last">${_exmDaysLabel(data.last_trained_days_ago)}</div>
+    </div>
+    <div class="exm-detail-sesscount">Total Sessions: ${data.total_sessions ?? '\u2014'}</div>
+
+    <div class="exm-stats-row">
+      <div class="exm-top-sets-section">
+        <div class="card-title" style="font-size:13px;">Top 3 Best Sets</div>
+        <table class="exm-top-sets-table">
+          <thead><tr><th>Date</th><th>Weight</th><th>Reps</th></tr></thead>
+          <tbody>${topSetsRows}</tbody>
+        </table>
+      </div>
+      <div class="exm-pr-section">
+        <div class="card-title" style="font-size:13px;">Personal Records</div>
+        <div class="exm-pr-list">
+          <div class="exm-pr-item">
+            <span class="exm-pr-label">Est. 1RM</span>
+            <span class="exm-pr-pill">${pr.estimated_1rm != null ? _exmFmtVal(pr.estimated_1rm) + ' lbs' : '\u2014'}</span>
+          </div>
+          <div class="exm-pr-item">
+            <span class="exm-pr-label">Best Volume</span>
+            <span class="exm-pr-pill">${pr.best_set_volume != null ? _exmFmtVal(pr.best_set_volume) + ' lbs' : '\u2014'}</span>
+          </div>
+          <div class="exm-pr-item">
+            <span class="exm-pr-label">Max Weight</span>
+            <span class="exm-pr-pill">${pr.max_weight != null ? _exmFmtVal(pr.max_weight) + ' lbs' : '\u2014'}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="exm-window-toggle">${winBtns}</div>
+
+    <div class="exm-chart-grid">
+      <div class="exm-chart-wrap">
+        <div class="card-title" style="font-size:13px;">Max Weight Over Time</div>
+        <div class="exm-chart-canvas-wrap"><canvas id="exm-chart-maxweight"></canvas></div>
+      </div>
+      <div class="exm-chart-wrap">
+        <div class="card-title" style="font-size:13px;">Avg Volume per Set</div>
+        <div class="exm-chart-canvas-wrap"><canvas id="exm-chart-avgvol"></canvas></div>
+      </div>
+    </div>
+    <div class="exm-chart-wrap exm-chart-full">
+      <div class="card-title" style="font-size:13px;">Volume (Session)</div>
+      <div class="exm-chart-canvas-wrap"><canvas id="exm-chart-sessionvol"></canvas></div>
+    </div>
+  `;
+
+  const c = themeColors();
+  _exmBuildLineChart('exm-chart-maxweight', charts.max_weight_over_time || [], c.accent,    'Max Weight (lbs)');
+  _exmBuildLineChart('exm-chart-avgvol',    charts.avg_volume_per_set   || [], c.posterior, 'Avg Vol/Set (lbs)');
+  _exmBuildBarChart( 'exm-chart-sessionvol',charts.session_volume       || [], c.push,      'Session Volume (lbs)');
+}
+
+function _exmWindowClick(days) {
+  if (_exmCurrentExerciseId) loadExerciseDetail(_exmCurrentExerciseId, days);
+}
+
+document.getElementById('exm-back-btn')?.classList.add('exm-back-btn');
+document.getElementById('exm-back-btn')?.addEventListener('click', () => {
+  _exmDestroyCharts();
+  _exmCurrentExerciseId = null;
+  document.getElementById('exm-detail').style.display  = 'none';
+  const listEl = document.getElementById('exm-list');
+  const header = document.querySelector('.exm-header');
+  if (listEl)  listEl.style.display  = '';
+  if (header)  header.style.display  = '';
+});
+
+document.getElementById('exm-search')?.addEventListener('input', filterAndRenderExerciseList);
+
+document.querySelectorAll('.exm-filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.exm-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    filterAndRenderExerciseList();
+  });
+});
 </script>
 </body>
 </html>

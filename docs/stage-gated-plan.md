@@ -2,6 +2,12 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+## 2026-05-20 — Documentation Refresh
+
+- Updated `static/docs.html` with source-verified wording for the 0–20 fatigue scale, the HYP fallback stress path, the pattern stress signal, the 7-day readiness trend, the AI assistant, and the exercise metrics browser.
+- Added the new `02b`, `06c`, `08c`, and `10b` documentation sections and linked them in the sidebar.
+- Validation completed on the edited docs file with no structural errors.
+
 ## Execution Rules
 
 1. Only implement one stage at a time.
@@ -11,6 +17,29 @@ This document locks implementation to strict stage gates and dependency order.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
 ## Latest Maintenance Update (2026-05-19, Training Load Performance Phases 1-3)
+
+## 2026-05-19 — Exercise Metrics Feature (Phase 5: CSS)
+
+- Added a dedicated `/* === EXERCISE METRICS TAB === */` stylesheet block.
+- Styled the metrics tab with `exm-*` selectors for header/search/filter/summary, list cards, detail shell, back button, stats row, PR pills, window toggle, and responsive chart grid.
+- Matched existing theme tokens only; no hardcoded color hex values in the new CSS block.
+- Updated the exercise metrics detail markup to use the new selector names.
+
+## 2026-05-19 — Exercise Metrics Feature (Phase 4: Frontend Detail View)
+
+- Added CSS for detail layout: two-col grid (top sets + PRs), window toggle buttons, two-col chart grid (line+line), full-width bar chart. Mobile stacks all to 1-col at ≤900px.
+- Replaced Phase 3 stub with full `loadExerciseDetail(id, windowDays)`: fetches `/api/exercises/metrics?exercise_id=&window_days=`, renders header/PRs/top-sets/charts. Three Chart.js charts (2 line, 1 bar) using existing `themeColors()` and `_dateLabel()` patterns. `exmCharts` object holds instances; destroyed before recreating and on back-button click.
+
+## 2026-05-19 — Exercise Metrics Feature (Phase 3: Frontend List View)
+
+- Fixed data-tab bug from Phase 1 (exercise-metrics not tab-exercise-metrics).
+- Added CSS for all `.exm-*` components. Added `loadExerciseMetrics()`, `filterAndRenderExerciseList()`, filter button wiring, search input wiring, `loadExerciseDetail()` stub, back-button handler.
+- Pattern pills use existing chip CSS. Days label rounds to weeks above 14 days.
+
+## 2026-05-19 — Exercise Metrics Feature (Phases 1 & 2)
+
+- Phase 1 (`static/index.html`): Renamed exercises nav button → "Patterns"; added new `tab-exercise-metrics` nav button labeled "Exercises" in both desktop and mobile navs; added `<section id="tab-exercise-metrics">` content shell with search, filter buttons, summary, list, and detail-view divs.
+- Phase 2 (`main.py`): Added `_derive_pattern(...)` helper and `GET /api/exercises/metrics` endpoint; list mode returns all exercises with last_trained_days_ago, total_sessions, is_active, pattern; detail mode returns personal_records, top_3_best_sets, and charts with window_days support. `py_compile` OK.
 
 - Implemented Phase 1 in `main.py` to remove duplicate stress-score recomputation on `GET /api/training-load`:
 	- `_compute_training_load(...)` now returns precomputed `stress_by_date` and `pattern_stress_by_date` maps.
