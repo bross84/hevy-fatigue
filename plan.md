@@ -2,6 +2,12 @@
 
 Last updated: 2026-05-20 (Documentation Refresh — static/docs.html)
 
+## Latest Update (2026-05-20, Exercise Metrics Card Onclick Quote Fix)
+
+- Updated `filterAndRenderExerciseList()` card markup in `static/index.html` so `onclick` passes `exercise_id` with single quotes inside the attribute: `loadExerciseDetail('${ex.exercise_id}')`.
+- This prevents HTML attribute parsing breakage caused by nested double quotes and restores click-through behavior for exercise detail cards.
+- Validation: inline JS extraction + `node --check` passed; static diagnostics report no errors in `static/index.html`.
+
 ## Latest Update (2026-05-20, Documentation Refresh)
 
 - Updated `static/docs.html` to reflect the current source values and UI structure for check-in scoring, stress pathways, movement pattern dots, fatigue display, readiness trend, AI assistant, and exercise metrics.
