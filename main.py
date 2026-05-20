@@ -1208,7 +1208,7 @@ def _training_stress_included_through(db: Session) -> date_type:
         return latest_readiness - timedelta(days=1)
     return date_type.today() - timedelta(days=1)
 
-def _compute_training_load(days: int, db: Session) -> tuple[list[dict], float, float]:
+def _compute_training_load(days: int, db: Session) -> tuple[list[dict], float, float, dict, dict]:
     """
     Calculate ATL, CTL, and TSB for each day using exponentially weighted
     moving averages of the combined daily stress score (central + peripheral).
@@ -1305,7 +1305,7 @@ def _compute_training_load(days: int, db: Session) -> tuple[list[dict], float, f
             })
         current += timedelta(days=1)
 
-    return results, max(atl_max, 1.0), max(ctl_max, 1.0)
+    return results, max(atl_max, 1.0), max(ctl_max, 1.0), stress_by_date, pattern_stress_by_date
 
 
 _REC_LEVELS = ["large_decrease", "decrease", "continue", "increase", "large_increase"]
@@ -1418,7 +1418,7 @@ def _recent_fatigue_scores_for_adaptive(db: Session, lookback_days: int) -> list
     if not readiness_rows:
         return []
 
-    history, _, _ = _compute_training_load(max(lookback_days, 30), db)
+    history, _, _, _, _ = _compute_training_load(max(lookback_days, 30), db)
     history_index = {h["date"]: idx for idx, h in enumerate(history)}
     stress_series = [max(0.0, float(h.get("stress", 0.0))) for h in history]
 
@@ -1623,7 +1623,12 @@ def _stress_level_label(dots: int) -> str:
     return labels.get(dots, "Normal Stress")
 
 
-def _pattern_last_loaded_dates(db: Session, today: date_type) -> dict:
+def _pattern_last_loaded_dates(
+    db: Session,
+    today: date_type,
+    stress_by_date: dict | None = None,
+    pattern_stress_by_date: dict | None = None,
+) -> dict:
     dates = (
         db.query(WorkoutLog.date)
         .filter(WorkoutLog.date <= today)
@@ -1634,9 +1639,14 @@ def _pattern_last_loaded_dates(db: Session, today: date_type) -> dict:
 
     last = {p: None for p in _PATTERN_KEYS}
     for row in dates:
-        scores = calculate_stress_scores(row.date, db)
+        if pattern_stress_by_date is not None and row.date in pattern_stress_by_date:
+            p_scores = pattern_stress_by_date[row.date]
+        else:
+            # Fallback: recompute if not provided (e.g. called outside get_training_load)
+            scores = calculate_stress_scores(row.date, db)
+            p_scores = {p: scores.get(p, 0.0) for p in _PATTERN_KEYS}
         for p in _PATTERN_KEYS:
-            if float(scores.get(p, 0.0) or 0.0) > 0.0:
+            if float(p_scores.get(p, 0.0) or 0.0) > 0.0:
                 last[p] = row.date
     return last
 
@@ -1725,7 +1735,7 @@ def _resolve_joint_advisory(joint_upper: int, joint_lower: int) -> dict:
     }
 
 
-def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness | None, calibration: dict | None = None, db: Session | None = None, today_date: date_type | None = None, today_tsb: float = 0.0, fatigue_score: float = 0.0, subjective_score: float | None = None, objective_score: float = 0.0, combined_score: float = 0.0) -> dict:
+def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness | None, calibration: dict | None = None, db: Session | None = None, today_date: date_type | None = None, today_tsb: float = 0.0, fatigue_score: float = 0.0, subjective_score: float | None = None, objective_score: float = 0.0, combined_score: float = 0.0, stress_by_date: dict | None = None, pattern_stress_by_date: dict | None = None) -> dict:
     """
     Stage 6 recommendation engine using pattern ATL/CTL/TSB and same-day soreness.
     Produces a pattern-aware recommendation without implying hidden physiology.
@@ -1764,7 +1774,7 @@ def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness 
 
     ref_today = today_date or date_type.today()
     if db is not None:
-        last_loaded_dates = _pattern_last_loaded_dates(db, ref_today)
+        last_loaded_dates = _pattern_last_loaded_dates(db, ref_today, stress_by_date, pattern_stress_by_date)
     else:
         last_loaded_dates = {p: None for p in _PATTERN_KEYS}
 
@@ -1804,7 +1814,7 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
     """
     Return ATL/CTL/TSB history for the chart and today's summary values.
     """
-    history, atl_max, ctl_max = _compute_training_load(days, db)
+    history, atl_max, ctl_max, stress_by_date, pattern_stress_by_date = _compute_training_load(days, db)
     today = history[-1] if history else {"date": str(date_type.today()), "atl": 0, "ctl": 0, "tsb": 0, "stress": 0}
     stress_included_through = _training_stress_included_through(db)
     latest_workout_date = db.query(func.max(WorkoutLog.date)).scalar()
@@ -1880,6 +1890,8 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
         subjective_score,
         objective_score,
         combined_score,
+        stress_by_date,
+        pattern_stress_by_date,
     )
 
     # Enrich history items with fatigue_score and recommendation_adjusted.
@@ -1956,7 +1968,7 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
 
 def _build_diagnostics_snapshot(db: Session) -> dict:
     today_date = date_type.today()
-    history, _, _ = _compute_training_load(60, db)
+    history, _, _, _, _ = _compute_training_load(60, db)
     today = history[-1] if history else {
         "date": str(today_date),
         "atl": 0.0,
@@ -2577,7 +2589,7 @@ def get_readiness_log(db: Session = Depends(get_db)):
 
     earliest = min(e.date for e in entries)
     days_back = (date_type.today() - earliest).days + 1
-    history, _, _ = _compute_training_load(max(days_back, 30), db)
+    history, _, _, _, _ = _compute_training_load(max(days_back, 30), db)
     tsb_by_date = {h["date"]: h["tsb"] for h in history}
     history_index = {h["date"]: idx for idx, h in enumerate(history)}
     stress_series = [max(0.0, float(h.get("stress", 0.0))) for h in history]

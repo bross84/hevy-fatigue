@@ -2,6 +2,16 @@
 
 Last updated: 2026-05-16 (Sticky AI Model Selection via localStorage)
 
+## Latest Maintenance Update (2026-05-19, AGENTS Constraint-Overload Reduction)
+
+- Updated `AGENTS.md` to reduce instruction cognitive load without changing policy intent.
+- Added a front-loaded quick checklist with grouped must-do actions (scope, pre-implementation, verification, DB safety, architecture guards, reporting).
+- Added a concise decision flow and section map to make rule discovery faster and reduce missed constraints.
+- Explicit non-changes preserved:
+	- no behavioral policy removals
+	- no tool allowance changes
+	- no architecture/safety rule relaxations
+
 ## Latest Maintenance Update (2026-05-16, Sticky AI Model Selection via localStorage)
 
 - Updated AI model preference persistence in `static/index.html` using browser `localStorage` only (no backend changes).

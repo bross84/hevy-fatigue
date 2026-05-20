@@ -10,6 +10,16 @@ This document locks implementation to strict stage gates and dependency order.
 4. Preserve existing API contracts unless a stage explicitly changes them.
 5. Use compute-on-demand where chosen, so corrected mappings update historical outputs retroactively.
 
+## Latest Maintenance Update (2026-05-19, AGENTS Constraint-Overload Reduction)
+
+- Updated `AGENTS.md` with a compact quick-start checklist to group high-priority rules by operational category.
+- Added a short decision flow (`clarify -> inspect -> edit -> verify -> report`) to reduce navigation overhead during implementation.
+- Added a grouped section map so constraints can be located quickly without changing any existing requirements.
+- Explicit non-changes preserved:
+	- no modification of repo architecture constraints
+	- no changes to verification requirements
+	- no removal of implementation report requirements
+
 ## Latest Maintenance Update (2026-05-16, Sticky AI Model Selection via localStorage)
 
 - Implemented sticky AI model UI preference in `static/index.html` via browser `localStorage` key `ai_preferred_model`.
