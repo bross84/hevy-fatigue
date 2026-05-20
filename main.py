@@ -175,7 +175,13 @@ class ExerciseConflictResolveInput(BaseModel):
     canonical_title: str
 
 # --- Stress Calculators ---
-def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
+def calculate_stress_scores(
+    target_date: date_type,
+    db: Session,
+    *,
+    conditioning_scale: float = 29.0,
+    hyp_scale: float = 29.0,
+) -> dict:
     """
     Calculate central and peripheral stress for a given day across three pathways,
     plus per-pattern (knee/hip/push/pull) stress for Stage 5 EWMA inputs.
@@ -255,7 +261,7 @@ def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
             pull += ss * (m.pct_upper_pull  or 0.0)
 
     # ── Pathways 2 & 3: Conditioning / Cardio ────────────────────────────────
-    scaling_factor = _get_conditioning_scaling_factor(db)
+    scaling_factor = conditioning_scale if conditioning_scale > 0.0 else 29.0
 
     cond_sessions = (
         db.query(WorkoutSession)
@@ -323,7 +329,7 @@ def calculate_stress_scores(target_date: date_type, db: Session) -> dict:
     # Applies when a verified HYP session has sRPE + duration logged
     # but >=50% of its sets are missing RPE values.
     # Uses same formula as conditioning but with a separate scale factor.
-    hyp_scaling_factor = _get_hypertrophy_scaling_factor(db)
+    hyp_scaling_factor = hyp_scale if hyp_scale > 0.0 else 29.0
 
     hyp_sessions = (
         db.query(WorkoutSession)
@@ -1228,6 +1234,10 @@ def _compute_training_load(days: int, db: Session) -> tuple[list[dict], float, f
     lookback = max(days + 150, 180)
     from_date = date_type.today() - timedelta(days=lookback)
 
+    settings = _get_v2_settings(db)
+    conditioning_scale = float(settings.get("conditioning_stress_scaling_factor", 29.0) or 29.0)
+    hyp_scale = float(settings.get("hypertrophy_stress_scaling_factor", 29.0) or 29.0)
+
     # Get every distinct workout date in the lookback window
     workout_dates = (
         db.query(WorkoutLog.date)
@@ -1241,7 +1251,12 @@ def _compute_training_load(days: int, db: Session) -> tuple[list[dict], float, f
     stress_by_date: dict = {}
     pattern_stress_by_date: dict = {}
     for row in workout_dates:
-        scores = calculate_stress_scores(row.date, db)
+        scores = calculate_stress_scores(
+            row.date,
+            db,
+            conditioning_scale=conditioning_scale,
+            hyp_scale=hyp_scale,
+        )
         stress_by_date[row.date] = scores["central"] + scores["peripheral"]
         pattern_stress_by_date[row.date] = {
             "knee": scores["knee"],
@@ -1629,9 +1644,13 @@ def _pattern_last_loaded_dates(
     stress_by_date: dict | None = None,
     pattern_stress_by_date: dict | None = None,
 ) -> dict:
+    floor_date = today - timedelta(days=330)
     dates = (
         db.query(WorkoutLog.date)
-        .filter(WorkoutLog.date <= today)
+        .filter(
+            WorkoutLog.date >= floor_date,
+            WorkoutLog.date <= today,
+        )
         .distinct()
         .order_by(WorkoutLog.date)
         .all()
