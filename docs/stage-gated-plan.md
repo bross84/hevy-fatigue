@@ -8,6 +8,12 @@ This document locks implementation to strict stage gates and dependency order.
 - Added the new `02b`, `06c`, `08c`, and `10b` documentation sections and linked them in the sidebar.
 - Validation completed on the edited docs file with no structural errors.
 
+## 2026-05-20 — Exercise Metrics Card Onclick Quote Fix
+
+- Updated exercise metrics list card markup in `static/index.html` (`filterAndRenderExerciseList`) to use single quotes around `exercise_id` inside the `onclick` attribute.
+- Change applied: `onclick="loadExerciseDetail('${ex.exercise_id}')"`.
+- Validation: extracted inline JS passes `node --check`; editor diagnostics show no errors in `static/index.html`.
+
 ## Execution Rules
 
 1. Only implement one stage at a time.

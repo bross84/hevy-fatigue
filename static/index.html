@@ -6694,7 +6694,7 @@ function filterAndRenderExerciseList() {
   }
 
   container.innerHTML = list.map(ex => `
-    <div class="exm-card" onclick="loadExerciseDetail(${JSON.stringify(ex.exercise_id)})">
+    <div class="exm-card" onclick="loadExerciseDetail('${ex.exercise_id}')">
       <div class="exm-card-left">
         <div class="exm-card-title">${ex.title || ex.exercise_id}</div>
         <div class="exm-card-meta">
