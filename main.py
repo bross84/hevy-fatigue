@@ -1863,8 +1863,50 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
         .filter(WorkoutSession.workout_date >= date_type.today() - timedelta(days=180))
         .all()
     )
-    seven_day_volume = sum(_session_volume(session.hevy_workout_id, db) for session in seven_day_sessions)
-    six_month_volume = sum(_session_volume(session.hevy_workout_id, db) for session in six_month_sessions)
+    seven_day_ids = [session.hevy_workout_id for session in seven_day_sessions if session.hevy_workout_id]
+    if seven_day_ids:
+        seven_day_volume_rows = (
+            db.query(
+                WorkoutLog.workout_id,
+                func.sum(
+                    func.coalesce(WorkoutLog.weight_lbs, 0.0)
+                    * func.coalesce(WorkoutLog.reps, 0)
+                ).label("volume"),
+            )
+            .filter(WorkoutLog.workout_id.in_(seven_day_ids))
+            .group_by(WorkoutLog.workout_id)
+            .all()
+        )
+        seven_day_volume_by_id = {
+            workout_id: float(volume or 0.0)
+            for workout_id, volume in seven_day_volume_rows
+        }
+    else:
+        seven_day_volume_by_id = {}
+
+    six_month_ids = [session.hevy_workout_id for session in six_month_sessions if session.hevy_workout_id]
+    if six_month_ids:
+        six_month_volume_rows = (
+            db.query(
+                WorkoutLog.workout_id,
+                func.sum(
+                    func.coalesce(WorkoutLog.weight_lbs, 0.0)
+                    * func.coalesce(WorkoutLog.reps, 0)
+                ).label("volume"),
+            )
+            .filter(WorkoutLog.workout_id.in_(six_month_ids))
+            .group_by(WorkoutLog.workout_id)
+            .all()
+        )
+        six_month_volume_by_id = {
+            workout_id: float(volume or 0.0)
+            for workout_id, volume in six_month_volume_rows
+        }
+    else:
+        six_month_volume_by_id = {}
+
+    seven_day_volume = sum(seven_day_volume_by_id.get(session.hevy_workout_id, 0.0) for session in seven_day_sessions)
+    six_month_volume = sum(six_month_volume_by_id.get(session.hevy_workout_id, 0.0) for session in six_month_sessions)
     six_month_weekly_avg = six_month_volume / 26 if six_month_volume > 0 else 0
 
     objective_score = round(_clamp(
