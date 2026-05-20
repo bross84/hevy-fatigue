@@ -14,6 +14,13 @@ This document locks implementation to strict stage gates and dependency order.
 - Change applied: `onclick="loadExerciseDetail('${ex.exercise_id}')"`.
 - Validation: extracted inline JS passes `node --check`; editor diagnostics show no errors in `static/index.html`.
 
+## 2026-05-20 — Exercise Metrics Tooltip Year Formatting
+
+- Updated chart tooltip title formatting in `static/index.html` for `_exmBuildLineChart` and `_exmBuildBarChart`.
+- Added tooltip title callback that parses the x-axis label date and renders month/day/year via `toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })`.
+- This change covers all three exercise detail charts because both line charts and the bar chart use these shared builders.
+- Validation: extracted inline JS passes `node --check`; editor diagnostics show no errors in `static/index.html`.
+
 ## Execution Rules
 
 1. Only implement one stage at a time.
