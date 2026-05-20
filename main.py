@@ -3135,7 +3135,7 @@ def get_exercise_metrics(
 
     if exercise_id:
         # ── Detail mode ────────────────────────────────────────────────────
-        eid = exercise_id.strip()
+        eid = exercise_id.strip().upper()
 
         # Basic info row
         base_row = db.execute(text("""
@@ -3146,13 +3146,13 @@ def get_exercise_metrics(
                     COUNT(DISTINCT wl.workout_id) AS total_sessions
                 FROM workout_logs wl
                 JOIN workout_sessions ws ON wl.workout_id = ws.hevy_workout_id
-                WHERE wl.exercise_id = :eid
+                WHERE wl.exercise_id = :eid COLLATE NOCASE
                 GROUP BY wl.exercise_id
             ),
             recent_title AS (
                 SELECT wl.exercise_title
                 FROM workout_logs wl
-                WHERE wl.exercise_id = :eid
+                WHERE wl.exercise_id = :eid COLLATE NOCASE
                 ORDER BY wl.date DESC
                 LIMIT 1
             )
@@ -3168,7 +3168,7 @@ def get_exercise_metrics(
                 em.is_conditioning
             FROM exercise_base eb
             LEFT JOIN recent_title rt ON 1=1
-            LEFT JOIN exercise_canonical ec ON ec.exercise_id = :eid
+            LEFT JOIN exercise_canonical ec ON ec.exercise_id = :eid COLLATE NOCASE
             LEFT JOIN exercise_mappings em
                 ON LOWER(rt.exercise_title) = LOWER(em.exercise_title)
         """), {"eid": eid}).fetchone()
@@ -3196,7 +3196,7 @@ def get_exercise_metrics(
                 MAX(weight_lbs * reps) AS best_set_volume,
                 MAX(weight_lbs) AS max_weight
             FROM workout_logs
-            WHERE exercise_id = :eid
+            WHERE exercise_id = :eid COLLATE NOCASE
               AND weight_lbs IS NOT NULL
               AND reps IS NOT NULL
         """), {"eid": eid}).fetchone()
@@ -3216,7 +3216,7 @@ def get_exercise_metrics(
                 (wl.weight_lbs * wl.reps) AS set_vol
             FROM workout_logs wl
             JOIN workout_sessions ws ON wl.workout_id = ws.hevy_workout_id
-            WHERE wl.exercise_id = :eid
+            WHERE wl.exercise_id = :eid COLLATE NOCASE
               AND wl.weight_lbs IS NOT NULL
               AND wl.reps IS NOT NULL
             ORDER BY set_vol DESC
@@ -3248,7 +3248,7 @@ def get_exercise_metrics(
                 CAST(SUM(wl.weight_lbs * wl.reps) AS REAL) / COUNT(*) AS avg_vol_per_set
             FROM workout_logs wl
             JOIN workout_sessions ws ON wl.workout_id = ws.hevy_workout_id
-            WHERE wl.exercise_id = :eid
+            WHERE wl.exercise_id = :eid COLLATE NOCASE
               AND wl.weight_lbs IS NOT NULL
               AND wl.reps IS NOT NULL
               {window_clause}
