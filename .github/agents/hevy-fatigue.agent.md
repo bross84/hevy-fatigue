@@ -29,7 +29,8 @@ If the spec is unclear: ask one focused question and stop. Escalate to Brian if 
 1. Run `python -m py_compile <file>` on every edited `.py` file.
 2. Run `read/problems` to catch linter errors.
 3. Run gate tests if provided. If a gate fails after three attempts, escalate to the architect.
-4. Update `plan.md` and `stage-gated-plan.md` to reflect what was built — mark completed steps, note any scope changes or decisions made during implementation.
+4. Delete any gate test files created during this task before marking complete.
+5. Update `plan.md` and `stage-gated-plan.md` to reflect what was built — mark completed steps, note any scope changes or decisions made during implementation.
 
 ## Debugging
 
@@ -48,6 +49,7 @@ End every task with this:
 **Files changed:** [file — what and why]  
 **py_compile:** [OK or FAILED: error]  
 **Gate tests:** [PASS/FAIL per gate or N/A]  
+**Gate test files deleted:** [file names or N/A]  
 **Schema verification:** [PRAGMA output or N/A]  
 **Ambiguity:** [question asked and answer, or BLOCKED: question]  
 **Out-of-scope observations:** [file and line, or none]  

@@ -2,6 +2,13 @@
 
 Last updated: 2026-05-20 (Documentation Refresh — static/docs.html)
 
+## Latest Update (2026-05-20, Exercise Metrics Tooltip Year Formatting)
+
+- Updated exercise metrics chart builders in `static/index.html` (`_exmBuildLineChart` and `_exmBuildBarChart`) to override Chart.js tooltip title formatting with full date including year.
+- Added tooltip title callback using `new Date(items[0].label + 'T00:00:00')` and `toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })`.
+- This applies to all three exercise detail charts (max weight, avg volume/set, session volume) through the shared builders.
+- Validation: inline JS extraction + `node --check` passed; static diagnostics report no errors in `static/index.html`.
+
 ## Latest Update (2026-05-20, Exercise Metrics Card Onclick Quote Fix)
 
 - Updated `filterAndRenderExerciseList()` card markup in `static/index.html` so `onclick` passes `exercise_id` with single quotes inside the attribute: `loadExerciseDetail('${ex.exercise_id}')`.
