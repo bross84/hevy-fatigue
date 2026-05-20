@@ -1017,6 +1017,16 @@ tbody tr:hover td { background: var(--row-hover); }
 
 /* ── Modal ───────────────────────────── */
 .modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0,0,0,0.6);
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+}
+.modal-overlay.active { display: flex; }
 
 /* === EXERCISE METRICS TAB === */
 .exm-header {
