@@ -6334,8 +6334,8 @@ function _resolveStateLabel(item, thresholds) {
 
 function _trendSlice(history, days) {
   if (!Array.isArray(history) || !history.length) return [];
-  if (history.length <= 30) return history;
-  return history.slice(history.length - 30);
+  if (!Number.isFinite(days) || days <= 0 || history.length <= days) return history;
+  return history.slice(-days);
 }
 
 function _trendRollingAvg(values, windowDays) {
@@ -6576,7 +6576,7 @@ async function renderTrendView() {
     const [payload] = await Promise.all([
       ensureTrainingLoadPayload(),
     ]);
-    const history = _trendSlice(payload?.history || [], 30);
+    const history = _trendSlice(payload?.history || [], trendSmoothingDays);
 
     _destroyTrendCharts();
 
