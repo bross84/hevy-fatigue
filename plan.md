@@ -2,6 +2,13 @@
 
 Last updated: 2026-05-20 (Documentation Refresh — static/docs.html)
 
+## Latest Update (2026-05-20, Exercise Metrics Tooltip Raw Date Source)
+
+- Updated `static/index.html` chart builders (`_exmBuildLineChart` and `_exmBuildBarChart`) to use object dataset points in Chart.js: `data: points.map(p => ({ x: p.date, y: p.value }))`.
+- Changed tooltip title callback to use `items[0].raw.x` (raw dataset date) and format it as `MMM D, YYYY`, with safe fallback to label when raw date is unavailable.
+- Kept x-axis display labels user-friendly by formatting stored raw date labels with a tick callback (`_dateLabel(this.getLabelForValue(value))`).
+- This single shared-builder change covers all three exercise metrics charts: max weight, avg volume/set, and session volume.
+
 ## Latest Update (2026-05-20, Exercise Metrics Tooltip Year Formatting)
 
 - Updated exercise metrics chart builders in `static/index.html` (`_exmBuildLineChart` and `_exmBuildBarChart`) to override Chart.js tooltip title formatting with full date including year.

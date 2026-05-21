@@ -14,6 +14,13 @@ This document locks implementation to strict stage gates and dependency order.
 - Change applied: `onclick="loadExerciseDetail('${ex.exercise_id}')"`.
 - Validation: extracted inline JS passes `node --check`; editor diagnostics show no errors in `static/index.html`.
 
+## 2026-05-20 — Exercise Metrics Tooltip Raw Date Source
+
+- Updated `static/index.html` shared chart builders (`_exmBuildLineChart`, `_exmBuildBarChart`) to pass Chart.js object points (`{ x: date, y: value }`) instead of y-only arrays.
+- Updated tooltip title callbacks to source date from `items[0].raw.x` and format with year (`toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })`), preventing `Invalid Date` when axis labels are abbreviated.
+- Added x-axis tick callbacks to keep chart labels formatted via `_dateLabel(...)` while retaining raw ISO date values in dataset points.
+- Change applies to all three exercise detail charts through shared builders.
+
 ## 2026-05-20 — Exercise Metrics Tooltip Year Formatting
 
 - Updated chart tooltip title formatting in `static/index.html` for `_exmBuildLineChart` and `_exmBuildBarChart`.
