@@ -1,13 +1,6 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-21 (Trend Range Window Slice Fix)
-
-## Latest Update (2026-05-21, Trend Range Window Slice Fix)
-
-- Updated `static/index.html` so `_trendSlice(history, days)` now honors its `days` argument instead of hardcoding a 30-entry slice.
-- Updated `renderTrendView()` to pass the active trend range value stored in `trendSmoothingDays` into `_trendSlice(...)`, so the 3/7/14 buttons now change the visible history window as well as smoothing.
-- Kept smoothing behavior unchanged: the same `trendSmoothingDays` value still feeds `_trendRollingAvg(...)` for the main and pattern trend charts.
-- Validation target: no `slice(-30)` remains in `_trendSlice`, all `_trendSlice(...)` calls in `renderTrendView()` include the active range argument, and `static/index.html` diagnostics remain clean.
+Last updated: 2026-05-20 (Documentation Refresh — static/docs.html)
 
 ## Latest Update (2026-05-20, Exercise Metrics Tooltip Raw Date Source)
 

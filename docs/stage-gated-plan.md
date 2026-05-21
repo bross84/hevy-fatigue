@@ -2,13 +2,6 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
-## 2026-05-21 — Trend Range Window Slice Fix
-
-- Updated `_trendSlice(history, days)` in `static/index.html` to use the provided `days` argument and return `history.slice(-days)` when truncation is needed.
-- Updated `renderTrendView()` to pass the active range value from `trendSmoothingDays` into `_trendSlice(...)`.
-- Explicit non-change preserved: rolling-average smoothing still uses `trendSmoothingDays`; this fix only removes the hardcoded 30-entry history window.
-- Validation target: `_trendSlice` no longer hardcodes `30`, Trend view slice calls include the active range argument, and `static/index.html` remains free of diagnostics.
-
 ## 2026-05-20 — Documentation Refresh
 
 - Updated `static/docs.html` with source-verified wording for the 0–20 fatigue scale, the HYP fallback stress path, the pattern stress signal, the 7-day readiness trend, the AI assistant, and the exercise metrics browser.
