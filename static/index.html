@@ -6754,10 +6754,10 @@ function _exmBuildLineChart(canvasId, points, color, yLabel) {
   exmCharts[canvasId] = new Chart(canvas.getContext('2d'), {
     type: 'line',
     data: {
-      labels: points.map(p => _dateLabel(p.date)),
+      labels: points.map(p => p.date),
       datasets: [{
         label: yLabel,
-        data: points.map(p => p.value),
+        data: points.map(p => ({ x: p.date, y: p.value })),
         borderColor: color,
         backgroundColor: color + '33',
         borderWidth: 2,
@@ -6787,15 +6787,28 @@ function _exmBuildLineChart(canvasId, points, color, yLabel) {
           padding: 10,
           callbacks: {
             title: (items) => {
-              const d = new Date(items[0].label + 'T00:00:00');
-              return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+              const raw = items[0]?.raw;
+              if (raw && raw.x) {
+                const d = new Date(raw.x + 'T00:00:00');
+                if (!Number.isNaN(d.getTime())) {
+                  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                }
+              }
+              return items[0]?.label;
             },
           },
         },
       },
       scales: {
         x: {
-          ticks: { color: c.muted, font: { size: 10 }, maxTicksLimit: 7 },
+          ticks: {
+            color: c.muted,
+            font: { size: 10 },
+            maxTicksLimit: 7,
+            callback: function(value) {
+              return _dateLabel(this.getLabelForValue(value));
+            },
+          },
           grid: { color: 'rgba(128,128,128,0.08)' },
         },
         y: {
@@ -6815,10 +6828,10 @@ function _exmBuildBarChart(canvasId, points, color, yLabel) {
   exmCharts[canvasId] = new Chart(canvas.getContext('2d'), {
     type: 'bar',
     data: {
-      labels: points.map(p => _dateLabel(p.date)),
+      labels: points.map(p => p.date),
       datasets: [{
         label: yLabel,
-        data: points.map(p => p.value),
+        data: points.map(p => ({ x: p.date, y: p.value })),
         backgroundColor: color + '99',
         borderColor: color,
         borderWidth: 1,
@@ -6841,15 +6854,28 @@ function _exmBuildBarChart(canvasId, points, color, yLabel) {
           padding: 10,
           callbacks: {
             title: (items) => {
-              const d = new Date(items[0].label + 'T00:00:00');
-              return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+              const raw = items[0]?.raw;
+              if (raw && raw.x) {
+                const d = new Date(raw.x + 'T00:00:00');
+                if (!Number.isNaN(d.getTime())) {
+                  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                }
+              }
+              return items[0]?.label;
             },
           },
         },
       },
       scales: {
         x: {
-          ticks: { color: c.muted, font: { size: 10 }, maxTicksLimit: 7 },
+          ticks: {
+            color: c.muted,
+            font: { size: 10 },
+            maxTicksLimit: 7,
+            callback: function(value) {
+              return _dateLabel(this.getLabelForValue(value));
+            },
+          },
           grid: { color: 'rgba(128,128,128,0.08)' },
         },
         y: {
