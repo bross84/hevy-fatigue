@@ -659,7 +659,7 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         <h2>Check-in model</h2>
       </div>
 
-      <p>Each day, the athlete rates several domains on a <strong>1–10 scale</strong> (10 = best / fully recovered). The raw scores are inverted in computation so that higher stress = higher computed fatigue.</p>
+      <p>Each day, the athlete logs recovery signals on a <strong>0-4 scale</strong> (0 = fresh / no issue, 4 = most fatigued / most limited). The backend normalizes these values to build a subjective fatigue component.</p>
 
       <table class="ref-table">
         <thead>
@@ -671,39 +671,39 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         </thead>
         <tbody>
           <tr>
-            <td>sleep_quality</td>
-            <td>Subjective sleep quality and duration perception</td>
-            <td>Primary fatigue formula input</td>
+            <td>tiredness</td>
+            <td>Overall tiredness and lethargy</td>
+            <td>Primary subjective fatigue input</td>
           </tr>
           <tr>
-            <td>mood</td>
-            <td>General psychological state and motivation</td>
-            <td>Primary fatigue formula input</td>
+            <td>perceived_recovery</td>
+            <td>How recovered the athlete feels</td>
+            <td>Primary subjective fatigue input</td>
           </tr>
           <tr>
-            <td>motivation</td>
-            <td>Desire and drive to train</td>
-            <td>Primary fatigue formula input</td>
+            <td>sore_quad_dom</td>
+            <td>Knee-dominant soreness signal</td>
+            <td>Contributes to soreness composite in fatigue formula</td>
           </tr>
           <tr>
-            <td>energy</td>
-            <td>General physical energy level</td>
-            <td>Primary fatigue formula input</td>
+            <td>sore_posterior</td>
+            <td>Hip/posterior-chain soreness signal</td>
+            <td>Contributes to soreness composite in fatigue formula</td>
           </tr>
           <tr>
-            <td>soreness</td>
-            <td>Delayed onset muscle soreness (DOMS)</td>
-            <td>Primary fatigue formula input</td>
+            <td>sore_upper_push</td>
+            <td>Upper-body push soreness signal</td>
+            <td>Contributes to soreness composite in fatigue formula</td>
           </tr>
           <tr>
-            <td>stress</td>
-            <td>Non-training life stress (work, relationships, etc.)</td>
-            <td>Primary fatigue formula input</td>
+            <td>sore_upper_pull</td>
+            <td>Upper-body pull soreness signal</td>
+            <td>Contributes to soreness composite in fatigue formula</td>
           </tr>
           <tr>
-            <td>joint_health</td>
-            <td>Aches, pain, or discomfort in joints/connective tissue</td>
-            <td><em>Advisory only</em> — not in fatigue formula</td>
+            <td>joint_upper / joint_lower</td>
+            <td>Upper and lower joint discomfort signals</td>
+            <td><em>Advisory only</em> - excluded from fatigue formula</td>
           </tr>
         </tbody>
       </table>
@@ -714,16 +714,17 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       </div>
 
       <h3>Daily fatigue score</h3>
-      <p>The six primary fields are combined into a single <strong>daily fatigue score (0–20)</strong> where 20 = maximally fatigued. Fields with 1–10 athlete ratings are first inverted, then averaged:</p>
+      <p>The subjective component is computed from normalized 0-4 check-in values, then scaled to a <strong>0-20 fatigue score</strong> where 20 = most fatigued:</p>
 
       <div class="formula-block">
-        <span class="comment">// Invert each rating: 10 → 0 (fresh), 1 → 9 (very fatigued)</span><br>
-        <span class="var">inverted_field</span> <span class="op">=</span> <span class="val">10</span> <span class="op">-</span> <span class="var">athlete_rating</span><br><br>
-        <span class="comment">// Average the six inverted scores</span><br>
-        <span class="var">daily_fatigue</span> <span class="op">=</span> mean(<span class="var">sleep_quality</span>, <span class="var">mood</span>, <span class="var">motivation</span>,<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="var">energy</span>, <span class="var">soreness</span>, <span class="var">stress</span>) <span class="op">/</span> <span class="val">9</span><br><br>
-        <span class="comment">// Scale to 0–20</span><br>
-        <span class="var">daily_fatigue_score</span> <span class="op">=</span> <span class="var">daily_fatigue</span> <span class="op">*</span> <span class="val">20</span>
+        <span class="comment">// Normalize each check-in field from 0-4 to 0.0-1.0</span><br>
+        <span class="var">t</span> <span class="op">=</span> <span class="var">tiredness</span> <span class="op">/</span> <span class="val">4</span><br>
+        <span class="var">r</span> <span class="op">=</span> <span class="var">perceived_recovery</span> <span class="op">/</span> <span class="val">4</span><br>
+        <span class="var">s</span> <span class="op">=</span> (<span class="var">sore_quad_dom</span> <span class="op">+</span> <span class="var">sore_posterior</span> <span class="op">+</span> <span class="var">sore_upper_push</span> <span class="op">+</span> <span class="var">sore_upper_pull</span>) <span class="op">/</span> <span class="val">16</span><br><br>
+        <span class="comment">// Subjective-first weighting from main.py</span><br>
+        <span class="var">subjective_fatigue</span> <span class="op">=</span> (<span class="val">0.45</span> <span class="op">*</span> <span class="var">t</span>) <span class="op">+</span> (<span class="val">0.30</span> <span class="op">*</span> <span class="var">r</span>) <span class="op">+</span> (<span class="val">0.25</span> <span class="op">*</span> <span class="var">s</span>)<br><br>
+        <span class="comment">// Scale to 0-20</span><br>
+        <span class="var">daily_fatigue_score</span> <span class="op">=</span> <span class="var">subjective_fatigue</span> <span class="op">*</span> <span class="val">20</span>
       </div>
 
       <p>On days without a workout, the daily fatigue score is computed from check-in alone. On training days, training load is incorporated as a modifier (see §4).</p>
@@ -1212,39 +1213,39 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       </div>
 
       <table class="ref-table">
-        <thead><tr><th>TSB range</th><th>Interpretation</th></tr></thead>
+        <thead><tr><th>TSB range</th><th>Training state</th></tr></thead>
         <tbody>
-          <tr><td>TSB &gt; +10</td><td>Fresh / detraining risk — fitness may be declining</td></tr>
-          <tr><td>TSB +5 to +10</td><td>Peaking — approaching optimal readiness</td></tr>
-          <tr><td>TSB -5 to +5</td><td>Maintenance / neutral zone</td></tr>
-          <tr><td>TSB -10 to -5</td><td>Productive overreach — training adaptation stimulus</td></tr>
-          <tr><td>TSB &lt; -10</td><td>Excessive load — overreaching / overtraining risk</td></tr>
+          <tr><td>&ge; +8</td><td>Underloaded</td></tr>
+          <tr><td>+3 to &lt; +8</td><td>Slightly Fresh</td></tr>
+          <tr><td>-5 to &lt; +3</td><td>Balanced</td></tr>
+          <tr><td>-10 to &lt; -5</td><td>Slightly Fatigued</td></tr>
+          <tr><td>&lt; -10</td><td>Fatigued</td></tr>
         </tbody>
       </table>
 
       <h3>Training state labels</h3>
-      <p>TSB is combined with subjective fatigue to produce a composite training state label. The label reflects <em>current load relative to capacity</em>, not a directive:</p>
+      <p>Training state labels are resolved from TSB thresholds in the API settings. They describe load balance relative to recent fitness, not a directive:</p>
 
       <div style="margin: 1.25rem 0;">
         <div class="state-row">
-          <div class="state-badge" style="background:var(--red-dim); color:var(--red); border:1px solid rgba(224,92,92,0.3)">Overreached</div>
-          <div class="state-desc">ATL substantially exceeds CTL; subjective scores suppressed. Recovery is the priority.</div>
+          <div class="state-badge" style="background:var(--purple-dim); color:var(--purple); border:1px solid rgba(155,127,232,0.3)">Underloaded</div>
+          <div class="state-desc">Fitness is significantly outpacing recent training stress.</div>
         </div>
         <div class="state-row">
-          <div class="state-badge" style="background:var(--amber-dim); color:var(--amber); border:1px solid rgba(224,164,58,0.3)">Heavy load</div>
-          <div class="state-desc">High acute load relative to baseline. Monitor subjective scores closely.</div>
+          <div class="state-badge" style="background:var(--accent-dim); color:var(--accent); border:1px solid rgba(91,141,238,0.3)">Slightly Fresh</div>
+          <div class="state-desc">Fitness outpacing fatigue; recovery is ahead of training.</div>
         </div>
         <div class="state-row">
-          <div class="state-badge" style="background:var(--green-dim); color:var(--green); border:1px solid rgba(76,175,130,0.3)">Productive load</div>
-          <div class="state-desc">ATL and CTL well-matched. Adaptation stimulus is present without excessive fatigue.</div>
+          <div class="state-badge" style="background:var(--green-dim); color:var(--green); border:1px solid rgba(76,175,130,0.3)">Balanced</div>
+          <div class="state-desc">Fitness and fatigue are well matched; normal training state.</div>
         </div>
         <div class="state-row">
-          <div class="state-badge" style="background:var(--accent-dim); color:var(--accent); border:1px solid rgba(91,141,238,0.3)">Peaking</div>
-          <div class="state-desc">Fatigue is clearing relative to fitness base. Good conditions for high performance.</div>
+          <div class="state-badge" style="background:var(--amber-dim); color:var(--amber); border:1px solid rgba(224,164,58,0.3)">Slightly Fatigued</div>
+          <div class="state-desc">Fatigue is outpacing fitness; accumulated stress is present.</div>
         </div>
         <div class="state-row">
-          <div class="state-badge" style="background:var(--purple-dim); color:var(--purple); border:1px solid rgba(155,127,232,0.3)">Detraining risk</div>
-          <div class="state-desc">CTL dropping with extended low ATL. Fitness may be receding.</div>
+          <div class="state-badge" style="background:var(--red-dim); color:var(--red); border:1px solid rgba(224,92,92,0.3)">Fatigued</div>
+          <div class="state-desc">Fatigue is significantly elevated relative to current fitness.</div>
         </div>
       </div>
 
@@ -1317,17 +1318,16 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         <h2>Joint health advisory</h2>
       </div>
 
-      <p>Joint health is collected at check-in on the same 1–10 scale (10 = fully healthy, 1 = severe pain/limitation) but is processed and displayed separately from the fatigue formula.</p>
+      <p>Joint health is collected as two separate fields (<strong>joint_upper</strong> and <strong>joint_lower</strong>) on a <strong>0-4 scale</strong>. It is processed separately from the fatigue formula.</p>
 
       <p>On the dashboard, joint health appears as a standalone advisory indicator. It is interpreted as a tissue loading signal:</p>
 
       <table class="ref-table">
-        <thead><tr><th>Joint health score</th><th>Advisory</th></tr></thead>
+        <thead><tr><th>Joint score (0-4)</th><th>Advisory level</th><th>Dashboard behavior</th></tr></thead>
         <tbody>
-          <tr><td>8–10</td><td>No restriction — proceed with planned training</td></tr>
-          <tr><td>6–7</td><td>Monitor — consider reducing intensity on affected movements</td></tr>
-          <tr><td>4–5</td><td>Caution — modification of loading likely warranted</td></tr>
-          <tr><td>1–3</td><td>Significant concern — consider consulting a professional</td></tr>
+          <tr><td>0-2</td><td>none</td><td>No joint warning row is shown.</td></tr>
+          <tr><td>3</td><td>advisory</td><td>Joint advisory row is shown for the affected region.</td></tr>
+          <tr><td>4</td><td>warning</td><td>Higher-severity advisory row is shown for the affected region.</td></tr>
         </tbody>
       </table>
 

@@ -1,6 +1,19 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-20 (Documentation Refresh — static/docs.html)
+Last updated: 2026-05-21 (Docs Accuracy Corrective Pass — static/docs.html)
+
+## Latest Update (2026-05-21, Backlog Closure — Docs Schema Bug)
+
+- Updated `docs/backlog.md` to mark the docs schema mismatch as completed.
+- Removed the `21MAY2026` docs schema item from Open Bugs and added it to the closed/completed decisions table with completion details.
+
+## Latest Update (2026-05-21, Docs Accuracy Corrective Pass)
+
+- Updated `static/docs.html` check-in schema section to match the live backend fields and scale: `tiredness`, `perceived_recovery`, four pattern soreness fields, and `joint_upper/joint_lower` on a 0-4 input range.
+- Replaced the stale 1-10 inversion formula with the implemented subjective-fatigue calculation used in `main.py` (`0.45*t + 0.30*r + 0.25*s`, scaled to 0-20).
+- Updated the TSB training-state section labels and threshold table to match current runtime labels: Underloaded, Slightly Fresh, Balanced, Slightly Fatigued, Fatigued.
+- Updated the joint advisory section to describe current 0-4 scoring and the implemented advisory/warning levels.
+- Validation target: static diagnostics clean for `static/docs.html`; no structure-breaking HTML edits.
 
 ## Latest Update (2026-05-20, Exercise Metrics Tooltip Raw Date Source)
 

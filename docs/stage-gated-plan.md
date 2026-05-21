@@ -2,6 +2,19 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+## 2026-05-21 — Backlog Closure for Docs Schema Bug
+
+- Updated `docs/backlog.md` to remove the docs schema issue from Open Bugs.
+- Added a completed-resolution row in the closed decisions table documenting the docs correction completion.
+
+## 2026-05-21 — Docs Accuracy Corrective Pass
+
+- Updated `static/docs.html` to remove stale 1-10 check-in documentation and replace it with the implemented 0-4 schema and field names.
+- Updated the documented subjective fatigue formula to match current `main.py` weighting and scaling behavior.
+- Updated TSB training-state labels/ranges in the docs page to match current frontend/API labels.
+- Updated joint advisory documentation to reflect current 0-4 upper/lower joint fields and advisory thresholds.
+- Validation target: no diagnostics errors in `static/docs.html` after edit.
+
 ## 2026-05-20 — Documentation Refresh
 
 - Updated `static/docs.html` with source-verified wording for the 0–20 fatigue scale, the HYP fallback stress path, the pattern stress signal, the 7-day readiness trend, the AI assistant, and the exercise metrics browser.
