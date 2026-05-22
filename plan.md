@@ -2,6 +2,12 @@
 
 Last updated: 2026-05-21 (Docs Accuracy Corrective Pass — static/docs.html)
 
+## Latest Update (2026-05-21, Docs Weighting Visibility Clarification)
+
+- Updated `static/docs.html` to add a dedicated user-facing weighting breakdown table under the check-in formula section.
+- Added explicit percentage and max-point contributions for tiredness (45%, 9.0), perceived recovery (30%, 6.0), and soreness composite (25%, 5.0).
+- Added explicit note that each individual soreness field contributes equally within the soreness composite (up to 1.25 points each).
+
 ## Latest Update (2026-05-21, Backlog Closure — Docs Schema Bug)
 
 - Updated `docs/backlog.md` to mark the docs schema mismatch as completed.

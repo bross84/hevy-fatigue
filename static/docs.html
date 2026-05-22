@@ -727,6 +727,20 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         <span class="var">daily_fatigue_score</span> <span class="op">=</span> <span class="var">subjective_fatigue</span> <span class="op">*</span> <span class="val">20</span>
       </div>
 
+      <h3>What each input contributes</h3>
+      <p>The subjective total is a weighted blend. The contribution split is fixed and visible below:</p>
+
+      <table class="ref-table">
+        <thead><tr><th>Input group</th><th>Share of subjective total</th><th>Max points out of 20</th></tr></thead>
+        <tbody>
+          <tr><td>Tiredness</td><td>45%</td><td>9.0</td></tr>
+          <tr><td>Perceived recovery</td><td>30%</td><td>6.0</td></tr>
+          <tr><td>Soreness composite (all 4 soreness fields together)</td><td>25%</td><td>5.0</td></tr>
+        </tbody>
+      </table>
+
+      <p>Inside the soreness composite, each soreness field contributes equally, so each field can contribute up to <strong>1.25 points</strong> of the 20-point subjective total.</p>
+
       <p>On days without a workout, the daily fatigue score is computed from check-in alone. On training days, training load is incorporated as a modifier (see §4).</p>
     </section>
 

@@ -2,6 +2,11 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+## 2026-05-21 — Docs Weighting Visibility Clarification
+
+- Updated `static/docs.html` to explicitly show how each subjective check-in input contributes percentage-wise to the subjective total.
+- Added a contribution table and per-field soreness note so users can see the exact split without parsing the formula block.
+
 ## 2026-05-21 — Backlog Closure for Docs Schema Bug
 
 - Updated `docs/backlog.md` to remove the docs schema issue from Open Bugs.
