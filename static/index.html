@@ -2665,13 +2665,25 @@ body.ai-open main {
       </div>
     </div>
 
-    <!-- Correlation chart -->
-    <div class="vf-card" id="vf-chart-card">
-      <div class="card-title">Vol-Fatigue Correlation</div>
-      <div class="vf-chart-wrap" id="vf-chart-wrap">
-        <canvas id="vf-chart"></canvas>
-      </div>
-      <div class="vf-chart-note">Rolling 7-day stress load vs. rolling 7-day average readiness. Gaps indicate missing check-in data.</div>
+    <!-- RPE-Weighted Load chart -->
+    <div class="vf-card" id="vf-chart-rpe">
+      <div class="card-title">RPE-Weighted Load vs. Readiness</div>
+      <div class="vf-chart-wrap"><canvas id="vf-chart-rpe-canvas"></canvas></div>
+      <div class="vf-chart-note">Rolling 7-day RPE-weighted stress load vs. rolling readiness. Stress accounts for both weight and effort — heavier sets at higher RPE score higher.</div>
+    </div>
+
+    <!-- Raw Tonnage chart -->
+    <div class="vf-card" id="vf-chart-tonnage">
+      <div class="card-title">Raw Tonnage vs. Readiness</div>
+      <div class="vf-chart-wrap"><canvas id="vf-chart-tonnage-canvas"></canvas></div>
+      <div class="vf-chart-note">Rolling 7-day total tonnage (lbs lifted) vs. rolling readiness. Raw volume with no RPE weighting.</div>
+    </div>
+
+    <!-- Set Count chart -->
+    <div class="vf-card" id="vf-chart-sets">
+      <div class="card-title">Set Count vs. Readiness</div>
+      <div class="vf-chart-wrap"><canvas id="vf-chart-sets-canvas"></canvas></div>
+      <div class="vf-chart-note">Rolling 7-day total working sets vs. rolling readiness.</div>
     </div>
 
     <!-- Empty state -->
@@ -6256,32 +6268,60 @@ function _todayReadinessBandsPlugin() {
   };
 }
 
+let _todayLoadRange = 7;
+
 async function renderTodayTrainingLoadCard() {
   const card = document.getElementById('today-training-load-card');
   if (!card) return;
 
   try {
     const payload = await ensureTrainingLoadPayload();
-    const history = _trendSlice(payload?.history || [], 30);
+    const history = _trendSlice(payload?.history || [], _todayLoadRange);
+    card.innerHTML = `
+      <div class="card-title">Training Load Trend</div>
+      <div class="trend-range" id="today-load-range">
+        <button class="btn btn-secondary${_todayLoadRange === 3 ? ' active' : ''}" data-load-range="3">3 Day</button>
+        <button class="btn btn-secondary${_todayLoadRange === 7 ? ' active' : ''}" data-load-range="7">7 Day</button>
+        <button class="btn btn-secondary${_todayLoadRange === 14 ? ' active' : ''}" data-load-range="14">14 Day</button>
+      </div>
+      ${!history.length
+        ? '<div class="today-chart-empty">No training history yet.</div>'
+        : '<div class="today-chart-wrap"><canvas id="today-training-load-chart"></canvas></div><div class="today-chart-note">Fatigue = short-term load, Fitness = long-term load, Form = balance between the two.</div>'
+      }
+    `;
 
     if (!history.length) {
-      card.innerHTML = '<div class="card-title">Training Load Trend</div><div class="today-chart-empty">No training history yet.</div>';
+      _destroyTodayTrainingLoadChart();
+      document.getElementById('today-load-range')?.addEventListener('click', async e => {
+        const btn = e.target.closest('button[data-load-range]');
+        if (!btn) return;
+        _todayLoadRange = Number(btn.dataset.loadRange);
+        document.querySelectorAll('#today-load-range button').forEach(b => b.classList.toggle('active', b === btn));
+        await renderTodayTrainingLoadCard();
+      });
       return;
     }
 
-    card.innerHTML = `
-      <div class="card-title">Training Load Trend</div>
-      <div class="today-chart-wrap"><canvas id="today-training-load-chart"></canvas></div>
-      <div class="today-chart-note">Fatigue = short-term load, Fitness = long-term load, Form = balance between the two.</div>
-    `;
-
     _destroyTodayTrainingLoadChart();
     _renderTrendMainChart(history, payload?.thresholds || {}, 'today-training-load-chart');
+
+    document.getElementById('today-load-range')?.addEventListener('click', async e => {
+      const btn = e.target.closest('button[data-load-range]');
+      if (!btn) return;
+      _todayLoadRange = Number(btn.dataset.loadRange);
+      document.querySelectorAll('#today-load-range button').forEach(b => b.classList.toggle('active', b === btn));
+      const payload = await ensureTrainingLoadPayload();
+      const history = _trendSlice(payload?.history || [], _todayLoadRange);
+      _destroyTodayTrainingLoadChart();
+      _renderTrendMainChart(history, payload?.thresholds || {}, 'today-training-load-chart');
+    });
   } catch {
     _destroyTodayTrainingLoadChart();
     card.innerHTML = '<div class="card-title">Training Load Trend</div><div class="today-chart-empty">Unable to load training data.</div>';
   }
 }
+
+let _todayPatternRange = 7;
 
 async function renderTodayPatternFatigueCard() {
   const card = document.getElementById('today-pattern-fatigue-card');
@@ -6289,26 +6329,47 @@ async function renderTodayPatternFatigueCard() {
 
   try {
     const payload = await ensureTrainingLoadPayload();
-    const history = _trendSlice(payload?.history || [], 30);
-
-    if (!history.length) {
-      card.innerHTML = '<div class="card-title">Per-Pattern Fatigue Trend</div><div class="today-chart-empty">Pattern data unavailable for this date range.</div>';
-      return;
-    }
-
+    const history = _trendSlice(payload?.history || [], _todayPatternRange);
     const hasPatternLoads = history.some(h => h && typeof h === 'object' && h.pattern_loads && h.pattern_loads.knee && h.pattern_loads.hip && h.pattern_loads.push && h.pattern_loads.pull);
-    if (!hasPatternLoads) {
-      card.innerHTML = '<div class="card-title">Per-Pattern Fatigue Trend</div><div class="today-chart-empty">Pattern data unavailable for this date range.</div>';
-      return;
-    }
 
     card.innerHTML = `
       <div class="card-title">Per-Pattern Fatigue Trend</div>
-      <div class="today-chart-wrap"><canvas id="today-pattern-fatigue-chart"></canvas></div>
+      <div class="trend-range" id="today-pattern-range">
+        <button class="btn btn-secondary${_todayPatternRange === 3 ? ' active' : ''}" data-pattern-range="3">3 Day</button>
+        <button class="btn btn-secondary${_todayPatternRange === 7 ? ' active' : ''}" data-pattern-range="7">7 Day</button>
+        <button class="btn btn-secondary${_todayPatternRange === 14 ? ' active' : ''}" data-pattern-range="14">14 Day</button>
+      </div>
+      ${(!history.length || !hasPatternLoads)
+        ? '<div class="today-chart-empty">Pattern data unavailable for this date range.</div>'
+        : '<div class="today-chart-wrap"><canvas id="today-pattern-fatigue-chart"></canvas></div>'
+      }
     `;
+
+    if (!history.length || !hasPatternLoads) {
+      _destroyTodayPatternFatigueChart();
+      document.getElementById('today-pattern-range')?.addEventListener('click', async e => {
+        const btn = e.target.closest('button[data-pattern-range]');
+        if (!btn) return;
+        _todayPatternRange = Number(btn.dataset.patternRange);
+        document.querySelectorAll('#today-pattern-range button').forEach(b => b.classList.toggle('active', b === btn));
+        await renderTodayPatternFatigueCard();
+      });
+      return;
+    }
 
     _destroyTodayPatternFatigueChart();
     _renderTrendPatternChart(history, 'today-pattern-fatigue-chart');
+
+    document.getElementById('today-pattern-range')?.addEventListener('click', async e => {
+      const btn = e.target.closest('button[data-pattern-range]');
+      if (!btn) return;
+      _todayPatternRange = Number(btn.dataset.patternRange);
+      document.querySelectorAll('#today-pattern-range button').forEach(b => b.classList.toggle('active', b === btn));
+      const payload = await ensureTrainingLoadPayload();
+      const history = _trendSlice(payload?.history || [], _todayPatternRange);
+      _destroyTodayPatternFatigueChart();
+      _renderTrendPatternChart(history, 'today-pattern-fatigue-chart');
+    });
   } catch {
     _destroyTodayPatternFatigueChart();
     card.innerHTML = '<div class="card-title">Per-Pattern Fatigue Trend</div><div class="today-chart-empty">Unable to load pattern data.</div>';
@@ -6667,7 +6728,9 @@ function _renderTrendPatternChart(history, canvasId = 'trend-pattern-chart') {
 
 // ═══ Vol-Fatigue Correlation Tab ════════════════════════════════════════════
 
-let _vfChart = null;
+let _vfChartRpe = null;
+let _vfChartTonnage = null;
+let _vfChartSets = null;
 let _vfActiveRange = 4; // weeks, or 'custom'
 let _vfCustomStart = null;
 let _vfCustomEnd = null;
@@ -6692,10 +6755,9 @@ function _vfDateRange() {
 }
 
 function _vfDestroyChart() {
-  if (_vfChart) {
-    _vfChart.destroy();
-    _vfChart = null;
-  }
+  if (_vfChartRpe)     { _vfChartRpe.destroy();     _vfChartRpe = null; }
+  if (_vfChartTonnage) { _vfChartTonnage.destroy();  _vfChartTonnage = null; }
+  if (_vfChartSets)    { _vfChartSets.destroy();     _vfChartSets = null; }
 }
 
 async function renderVolFatigueView() {
@@ -6712,45 +6774,42 @@ async function renderVolFatigueView() {
     // Show empty state if no data
     if (!data.data || data.data.length === 0) {
       document.getElementById('vf-empty').style.display = 'block';
-      document.getElementById('vf-chart-card').style.display = 'none';
+      document.getElementById('vf-chart-rpe').style.display = 'none';
+      document.getElementById('vf-chart-tonnage').style.display = 'none';
+      document.getElementById('vf-chart-sets').style.display = 'none';
       return;
     }
-    
-    // Show chart, hide empty state
+
+    // Show charts, hide empty state
     document.getElementById('vf-empty').style.display = 'none';
-    document.getElementById('vf-chart-card').style.display = 'block';
-    
-    _vfRenderChart(data);
+    document.getElementById('vf-chart-rpe').style.display = 'block';
+    document.getElementById('vf-chart-tonnage').style.display = 'block';
+    document.getElementById('vf-chart-sets').style.display = 'block';
+    _vfRenderCharts(data);
   } catch (err) {
     console.error('Vol-Fatigue fetch error:', err);
     document.getElementById('vf-empty').style.display = 'block';
-    document.getElementById('vf-chart-card').style.display = 'none';
+    document.getElementById('vf-chart-rpe').style.display = 'none';
+    document.getElementById('vf-chart-tonnage').style.display = 'none';
+    document.getElementById('vf-chart-sets').style.display = 'none';
   }
 }
 
-function _vfRenderChart(data) {
+function _vfBuildChart(canvasId, leftData, leftLabel, leftColor, leftAxisTitle, readinessData, labels, rawData) {
   const c = themeColors();
-  const ctx = document.getElementById('vf-chart').getContext('2d');
-  
-  const labels = data.data.map(d => _dateLabel(d.date));
-  const stressData = data.data.map(d => d.rolling_stress);
-  const readinessData = data.data.map(d => d.rolling_readiness);
-  
-  // Find max stress for y-axis ceiling
-  const maxStress = Math.max(...stressData, 1);
-  
-  _vfDestroyChart();
-  
-  _vfChart = new Chart(ctx, {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  const maxLeft = Math.max(...leftData.filter(v => v !== null), 1);
+
+  return new Chart(ctx, {
     type: 'line',
     data: {
       labels,
       datasets: [
         {
-          label: 'Rolling Stress Load',
-          data: stressData,
-          borderColor: c.accent,
-          backgroundColor: c.accent + '1a',
+          label: leftLabel,
+          data: leftData,
+          borderColor: leftColor,
+          backgroundColor: leftColor + '1a',
           yAxisID: 'y',
           pointRadius: 3,
           pointHoverRadius: 5,
@@ -6776,26 +6835,20 @@ function _vfRenderChart(data) {
       ..._trendChartBaseOptions(),
       plugins: {
         ..._trendChartBaseOptions().plugins,
-        legend: {
-          ..._trendChartBaseOptions().plugins.legend,
-          display: true,
-        },
+        legend: { ..._trendChartBaseOptions().plugins.legend, display: true },
         tooltip: {
           ..._trendChartBaseOptions().plugins.tooltip,
           callbacks: {
             title(items) {
               const idx = items?.[0]?.dataIndex ?? 0;
-              return _dateLabel(data.data[idx].date);
+              return _dateLabel(rawData[idx].date);
             },
             label(ctxItem) {
               const value = ctxItem.parsed?.y;
-              if (ctxItem.dataset.label === 'Rolling Stress Load') {
-                return `Stress: ${_fmt1(value)}`;
-              }
               if (ctxItem.dataset.label === 'Rolling Readiness') {
                 return value !== null ? `Readiness: ${_fmt1(value)}` : 'Readiness: —';
               }
-              return '';
+              return value !== null ? `${ctxItem.dataset.label}: ${_fmt1(value)}` : '—';
             },
           },
         },
@@ -6804,17 +6857,14 @@ function _vfRenderChart(data) {
         ..._trendChartBaseOptions().scales,
         x: {
           ..._trendChartBaseOptions().scales.x,
-          ticks: {
-            ..._trendChartBaseOptions().scales.x.ticks,
-            maxTicksLimit: 10,
-          },
+          ticks: { ..._trendChartBaseOptions().scales.x.ticks, maxTicksLimit: 10 },
         },
         y: {
           ..._trendChartBaseOptions().scales.y,
           position: 'left',
-          title: { display: true, text: 'Stress', color: c.muted, font: { size: 11 } },
+          title: { display: true, text: leftAxisTitle, color: c.muted, font: { size: 11 } },
           min: 0,
-          max: maxStress * 1.1,
+          max: maxLeft * 1.1,
         },
         y1: {
           ..._trendChartBaseOptions().scales.y,
@@ -6822,10 +6872,26 @@ function _vfRenderChart(data) {
           title: { display: true, text: 'Readiness', color: c.muted, font: { size: 11 } },
           min: 0,
           max: 10,
+          grid: { drawOnChartArea: false },
         },
       },
     },
   });
+}
+
+function _vfRenderCharts(data) {
+  const c = themeColors();
+  _vfDestroyChart();
+
+  const labels      = data.data.map(d => _dateLabel(d.date));
+  const stressData  = data.data.map(d => d.rolling_stress);
+  const tonnageData = data.data.map(d => d.rolling_tonnage);
+  const setData     = data.data.map(d => d.rolling_set_count);
+  const readiness   = data.data.map(d => d.rolling_readiness);
+
+  _vfChartRpe     = _vfBuildChart('vf-chart-rpe-canvas',     stressData,  'RPE-Weighted Load', c.accent,    'Stress', readiness, labels, data.data);
+  _vfChartTonnage = _vfBuildChart('vf-chart-tonnage-canvas', tonnageData, 'Rolling Tonnage',   c.quad,      'Lbs',    readiness, labels, data.data);
+  _vfChartSets    = _vfBuildChart('vf-chart-sets-canvas',    setData,     'Set Count',         c.posterior, 'Sets',   readiness, labels, data.data);
 }
 
 // Wire up Vol-Fatigue range button events

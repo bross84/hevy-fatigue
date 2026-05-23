@@ -1,6 +1,91 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-22 (Spec B Tasks 4 & 5 — Vol-Fatigue Correlation JavaScript + Cleanup)
+Last updated: 2026-05-23 (Tasks 2 & 3 — Vol-Fatigue 3-chart HTML/JS + Today card range selectors)
+
+## Latest Update (2026-05-23, Tasks 2 & 3 — Vol-Fatigue 3-chart expansion + Today card range selectors)
+
+- Workflow selected: Main
+- No schema changes; index.html only (besides plan files)
+
+### Task 2 — HTML: Replace single chart card with three
+- Removed `<div class="vf-card" id="vf-chart-card">` (old single Vol-Fatigue Correlation card)
+- Added three separate `vf-card` divs with IDs: `vf-chart-rpe`, `vf-chart-tonnage`, `vf-chart-sets`
+- Each card has: card-title, vf-chart-wrap with named canvas, vf-chart-note
+- Canvas IDs: `vf-chart-rpe-canvas`, `vf-chart-tonnage-canvas`, `vf-chart-sets-canvas`
+
+### Task 3 — JS: Three chart instances + helper + Today card range selectors
+- Replaced `let _vfChart = null` with three module-level vars: `_vfChartRpe`, `_vfChartTonnage`, `_vfChartSets`
+- Updated `_vfDestroyChart()` to destroy all three instances
+- Updated `renderVolFatigueView()` show/hide to toggle all three card IDs instead of old `vf-chart-card`
+- Added `_vfBuildChart(canvasId, leftData, leftLabel, leftColor, leftAxisTitle, readinessData, labels, rawData)` helper
+  - Dual Y-axes: left for primary metric, right for readiness (fixed 0-10)
+  - Uses `_trendChartBaseOptions()` as base; `grid.drawOnChartArea: false` on right axis
+- Added `_vfRenderCharts(data)` replacing `_vfRenderChart(data)`:
+  - RPE chart: `c.accent` color
+  - Tonnage chart: `c.quad` color (c.warn does not exist in themeColors)
+  - Sets chart: `c.posterior` color
+- Added `let _todayLoadRange = 7` module state
+- Updated `renderTodayTrainingLoadCard()`: range row with 3/7/14 day buttons; wires click listener; uses `_todayLoadRange`
+- Added `let _todayPatternRange = 7` module state
+- Updated `renderTodayPatternFatigueCard()`: same range row pattern; uses `_todayPatternRange`
+- Task 4 (CSS): No changes needed — `.trend-range` and `.btn.btn-secondary` already exist
+
+### Validation
+- Brace balance: 1666/1666 BALANCED
+- Script tag balance: 4/4 BALANCED
+- No residual references to old `vf-chart-card` ID or `_vfChart` single-instance
+- py_compile: N/A (JS-only changes)
+
+## Previous Update (2026-05-23, Task 1 — Backend /api/volfatigue/summary five fixes)
+
+- Workflow selected: Express
+- Schema verification completed with PRAGMA table_info on workout_sessions, workout_logs, daily_readiness
+- Fix 1: Readiness scale corrected from 0-20 to 0-10 in endpoint logic
+	- Changed from subjective_score = subj * 20.0
+	- To subjective_score = round(subj * 10.0, 2)
+- Fix 2: Added per-day tonnage and set count lookups
+	- New dicts: tonnage_by_date, set_count_by_date
+	- Added WorkoutLog join query to WorkoutSession via workout_logs.workout_id == workout_sessions.hevy_workout_id
+	- Date filter uses lookback_start through end
+	- Includes all sessions (no modality filter)
+- Fix 3: Added rolling 7-day tonnage and set count in per-day loop
+	- rolling_tonnage accumulates tonnage_by_date over trailing 7 days
+	- rolling_set_count accumulates set_count_by_date over trailing 7 days
+- Fix 4: Added response fields
+	- rolling_tonnage (rounded to 1 decimal)
+	- rolling_set_count (integer)
+- Fix 5: Updated endpoint docstring wording to include stress load, raw tonnage, set count, and readiness with rolling 7-day sums/averages
+- Validation
+	- python -m py_compile main.py: PASS
+	- read/problems on main.py: No errors
+- Scope check
+	- No schema changes
+	- Out-of-scope files untouched in this task
+
+
+- Workflow selected: Express
+- Schema verification completed with PRAGMA table_info on workout_sessions, workout_logs, daily_readiness
+- Fix 1: Readiness scale corrected from 0-20 to 0-10 in endpoint logic
+	- Changed from subjective_score = subj * 20.0
+	- To subjective_score = round(subj * 10.0, 2)
+- Fix 2: Added per-day tonnage and set count lookups
+	- New dicts: tonnage_by_date, set_count_by_date
+	- Added WorkoutLog join query to WorkoutSession via workout_logs.workout_id == workout_sessions.hevy_workout_id
+	- Date filter uses lookback_start through end
+	- Includes all sessions (no modality filter)
+- Fix 3: Added rolling 7-day tonnage and set count in per-day loop
+	- rolling_tonnage accumulates tonnage_by_date over trailing 7 days
+	- rolling_set_count accumulates set_count_by_date over trailing 7 days
+- Fix 4: Added response fields
+	- rolling_tonnage (rounded to 1 decimal)
+	- rolling_set_count (integer)
+- Fix 5: Updated endpoint docstring wording to include stress load, raw tonnage, set count, and readiness with rolling 7-day sums/averages
+- Validation
+	- python -m py_compile main.py: PASS
+	- read/problems on main.py: No errors
+- Scope check
+	- No schema changes
+	- Out-of-scope files untouched in this task
 
 ## Latest Update (2026-05-22, Spec B Tasks 4 & 5 — Vol-Fatigue Correlation JavaScript + Destroy)
 

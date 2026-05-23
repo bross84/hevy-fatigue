@@ -2,6 +2,84 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+## 2026-05-23 — Tasks 2 & 3: Vol-Fatigue 3-chart expansion + Today card range selectors
+
+### Workflow
+- Main (multi-area frontend edit, touches both Vol-Fatigue JS section and Today card functions)
+
+### Task 2 — HTML (index.html)
+- Replaced single `#vf-chart-card` with three separate vf-card divs:
+  - `#vf-chart-rpe` + canvas `vf-chart-rpe-canvas` — RPE-Weighted Load vs. Readiness
+  - `#vf-chart-tonnage` + canvas `vf-chart-tonnage-canvas` — Raw Tonnage vs. Readiness
+  - `#vf-chart-sets` + canvas `vf-chart-sets-canvas` — Set Count vs. Readiness
+
+### Task 3 — JS (index.html)
+- **Module state**: replaced `_vfChart` with `_vfChartRpe`, `_vfChartTonnage`, `_vfChartSets`
+- **`_vfDestroyChart()`**: updated to destroy all three instances
+- **`renderVolFatigueView()`**: updated show/hide to reference all three card IDs
+- **`_vfBuildChart()`**: new helper — creates dual-Y Chart.js line chart (left = metric, right = readiness 0-10)
+- **`_vfRenderCharts()`**: replaces `_vfRenderChart()` — calls `_vfBuildChart` three times with different data/colors
+  - Tonnage uses `c.quad` (c.warn is absent from themeColors())
+- **Today cards**: added `_todayLoadRange` and `_todayPatternRange` module state (both default 7)
+- **`renderTodayTrainingLoadCard()`**: adds 3/7/14 day range buttons; wires click listener; slices by `_todayLoadRange`
+- **`renderTodayPatternFatigueCard()`**: same pattern with `_todayPatternRange`
+
+### Task 4 — CSS
+- No changes needed; `.trend-range` and `.btn.btn-secondary` already defined
+
+### Validation
+- Brace balance: 1666/1666 BALANCED
+- Script tag balance: 4/4 BALANCED
+- No residual old identifiers
+- py_compile: N/A (JS-only)
+
+---
+
+## 2026-05-23 — Task 1: Backend /api/volfatigue/summary (Five Fixes)
+
+### Workflow
+- Express (single-file backend edit with no architectural changes)
+
+### Required Pre-Edit Checks
+- PRAGMA table_info(workout_sessions): PASS
+- PRAGMA table_info(workout_logs): PASS
+- PRAGMA table_info(daily_readiness): PASS
+
+### Implemented Fixes in main.py
+- **Fix 1 — Readiness scale**
+	- Updated subjective score scaling from 0-20 to 0-10
+	- Changed to: `subjective_score = round(subj * 10.0, 2)`
+- **Fix 2 — Tonnage and set count lookups**
+	- Added dictionaries:
+		- `tonnage_by_date: dict[date_type, float] = {}`
+		- `set_count_by_date: dict[date_type, int] = {}`
+	- Added join query:
+		- WorkoutLog joined to WorkoutSession on `WorkoutLog.workout_id == WorkoutSession.hevy_workout_id`
+		- Filtered by `WorkoutSession.workout_date >= lookback_start` and `<= end`
+		- No modality filter (all sessions included)
+	- Accumulation logic:
+		- `tonnage_by_date[date] += (weight_lbs or 0.0) * (reps or 0)`
+		- `set_count_by_date[date] += 1`
+- **Fix 3 — Rolling tonnage and set count**
+	- Added rolling 7-day calculations in per-day loop:
+		- `rolling_tonnage`
+		- `rolling_set_count`
+- **Fix 4 — Response fields**
+	- Added to each output row:
+		- `rolling_tonnage: round(rolling_tonnage, 1)`
+		- `rolling_set_count: rolling_set_count`
+- **Fix 5 — Docstring update**
+	- Updated to describe rolling stress load, raw tonnage, set count, and readiness
+	- Clarified rolling 7-day sums/averages and readiness null rule
+
+### Validation
+- `python -m py_compile main.py`: PASS
+- read/problems for main.py: No errors
+
+### Scope
+- No schema changes
+- No modifications to out-of-scope files
+
 ## 2026-05-22 — Spec B Tasks 4 & 5: Vol-Fatigue Correlation JavaScript + Destroy Logic
 
 ### Task 4 Implementation (JavaScript)
