@@ -1840,7 +1840,7 @@ tbody tr:hover td { background: var(--row-hover); }
   }
   main {
     padding-top: 16px;
-    padding-bottom: 76px;
+    padding-bottom: 90px;
   }
 }
 
@@ -3445,6 +3445,7 @@ let _checkinFormBound = false;
 let _checkinPromptAutoShown = false;
 let _dashboardVfChart = null;
 let _dashboardVfActiveRange = 4;
+let _dashboardVfSignal = 'tonnage'; // 'rpe' | 'tonnage' | 'sets'
 let _dashboardVfCustomStart = null;
 let _dashboardVfCustomEnd = null;
 let aiSettingsLocked = false;
@@ -6545,20 +6546,25 @@ async function renderDashboardVFCard() {
 
   card.innerHTML = `
     <div class="dashboard-card-title">Volume · Fatigue</div>
-    <div class="vf-range-row" id="dashboard-vf-range-btns">
+    <div class="vf-range-row" id="dashboard-vf-signal-btns">
+      <button class="btn btn-secondary${_dashboardVfSignal === 'tonnage' ? ' active' : ''}" data-dvf-signal="tonnage">Tonnage</button>
+      <button class="btn btn-secondary${_dashboardVfSignal === 'rpe' ? ' active' : ''}" data-dvf-signal="rpe">RPE Load</button>
+      <button class="btn btn-secondary${_dashboardVfSignal === 'sets' ? ' active' : ''}" data-dvf-signal="sets">Sets</button>
+    </div>
+    <div class="vf-range-row" id="dashboard-vf-range-btns" style="margin-top:6px;">
       <button class="btn btn-secondary${_dashboardVfActiveRange === 4 ? ' active' : ''}" data-dashboard-vf-range="4">4 Weeks</button>
       <button class="btn btn-secondary${_dashboardVfActiveRange === 8 ? ' active' : ''}" data-dashboard-vf-range="8">8 Weeks</button>
       <button class="btn btn-secondary${_dashboardVfActiveRange === 12 ? ' active' : ''}" data-dashboard-vf-range="12">12 Weeks</button>
       <button class="btn btn-secondary${_dashboardVfActiveRange === 'custom' ? ' active' : ''}" data-dashboard-vf-range="custom">Custom</button>
     </div>
     <div class="vf-custom-range" id="dashboard-vf-custom-range" style="display:${_dashboardVfActiveRange === 'custom' ? 'flex' : 'none'};">
-      <input type="date" id="dashboard-vf-start-date">
+      <input type="date" id="dashboard-vf-start-date" value="${_dashboardVfCustomStart || ''}">
       <span class="vf-date-sep">to</span>
-      <input type="date" id="dashboard-vf-end-date">
+      <input type="date" id="dashboard-vf-end-date" value="${_dashboardVfCustomEnd || ''}">
       <button class="btn btn-primary" id="dashboard-vf-custom-apply">Apply</button>
     </div>
     <div class="vf-chart-wrap"><canvas id="dashboard-vf-chart"></canvas></div>
-    <div class="vf-chart-note">RPE-weighted load vs rolling readiness.</div>
+    <div class="vf-chart-note" id="dashboard-vf-note"></div>
   `;
 
   const { start, end } = _dashboardVfDateRange();
@@ -6566,30 +6572,69 @@ async function renderDashboardVFCard() {
     const response = await fetch(`/api/volfatigue/summary?start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}`);
     if (!response.ok) throw new Error(`API error: ${response.status}`);
     const data = await response.json();
+
     if (!data.data || !data.data.length) {
       if (_dashboardVfChart) { _dashboardVfChart.destroy(); _dashboardVfChart = null; }
-      card.innerHTML = '<div class="dashboard-card-title">Volume · Fatigue</div><div class="today-chart-empty">No data available for this window.</div>';
+      card.querySelector('.vf-chart-wrap').innerHTML = '<div class="today-chart-empty">No data available for this window.</div>';
       return;
     }
 
     const c = themeColors();
     const labels = data.data.map(d => _dateLabel(d.date));
-    const stressData = data.data.map(d => d.rolling_stress_load);
     const readiness = data.data.map(d => d.rolling_readiness);
+
+    let signalData, signalLabel, signalColor, signalAxis, noteText;
+    if (_dashboardVfSignal === 'tonnage') {
+      signalData  = data.data.map(d => d.rolling_tonnage);
+      signalLabel = 'Rolling Tonnage';
+      signalColor = c.warn;
+      signalAxis  = 'Lbs';
+      noteText    = 'Rolling 7-day total tonnage (lbs lifted) vs. rolling readiness.';
+    } else if (_dashboardVfSignal === 'rpe') {
+      signalData  = data.data.map(d => d.rolling_stress);
+      signalLabel = 'RPE-Weighted Load';
+      signalColor = c.accent;
+      signalAxis  = 'Stress';
+      noteText    = 'Rolling 7-day RPE-weighted stress load vs. rolling readiness.';
+    } else {
+      signalData  = data.data.map(d => d.rolling_set_count);
+      signalLabel = 'Set Count';
+      signalColor = c.push;
+      signalAxis  = 'Sets';
+      noteText    = 'Rolling 7-day total working sets vs. rolling readiness.';
+    }
+
+    const noteEl = document.getElementById('dashboard-vf-note');
+    if (noteEl) noteEl.textContent = noteText;
+
     if (_dashboardVfChart) { _dashboardVfChart.destroy(); _dashboardVfChart = null; }
-    _dashboardVfChart = _vfBuildChart('dashboard-vf-chart', stressData, 'RPE-Weighted Load', c.accent, 'Stress', readiness, labels, data.data);
+    _dashboardVfChart = _vfBuildChart('dashboard-vf-chart', signalData, signalLabel, signalColor, signalAxis, readiness, labels, data.data);
+
   } catch {
     if (_dashboardVfChart) { _dashboardVfChart.destroy(); _dashboardVfChart = null; }
-    card.innerHTML = '<div class="dashboard-card-title">Volume · Fatigue</div><div class="today-chart-empty">Unable to load Vol-Fatigue summary.</div>';
+    card.innerHTML = '<div class="dashboard-card-title">Volume · Fatigue</div><div class="today-chart-empty">Unable to load data.</div>';
     return;
   }
+
+  document.getElementById('dashboard-vf-signal-btns')?.addEventListener('click', e => {
+    const btn = e.target.closest('button[data-dvf-signal]');
+    if (!btn) return;
+    _dashboardVfSignal = btn.dataset.dvfSignal;
+    renderDashboardVFCard();
+  });
 
   document.getElementById('dashboard-vf-range-btns')?.addEventListener('click', e => {
     const btn = e.target.closest('button[data-dashboard-vf-range]');
     if (!btn) return;
     const val = btn.dataset.dashboardVfRange;
-    _dashboardVfActiveRange = val === 'custom' ? 'custom' : parseInt(val, 10);
-    renderDashboardVFCard();
+    if (val === 'custom') {
+      _dashboardVfActiveRange = 'custom';
+      document.getElementById('dashboard-vf-custom-range').style.display = 'flex';
+    } else {
+      _dashboardVfActiveRange = parseInt(val, 10);
+      document.getElementById('dashboard-vf-custom-range').style.display = 'none';
+      renderDashboardVFCard();
+    }
   });
 
   document.getElementById('dashboard-vf-custom-apply')?.addEventListener('click', () => {
@@ -6598,7 +6643,6 @@ async function renderDashboardVFCard() {
     if (!s || !e || s > e) return;
     _dashboardVfCustomStart = s;
     _dashboardVfCustomEnd = e;
-    _dashboardVfActiveRange = 'custom';
     renderDashboardVFCard();
   });
 }
@@ -6785,13 +6829,6 @@ async function renderTodayTrainingLoadCard() {
 
     if (!history.length) {
       _destroyTodayTrainingLoadChart();
-      document.getElementById('today-load-range')?.addEventListener('click', async e => {
-        const btn = e.target.closest('button[data-load-range]');
-        if (!btn) return;
-        _todayLoadRange = Number(btn.dataset.loadRange);
-        document.querySelectorAll('#today-load-range button').forEach(b => b.classList.toggle('active', b === btn));
-        await renderTodayTrainingLoadCard();
-      });
       return;
     }
 
@@ -6803,10 +6840,7 @@ async function renderTodayTrainingLoadCard() {
       if (!btn) return;
       _todayLoadRange = Number(btn.dataset.loadRange);
       document.querySelectorAll('#today-load-range button').forEach(b => b.classList.toggle('active', b === btn));
-      const payload = await ensureTrainingLoadPayload();
-      const history = _trendSlice(payload?.history || [], _todayLoadRange);
-      _destroyTodayTrainingLoadChart();
-      _renderTrendMainChart(history, payload?.thresholds || {}, 'today-training-load-chart');
+      await renderTodayTrainingLoadCard();
     });
   } catch {
     _destroyTodayTrainingLoadChart();
@@ -6840,13 +6874,6 @@ async function renderTodayPatternFatigueCard() {
 
     if (!history.length || !hasPatternLoads) {
       _destroyTodayPatternFatigueChart();
-      document.getElementById('today-pattern-range')?.addEventListener('click', async e => {
-        const btn = e.target.closest('button[data-pattern-range]');
-        if (!btn) return;
-        _todayPatternRange = Number(btn.dataset.patternRange);
-        document.querySelectorAll('#today-pattern-range button').forEach(b => b.classList.toggle('active', b === btn));
-        await renderTodayPatternFatigueCard();
-      });
       return;
     }
 
@@ -6858,10 +6885,7 @@ async function renderTodayPatternFatigueCard() {
       if (!btn) return;
       _todayPatternRange = Number(btn.dataset.patternRange);
       document.querySelectorAll('#today-pattern-range button').forEach(b => b.classList.toggle('active', b === btn));
-      const payload = await ensureTrainingLoadPayload();
-      const history = _trendSlice(payload?.history || [], _todayPatternRange);
-      _destroyTodayPatternFatigueChart();
-      _renderTrendPatternChart(history, 'today-pattern-fatigue-chart');
+      await renderTodayPatternFatigueCard();
     });
   } catch {
     _destroyTodayPatternFatigueChart();
