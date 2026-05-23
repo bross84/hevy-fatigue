@@ -2,6 +2,57 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+## 2026-05-23 — Design System C2: Nav Restructure
+
+### Workflow
+- Main (multi-area frontend: CSS, HTML, JS)
+
+### Changes (index.html)
+- **CSS removed**: `.mobile-menu-btn`, `.mobile-nav-overlay`, `.mobile-nav-drawer`, `.mobile-drawer-nav`, `body.mobile-nav-open` rules
+- **CSS updated**: `nav` rule — `padding: 0 24px`, `gap: 8px`, `height: 52px`; `.nav-tab` gains `white-space: nowrap`
+- **CSS added**: `.bottom-nav` / `.bottom-nav-items` / `.bottom-nav-btn` block; `.bottom-sheet-scrim` / `.bottom-sheet` / `.bottom-sheet-items` / `.bottom-sheet-item` block
+- **CSS updated**: `@media (max-width: 767px)` — `nav { display: none }`, `.bottom-nav { display: flex }`, `main { padding-top: 16px; padding-bottom: 76px }`
+- **HTML replaced**: `<nav>` — logo · 8 desktop tabs (Dashboard/Exercises/Workouts/AI/Fatigue/Log/Settings/Patterns) · theme toggle
+- **HTML removed**: `<div class="mobile-nav-overlay">`, `<aside class="mobile-nav-drawer">`
+- **HTML added**: `<nav class="bottom-nav">` with 5 items; bottom sheet with Fatigue/Log/Settings/Patterns/Docs
+- **Tab renames**: "Today" → "Dashboard", "Trend" → "Fatigue" (label only; `data-tab` values unchanged)
+- **JS removed**: `setMobileNavOpen()` function; mobile click handlers in `document.addEventListener('click')`
+- **JS added**: `setBottomSheetOpen()`, bottom nav/sheet event listeners, before `activateTab()`
+- **JS updated**: `activateTab()` — calls `setBottomSheetOpen(false)`, syncs `.bottom-nav-btn[data-tab]` active class
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1678 open / 1678 close: PASS
+- Script tag balance: 4/4: PASS
+- `bottom-nav-btn`: 11 occurrences (5 HTML + 6 JS references): OK
+- `ex-conflict-badge-mobile` present: 2 (HTML + badge-conflict ref): OK
+- `--card-raised`, `--border-mid` from C1 intact: OK
+- `tab-dashboard` reference in `applyTheme()` unchanged: verified
+
+---
+
+## 2026-05-23 — Design System C1: Replace color palette
+
+### Workflow
+- Express (CSS-only, single file)
+
+### Changes (index.html)
+- Dark theme token block replaced: `--bg #0F172A`, `--card #111827`, `--card-raised #1E293B`, `--border #1E293B`, `--border-mid #253456`, `--accent #3772FF`, `--accent-light #6B9FFF`; push/pull/posterior/danger/success/warn updated
+- Light theme token block replaced: `--bg #F1F5F9`, `--card #FFFFFF`, `--card-raised #F8FAFC`, `--accent #3772FF`, `--accent-light #1A4FCC`; all semantic colors updated for light contrast
+- THEME TOKENS comment updated to new palette description
+- `themeColors()` extended with `accentLight`, `warn`, `danger` keys
+- `color: #fff` on `.btn-primary` and `.settings-diag-cta` — both on `background: var(--accent)`, no change needed
+- `tab-dashboard` reference confirmed intact
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- Dark `--bg` = `#0F172A`, `--accent` = `#3772FF`: verified in source
+- Light `--bg` = `#F1F5F9`, `--accent` = `#3772FF`: verified in source
+- `--card-raised` and `--border-mid` present in both themes: verified
+- `themeColors()` returns `warn`, `danger`, `accentLight`: verified
+
+---
+
 ## 2026-05-23 — Tasks 2 & 3: Vol-Fatigue 3-chart expansion + Today card range selectors
 
 ### Workflow

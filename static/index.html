@@ -13,28 +13,32 @@
 
 /* ══════════════════════════════════════════════════════
    THEME TOKENS
-   Dark palette:  5da9e9 eca72c 2e282a f3f8f2 ef3e36
-   Light palette: 058ed9 ffd166 e1dee3 40476d b9314f
-   Push/Pull are derived to complement each palette.
+   Accent:  #3772FF (both themes)
+   Dark:    bg #0F172A · card #111827 · raised #1E293B
+   Light:   bg #F1F5F9 · card #FFFFFF · raised #F8FAFC
+   Pattern: quad/blue · posterior/amber · push/green · pull/purple
 ══════════════════════════════════════════════════════ */
 
 /* Dark (default) */
 :root, [data-theme="dark"] {
-  --bg:           #2e282a;
-  --card:         #3d3638;
-  --border:       #524c4e;
-  --text:         #f3f8f2;
-  --muted:        #a09498;
-  --accent:       #5da9e9;
-  --quad:         #5da9e9;
-  --posterior:    #eca72c;
-  --push:         #4db870;
-  --pull:         #9b7fd4;
-  --danger:       #ef3e36;
-  --decrease-band:#f0ad5c;
-  --success:      #4db870;
-  --warn:         #eca72c;
-  --accent-sub:   rgba(93,169,233,.13);
+  --bg:           #0F172A;
+  --card:         #111827;
+  --card-raised:  #1E293B;
+  --border:       #1E293B;
+  --border-mid:   #253456;
+  --text:         #F1F5F9;
+  --muted:        #64748B;
+  --accent:       #3772FF;
+  --accent-sub:   rgba(55,114,255,.14);
+  --accent-light: #6B9FFF;
+  --quad:         #6B9FFF;
+  --posterior:    #F59E0B;
+  --push:         #22C55E;
+  --pull:         #C084FC;
+  --danger:       #F87171;
+  --success:      #22C55E;
+  --warn:         #F59E0B;
+  --decrease-band:#F59E0B;
   --row-hover:    rgba(255,255,255,.03);
   --btn-shadow:   rgba(0,0,0,.45);
   --modal-scrim:  rgba(0,0,0,.72);
@@ -42,21 +46,24 @@
 
 /* Light */
 [data-theme="light"] {
-  --bg:           #e1dee3;
-  --card:         #f5f3f6;
-  --border:       #c8c4ca;
-  --text:         #2e2830;
-  --muted:        #7a6e7c;
-  --accent:       #058ed9;
-  --quad:         #058ed9;
-  --posterior:    #b9314f;
-  --push:         #1a7a3c;
-  --pull:         #6b3fa0;
-  --danger:       #b9314f;
-  --decrease-band:#e7a24a;
-  --success:      #1a7a3c;
-  --warn:         #9a6e00;
-  --accent-sub:   rgba(5,142,217,.13);
+  --bg:           #F1F5F9;
+  --card:         #FFFFFF;
+  --card-raised:  #F8FAFC;
+  --border:       #E2E8F0;
+  --border-mid:   #CBD5E1;
+  --text:         #0F172A;
+  --muted:        #64748B;
+  --accent:       #3772FF;
+  --accent-sub:   rgba(55,114,255,.10);
+  --accent-light: #1A4FCC;
+  --quad:         #1A4FCC;
+  --posterior:    #92400E;
+  --push:         #166534;
+  --pull:         #6D28D9;
+  --danger:       #DC2626;
+  --success:      #16A34A;
+  --warn:         #D97706;
+  --decrease-band:#D97706;
   --row-hover:    rgba(0,0,0,.04);
   --btn-shadow:   rgba(0,0,0,.15);
   --modal-scrim:  rgba(0,0,0,.55);
@@ -82,11 +89,11 @@ nav {
   width: 100%;
   background: var(--card);
   border-bottom: 1px solid var(--border);
-  padding: 0 20px;
+  padding: 0 24px;
   display: flex;
   align-items: center;
-  gap: 20px;
-  height: 54px;
+  gap: 8px;
+  height: 52px;
   position: fixed;
   top: 0;
   left: 0;
@@ -125,77 +132,10 @@ nav {
   font-size: 14px;
   font-weight: 500;
   transition: all .15s;
+  white-space: nowrap;
 }
 .nav-tab:hover  { color: var(--text); background: var(--border); }
 .nav-tab.active { color: var(--accent); background: var(--accent-sub); }
-
-.mobile-menu-btn {
-  display: none;
-  width: 44px;
-  height: 44px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--text);
-  border-radius: 8px;
-  font-size: 22px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.mobile-nav-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.18s ease;
-  z-index: 400;
-}
-
-.mobile-nav-drawer {
-  position: fixed;
-  top: 54px;
-  left: 0;
-  bottom: 0;
-  width: 75vw;
-  max-width: 280px;
-  background: var(--card);
-  border-right: 1px solid var(--border);
-  transform: translateX(-100%);
-  transition: transform 0.18s ease;
-  z-index: 410;
-  padding: 14px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.mobile-drawer-nav {
-  display: grid;
-  gap: 4px;
-}
-
-.mobile-drawer-nav .nav-tab {
-  width: 100%;
-  min-height: 48px;
-  text-align: left;
-  padding: 12px 14px;
-}
-
-body.mobile-nav-open .mobile-nav-overlay {
-  opacity: 1;
-  visibility: visible;
-}
-
-body.mobile-nav-open .mobile-nav-drawer {
-  transform: translateX(0);
-  visibility: visible;
-  pointer-events: auto;
-}
 
 /* Theme toggle — pushed to far right */
 .nav-right { margin-left: auto; }
@@ -207,6 +147,126 @@ body.mobile-nav-open .mobile-nav-drawer {
   background: var(--card);
   color: var(--accent);
   box-shadow: 0 1px 3px var(--btn-shadow);
+}
+
+/* ── Bottom nav (mobile) ── */
+.bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  z-index: 100;
+  padding: 0 8px;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.bottom-nav-items {
+  display: flex;
+  height: 100%;
+  align-items: stretch;
+}
+.bottom-nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color .15s;
+  min-width: 0;
+}
+.bottom-nav-btn svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+.bottom-nav-btn.active { color: var(--accent); }
+.bottom-nav-btn:hover  { color: var(--text); }
+
+/* ── Bottom sheet (More menu) ── */
+.bottom-sheet-scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--modal-scrim);
+  z-index: 200;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .2s ease;
+}
+.bottom-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  border-radius: 16px 16px 0 0;
+  z-index: 210;
+  padding: 12px 16px 24px;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  transform: translateY(100%);
+  transition: transform .22s ease;
+  visibility: hidden;
+}
+.bottom-sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 0 auto 16px;
+}
+.bottom-sheet-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  margin-bottom: 10px;
+  padding: 0 4px;
+}
+.bottom-sheet-items {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.bottom-sheet-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--card-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s;
+  text-decoration: none;
+}
+.bottom-sheet-item:hover { background: var(--border); }
+.bottom-sheet-item svg {
+  width: 20px;
+  height: 20px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+body.bottom-sheet-open .bottom-sheet-scrim {
+  opacity: 1;
+  visibility: visible;
+}
+body.bottom-sheet-open .bottom-sheet {
+  transform: translateY(0);
+  visibility: visible;
 }
 
 /* ── Layout ──────────────────────────── */
@@ -1593,28 +1653,14 @@ tbody tr:hover td { background: var(--row-hover); }
 
 @media (max-width: 767px) {
   nav {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 500;
-  }
-
-  main {
-    padding-top: 54px;
-  }
-
-  .nav-tabs {
     display: none;
   }
-
-  .mobile-menu-btn {
-    display: inline-flex;
+  .bottom-nav {
+    display: flex;
   }
-
-  .mobile-drawer-nav .nav-tab {
-    flex: none;
-    text-align: left;
+  main {
+    padding-top: 16px;
+    padding-bottom: 76px;
   }
 }
 
@@ -2435,21 +2481,19 @@ body.ai-open main {
 </script>
 
 <nav>
-  <button class="mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-nav-drawer">☰</button>
-  <a class="logo" href="#" onclick="activateTab('dashboard'); return false;" title="Today">
+  <a class="logo" href="#" onclick="activateTab('dashboard'); return false;" title="Dashboard">
     <img class="logo-icon-dark" src="/resources/HF_LOGO_DARK.png" alt="Hevy Fatigue">
     <img class="logo-icon-light" src="/resources/HF_LOGO_LIGHT.png" alt="Hevy Fatigue">
   </a>
   <div class="nav-tabs">
-    <button class="nav-tab" data-tab="dashboard">Today</button>
-    <button class="nav-tab" data-tab="trend">Trend</button>
-    <button class="nav-tab" data-tab="workouts">Workouts</button>
+    <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
     <button class="nav-tab" data-tab="exercise-metrics">Exercises</button>
-    <button class="nav-tab" data-tab="exercises">Patterns<span id="ex-conflict-badge" class="badge badge-conflict" style="display:none;margin-left:5px;"></span></button>
+    <button class="nav-tab" data-tab="workouts">Workouts</button>
     <button class="nav-tab" data-tab="ai">AI</button>
+    <button class="nav-tab" data-tab="trend">Fatigue</button>
     <button class="nav-tab" data-tab="log">Log</button>
     <button class="nav-tab" data-tab="settings">Settings</button>
-    <a href="/static/docs.html" class="nav-tab" style="color: inherit; text-decoration: none;">Docs</a>
+    <button class="nav-tab" data-tab="exercises">Patterns<span id="ex-conflict-badge" class="badge badge-conflict" style="display:none;margin-left:5px;"></span></button>
   </div>
   <div class="nav-right">
     <div class="btn-group theme-group" id="theme-toggle">
@@ -2460,20 +2504,60 @@ body.ai-open main {
   </div>
 </nav>
 
-<div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
-<aside class="mobile-nav-drawer" id="mobile-nav-drawer" aria-label="Mobile navigation" aria-hidden="true">
-  <div class="mobile-drawer-nav">
-    <button class="nav-tab" data-tab="dashboard">Today</button>
-    <button class="nav-tab" data-tab="trend">Trend</button>
-    <button class="nav-tab" data-tab="workouts">Workouts</button>
-    <button class="nav-tab" data-tab="exercise-metrics">Exercises</button>
-    <button class="nav-tab" data-tab="exercises">Patterns<span id="ex-conflict-badge-mobile" class="badge" style="display:none;margin-left:5px;"></span></button>
-    <button class="nav-tab" data-tab="ai">AI</button>
-    <button class="nav-tab" data-tab="log">Log</button>
-    <button class="nav-tab" data-tab="settings">Settings</button>
-    <a href="/static/docs.html" class="nav-tab" style="color: inherit; text-decoration: none;">Docs</a>
+<!-- ── Bottom nav (mobile) ── -->
+<nav class="bottom-nav" aria-label="Mobile navigation">
+  <div class="bottom-nav-items">
+    <button class="bottom-nav-btn active" data-tab="dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="bottom-nav-btn" data-tab="exercise-metrics">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Exercises
+    </button>
+    <button class="bottom-nav-btn" data-tab="workouts">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14M18 5v14M2 9h4M18 9h4M2 15h4M18 15h4"/></svg>
+      Workouts
+    </button>
+    <button class="bottom-nav-btn" data-tab="ai">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+      AI
+    </button>
+    <button class="bottom-nav-btn" id="bottom-nav-more">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+      More
+    </button>
   </div>
-</aside>
+</nav>
+
+<!-- ── Bottom sheet (More menu) ── -->
+<div class="bottom-sheet-scrim" id="bottom-sheet-scrim"></div>
+<div class="bottom-sheet" id="bottom-sheet" aria-label="More navigation">
+  <div class="bottom-sheet-handle"></div>
+  <div class="bottom-sheet-title">More</div>
+  <div class="bottom-sheet-items">
+    <button class="bottom-sheet-item" data-tab="trend">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      Fatigue
+    </button>
+    <button class="bottom-sheet-item" data-tab="log">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Log
+    </button>
+    <button class="bottom-sheet-item" data-tab="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </button>
+    <button class="bottom-sheet-item" data-tab="exercises">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Patterns<span id="ex-conflict-badge-mobile" class="badge" style="display:none;margin-left:5px;"></span>
+    </button>
+    <a class="bottom-sheet-item" href="/static/docs.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Docs
+    </a>
+  </div>
+</div>
 
 <main>
 
@@ -3161,16 +3245,19 @@ function getCSSVar(name) {
 
 function themeColors() {
   return {
-    text:      getCSSVar('--text'),
-    muted:     getCSSVar('--muted'),
-    card:      getCSSVar('--card'),
-    border:    getCSSVar('--border'),
-    accent:    getCSSVar('--accent'),
-    success:   getCSSVar('--success'),
-    quad:      getCSSVar('--quad'),
-    posterior: getCSSVar('--posterior'),
-    push:      getCSSVar('--push'),
-    pull:      getCSSVar('--pull'),
+    text:       getCSSVar('--text'),
+    muted:      getCSSVar('--muted'),
+    card:       getCSSVar('--card'),
+    border:     getCSSVar('--border'),
+    accent:     getCSSVar('--accent'),
+    accentLight:getCSSVar('--accent-light'),
+    success:    getCSSVar('--success'),
+    warn:       getCSSVar('--warn'),
+    danger:     getCSSVar('--danger'),
+    quad:       getCSSVar('--quad'),
+    posterior:  getCSSVar('--posterior'),
+    push:       getCSSVar('--push'),
+    pull:       getCSSVar('--pull'),
   };
 }
 
@@ -3289,17 +3376,41 @@ const AI_MODEL_OPTIONS = [
 ];
 let aiSelectedModel = localStorage.getItem('ai_preferred_model') || AI_DEFAULT_MODEL;
 
-function setMobileNavOpen(isOpen) {
-  document.body.classList.toggle('mobile-nav-open', !!isOpen);
-  const menuBtn = document.getElementById('mobile-menu-btn');
-  const drawer = document.getElementById('mobile-nav-drawer');
-  if (menuBtn) menuBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-  if (drawer) drawer.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+// ═══ Bottom nav + bottom sheet ═════════════════════════════════
+
+function setBottomSheetOpen(open) {
+  document.body.classList.toggle('bottom-sheet-open', open);
 }
 
+// Bottom nav tab buttons
+document.querySelectorAll('.bottom-nav-btn[data-tab]').forEach(btn => {
+  btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+});
+
+// More button opens bottom sheet
+document.getElementById('bottom-nav-more')?.addEventListener('click', () => {
+  setBottomSheetOpen(true);
+});
+
+// Scrim closes bottom sheet
+document.getElementById('bottom-sheet-scrim')?.addEventListener('click', () => {
+  setBottomSheetOpen(false);
+});
+
+// Bottom sheet items — nav tabs
+document.querySelectorAll('.bottom-sheet-item[data-tab]').forEach(item => {
+  item.addEventListener('click', () => {
+    activateTab(item.dataset.tab);
+    setBottomSheetOpen(false);
+  });
+});
+
 function activateTab(tabName) {
-  setMobileNavOpen(false);
+  setBottomSheetOpen(false);
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+  document.querySelectorAll('.bottom-nav-btn[data-tab]').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === tabName)
+  );
   document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
   document.getElementById('tab-' + tabName).classList.add('active');
   document.body.classList.toggle('ai-open', tabName === 'ai');
@@ -3321,17 +3432,6 @@ document.querySelectorAll('.nav-tab').forEach(tab => {
 });
 
 document.addEventListener('click', e => {
-  if (e.target.closest('#mobile-menu-btn')) {
-    setMobileNavOpen(true);
-    return;
-  }
-  if (e.target.closest('#mobile-nav-overlay')) {
-    setMobileNavOpen(false);
-    return;
-  }
-  if (e.target.closest('.mobile-drawer-nav .nav-tab')) {
-    setMobileNavOpen(false);
-  }
   // Close movement trend dropdown on outside click
   if (!e.target.closest('#mvt-search-wrap')) {
     _mvtCloseDropdown();
