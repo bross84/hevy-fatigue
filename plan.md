@@ -1,8 +1,40 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-23 (Tasks 2 & 3 — Vol-Fatigue 3-chart HTML/JS + Today card range selectors)
+Last updated: 2026-05-23 (Design System C2 — Nav Restructure)
 
-## Latest Update (2026-05-23, Tasks 2 & 3 — Vol-Fatigue 3-chart expansion + Today card range selectors)
+## Latest Update (2026-05-23 — Design System C2: Nav Restructure)
+
+- Workflow selected: Main
+- Files changed: `static/index.html` only
+- Removed old mobile hamburger/drawer CSS blocks (`.mobile-menu-btn`, `.mobile-nav-overlay`, `.mobile-nav-drawer`, `.mobile-drawer-nav`)
+- Updated `nav` rule: `padding: 0 24px`, `gap: 8px`, `height: 52px`; added `white-space: nowrap` to `.nav-tab`
+- Added bottom nav CSS section (`.bottom-nav`, `.bottom-nav-btn`, `.bottom-nav-items`)
+- Added bottom sheet CSS section (`.bottom-sheet-scrim`, `.bottom-sheet`, `.bottom-sheet-items`, `.bottom-sheet-item`)
+- Replaced `@media (max-width: 767px)` block: top nav hidden, bottom nav shown, `padding-bottom: 76px`
+- Replaced `<nav>` HTML: logo left, 8 tabs center (Dashboard/Exercises/Workouts/AI/Fatigue/Log/Settings/Patterns), theme toggle right
+- Tab renames: "Today" → "Dashboard", "Trend" → "Fatigue" (labels only; `data-tab` values unchanged)
+- Removed `<div class="mobile-nav-overlay">` and `<aside class="mobile-nav-drawer">` elements
+- Added `<nav class="bottom-nav">` with 5 items (Dashboard/Exercises/Workouts/AI/More) after closing `</nav>`
+- Added bottom sheet with Fatigue/Log/Settings/Patterns/Docs
+- Removed `setMobileNavOpen()` JS function
+- Added `setBottomSheetOpen()`, bottom nav btn listeners, More/scrim/sheet-item listeners
+- Updated `activateTab()`: calls `setBottomSheetOpen(false)`, updates `.bottom-nav-btn[data-tab]` active states
+- `tab-dashboard` reference in `applyTheme()` confirmed unchanged
+- py_compile: PASS; brace audit: 1678/1678; script tags: 4/4
+
+## Previous Update (2026-05-23 — Design System C1: Replace color palette)
+
+- Workflow selected: Express
+- Files changed: `static/index.html` only
+- Dark theme: `--bg #0F172A`, `--card #111827`, `--accent #3772FF` + new tokens `--card-raised`, `--border-mid`, `--accent-light`
+- Light theme: `--bg #F1F5F9`, `--card #FFFFFF`, `--accent #3772FF` + matching new tokens
+- Updated THEME TOKENS comment block
+- `themeColors()` now returns `accentLight`, `warn`, `danger` keys
+- `color: #fff` on `.btn-primary` and `.settings-diag-cta` confirmed correct (both sit on `background: var(--accent)`)
+- `tab-dashboard` reference in `applyTheme()` confirmed unchanged
+- py_compile: PASS
+
+## Previous Update (2026-05-23, Tasks 2 & 3 — Vol-Fatigue 3-chart expansion + Today card range selectors)
 
 - Workflow selected: Main
 - No schema changes; index.html only (besides plan files)
