@@ -2240,13 +2240,13 @@ def get_vol_fatigue_summary(
     db: Session = Depends(get_db),
 ):
     """
-    Vol-Fatigue Correlation view: rolling accumulated stress and rolling readiness.
+    Vol-Fatigue Correlation view: rolling stress load, raw tonnage, set count, and readiness.
 
     Query parameters:
       start_date: ISO date string (default: 28 days ago)
       end_date: ISO date string (default: today)
 
-    Returns rolling 7-day stress (sum) and 7-day readiness (average) for each day.
+    Returns rolling 7-day sums/averages for each signal per day.
     rolling_readiness is null when fewer than 3 of the trailing 7 days have check-in data.
     """
     # Parse or default dates
@@ -2301,6 +2301,8 @@ def get_vol_fatigue_summary(
     stress_by_date: dict[date_type, float] = {}
     session_count_by_date: dict[date_type, int] = {}
     readiness_by_date: dict[date_type, float] = {}
+    tonnage_by_date: dict[date_type, float] = {}
+    set_count_by_date: dict[date_type, int] = {}
 
     # Accumulate stress by date
     for session in sessions:
@@ -2316,11 +2318,34 @@ def get_vol_fatigue_summary(
         session_stress = scores["central"] + scores["peripheral"]
         stress_by_date[date] += session_stress
 
-    # Build readiness lookup (subjective_score on 0-20 scale)
+    # Build readiness lookup (subjective_score on 0-10 scale)
     for entry in readiness_entries:
         subj = _subjective_fatigue(entry)
-        subjective_score = subj * 20.0
+        subjective_score = round(subj * 10.0, 2)
         readiness_by_date[entry.date] = subjective_score
+
+    # Build raw tonnage and set count lookup by date (all modalities)
+    tonnage_rows = (
+        db.query(
+            WorkoutLog.weight_lbs,
+            WorkoutLog.reps,
+            WorkoutSession.workout_date,
+        )
+        .join(WorkoutSession, WorkoutLog.workout_id == WorkoutSession.hevy_workout_id)
+        .filter(
+            WorkoutSession.workout_date >= lookback_start,
+            WorkoutSession.workout_date <= end,
+        )
+        .all()
+    )
+
+    for weight_lbs, reps, workout_date in tonnage_rows:
+        if workout_date not in tonnage_by_date:
+            tonnage_by_date[workout_date] = 0.0
+            set_count_by_date[workout_date] = 0
+
+        tonnage_by_date[workout_date] += float(weight_lbs or 0.0) * int(reps or 0)
+        set_count_by_date[workout_date] += 1
 
     # Build response data with rolling windows
     data = []
@@ -2335,6 +2360,14 @@ def get_vol_fatigue_summary(
             if check_date in readiness_by_date:
                 readiness_values.append(readiness_by_date[check_date])
 
+        rolling_tonnage = 0.0
+        rolling_set_count = 0
+
+        for i in range(7):
+            check_date = date - timedelta(days=6 - i)
+            rolling_tonnage += tonnage_by_date.get(check_date, 0.0)
+            rolling_set_count += set_count_by_date.get(check_date, 0)
+
         # Compute rolling readiness (null if fewer than 3 days with data)
         if len(readiness_values) >= 3:
             rolling_readiness = round(sum(readiness_values) / len(readiness_values), 2)
@@ -2348,6 +2381,8 @@ def get_vol_fatigue_summary(
             {
                 "date": str(date),
                 "rolling_stress": round(rolling_stress, 1),
+                "rolling_tonnage": round(rolling_tonnage, 1),
+                "rolling_set_count": rolling_set_count,
                 "rolling_readiness": rolling_readiness,
                 "session_count": session_count,
             }
