@@ -2,6 +2,253 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+## 2026-05-22 — Spec B Tasks 4 & 5: Vol-Fatigue Correlation JavaScript + Destroy Logic
+
+### Task 4 Implementation (JavaScript)
+- **Section header**: `// ═══ Vol-Fatigue Correlation Tab ════` clearly marks all Vol-Fatigue JS code
+- **Module-level state** (lines 6671–6675):
+  - `let _vfChart = null;` — Chart.js instance
+  - `let _vfActiveRange = 4;` — Default to 4 weeks
+  - `let _vfCustomStart = null;` — Start date for custom range
+  - `let _vfCustomEnd = null;` — End date for custom range
+- **Helper `_vfDateRange()`** (lines 6677–6695):
+  - Returns `{ start: ISO string, end: ISO string }`
+  - If `_vfActiveRange` is numeric: calculates `endDate = today`, `startDate = today - (range * 7 days)`
+  - If `_vfActiveRange === 'custom'`: returns stored `_vfCustomStart` and `_vfCustomEnd`
+  - Uses `padStart(2, '0')` for ISO formatting with leading zeros
+- **Helper `_vfDestroyChart()`** (lines 6697–6702):
+  - Safely destroys `_vfChart` if exists: `_vfChart.destroy(); _vfChart = null;`
+- **Main function `renderVolFatigueView()`** (lines 6704–6729):
+  - Async function
+  - Calls `_vfDateRange()` to get start/end
+  - Fetches `/api/volfatigue/summary?start_date=${start}&end_date=${end}` with proper URL encoding
+  - On error or empty data array: shows `#vf-empty` (display:block), hides `#vf-chart-card` (display:none)
+  - On success with data: shows `#vf-chart-card` (display:block), hides `#vf-empty` (display:none), calls `_vfRenderChart(data)`
+  - Includes error logging to console: `console.error('Vol-Fatigue fetch error:', err)`
+- **Chart render `_vfRenderChart(data)`** (lines 6731–6810):
+  - Gets color theme via `themeColors()`
+  - Canvas context: `document.getElementById('vf-chart').getContext('2d')`
+  - X-axis labels: `data.data.map(d => _dateLabel(d.date))` — uses existing helper for MMM D formatting
+  - **Dataset 1 — Rolling Stress Load**:
+    - Label: "Rolling Stress Load"
+    - Data: `data.data.map(d => d.rolling_stress)`
+    - borderColor: `c.accent` (var(--accent) token)
+    - yAxisID: 'y' (left axis)
+    - backgroundColor: `c.accent + '1a'` (10% alpha)
+    - pointRadius: 3, pointHoverRadius: 5, borderWidth: 2, tension: 0.35
+    - spanGaps: false (gaps render as disconnected lines)
+  - **Dataset 2 — Rolling Readiness**:
+    - Label: "Rolling Readiness"
+    - Data: `data.data.map(d => d.rolling_readiness)` (includes nulls)
+    - borderColor: `c.success` (var(--success) token)
+    - yAxisID: 'y1' (right axis)
+    - backgroundColor: `c.success + '1a'` (10% alpha)
+    - pointRadius: 3, pointHoverRadius: 5, borderWidth: 2, tension: 0.35
+    - spanGaps: false (null values render as gaps)
+  - **Chart configuration**:
+    - Type: 'line'
+    - Uses `_trendChartBaseOptions()` as base config spread (responsive, no animation, etc.)
+    - Legend: display: true (two datasets need labels visible)
+    - X-axis: maxTicksLimit: 10 (limits density on wide date ranges)
+    - **Y-axis "y" (Stress)**:
+      - position: 'left'
+      - title: 'Stress' (displayed as label)
+      - min: 0, max: `maxStress * 1.1` (where `maxStress = Math.max(...stressData, 1)`)
+      - Auto-scales to accommodate data with 10% headroom
+    - **Y-axis "y1" (Readiness)**:
+      - position: 'right'
+      - title: 'Readiness' (displayed as label)
+      - min: 0, max: 10 (fixed per spec)
+    - **Tooltip callbacks**:
+      - title: `_dateLabel(data.data[idx].date)` — MMM D format
+      - label: For stress, `Stress: ${_fmt1(value)}`; for readiness, `Readiness: ${_fmt1(value)}` or `Readiness: —` if null
+  - Destroys old chart before creating new one: `_vfDestroyChart()` at start
+  - Assigns new instance: `_vfChart = new Chart(...)`
+- **Event wiring — Range buttons** (lines 6812–6830):
+  - Selector: `document.querySelectorAll('[data-vf-range]')`
+  - On click: Remove `.active` from all buttons, add to clicked button
+  - Get value: `btn.dataset.vfRange`
+  - If value === 'custom':
+    - `_vfActiveRange = 'custom'`
+    - Show custom inputs: `document.getElementById('vf-custom-range').style.display = 'flex'`
+  - Else (numeric preset):
+    - `_vfActiveRange = parseInt(val, 10)`
+    - Hide custom inputs: `document.getElementById('vf-custom-range').style.display = 'none'`
+    - Immediately render: `renderVolFatigueView()`
+- **Event wiring — Custom Apply button** (lines 6832–6840):
+  - Selector: `document.getElementById('vf-custom-apply')`
+  - On click:
+    - Get start: `document.getElementById('vf-start-date').value`
+    - Get end: `document.getElementById('vf-end-date').value`
+    - Validate: `if (!s || !e || s > e) return;`
+    - Store: `_vfCustomStart = s;` `_vfCustomEnd = e;`
+    - Render: `renderVolFatigueView()`
+- **Tab activation** (line 6842–6844):
+  - `renderTrendView()` calls `renderVolFatigueView()`
+  - When Trend tab is activated, Vol-Fatigue view renders immediately
+- **File**: static/index.html, lines 6668–6844
+- **Validation**: Syntax balanced (1653 braces, 4 script tags)
+
+### Task 5 Implementation (Destroy on Re-render)
+- **Location**: `_destroyTrendCharts()` function (line 6447)
+- **Added line**: `_vfDestroyChart();` ensures Vol-Fatigue chart cleaned up if Today page forces full re-render cycle
+- **Purpose**: Prevents memory leaks and duplicate chart instances
+
+## 2026-05-22 — Spec B Task 3: Vol-Fatigue Correlation CSS (REVISED)
+
+- **#trend-wrap Container** (lines 2366-2370):
+  - `display: flex; flex-direction: column; gap: 14px` — matches `.today-wrap` pattern for consistent card spacing across site
+  - Properly spaces the three vf-card containers (range selector, chart, empty state) with standard 14px gap
+- **Section Header**: Clearly marked `/* === VOL-FATIGUE CORRELATION TAB === */` before all .vf-* rules
+- **.vf-card** (lines 2372-2379):
+  - Modeled on .today-card for visual consistency
+  - `background: var(--card)` — uses existing card background token
+  - `border: 1px solid var(--border)` — uses existing border token
+  - `border-radius: 10px` — matches card styling
+  - `padding: 14px` — matches card styling
+  - `min-width: 0; overflow: hidden` — prevents flex overflow
+- **.vf-range-row** (lines 2381-2386):
+  - Flexbox container for preset buttons
+  - `display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px`
+- **.vf-custom-range** (lines 2388-2394):
+  - Flexbox container for date inputs (initially display:none in HTML)
+  - `display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap`
+- **.vf-date-sep** (lines 2396-2399):
+  - Separator text between date inputs ("to")
+  - `color: var(--muted); font-size: 0.85rem`
+- **.vf-chart-wrap** (lines 2401-2405):
+  - Canvas container with fixed height
+  - `position: relative; height: 260px; margin-top: 12px`
+- **.vf-chart-note** (lines 2407-2411):
+  - Explanatory text below chart (small, muted)
+  - Modeled on .trend-note pattern
+  - `font-size: 0.78rem; color: var(--muted); margin-top: 6px`
+- **.vf-empty** (lines 2413-2417):
+  - Empty state message (centered, muted)
+  - Modeled on .trend-empty pattern
+  - `padding: 32px 16px; text-align: center; color: var(--muted)`
+- **Media Query** (lines 2419-2421):
+  - `@media (max-width: 900px)` — responsive adjustment
+  - `.vf-chart-wrap { height: 220px; }` — reduced height on smaller screens
+- **CSS Tokens Used**: Only var(--card), var(--border), var(--muted) — no hardcoded color values
+- **File**: static/index.html, lines 2364-2421
+- **Validation**: HTML/JS syntax balanced (1604 opening/closing braces, 4 script tags)
+
+## 2026-05-22 — Spec B Task 2: Vol-Fatigue Correlation Frontend HTML
+
+- **Location**: Trend tab, `<div id="trend-wrap"></div>` (was empty from Spec A)
+- **Component 1 — Range Selector Card**: 
+  - Container: `<div class="vf-card" id="vf-range-card">`
+  - Title: "Block Window"
+  - Buttons: 4 preset range buttons (4/8/12 Weeks, Custom) with `data-vf-range` attribute for event binding
+  - Active state: "4 Weeks" button has `.active` class by default
+  - Custom inputs: Hidden div (#vf-custom-range, display:none) with two date inputs and Apply button
+- **Component 2 — Chart Card**:
+  - Container: `<div class="vf-card" id="vf-chart-card">`
+  - Title: "Vol-Fatigue Correlation"
+  - Chart wrapper: `<div class="vf-chart-wrap" id="vf-chart-wrap">` with `<canvas id="vf-chart"></canvas>`
+  - Note: Explanatory text "Rolling 7-day stress load vs. rolling 7-day average readiness. Gaps indicate missing check-in data."
+- **Component 3 — Empty State**:
+  - Container: `<div class="vf-card" id="vf-empty" style="display:none;">`
+  - Message: "No data available for this window. Log workouts and complete daily check-ins to build your history."
+  - Shown when API returns empty or null data; hidden otherwise
+- **CSS Class Reference**:
+  - .vf-card — outer card container (shared styling)
+  - .vf-range-row — button group row
+  - .vf-custom-range — date input container (initially display:none)
+  - .vf-date-sep — separator text between date inputs
+  - .vf-chart-wrap — canvas wrapper (display: block, responsive)
+  - .vf-chart-note — explanatory text below chart
+  - .vf-empty — empty state message (centered, large text)
+- **File**: static/index.html, lines 2589-2625 (approximately)
+- **Validation**: HTML and JS syntax balanced; all element IDs and classes present
+
+## 2026-05-22 — Spec B Task 1: Vol-Fatigue Correlation Backend Endpoint
+
+- **Endpoint**: `GET /api/volfatigue/summary?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD`
+- **Query Parameters**: `start_date` (ISO format, default 28 days ago), `end_date` (ISO format, default today)
+- **Date Spine**: Generated for all dates from start_date to end_date inclusive
+- **Session Stress Aggregation**: 
+  - Queries `workout_sessions` where `workout_date` in range and `modality IN (strength, hypertrophy, conditioning, cardio)`
+  - Computes per-date stress as sum of `(central + peripheral)` from `calculate_stress_scores(date, db)`
+  - Accumulates all sessions on same date
+- **Rolling Stress Calculation**: 
+  - 7-day trailing sum (current day + 6 prior days)
+  - Never null; returns 0.0 when no sessions in window
+  - Rounded to 1 decimal place
+- **Readiness Score Lookup**:
+  - Queries `daily_readiness` entries in date range
+  - Computes subjective_score = `_subjective_fatigue(entry) * 20.0` for 0-20 scale
+  - No recomputation; uses existing formula
+- **Rolling Readiness Calculation**:
+  - 7-day trailing average of subjective_score values
+  - Returns null if fewer than 3 of 7 days have check-in data
+  - Does not substitute zero for missing check-ins
+  - Rounded to 2 decimal places when not null
+- **Session Count**: Per-day count of sessions (0 or more)
+- **Response Schema**: `{ start_date: str, end_date: str, data: [{ date: str, rolling_stress: float, rolling_readiness: float|null, session_count: int }, ...] }`
+- **File**: main.py, placed after `/api/diagnostics/snapshot` endpoint
+- **Dependencies**: Uses `calculate_stress_scores()` and `_subjective_fatigue()` functions (existing)
+- **Validation**: Compiles without syntax errors
+
+## 2026-05-22 — Spec A Tasks 6 & 7: Trend Tab Clear + CSS Cleanup
+
+- **Task 6 — HTML**: Replaced entire Trend tab section content with minimal shell: `<section id="tab-trend"><div id="trend-wrap"></div></section>`. Removed time-range controls, Training Load Trend card, Per-Pattern Fatigue card, and empty state.
+- **Task 6 — renderTrendView()**: Gutted function to no-op stub with forward-looking comment. All existing event listeners and tab activation calls continue without errors; the stub prevents runtime failures.
+- **Task 6 — _destroyTrendCharts()**: Updated to only destroy Today page chart instances (`todayTrainingLoadChart`, `todayPatternFatigueChart`). Removed destruction of `trendMainChart` and `trendPatternChart` since those canvases no longer exist.
+- **Task 7 — CSS Removal**: Removed `.trend-wrap`, `.trend-chart-card`, `.trend-range`, `.trend-range .btn`, `.trend-range .btn.active`, `.trend-note`, `.trend-empty` from stylesheet. Updated media queries to remove `.trend-range` responsive rules.
+- **Task 7 — CSS Preservation**: Kept `.trend-chart-wrap` CSS class — still used by Movement Trend canvas in Workouts tab.
+- **Spec A complete** — All 7 tasks fully implemented and validated.
+
+## 2026-05-22 — Spec A Tasks 4 & 5: Card Wiring + Destroy Logic
+
+- **Task 4**: Wired new Today page cards into the existing load flow. Updated `loadTrainingLoadCard()` to call `renderTodayTrainingLoadCard()` and `renderTodayPatternFatigueCard()` after readiness render. Both functions use cached payload — no new fetches.
+- **Task 5**: Extended `_destroyTrendCharts()` to also destroy `todayTrainingLoadChart` and `todayPatternFatigueChart` instances alongside the existing Trend tab chart instances. Ensures cleanup on app re-init or Trend tab rerender.
+- **Spec A complete** — All 5 tasks (reorder, remove, add cards, wire, destroy) implemented end-to-end.
+
+## 2026-05-22 — Spec A Task 3: Today Page New Chart Cards
+
+- **Task 4**: Wired new Today page cards into the existing load flow. Updated `loadTrainingLoadCard()` to call `renderTodayTrainingLoadCard()` and `renderTodayPatternFatigueCard()` after readiness render. Both functions use cached payload — no new fetches.
+- **Task 5**: Extended `_destroyTrendCharts()` to also destroy `todayTrainingLoadChart` and `todayPatternFatigueChart` instances alongside the existing Trend tab chart instances. Ensures cleanup on app re-init or Trend tab rerender.
+- **Spec A complete** — All 5 tasks (reorder, remove, add cards, wire, destroy) implemented end-to-end.
+
+## 2026-05-22 — Spec A Task 3: Today Page New Chart Cards
+
+- Added `#today-training-load-card` and `#today-pattern-fatigue-card` HTML elements to `#today-wrap`.
+- Parameterized `_renderTrendMainChart()` and `_renderTrendPatternChart()` with optional `canvasId` parameter (default to original IDs).
+- Both chart functions now conditionally assign Chart instances to correct global variables based on canvas ID.
+- Implemented `renderTodayTrainingLoadCard()` to fetch, slice (30 days), and render training load trend chart into Today page.
+- Implemented `renderTodayPatternFatigueCard()` to fetch, slice (30 days), and render per-pattern fatigue trend chart into Today page.
+- Added chart cleanup functions `_destroyTodayTrainingLoadChart()` and `_destroyTodayPatternFatigueChart()`.
+- Updated `loadTrainingLoadCard()` to invoke both new render functions.
+- Task 3 complete. Trend tab content still holds original charts (render unchanged).
+
+## 2026-05-22 — Spec A Task 2: Remove Load Summary
+
+- Task 2 was already completed as part of Task 1 (full metrics card removal).
+
+## 2026-05-22 — Spec A Task 1: Today Page Card Reorder + Metrics Removal
+
+- Added `#today-training-load-card` and `#today-pattern-fatigue-card` HTML elements to `#today-wrap`.
+- Parameterized `_renderTrendMainChart()` and `_renderTrendPatternChart()` with optional `canvasId` parameter (default to original IDs).
+- Both chart functions now conditionally assign Chart instances to correct global variables based on canvas ID.
+- Implemented `renderTodayTrainingLoadCard()` to fetch, slice (30 days), and render training load trend chart into Today page.
+- Implemented `renderTodayPatternFatigueCard()` to fetch, slice (30 days), and render per-pattern fatigue trend chart into Today page.
+- Added chart cleanup functions `_destroyTodayTrainingLoadChart()` and `_destroyTodayPatternFatigueChart()`.
+- Updated `loadTrainingLoadCard()` to invoke both new render functions.
+- Task 3 complete. Trend tab content still holds original charts (render unchanged).
+
+## 2026-05-22 — Spec A Task 2: Remove Load Summary
+
+- Task 2 was already completed as part of Task 1 (full metrics card removal).
+
+## 2026-05-22 — Spec A Task 1: Today Page Card Reorder + Metrics Removal
+
+- Reordered `#today-wrap` cards in `static/index.html` to match spec: moved `#today-pattern-card` before `#today-readiness-trend-card`.
+- Removed `#today-metrics-card` HTML element and all JS references: deleted rendering code from `_renderTodayCards()` and no-data fallback from `loadTrainingLoadCard()` catch block.
+- Final order (Task 1 complete): checkin → state → pattern → readiness-trend → joint.
+- Task 2 (clear Trend tab) and Task 3 (add new cards) pending.
+
 ## 2026-05-22 — Settings Mobile Layout Fix
 
 - Updated `static/index.html` Settings tab CSS so the grid stays at two columns on normal widths instead of expanding to three columns.

@@ -1570,30 +1570,6 @@ tbody tr:hover td { background: var(--row-hover); }
 .rec-large-decrease { background: color-mix(in srgb, var(--danger)    18%, transparent); color: var(--danger);    border: 1px solid color-mix(in srgb, var(--danger)    35%, transparent); }
 
 /* ── Trends tab ──────────────────────── */
-.trend-wrap {
-  display: grid;
-  gap: 14px;
-  overflow-x: hidden;
-}
-.trend-range {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-.trend-range .btn {
-  min-height: 44px;
-}
-.trend-range .btn.active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-sub);
-}
-.trend-chart-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px;
-}
 .trend-chart-wrap {
   position: relative;
   width: 100%;
@@ -1602,26 +1578,8 @@ tbody tr:hover td { background: var(--row-hover); }
 .trend-chart-wrap.secondary {
   min-height: 170px;
 }
-.trend-note {
-  margin-top: 10px;
-  font-size: 12px;
-  color: var(--muted);
-}
-.trend-empty {
-  min-height: 220px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  color: var(--muted);
-  padding: 12px;
-  line-height: 1.5;
-}
 
 @media (max-width: 640px) {
-  .trend-range {
-    grid-template-columns: 1fr;
-  }
   .trend-chart-wrap {
     min-height: 220px;
   }
@@ -2402,6 +2360,65 @@ body.ai-open main {
     color: var(--muted);
   }
 }
+
+/* === VOL-FATIGUE CORRELATION TAB === */
+
+#trend-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.vf-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.vf-range-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.vf-custom-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.vf-date-sep {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.vf-chart-wrap {
+  position: relative;
+  height: 260px;
+  margin-top: 12px;
+}
+
+.vf-chart-note {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+.vf-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--muted);
+}
+
+@media (max-width: 900px) {
+  .vf-chart-wrap { height: 220px; }
+}
 </style>
 </head>
 <body>
@@ -2612,10 +2629,11 @@ body.ai-open main {
       </form>
     </div>
     <div class="today-card" id="today-state-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
-    <div class="today-card" id="today-readiness-trend-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
     <div class="today-card" id="today-pattern-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
+    <div class="today-card" id="today-readiness-trend-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
+    <div class="today-card" id="today-training-load-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
+    <div class="today-card" id="today-pattern-fatigue-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
     <div class="today-card" id="today-joint-card" style="display:none;"></div>
-    <div class="today-card" id="today-metrics-card"><div class="loading-wrap"><span class="spinner"></span></div></div>
   </div>
 
   <!-- Banner shown until the user saves their API key -->
@@ -2628,35 +2646,39 @@ body.ai-open main {
 
 <!-- ══════════════ TREND TAB ══════════════ -->
 <section id="tab-trend" class="tab-content">
-  <div class="trend-wrap">
-    <div class="trend-chart-card">
-      <div class="card-title" style="margin-bottom:10px;">Time Range</div>
-      <div class="trend-range" id="trend-range">
-        <button class="btn btn-secondary" data-range="3">3 Day</button>
-        <button class="btn btn-secondary active" data-range="7">7 Day</button>
-        <button class="btn btn-secondary" data-range="14">14 Day</button>
+  <div id="trend-wrap">
+
+    <!-- Block selector -->
+    <div class="vf-card" id="vf-range-card">
+      <div class="card-title">Block Window</div>
+      <div class="vf-range-row" id="vf-range-btns">
+        <button class="btn btn-secondary active" data-vf-range="4">4 Weeks</button>
+        <button class="btn btn-secondary" data-vf-range="8">8 Weeks</button>
+        <button class="btn btn-secondary" data-vf-range="12">12 Weeks</button>
+        <button class="btn btn-secondary" data-vf-range="custom">Custom</button>
+      </div>
+      <div class="vf-custom-range" id="vf-custom-range" style="display:none;">
+        <input type="date" id="vf-start-date">
+        <span class="vf-date-sep">to</span>
+        <input type="date" id="vf-end-date">
+        <button class="btn btn-primary" id="vf-custom-apply">Apply</button>
       </div>
     </div>
 
-    <div class="trend-chart-card">
-      <div class="card-title">Training Load Trend</div>
-      <div class="trend-chart-wrap" id="trend-main-wrap">
-        <canvas id="trend-main-chart"></canvas>
+    <!-- Correlation chart -->
+    <div class="vf-card" id="vf-chart-card">
+      <div class="card-title">Vol-Fatigue Correlation</div>
+      <div class="vf-chart-wrap" id="vf-chart-wrap">
+        <canvas id="vf-chart"></canvas>
       </div>
-      <div class="trend-note">Fatigue = short-term load, Fitness = long-term load, Form = balance between the two.</div>
+      <div class="vf-chart-note">Rolling 7-day stress load vs. rolling 7-day average readiness. Gaps indicate missing check-in data.</div>
     </div>
 
-    <div class="trend-chart-card" id="trend-pattern-card">
-      <div class="card-title">Per-Pattern Fatigue Trend</div>
-      <div class="trend-chart-wrap secondary" id="trend-pattern-wrap">
-        <canvas id="trend-pattern-chart"></canvas>
-      </div>
-      <div class="trend-note" id="trend-pattern-note" style="display:none;">Pattern data unavailable for this date range.</div>
+    <!-- Empty state -->
+    <div class="vf-card" id="vf-empty" style="display:none;">
+      <div class="vf-empty">No data available for this window. Log workouts and complete daily check-ins to build your history.</div>
     </div>
 
-    <div class="trend-chart-card" id="trend-empty" style="display:none;">
-      <div class="trend-empty">No training history yet. Complete check-ins and log workouts to build your trend data.</div>
-    </div>
   </div>
 </section>
 
@@ -3215,6 +3237,8 @@ let _readinessCombinedHistoryFetchPromise = null;
 let trendMainChart = null;
 let trendPatternChart = null;
 let todayReadinessChart = null;
+let todayTrainingLoadChart = null;
+let todayPatternFatigueChart = null;
 let trendSmoothingDays = 7;
 let sessionLogRows = [];
 const SESSION_LOG_PAGE_SIZE = 50;
@@ -6078,22 +6102,9 @@ function _renderTodayCards(data, pendingCount) {
     }
   }
 
-  const metric = (label, val) => `
-    <div class="today-metric">
-      <div class="today-metric-label">${label} <span class="tip-icon" data-tip="${_tips(label)}">i</span></div>
-      <div class="today-metric-value">${_fmt1(val)}</div>
-    </div>
-  `;
-  document.getElementById('today-metrics-card').innerHTML = `
-    <div class="card-title">Load Summary</div>
-    <div class="today-metric-row">
-      ${metric('Fatigue (ATL)', today.atl || 0)}
-      ${metric('Fitness (CTL)', today.ctl || 0)}
-      ${metric('Form (TSB)', today.tsb || 0)}
-    </div>
-  `;
 
 }
+
 
 function switchToWorkoutsFromToday() {
   activateTab('workouts');
@@ -6130,13 +6141,14 @@ async function loadTrainingLoadCard() {
     ]);
     _renderTodayCards(trainingRes, 0);
     renderTodayReadinessChart(readinessHistory);
+    renderTodayTrainingLoadCard();
+    renderTodayPatternFatigueCard();
   } catch {
     _destroyTodayReadinessChart();
     document.getElementById('today-state-card').innerHTML = '<div class="today-state-label today-state-nodata">No Data Yet</div><div class="today-state-detail">Log workouts and complete daily check-ins to build your baseline</div>';
     document.getElementById('today-readiness-trend-card').innerHTML = '<div class="card-title">7-Day Readiness Trend</div><div class="today-chart-empty">Combined readiness history is unavailable right now.</div>';
     document.getElementById('today-pattern-card').innerHTML = '<div class="card-title">Pattern Stress</div><div class="today-pattern-grid">' + ['KNEE','HIP','PUSH','PULL'].map(p => `<div class="today-pattern-cell today-pattern-neutral"><div class="today-pattern-name">${p}</div><div class="today-pattern-days">Never loaded</div><div class="today-dots"><span class="today-dot today-dot-filled"></span><span class="today-dot"></span><span class="today-dot"></span><span class="today-dot"></span><span class="today-dot"></span></div><div class="today-pattern-level">Moderate</div></div>`).join('') + '</div>';
     const jointCard = document.getElementById('today-joint-card'); if (jointCard) { jointCard.style.display = 'none'; jointCard.innerHTML = ''; }
-    document.getElementById('today-metrics-card').innerHTML = '<div class="card-title">Load Summary</div><div class="today-metric-row"><div class="today-metric"><div class="today-metric-label">Fatigue (ATL)</div><div class="today-metric-value">0.0</div></div><div class="today-metric"><div class="today-metric-label">Fitness (CTL)</div><div class="today-metric-value">0.0</div></div><div class="today-metric"><div class="today-metric-label">Form (TSB)</div><div class="today-metric-value">0.0</div></div></div>';
   }
 }
 
@@ -6205,6 +6217,20 @@ function _destroyTodayReadinessChart() {
   }
 }
 
+function _destroyTodayTrainingLoadChart() {
+  if (todayTrainingLoadChart) {
+    todayTrainingLoadChart.destroy();
+    todayTrainingLoadChart = null;
+  }
+}
+
+function _destroyTodayPatternFatigueChart() {
+  if (todayPatternFatigueChart) {
+    todayPatternFatigueChart.destroy();
+    todayPatternFatigueChart = null;
+  }
+}
+
 function _todayReadinessBandsPlugin() {
   return {
     id: 'todayReadinessBands',
@@ -6228,6 +6254,65 @@ function _todayReadinessBandsPlugin() {
       ctx.restore();
     },
   };
+}
+
+async function renderTodayTrainingLoadCard() {
+  const card = document.getElementById('today-training-load-card');
+  if (!card) return;
+
+  try {
+    const payload = await ensureTrainingLoadPayload();
+    const history = _trendSlice(payload?.history || [], 30);
+
+    if (!history.length) {
+      card.innerHTML = '<div class="card-title">Training Load Trend</div><div class="today-chart-empty">No training history yet.</div>';
+      return;
+    }
+
+    card.innerHTML = `
+      <div class="card-title">Training Load Trend</div>
+      <div class="today-chart-wrap"><canvas id="today-training-load-chart"></canvas></div>
+      <div class="today-chart-note">Fatigue = short-term load, Fitness = long-term load, Form = balance between the two.</div>
+    `;
+
+    _destroyTodayTrainingLoadChart();
+    _renderTrendMainChart(history, payload?.thresholds || {}, 'today-training-load-chart');
+  } catch {
+    _destroyTodayTrainingLoadChart();
+    card.innerHTML = '<div class="card-title">Training Load Trend</div><div class="today-chart-empty">Unable to load training data.</div>';
+  }
+}
+
+async function renderTodayPatternFatigueCard() {
+  const card = document.getElementById('today-pattern-fatigue-card');
+  if (!card) return;
+
+  try {
+    const payload = await ensureTrainingLoadPayload();
+    const history = _trendSlice(payload?.history || [], 30);
+
+    if (!history.length) {
+      card.innerHTML = '<div class="card-title">Per-Pattern Fatigue Trend</div><div class="today-chart-empty">Pattern data unavailable for this date range.</div>';
+      return;
+    }
+
+    const hasPatternLoads = history.some(h => h && typeof h === 'object' && h.pattern_loads && h.pattern_loads.knee && h.pattern_loads.hip && h.pattern_loads.push && h.pattern_loads.pull);
+    if (!hasPatternLoads) {
+      card.innerHTML = '<div class="card-title">Per-Pattern Fatigue Trend</div><div class="today-chart-empty">Pattern data unavailable for this date range.</div>';
+      return;
+    }
+
+    card.innerHTML = `
+      <div class="card-title">Per-Pattern Fatigue Trend</div>
+      <div class="today-chart-wrap"><canvas id="today-pattern-fatigue-chart"></canvas></div>
+    `;
+
+    _destroyTodayPatternFatigueChart();
+    _renderTrendPatternChart(history, 'today-pattern-fatigue-chart');
+  } catch {
+    _destroyTodayPatternFatigueChart();
+    card.innerHTML = '<div class="card-title">Per-Pattern Fatigue Trend</div><div class="today-chart-empty">Unable to load pattern data.</div>';
+  }
 }
 
 function renderTodayReadinessChart(history) {
@@ -6351,14 +6436,15 @@ function _trendRollingAvg(values, windowDays) {
 }
 
 function _destroyTrendCharts() {
-  if (trendMainChart) {
-    trendMainChart.destroy();
-    trendMainChart = null;
+  if (todayTrainingLoadChart) {
+    todayTrainingLoadChart.destroy();
+    todayTrainingLoadChart = null;
   }
-  if (trendPatternChart) {
-    trendPatternChart.destroy();
-    trendPatternChart = null;
+  if (todayPatternFatigueChart) {
+    todayPatternFatigueChart.destroy();
+    todayPatternFatigueChart = null;
   }
+  _vfDestroyChart();
 }
 
 function _trendChartBaseOptions() {
@@ -6392,9 +6478,9 @@ function _trendChartBaseOptions() {
   };
 }
 
-function _renderTrendMainChart(history, thresholds) {
+function _renderTrendMainChart(history, thresholds, canvasId = 'trend-main-chart') {
   const c = themeColors();
-  const ctx = document.getElementById('trend-main-chart').getContext('2d');
+  const ctx = document.getElementById(canvasId).getContext('2d');
   const labels = history.map(h => _dateLabel(h.date));
   const atlRaw = history.map(h => Number(h.atl || 0));
   const ctlRaw = history.map(h => Number(h.ctl || 0));
@@ -6403,7 +6489,7 @@ function _renderTrendMainChart(history, thresholds) {
   const ctlSmoothed = _trendRollingAvg(ctlRaw, trendSmoothingDays);
   const tsbSmoothed = _trendRollingAvg(tsbRaw, trendSmoothingDays);
 
-  trendMainChart = new Chart(ctx, {
+  const chart = new Chart(ctx, {
     type: 'line',
     data: {
       labels,
@@ -6480,11 +6566,17 @@ function _renderTrendMainChart(history, thresholds) {
       },
     },
   });
+
+  if (canvasId === 'trend-main-chart') {
+    trendMainChart = chart;
+  } else if (canvasId === 'today-training-load-chart') {
+    todayTrainingLoadChart = chart;
+  }
 }
 
-function _renderTrendPatternChart(history) {
+function _renderTrendPatternChart(history, canvasId = 'trend-pattern-chart') {
   const c = themeColors();
-  const ctx = document.getElementById('trend-pattern-chart').getContext('2d');
+  const ctx = document.getElementById(canvasId).getContext('2d');
   const labels = history.map(h => _dateLabel(h.date));
   const kneeRaw = history.map(h => Number(h.pattern_loads?.knee?.atl || 0));
   const hipRaw = history.map(h => Number(h.pattern_loads?.hip?.atl || 0));
@@ -6495,7 +6587,7 @@ function _renderTrendPatternChart(history) {
   const pushSmoothed = _trendRollingAvg(pushRaw, trendSmoothingDays);
   const pullSmoothed = _trendRollingAvg(pullRaw, trendSmoothingDays);
 
-  trendPatternChart = new Chart(ctx, {
+  const chart = new Chart(ctx, {
     type: 'line',
     data: {
       labels,
@@ -6565,52 +6657,206 @@ function _renderTrendPatternChart(history) {
       },
     },
   });
+
+  if (canvasId === 'trend-pattern-chart') {
+    trendPatternChart = chart;
+  } else if (canvasId === 'today-pattern-fatigue-chart') {
+    todayPatternFatigueChart = chart;
+  }
 }
 
-async function renderTrendView() {
-  const emptyEl = document.getElementById('trend-empty');
-  const mainWrap = document.getElementById('trend-main-wrap');
-  const patternCard = document.getElementById('trend-pattern-card');
-  const patternWrap = document.getElementById('trend-pattern-wrap');
-  const patternNote = document.getElementById('trend-pattern-note');
-  if (!emptyEl || !mainWrap || !patternCard || !patternWrap || !patternNote) return;
+// ═══ Vol-Fatigue Correlation Tab ════════════════════════════════════════════
 
+let _vfChart = null;
+let _vfActiveRange = 4; // weeks, or 'custom'
+let _vfCustomStart = null;
+let _vfCustomEnd = null;
+
+function _vfDateRange() {
+  if (_vfActiveRange === 'custom') {
+    return { start: _vfCustomStart, end: _vfCustomEnd };
+  }
+  const endDate = new Date();
+  endDate.setHours(0, 0, 0, 0);
+  const startDate = new Date(endDate);
+  startDate.setDate(startDate.getDate() - (_vfActiveRange * 7));
+  
+  const formatISO = (d) => {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+  
+  return { start: formatISO(startDate), end: formatISO(endDate) };
+}
+
+function _vfDestroyChart() {
+  if (_vfChart) {
+    _vfChart.destroy();
+    _vfChart = null;
+  }
+}
+
+async function renderVolFatigueView() {
+  const { start, end } = _vfDateRange();
+  
   try {
-    const [payload] = await Promise.all([
-      ensureTrainingLoadPayload(),
-    ]);
-    const history = _trendSlice(payload?.history || [], 30);
-
-    _destroyTrendCharts();
-
-    if (!history.length) {
-      emptyEl.style.display = 'block';
-      mainWrap.style.display = 'none';
-      patternCard.style.display = 'none';
+    const response = await fetch(`/api/volfatigue/summary?start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}`);
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Show empty state if no data
+    if (!data.data || data.data.length === 0) {
+      document.getElementById('vf-empty').style.display = 'block';
+      document.getElementById('vf-chart-card').style.display = 'none';
       return;
     }
-
-    emptyEl.style.display = 'none';
-    mainWrap.style.display = 'block';
-    patternCard.style.display = 'block';
-
-    _renderTrendMainChart(history, payload?.thresholds || {});
-
-    const hasPatternLoads = history.some(h => h && typeof h === 'object' && h.pattern_loads && h.pattern_loads.knee && h.pattern_loads.hip && h.pattern_loads.push && h.pattern_loads.pull);
-    if (!hasPatternLoads) {
-      patternWrap.style.display = 'none';
-      patternNote.style.display = 'block';
-    } else {
-      patternWrap.style.display = 'block';
-      patternNote.style.display = 'none';
-      _renderTrendPatternChart(history);
-    }
-  } catch {
-    _destroyTrendCharts();
-    emptyEl.style.display = 'block';
-    mainWrap.style.display = 'none';
-    patternCard.style.display = 'none';
+    
+    // Show chart, hide empty state
+    document.getElementById('vf-empty').style.display = 'none';
+    document.getElementById('vf-chart-card').style.display = 'block';
+    
+    _vfRenderChart(data);
+  } catch (err) {
+    console.error('Vol-Fatigue fetch error:', err);
+    document.getElementById('vf-empty').style.display = 'block';
+    document.getElementById('vf-chart-card').style.display = 'none';
   }
+}
+
+function _vfRenderChart(data) {
+  const c = themeColors();
+  const ctx = document.getElementById('vf-chart').getContext('2d');
+  
+  const labels = data.data.map(d => _dateLabel(d.date));
+  const stressData = data.data.map(d => d.rolling_stress);
+  const readinessData = data.data.map(d => d.rolling_readiness);
+  
+  // Find max stress for y-axis ceiling
+  const maxStress = Math.max(...stressData, 1);
+  
+  _vfDestroyChart();
+  
+  _vfChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Rolling Stress Load',
+          data: stressData,
+          borderColor: c.accent,
+          backgroundColor: c.accent + '1a',
+          yAxisID: 'y',
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          tension: 0.35,
+          spanGaps: false,
+        },
+        {
+          label: 'Rolling Readiness',
+          data: readinessData,
+          borderColor: c.success,
+          backgroundColor: c.success + '1a',
+          yAxisID: 'y1',
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+          tension: 0.35,
+          spanGaps: false,
+        },
+      ],
+    },
+    options: {
+      ..._trendChartBaseOptions(),
+      plugins: {
+        ..._trendChartBaseOptions().plugins,
+        legend: {
+          ..._trendChartBaseOptions().plugins.legend,
+          display: true,
+        },
+        tooltip: {
+          ..._trendChartBaseOptions().plugins.tooltip,
+          callbacks: {
+            title(items) {
+              const idx = items?.[0]?.dataIndex ?? 0;
+              return _dateLabel(data.data[idx].date);
+            },
+            label(ctxItem) {
+              const value = ctxItem.parsed?.y;
+              if (ctxItem.dataset.label === 'Rolling Stress Load') {
+                return `Stress: ${_fmt1(value)}`;
+              }
+              if (ctxItem.dataset.label === 'Rolling Readiness') {
+                return value !== null ? `Readiness: ${_fmt1(value)}` : 'Readiness: —';
+              }
+              return '';
+            },
+          },
+        },
+      },
+      scales: {
+        ..._trendChartBaseOptions().scales,
+        x: {
+          ..._trendChartBaseOptions().scales.x,
+          ticks: {
+            ..._trendChartBaseOptions().scales.x.ticks,
+            maxTicksLimit: 10,
+          },
+        },
+        y: {
+          ..._trendChartBaseOptions().scales.y,
+          position: 'left',
+          title: { display: true, text: 'Stress', color: c.muted, font: { size: 11 } },
+          min: 0,
+          max: maxStress * 1.1,
+        },
+        y1: {
+          ..._trendChartBaseOptions().scales.y,
+          position: 'right',
+          title: { display: true, text: 'Readiness', color: c.muted, font: { size: 11 } },
+          min: 0,
+          max: 10,
+        },
+      },
+    },
+  });
+}
+
+// Wire up Vol-Fatigue range button events
+document.querySelectorAll('[data-vf-range]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-vf-range]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const val = btn.dataset.vfRange;
+    if (val === 'custom') {
+      _vfActiveRange = 'custom';
+      document.getElementById('vf-custom-range').style.display = 'flex';
+    } else {
+      _vfActiveRange = parseInt(val, 10);
+      document.getElementById('vf-custom-range').style.display = 'none';
+      renderVolFatigueView();
+    }
+  });
+});
+
+// Wire up custom apply button
+document.getElementById('vf-custom-apply').addEventListener('click', () => {
+  const s = document.getElementById('vf-start-date').value;
+  const e = document.getElementById('vf-end-date').value;
+  if (!s || !e || s > e) return;
+  _vfCustomStart = s;
+  _vfCustomEnd = e;
+  renderVolFatigueView();
+});
+
+async function renderTrendView() {
+  renderVolFatigueView();
 }
 
 

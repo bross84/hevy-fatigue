@@ -2233,6 +2233,133 @@ def get_diagnostics_snapshot(db: Session = Depends(get_db)):
     return _build_diagnostics_snapshot(db)
 
 
+@app.get("/api/volfatigue/summary")
+def get_vol_fatigue_summary(
+    start_date: str | None = None,
+    end_date: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Vol-Fatigue Correlation view: rolling accumulated stress and rolling readiness.
+
+    Query parameters:
+      start_date: ISO date string (default: 28 days ago)
+      end_date: ISO date string (default: today)
+
+    Returns rolling 7-day stress (sum) and 7-day readiness (average) for each day.
+    rolling_readiness is null when fewer than 3 of the trailing 7 days have check-in data.
+    """
+    # Parse or default dates
+    if end_date:
+        try:
+            end = date_type.fromisoformat(end_date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="end_date must be ISO format (YYYY-MM-DD)")
+    else:
+        end = date_type.today()
+
+    if start_date:
+        try:
+            start = date_type.fromisoformat(start_date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="start_date must be ISO format (YYYY-MM-DD)")
+    else:
+        start = end - timedelta(days=28)
+
+    # Generate date spine for response
+    date_spine = []
+    current = start
+    while current <= end:
+        date_spine.append(current)
+        current += timedelta(days=1)
+
+    # Lookback window for rolling computation (need 6 prior days for 7-day window)
+    lookback_start = start - timedelta(days=6)
+
+    # Get all sessions in the extended window (lookback + main window)
+    sessions = (
+        db.query(WorkoutSession)
+        .filter(
+            WorkoutSession.workout_date >= lookback_start,
+            WorkoutSession.workout_date <= end,
+            WorkoutSession.modality.in_(_VALID_MODALITIES),
+        )
+        .all()
+    )
+
+    # Get all readiness entries in the extended window
+    readiness_entries = (
+        db.query(DailyReadiness)
+        .filter(
+            DailyReadiness.date >= lookback_start,
+            DailyReadiness.date <= end,
+        )
+        .all()
+    )
+
+    # Build lookup dicts: per-day stress sums and readiness scores
+    stress_by_date: dict[date_type, float] = {}
+    session_count_by_date: dict[date_type, int] = {}
+    readiness_by_date: dict[date_type, float] = {}
+
+    # Accumulate stress by date
+    for session in sessions:
+        date = session.workout_date
+        if date not in session_count_by_date:
+            session_count_by_date[date] = 0
+            stress_by_date[date] = 0.0
+
+        session_count_by_date[date] += 1
+
+        # Calculate stress for this session date
+        scores = calculate_stress_scores(date, db)
+        session_stress = scores["central"] + scores["peripheral"]
+        stress_by_date[date] += session_stress
+
+    # Build readiness lookup (subjective_score on 0-20 scale)
+    for entry in readiness_entries:
+        subj = _subjective_fatigue(entry)
+        subjective_score = subj * 20.0
+        readiness_by_date[entry.date] = subjective_score
+
+    # Build response data with rolling windows
+    data = []
+    for date in date_spine:
+        # 7-day rolling window: current day + 6 prior days
+        rolling_stress = 0.0
+        readiness_values = []
+
+        for i in range(7):
+            check_date = date - timedelta(days=6 - i)
+            rolling_stress += stress_by_date.get(check_date, 0.0)
+            if check_date in readiness_by_date:
+                readiness_values.append(readiness_by_date[check_date])
+
+        # Compute rolling readiness (null if fewer than 3 days with data)
+        if len(readiness_values) >= 3:
+            rolling_readiness = round(sum(readiness_values) / len(readiness_values), 2)
+        else:
+            rolling_readiness = None
+
+        # Session count for this specific date
+        session_count = session_count_by_date.get(date, 0)
+
+        data.append(
+            {
+                "date": str(date),
+                "rolling_stress": round(rolling_stress, 1),
+                "rolling_readiness": rolling_readiness,
+                "session_count": session_count,
+            }
+        )
+
+    return {
+        "start_date": str(start),
+        "end_date": str(end),
+        "data": data,
+    }
+
+
 def _build_ai_system_prompt(db: Session) -> str:
     snapshot = _build_diagnostics_snapshot(db)
     today_date = date_type.today()
