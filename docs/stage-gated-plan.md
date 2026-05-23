@@ -2,6 +2,25 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+## 2026-05-23 — Issues 1/2/3: VF Signal Toggle, Duplicate Listeners, Mobile Padding
+
+### Workflow
+- Main (multi-area frontend: JS state + function replacement, JS bug fix, CSS)
+
+### Changes (index.html)
+- **JS added**: `let _dashboardVfSignal = 'tonnage';` after `_dashboardVfActiveRange`
+- **JS replaced**: `renderDashboardVFCard()` — signal toggle row (Tonnage/RPE Load/Sets), correct field names (`rolling_tonnage`, `rolling_stress`, `rolling_set_count`), per-signal note text and colors
+- **JS fixed**: `renderTodayTrainingLoadCard()` — removed duplicate `today-load-range` addEventListener from empty-state path
+- **JS fixed**: `renderTodayPatternFatigueCard()` — removed duplicate `today-pattern-range` addEventListener from empty-state path
+- **CSS updated**: `@media (max-width: 767px)` `main { padding-bottom: 76px }` → `90px`
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1748 open / 1748 close: PASS
+- Script tag balance: 4/4: PASS
+
+---
+
 ## 2026-05-23 — Design System C2: Nav Restructure
 
 ### Workflow

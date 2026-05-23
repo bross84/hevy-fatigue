@@ -1,6 +1,30 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-23 (Design System C2 — Nav Restructure)
+Last updated: 2026-05-23 (Dashboard VF Signal Toggle + Duplicate Listener Fix + Mobile Padding)
+
+## Latest Update (2026-05-23 — Issues 1/2/3: VF Signal Toggle, Duplicate Listeners, Mobile Padding)
+
+- Workflow selected: Main
+- Files changed: `static/index.html` only
+
+### Issue 1 — Dashboard VF Card Signal Toggle
+- Added `let _dashboardVfSignal = 'tonnage';` state variable after `_dashboardVfActiveRange`
+- Replaced `renderDashboardVFCard()` — now renders 3 signal buttons (Tonnage · RPE Load · Sets), Tonnage active by default
+- Signal buttons use `data-dvf-signal` attribute; toggle re-renders card with correct field (`rolling_tonnage` / `rolling_stress` / `rolling_set_count`) and color (`c.warn` / `c.accent` / `c.push`)
+- Fixed field name bug: old code used `rolling_stress_load` (wrong); new code uses `rolling_stress` (matches `/api/volfatigue/summary` response)
+- Note text updates per signal; custom-range inputs preserve state across renders
+
+### Issue 2 — Duplicate Event Listeners Removed
+- `renderTodayTrainingLoadCard()`: removed listener from empty-state early-return path; kept single listener in success path (calls `renderTodayTrainingLoadCard()`)
+- `renderTodayPatternFatigueCard()`: same — removed duplicate listener from empty-state path; kept success-path listener (calls `renderTodayPatternFatigueCard()`)
+
+### Issue 3 — Mobile Bottom Padding
+- `@media (max-width: 767px)` `main` block: `padding-bottom` updated from 76px → 90px
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1748 open / 1748 close: PASS
+- Script tags: 4/4: PASS
 
 ## Latest Update (2026-05-23 — Design System C2: Nav Restructure)
 
