@@ -2,6 +2,13 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+## 2026-05-22 — Settings Mobile Layout Fix
+
+- Updated `static/index.html` Settings tab CSS so the grid stays at two columns on normal widths instead of expanding to three columns.
+- Added a `780px` collapse point so the Settings tab switches directly from two columns to one column on narrow screens.
+- Kept the key-row wrapping behavior so API-key toggle buttons drop below the input when space is tight.
+- Validation completed on the edited frontend file with no diagnostics errors.
+
 ## 2026-05-21 — Docs Weighting Visibility Clarification
 
 - Updated `static/docs.html` to explicitly show how each subjective check-in input contributes percentage-wise to the subjective total.

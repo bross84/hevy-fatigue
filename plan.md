@@ -1,6 +1,14 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-21 (Docs Accuracy Corrective Pass — static/docs.html)
+Last updated: 2026-05-22 (Settings Mobile Layout Fix — static/index.html)
+
+## Latest Update (2026-05-22, Settings Mobile Layout Fix)
+
+- Updated the Settings tab layout CSS in `static/index.html` so the four Settings cards render as a fixed two-column grid instead of expanding to three columns on wider screens.
+- Added `min-width: 0` handling to settings cards, key rows, and AI settings fields so the AI key row no longer widens the grid on narrow viewports.
+- Added a narrow-width collapse at `780px` so the Settings tab switches directly from two columns to one column when space gets tight.
+- Kept the narrow-width key-row wrapping so the API-key toggle buttons drop below the input instead of forcing overflow.
+- Validation: editor diagnostics report no errors in `static/index.html`.
 
 ## Latest Update (2026-05-21, Docs Weighting Visibility Clarification)
 

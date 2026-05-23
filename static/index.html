@@ -1779,26 +1779,21 @@ tbody tr:hover td { background: var(--row-hover); }
 }
 
 /* ── Settings tab ── */
-.settings-card { max-width: 520px; }
+.settings-card { max-width: 520px; min-width: 0; }
 .tab-content#tab-settings.active {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   align-items: stretch;
-  grid-template-areas:
-    "api sync"
-    "diagnostics ai";
 }
 #tab-settings .settings-card {
   height: 100%;
   max-width: none;
+  min-width: 0;
   margin-top: 0 !important;
   margin-bottom: 0;
 }
-#tab-settings .settings-card-api { grid-area: api; }
-#tab-settings .settings-card-sync { grid-area: sync; }
-#tab-settings .settings-card-diagnostics { grid-area: diagnostics; }
-#tab-settings .ai-settings-card { grid-area: ai; max-width: none; }
+#tab-settings .ai-settings-card { max-width: none; }
 .settings-diag-body { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 16px; }
 .settings-diag-cta {
   display: inline-block;
@@ -1811,9 +1806,11 @@ tbody tr:hover td { background: var(--row-hover); }
   text-decoration: none;
 }
 .settings-diag-cta:hover { opacity: 0.88; }
-.settings-key-row { display: flex; gap: 8px; align-items: stretch; }
+.settings-key-row { display: flex; gap: 8px; align-items: stretch; min-width: 0; }
 .settings-key-row input {
   flex: 1;
+  min-width: 0;
+  width: 100%;
   padding: 8px 10px;
   border-radius: 6px;
   border: 1px solid var(--border);
@@ -1822,6 +1819,7 @@ tbody tr:hover td { background: var(--row-hover); }
   font-size: 16px;
   font-family: monospace;
 }
+.settings-key-row .btn { flex: 0 0 auto; }
 .settings-key-row input:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
 .settings-result {
   margin-top: 10px;
@@ -1850,11 +1848,13 @@ tbody tr:hover td { background: var(--row-hover); }
   display: grid;
   grid-template-columns: 1fr;
   gap: 12px;
+  min-width: 0;
 }
 .ai-settings-field {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
 }
 .ai-settings-label {
   font-size: 13px;
@@ -2158,19 +2158,22 @@ body.ai-open main {
   40% { opacity: 1; transform: translateY(-2px); }
 }
 @media (max-width: 640px) { .settings-grid-2 { grid-template-columns: 1fr; } }
-@media (max-width: 900px) {
+@media (max-width: 780px) {
   .tab-content#tab-settings.active {
     grid-template-columns: 1fr;
-    grid-template-areas: none;
-    grid-template-rows: auto;
   }
+}
+@media (max-width: 1024px) {
   #tab-settings .settings-card {
     max-width: none;
     width: 100%;
   }
-  #tab-settings .settings-card-api,
-  #tab-settings .settings-card-sync,
-  #tab-settings .settings-card-diagnostics { grid-area: auto; }
+  .settings-key-row {
+    flex-wrap: wrap;
+  }
+  .settings-key-row .btn {
+    width: 100%;
+  }
   .ai-settings-card { max-width: none; }
   .ai-chat-card { max-width: none; }
   .tab-content#tab-ai.active { height: 100%; }

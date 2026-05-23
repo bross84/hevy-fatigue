@@ -1,13 +1,10 @@
 # Hevy Fatigue — Backlog
 
-Last updated: 21MAY2026
+Last updated: 22MAY2026
 
 ---
 
 ## Open Bugs
-
-### `19MAY2026` — Settings view not rendering correctly on mobile
-Settings page layout breaks on mobile viewport. Needs CSS investigation and responsive fix.
 
 ---
 
@@ -19,6 +16,7 @@ Surface Maximum Recoverable Volume indicators informed by JTS fatigue framework.
 Reference material:
 - https://www.jtsstrength.com/fatigue-indicators-and-how-to-use-them/
 - https://www.jtsstrength.com/fatigue-explained/
+- https://osf.io/6z3xu/overview
 
 **Foundation inputs:**
 - Rolling gross load — normalized using existing session stress scores as common currency; both ST/HYP and CON/CAR pathways already output to same arbitrary unit system via respective scaling factors; rolling load = sum of session stress scores over 28-day flat window
@@ -85,6 +83,7 @@ Pull daily macros (protein, carbs, fat) from Apple Health via Claude iOS Health 
 | CTL time constant | COMPLETE — EWMA with τ=42 days implemented per Allen 2019 / TrainingPeaks standard. |
 | Sticky AI model selection | COMPLETE |
 | Sticky navbar on desktop | COMPLETE |
+| Settings view mobile layout | COMPLETE — 22MAY2026. Updated `static/index.html` settings grid to hold a 2x2 layout on normal widths, collapse to one column at narrow widths, and keep key-row wrapping so cards stack cleanly without horizontal overflow. |
 | Combined score formula label truncation | COMPLETE |
 | Pattern stress dots vs trend chart contradiction | COMPLETE — merged 16MAY2026. `_pattern_tsb_signal(tsb, ctl)` replaces ATL/CTL ratio. |
 | Pattern stress card color/label | COMPLETE — Normal → green, Elevated → yellow, High → red, Fresh → teal/blue. |
