@@ -1,6 +1,63 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-24 (Fatigue Tab Daily Bars + Dashboard Training Load Removal)
+Last updated: 2026-05-24 (Per-Pattern Trend Window Date Filter)
+
+## Latest Update (2026-05-24 — Spec Task A: Per-Pattern Fatigue Trend window control)
+
+- Workflow selected: Main
+- Files changed: `static/index.html` only
+
+### Task 1 — `_trendSliceByDays()` date filtering
+- Replaced entry-count slicing with date-based filtering using ISO date cutoff
+- New behavior includes all entries whose `date >= cutoffStr` for selected window
+
+### Task 2 — training load fetch window verification
+- Verified fetch remains `'/api/training-load?days=180'` (no change required)
+
+### Task 3 — chart boundary/control wiring
+- Updated `_renderTrendPatternChart` signature to include `windowDays = 14`
+- Updated today-card call site to pass `_todayPatternRange`
+- Added explicit x-axis `min/max` boundaries keyed off selected window in `_renderTrendPatternChart`
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1786 open / 1786 close: PASS
+- Script tag balance: 4/4: PASS
+- Problems check (`static/index.html`, `main.py`): no errors
+
+## Latest Update (2026-05-24 — Dashboard Pattern card gauge-row refactor)
+
+- Workflow selected: Main
+- Files changed: `static/index.html` only
+
+### Pattern card render update
+- Replaced 2×2 pattern cell grid in `_renderTodayCards()` with four horizontal gauge rows (Knee, Hip, Push, Pull)
+- Preserved underlying signal source (`dots_filled`, 1–5) and threshold mapping
+- Pending/no-check-in state now renders muted gauge fill with `—` status per row
+- Removed pattern explainer render from dashboard pattern card assignment
+
+### CSS additions
+- Added `/* ── Pattern stress gauges ── */` section after `.today-pattern-pending`
+- Added gauge row/item/track/fill/status classes including threshold-specific fill/status variants
+
+### CSS cleanup
+- Removed unused legacy classes after reference sweep:
+	- `.today-pattern-grid`
+	- `.today-pattern-name`
+	- `.today-pattern-days`
+	- `.today-dots`
+	- `.today-dot`
+	- `.today-dot-filled`
+	- `.today-pattern-level`
+- Removed matching small-screen overrides for removed classes
+- Kept existing `.today-pattern-*` classes still referenced by `_patternCellClass()` as requested
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1784 open / 1784 close: PASS
+- Script tag balance: 4/4: PASS
+- Problems check (`static/index.html`): no errors
+- Old grid class family absent (`today-pattern-grid`, `today-dot*`, `today-pattern-name/days/level`)
 
 ## Latest Update (2026-05-24 — Fatigue tab bar+line conversion + dashboard card removal)
 
