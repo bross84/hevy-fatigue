@@ -2,6 +2,24 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+## 2026-05-23 — Fixes 1/2/3: Y-Axis Float, Range Delegation, Mobile Padding
+
+### Workflow
+- Main (JS function fix, JS architecture change, CSS specificity fix)
+
+### Changes (index.html)
+- **JS fixed**: `_vfBuildChart()` — `Math.ceil` on `maxLeft` and `max: maxLeft * 1.1` to prevent float Y-axis labels
+- **JS fixed**: `renderTodayTrainingLoadCard()` — removed inline `addEventListener` from success path; added `document.addEventListener('click', _todayLoadRangeHandler)` after function
+- **JS fixed**: `renderTodayPatternFatigueCard()` — same; added `_todayPatternRangeHandler` document delegation after function
+- **CSS fixed**: `@media (max-width: 767px)` — added `main { padding: 16px 14px 90px !important; }` to override `@media (max-width: 640px)` rule at line 2488
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1749 open / 1749 close: PASS
+- Script tag balance: 4/4: PASS
+
+---
+
 ## 2026-05-23 — Issues 1/2/3: VF Signal Toggle, Duplicate Listeners, Mobile Padding
 
 ### Workflow

@@ -1,6 +1,27 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-23 (Dashboard VF Signal Toggle + Duplicate Listener Fix + Mobile Padding)
+Last updated: 2026-05-23 (Y-Axis Precision + Range Button Delegation + Mobile Padding Override)
+
+## Latest Update (2026-05-23 — Fixes 1/2/3: Y-Axis Float, Range Delegation, Mobile Padding)
+
+- Workflow selected: Main
+- Files changed: `static/index.html` only
+
+### Fix 1 — Y-Axis Float Precision
+- `_vfBuildChart()`: wrapped `maxLeft` in `Math.ceil()` and `max: Math.ceil(maxLeft * 1.1)` — eliminates floating-point display artifacts (e.g. 55.000000000000010) on Set Count axis
+
+### Fix 2 — Range Button Listener Accumulation
+- Removed inline `addEventListener` from inside `renderTodayTrainingLoadCard()` (success path after `_renderTrendMainChart`)
+- Added `document.addEventListener('click', async function _todayLoadRangeHandler...)` after function closing brace — targets `#today-load-range button[data-load-range]` via delegation; fires once, survives DOM replacement
+- Same pattern for `renderTodayPatternFatigueCard()` — removed inline listener, added `_todayPatternRangeHandler` document delegation after function
+
+### Fix 3 — Mobile Dead Space / Padding Override
+- `@media (max-width: 767px)` block: added `main { padding: 16px 14px 90px !important; }` to override the later-declared `@media (max-width: 640px)` rule that was setting `padding: 74px 14px 12px` (top dead space + too little bottom padding)
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1749 open / 1749 close: PASS
+- Script tags: 4/4: PASS
 
 ## Latest Update (2026-05-23 — Issues 1/2/3: VF Signal Toggle, Duplicate Listeners, Mobile Padding)
 
