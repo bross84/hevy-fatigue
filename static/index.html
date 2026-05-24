@@ -891,6 +891,17 @@ input[type="date"] {
   -webkit-appearance: none;
   appearance: none;
 }
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.15);
+  opacity: 0.9;
+}
+[data-theme="dark"] input[type="date"]::-webkit-datetime-edit,
+[data-theme="dark"] input[type="date"]::-webkit-datetime-edit-text,
+[data-theme="dark"] input[type="date"]::-webkit-datetime-edit-month-field,
+[data-theme="dark"] input[type="date"]::-webkit-datetime-edit-day-field,
+[data-theme="dark"] input[type="date"]::-webkit-datetime-edit-year-field {
+  color: var(--text);
+}
 input[type="number"]:focus, input[type="date"]:focus {
   outline: none; border-color: var(--accent);
 }
@@ -6818,7 +6829,7 @@ function _todayReadinessBandsPlugin() {
   };
 }
 
-let _todayLoadRange = 7;
+let _todayLoadRange = 6;
 
 async function renderTodayTrainingLoadCard() {
   const card = document.getElementById('today-training-load-card');
@@ -6826,17 +6837,17 @@ async function renderTodayTrainingLoadCard() {
 
   try {
     const payload = await ensureTrainingLoadPayload();
-    const history = _trendSlice(payload?.history || [], _todayLoadRange);
+    const history = _trendSlice(payload?.history || []);
     card.innerHTML = `
       <div class="card-title">Training Load Trend</div>
       <div class="trend-range" id="today-load-range">
         <button class="btn btn-secondary${_todayLoadRange === 3 ? ' active' : ''}" data-load-range="3">3 Day</button>
-        <button class="btn btn-secondary${_todayLoadRange === 7 ? ' active' : ''}" data-load-range="7">7 Day</button>
-        <button class="btn btn-secondary${_todayLoadRange === 14 ? ' active' : ''}" data-load-range="14">14 Day</button>
+        <button class="btn btn-secondary${_todayLoadRange === 6 ? ' active' : ''}" data-load-range="6">6 Day</button>
+        <button class="btn btn-secondary${_todayLoadRange === 12 ? ' active' : ''}" data-load-range="12">12 Day</button>
       </div>
       ${!history.length
         ? '<div class="today-chart-empty">No training history yet.</div>'
-        : '<div class="today-chart-wrap"><canvas id="today-training-load-chart"></canvas></div><div class="today-chart-note">Fatigue = short-term load, Fitness = long-term load, Form = balance between the two.</div>'
+        : '<div class="today-chart-wrap"><canvas id="today-training-load-chart"></canvas></div><div class="today-chart-note">Stress Index is shown for the last 30 days. Dotted baseline reflects your accustomed workload for the selected 3/6/12-day term.</div>'
       }
     `;
 
@@ -6869,7 +6880,7 @@ async function renderTodayPatternFatigueCard() {
 
   try {
     const payload = await ensureTrainingLoadPayload();
-    const history = _trendSlice(payload?.history || [], _todayPatternRange);
+    const history = _trendSliceByDays(payload?.history || [], _todayPatternRange);
     const hasPatternLoads = history.some(h => h && typeof h === 'object' && h.pattern_loads && h.pattern_loads.knee && h.pattern_loads.hip && h.pattern_loads.push && h.pattern_loads.pull);
 
     card.innerHTML = `
@@ -7017,6 +7028,14 @@ function _trendSlice(history, days) {
   return history.slice(history.length - 30);
 }
 
+function _trendSliceByDays(history, days) {
+  if (!Array.isArray(history) || !history.length) return [];
+  const windowDays = Number(days);
+  if (!Number.isFinite(windowDays) || windowDays <= 0) return history;
+  if (history.length <= windowDays) return history;
+  return history.slice(history.length - windowDays);
+}
+
 function _trendRollingAvg(values, windowDays) {
   if (!Array.isArray(values) || windowDays <= 0) return values;
   return values.map((_, i) => {
@@ -7079,6 +7098,9 @@ function _renderTrendMainChart(history, thresholds, canvasId = 'trend-main-chart
   const atlSmoothed = _trendRollingAvg(atlRaw, trendSmoothingDays);
   const ctlSmoothed = _trendRollingAvg(ctlRaw, trendSmoothingDays);
   const tsbSmoothed = _trendRollingAvg(tsbRaw, trendSmoothingDays);
+  const isTodayLoadChart = canvasId === 'today-training-load-chart';
+  const baselineDays = isTodayLoadChart ? _todayLoadRange : trendSmoothingDays;
+  const baselineSeries = _trendRollingAvg(atlRaw, baselineDays);
 
   const chart = new Chart(ctx, {
     type: 'line',
@@ -7117,8 +7139,8 @@ function _renderTrendMainChart(history, thresholds, canvasId = 'trend-main-chart
         },
         {
           label: '__zero__',
-          data: history.map(() => 0),
-          borderColor: 'rgba(255,255,255,0.15)',
+          data: isTodayLoadChart ? baselineSeries : history.map(() => 0),
+          borderColor: isTodayLoadChart ? c.warn : 'rgba(255,255,255,0.15)',
           borderDash: [4, 4],
           pointRadius: 0,
           borderWidth: 1,
@@ -7150,6 +7172,14 @@ function _renderTrendMainChart(history, thresholds, canvasId = 'trend-main-chart
               if (ctxItem.dataset.label === 'Fatigue') return `Fatigue: ${_fmt1(plotted)}`;
               if (ctxItem.dataset.label === 'Fitness') return `Fitness: ${_fmt1(plotted)}`;
               return `Form: ${_fmt1(plotted)}`;
+            },
+            afterBody(items) {
+              if (!isTodayLoadChart) return undefined;
+              const idx = items?.[0]?.dataIndex ?? 0;
+              const baseline = baselineSeries[idx];
+              return baseline == null
+                ? [`Baseline (${baselineDays}d): —`]
+                : [`Baseline (${baselineDays}d): ${_fmt1(baseline)}`];
             },
 
           },
@@ -7329,6 +7359,7 @@ function _vfBuildChart(canvasId, leftData, leftLabel, leftColor, leftAxisTitle, 
   const c = themeColors();
   const ctx = document.getElementById(canvasId).getContext('2d');
   const maxLeft = Math.ceil(Math.max(...leftData.filter(v => v !== null), 1));
+  const readinessColor = leftColor === c.push ? c.accent : c.success;
 
   return new Chart(ctx, {
     type: 'line',
@@ -7350,8 +7381,8 @@ function _vfBuildChart(canvasId, leftData, leftLabel, leftColor, leftAxisTitle, 
         {
           label: 'Rolling Readiness',
           data: readinessData,
-          borderColor: c.success,
-          backgroundColor: c.success + '1a',
+          borderColor: readinessColor,
+          backgroundColor: readinessColor + '1a',
           yAxisID: 'y1',
           pointRadius: 3,
           pointHoverRadius: 5,

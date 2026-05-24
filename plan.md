@@ -1,6 +1,50 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-23 (Dashboard VF Shell-Preserving Catch + Delegated VF Handlers + Active Button CSS)
+Last updated: 2026-05-23 (30-Day Stress Window + 3/6/12 Baseline Terms)
+
+## Latest Update (2026-05-23 — Training Load 30-day semantics correction)
+
+- Workflow selected: Main
+- Files changed: `static/index.html` only
+
+### Correction — 30-day window vs term selector
+- Reverted `_trendSlice()` to fixed 30-point behavior for the Training Load trend context
+- Added `_trendSliceByDays(history, days)` helper and moved Per-Pattern range slicing to this helper so 3/7/14 controls there still change the chart window
+
+### Training Load controls now match 3/6/12 term intent
+- Updated `today-load-range` buttons from `3/7/14` to `3/6/12`
+- Default term set to `6` (`let _todayLoadRange = 6`)
+- `renderTodayTrainingLoadCard()` now always charts the last 30 days (`_trendSlice(payload.history)`)
+
+### Baseline behavior in chart
+- In `_renderTrendMainChart()` for `today-training-load-chart`, dotted dataset now renders rolling baseline from ATL using selected term (`_todayLoadRange`)
+- Tooltip includes `Baseline (Xd)` value for the selected term
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1757 open / 1757 close: PASS
+- Problems check (`static/index.html`): no errors
+
+## Latest Update (2026-05-23 — Range slicing + calendar icon + VF contrast)
+
+- Workflow selected: Main
+- Files changed: `static/index.html` only
+
+### Fix 1 — Training Load and Per-Pattern range buttons now affect chart window
+- Root cause: `_trendSlice(history, days)` ignored `days` and always returned up to 30 points
+- Updated `_trendSlice()` to honor `days` (`3/7/14` etc.) with numeric guard logic and proper tail slicing
+
+### Fix 2 — Dark mode date picker icon visibility
+- Added dark-theme WebKit date input styling so calendar indicator is no longer black on dark backgrounds
+- Added dark-theme datetime edit text color alignment with `var(--text)`
+
+### Fix 3 — VF Sets chart readability
+- In `_vfBuildChart()`, added `readinessColor` fallback logic so readiness line changes to `c.accent` when left series uses `c.push` (sets), preventing same-color green overlap
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1752 open / 1752 close: PASS
+- Problems check (`static/index.html`): no errors
 
 ## Latest Update (2026-05-23 — VF catch/listeners/CSS active-state hotfix)
 
