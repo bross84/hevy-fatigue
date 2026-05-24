@@ -2,6 +2,42 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+## 2026-05-23 — Training Load 30-day semantics correction
+
+### Workflow
+- Main (targeted frontend logic correction)
+
+### Changes (index.html)
+- **JS fixed**: `_trendSlice()` restored to fixed 30-point behavior
+- **JS added**: `_trendSliceByDays(history, days)` and switched Per-Pattern chart to use this helper for 3/7/14 range slicing
+- **JS updated**: Training Load selector values changed to `3/6/12` with default `6`
+- **JS updated**: `renderTodayTrainingLoadCard()` now always uses 30-day history window
+- **JS updated**: `_renderTrendMainChart()` now computes dotted baseline from ATL rolling average using selected term when rendering `today-training-load-chart`; tooltip now shows baseline value
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1757 open / 1757 close: PASS
+- `read/problems` equivalent (`get_errors` on `static/index.html`): No errors
+
+---
+
+## 2026-05-23 — Range slicing + calendar icon + VF contrast
+
+### Workflow
+- Main (targeted frontend bugfix in one file)
+
+### Changes (index.html)
+- **JS fixed**: `_trendSlice(history, days)` now uses `days` correctly instead of always truncating to 30
+- **CSS added**: dark-theme date-input WebKit rules so calendar icon and date text are readable in dark mode
+- **JS fixed**: `_vfBuildChart()` readiness line color now switches to `c.accent` when left series color is `c.push` (Sets) to prevent same-color overlap
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1752 open / 1752 close: PASS
+- `read/problems` equivalent (`get_errors` on `static/index.html`): No errors
+
+---
+
 ## 2026-05-23 — VF catch/listeners/CSS active-state hotfix
 
 ### Workflow
