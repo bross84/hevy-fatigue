@@ -2320,8 +2320,8 @@ body.ai-open main {
   background: var(--card);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px 14px;
+  border-radius: 10px;
+  padding: 8px 12px;
   font-size: 16px;
   font-family: inherit;
   resize: none;
@@ -2329,6 +2329,7 @@ body.ai-open main {
   min-height: unset;
   max-height: 200px;
   line-height: 1.5;
+  overflow-y: hidden;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--accent) 35%, var(--border)) transparent;
 }
@@ -3153,7 +3154,7 @@ body.ai-open main {
     </div>
     <div class="ai-chat-status" id="ai-chat-status"></div>
     <div class="ai-chat-input-row">
-      <textarea class="ai-chat-input" id="ai-chat-input" rows="1" placeholder="Ask about today's readiness or session…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="send"></textarea>
+      <textarea class="ai-chat-input" id="ai-chat-input" rows="1" placeholder="Ask for training advice" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="send"></textarea>
       <button class="btn btn-primary ai-chat-send" id="ai-chat-send" type="button" onclick="sendAIMessage()">Send</button>
     </div>
   </div>
@@ -4467,7 +4468,9 @@ function _initAIChatHandlers() {
 
   input.addEventListener('input', () => {
     input.style.height = 'auto';
-    input.style.height = `${Math.min(input.scrollHeight, 180)}px`;
+    const newHeight = Math.min(input.scrollHeight, 180);
+    input.style.height = `${newHeight}px`;
+    input.style.overflowY = input.scrollHeight > 180 ? 'auto' : 'hidden';
   });
 
   input.addEventListener('keydown', e => {
