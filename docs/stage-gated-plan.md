@@ -2,6 +2,25 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+## 2026-05-24 — Spec Task B: Per-Pattern Tonnage EWMA + ATL/Tonnage Toggle
+
+### Workflow
+- Main (frontend renderer update plus chart signal switch)
+
+### Changes (index.html)
+- **JS added**: module-level `_todayPatternSignal = 'atl'` state beside `_todayPatternRange`
+- **JS updated**: `renderTodayPatternFatigueCard()` now renders a second control row for ATL/Tonnage selection
+- **JS updated**: added delegated `#today-pattern-signal` click handler to keep signal state independent of range state
+- **JS updated**: `_renderTrendPatternChart(history, canvasId = 'trend-pattern-chart', windowDays = 14, signal = 'atl')` now selects `atl` or `ton_atl` per pattern
+- **JS updated**: the chart y-axis title now switches between `ATL` and `Tonnage (EWMA)`
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- Script tag balance: 4/4: PASS
+- JS audit checks: module state, `data-pattern-signal`, and `ton_atl` references present
+
+---
+
 ## 2026-05-24 — Spec Task A: Per-Pattern Fatigue Trend window control
 
 ### Workflow

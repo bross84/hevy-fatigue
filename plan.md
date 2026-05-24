@@ -1,6 +1,29 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-24 (Per-Pattern Trend Window Date Filter)
+Last updated: 2026-05-24 (Per-Pattern ATL/Tonnage toggle)
+
+## Latest Update (2026-05-24 — Spec Task B: Per-Pattern Tonnage EWMA + ATL/Tonnage Toggle)
+
+- Workflow selected: Main
+- Files changed: `static/index.html`, `plan.md`, `docs/stage-gated-plan.md`
+
+### Task 1 — toggle state + card UI
+- Added module-level `_todayPatternSignal = 'atl'` state beside `_todayPatternRange`
+- Updated Per-Pattern Fatigue card markup to show a second control row for ATL/Tonnage selection
+- Kept range controls independent from signal controls
+
+### Task 2 — chart signal routing
+- Updated `renderTodayPatternFatigueCard()` to pass `_todayPatternSignal` into `_renderTrendPatternChart()`
+- Added delegated click handler for `#today-pattern-signal` buttons
+- `_renderTrendPatternChart()` now selects either `atl` or `ton_atl` fields based on the active signal
+
+### Task 3 — y-axis labeling
+- Added a chart y-axis title that switches between `ATL` and `Tonnage (EWMA)` based on the selected signal
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- Script tag balance: 4/4: PASS
+- JS audit checks: module state, `data-pattern-signal`, and `ton_atl` references present
 
 ## Latest Update (2026-05-24 — Spec Task A: Per-Pattern Fatigue Trend window control)
 

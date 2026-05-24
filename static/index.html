@@ -6840,6 +6840,7 @@ function _todayReadinessBandsPlugin() {
 }
 
 let _todayPatternRange = 7;
+let _todayPatternSignal = 'atl'; // 'atl' | 'tonnage'
 
 async function renderTodayPatternFatigueCard() {
   const card = document.getElementById('today-pattern-fatigue-card');
@@ -6857,6 +6858,10 @@ async function renderTodayPatternFatigueCard() {
         <button class="btn btn-secondary${_todayPatternRange === 7 ? ' active' : ''}" data-pattern-range="7">7 Day</button>
         <button class="btn btn-secondary${_todayPatternRange === 14 ? ' active' : ''}" data-pattern-range="14">14 Day</button>
       </div>
+      <div class="trend-range" id="today-pattern-signal" style="margin-top:4px;">
+        <button class="btn btn-secondary${_todayPatternSignal === 'atl' ? ' active' : ''}" data-pattern-signal="atl">ATL</button>
+        <button class="btn btn-secondary${_todayPatternSignal === 'tonnage' ? ' active' : ''}" data-pattern-signal="tonnage">Tonnage</button>
+      </div>
       ${(!history.length || !hasPatternLoads)
         ? '<div class="today-chart-empty">Pattern data unavailable for this date range.</div>'
         : '<div class="today-chart-wrap"><canvas id="today-pattern-fatigue-chart"></canvas></div>'
@@ -6869,7 +6874,7 @@ async function renderTodayPatternFatigueCard() {
     }
 
     _destroyTodayPatternFatigueChart();
-    _renderTrendPatternChart(history, 'today-pattern-fatigue-chart', _todayPatternRange);
+    _renderTrendPatternChart(history, 'today-pattern-fatigue-chart', _todayPatternRange, _todayPatternSignal);
   } catch {
     _destroyTodayPatternFatigueChart();
     card.innerHTML = '<div class="card-title">Per-Pattern Fatigue Trend</div><div class="today-chart-empty">Unable to load pattern data.</div>';
@@ -6881,6 +6886,14 @@ document.addEventListener('click', async function _todayPatternRangeHandler(e) {
   if (!btn) return;
   _todayPatternRange = Number(btn.dataset.patternRange);
   document.querySelectorAll('#today-pattern-range button').forEach(b => b.classList.toggle('active', b === btn));
+  await renderTodayPatternFatigueCard();
+});
+
+document.addEventListener('click', async function _todayPatternSignalHandler(e) {
+  const btn = e.target.closest('#today-pattern-signal button[data-pattern-signal]');
+  if (!btn) return;
+  _todayPatternSignal = btn.dataset.patternSignal;
+  document.querySelectorAll('#today-pattern-signal button').forEach(b => b.classList.toggle('active', b === btn));
   await renderTodayPatternFatigueCard();
 });
 
@@ -7153,14 +7166,15 @@ function _renderTrendMainChart(history, thresholds, canvasId = 'trend-main-chart
   }
 }
 
-function _renderTrendPatternChart(history, canvasId = 'trend-pattern-chart', windowDays = 14) {
+function _renderTrendPatternChart(history, canvasId = 'trend-pattern-chart', windowDays = 14, signal = 'atl') {
   const c = themeColors();
   const ctx = document.getElementById(canvasId).getContext('2d');
   const labels = history.map(h => _dateLabel(h.date));
-  const kneeRaw = history.map(h => Number(h.pattern_loads?.knee?.atl || 0));
-  const hipRaw = history.map(h => Number(h.pattern_loads?.hip?.atl || 0));
-  const pushRaw = history.map(h => Number(h.pattern_loads?.push?.atl || 0));
-  const pullRaw = history.map(h => Number(h.pattern_loads?.pull?.atl || 0));
+  const field = signal === 'tonnage' ? 'ton_atl' : 'atl';
+  const kneeRaw = history.map(h => Number(h.pattern_loads?.knee?.[field] || 0));
+  const hipRaw = history.map(h => Number(h.pattern_loads?.hip?.[field] || 0));
+  const pushRaw = history.map(h => Number(h.pattern_loads?.push?.[field] || 0));
+  const pullRaw = history.map(h => Number(h.pattern_loads?.pull?.[field] || 0));
   const kneeSmoothed = _trendRollingAvg(kneeRaw, trendSmoothingDays);
   const hipSmoothed = _trendRollingAvg(hipRaw, trendSmoothingDays);
   const pushSmoothed = _trendRollingAvg(pushRaw, trendSmoothingDays);
@@ -7221,6 +7235,15 @@ function _renderTrendPatternChart(history, canvasId = 'trend-pattern-chart', win
           ..._trendChartBaseOptions().scales.x,
           min: Math.max(0, labels.length - Number(windowDays)),
           max: Math.max(0, labels.length - 1),
+        },
+        y: {
+          ..._trendChartBaseOptions().scales?.y,
+          title: {
+            display: true,
+            text: signal === 'tonnage' ? 'Tonnage (EWMA)' : 'ATL',
+            color: c.muted,
+            font: { size: 11 },
+          },
         },
       },
       plugins: {

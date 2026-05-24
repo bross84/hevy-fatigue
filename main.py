@@ -1250,6 +1250,7 @@ def _compute_training_load(days: int, db: Session) -> tuple[list[dict], float, f
     # Build dicts of date → combined stress and date → pattern stress
     stress_by_date: dict = {}
     pattern_stress_by_date: dict = {}
+    pattern_tonnage_by_date: dict = {}
     for row in workout_dates:
         scores = calculate_stress_scores(
             row.date,
@@ -1265,12 +1266,62 @@ def _compute_training_load(days: int, db: Session) -> tuple[list[dict], float, f
             "pull": scores["pull"],
         }
 
+    # Build per-pattern tonnage per day
+    tonnage_rows = (
+        db.query(
+            WorkoutLog.weight_lbs,
+            WorkoutLog.reps,
+            WorkoutLog.exercise_title,
+            WorkoutSession.workout_date,
+        )
+        .join(WorkoutSession, WorkoutLog.workout_id == WorkoutSession.hevy_workout_id)
+        .filter(
+            WorkoutSession.workout_date >= from_date,
+            WorkoutSession.workout_date <= date_type.today(),
+        )
+        .all()
+    )
+
+    exercise_titles = list({r.exercise_title for r in tonnage_rows if r.exercise_title})
+    mapping_rows = (
+        db.query(ExerciseMapping)
+        .filter(ExerciseMapping.exercise_title.in_(exercise_titles))
+        .all()
+    ) if exercise_titles else []
+    mapping_dict = {m.exercise_title: m for m in mapping_rows}
+
+    for weight_lbs, reps, exercise_title, workout_date in tonnage_rows:
+        raw_tonnage = float(weight_lbs or 0.0) * int(reps or 0)
+        if raw_tonnage <= 0:
+            continue
+        m = mapping_dict.get(exercise_title)
+        if m is None:
+            quad = post = push = pull = 0.25
+        else:
+            total = (m.pct_quad_dom or 0.0) + (m.pct_posterior or 0.0) + (m.pct_upper_push or 0.0) + (m.pct_upper_pull or 0.0)
+            if total <= 0:
+                quad = post = push = pull = 0.25
+            else:
+                quad = (m.pct_quad_dom    or 0.0) / total
+                post = (m.pct_posterior   or 0.0) / total
+                push = (m.pct_upper_push  or 0.0) / total
+                pull = (m.pct_upper_pull  or 0.0) / total
+
+        if workout_date not in pattern_tonnage_by_date:
+            pattern_tonnage_by_date[workout_date] = {"knee": 0.0, "hip": 0.0, "push": 0.0, "pull": 0.0}
+
+        pattern_tonnage_by_date[workout_date]["knee"] += raw_tonnage * quad
+        pattern_tonnage_by_date[workout_date]["hip"]  += raw_tonnage * post
+        pattern_tonnage_by_date[workout_date]["push"] += raw_tonnage * push
+        pattern_tonnage_by_date[workout_date]["pull"] += raw_tonnage * pull
+
     _PATTERNS = ("knee", "hip", "push", "pull")
 
     # Walk day-by-day applying EWMA
     atl, ctl = 0.0, 0.0
     atl_max, ctl_max = 0.0, 0.0
     p_atl = {p: 0.0 for p in _PATTERNS}
+    p_ton_atl = {p: 0.0 for p in _PATTERNS}
     p_ctl = {p: 0.0 for p in _PATTERNS}
     results = []
     start = from_date
@@ -1296,6 +1347,11 @@ def _compute_training_load(days: int, db: Session) -> tuple[list[dict], float, f
             p_atl[p] = ps * k_atl + p_atl[p] * (1 - k_atl)
             p_ctl[p] = ps * k_ctl + p_ctl[p] * (1 - k_ctl)
 
+        p_ton = pattern_tonnage_by_date.get(current, {p: 0.0 for p in _PATTERNS})
+        for p in _PATTERNS:
+            pt = p_ton.get(p, 0.0)
+            p_ton_atl[p] = pt * k_atl + p_ton_atl[p] * (1 - k_atl)
+
         # Track full-lookback maxima for normalization (not just the display window)
         if atl > atl_max:
             atl_max = atl
@@ -1311,9 +1367,10 @@ def _compute_training_load(days: int, db: Session) -> tuple[list[dict], float, f
                 "stress":     round(stress, 2),
                 "pattern_loads": {
                     p: {
-                        "atl": round(p_atl[p], 3),
-                        "ctl": round(p_ctl[p], 3),
-                        "tsb": round(p_ctl[p] - p_atl[p], 3),
+                        "atl":     round(p_atl[p], 3),
+                        "ctl":     round(p_ctl[p], 3),
+                        "tsb":     round(p_ctl[p] - p_atl[p], 3),
+                        "ton_atl": round(p_ton_atl[p], 1),
                     }
                     for p in _PATTERNS
                 },
