@@ -1896,6 +1896,9 @@ tbody tr:hover td { background: var(--row-hover); }
   nav {
     display: none;
   }
+  .exm-header {
+    top: 0;
+  }
   .bottom-nav {
     display: flex;
   }
@@ -2749,6 +2752,17 @@ body.ai-open main {
 @media (max-width: 900px) {
   .vf-chart-wrap { height: 220px; }
 }
+
+@media (display-mode: standalone) {
+  .bottom-nav {
+    height: calc(60px + 34px);
+    padding-bottom: 34px;
+  }
+  main {
+    padding-bottom: calc(76px + 34px) !important;
+  }
+}
+
 </style>
 </head>
 <body>
