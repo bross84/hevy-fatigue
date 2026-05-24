@@ -165,7 +165,7 @@ a.nav-tab { font-weight: 500; }
   bottom: 0;
   left: 0;
   right: 0;
-  height: 60px;
+  height: calc(60px + env(safe-area-inset-bottom));
   background: var(--card);
   border-top: 1px solid var(--border);
   z-index: 100;
@@ -1904,7 +1904,7 @@ tbody tr:hover td { background: var(--row-hover); }
     padding-bottom: 90px;
   }
   /* override narrow-viewport 640px rule that sets padding: 74px 14px 12px */
-  main { padding: 16px 14px 90px !important; }
+  main { padding: 16px 14px calc(76px + env(safe-area-inset-bottom)) !important; }
 }
 
 /* ── Tooltips ────────────────────────── */
@@ -2319,10 +2319,10 @@ body.ai-open main {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px 14px;
-  font-size: 14px;
+  font-size: 16px;
   font-family: inherit;
   resize: none;
-  min-height: 64px;
+  min-height: 44px;
   max-height: 200px;
   line-height: 1.5;
   scrollbar-width: thin;
@@ -2439,10 +2439,10 @@ body.ai-open main {
   .ai-settings-card { max-width: none; }
   .ai-chat-card { max-width: none; }
   #tab-exercise-metrics {
-    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+    padding-bottom: calc(90px + env(safe-area-inset-bottom));
   }
   #exm-list {
-    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+    padding-bottom: calc(120px + env(safe-area-inset-bottom));
   }
   .tab-content#tab-ai.active { height: 100%; }
   .ai-chat-messages { min-height: 0; }
@@ -3138,7 +3138,7 @@ body.ai-open main {
     </div>
     <div class="ai-chat-status" id="ai-chat-status"></div>
     <div class="ai-chat-input-row">
-      <textarea class="ai-chat-input" id="ai-chat-input" rows="2" placeholder="Ask about today's readiness or session…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="send"></textarea>
+      <textarea class="ai-chat-input" id="ai-chat-input" rows="1" placeholder="Ask about today's readiness or session…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="send"></textarea>
       <button class="btn btn-primary ai-chat-send" id="ai-chat-send" type="button" onclick="sendAIMessage()">Send</button>
     </div>
   </div>
