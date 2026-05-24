@@ -967,6 +967,12 @@ select:focus { outline: none; border-color: var(--accent); }
   color: var(--text);
 }
 .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.btn-secondary.active {
+  background: var(--accent-sub);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
 .btn-secondary.btn-danger {
   border-color: var(--danger);
   color: var(--danger);
@@ -6612,42 +6618,47 @@ async function renderDashboardVFCard() {
     if (_dashboardVfChart) { _dashboardVfChart.destroy(); _dashboardVfChart = null; }
     _dashboardVfChart = _vfBuildChart('dashboard-vf-chart', signalData, signalLabel, signalColor, signalAxis, readiness, labels, data.data);
 
-  } catch {
+  } catch (err) {
+    console.error('Dashboard VF error:', err);
     if (_dashboardVfChart) { _dashboardVfChart.destroy(); _dashboardVfChart = null; }
-    card.innerHTML = '<div class="dashboard-card-title">Volume · Fatigue</div><div class="today-chart-empty">Unable to load data.</div>';
+    const wrap = card.querySelector('.vf-chart-wrap');
+    if (wrap) wrap.innerHTML = '<div class="today-chart-empty">Unable to load data.</div>';
     return;
   }
-
-  document.getElementById('dashboard-vf-signal-btns')?.addEventListener('click', e => {
-    const btn = e.target.closest('button[data-dvf-signal]');
-    if (!btn) return;
-    _dashboardVfSignal = btn.dataset.dvfSignal;
-    renderDashboardVFCard();
-  });
-
-  document.getElementById('dashboard-vf-range-btns')?.addEventListener('click', e => {
-    const btn = e.target.closest('button[data-dashboard-vf-range]');
-    if (!btn) return;
-    const val = btn.dataset.dashboardVfRange;
-    if (val === 'custom') {
-      _dashboardVfActiveRange = 'custom';
-      document.getElementById('dashboard-vf-custom-range').style.display = 'flex';
-    } else {
-      _dashboardVfActiveRange = parseInt(val, 10);
-      document.getElementById('dashboard-vf-custom-range').style.display = 'none';
-      renderDashboardVFCard();
-    }
-  });
-
-  document.getElementById('dashboard-vf-custom-apply')?.addEventListener('click', () => {
-    const s = document.getElementById('dashboard-vf-start-date')?.value;
-    const e = document.getElementById('dashboard-vf-end-date')?.value;
-    if (!s || !e || s > e) return;
-    _dashboardVfCustomStart = s;
-    _dashboardVfCustomEnd = e;
-    renderDashboardVFCard();
-  });
 }
+
+document.addEventListener('click', function _dvfSignalHandler(e) {
+  const btn = e.target.closest('#dashboard-vf-signal-btns button[data-dvf-signal]');
+  if (!btn) return;
+  _dashboardVfSignal = btn.dataset.dvfSignal;
+  renderDashboardVFCard();
+});
+
+document.addEventListener('click', function _dvfRangeHandler(e) {
+  const btn = e.target.closest('#dashboard-vf-range-btns button[data-dashboard-vf-range]');
+  if (!btn) return;
+  const val = btn.dataset.dashboardVfRange;
+  if (val === 'custom') {
+    _dashboardVfActiveRange = 'custom';
+    document.getElementById('dashboard-vf-custom-range').style.display = 'flex';
+  } else {
+    _dashboardVfActiveRange = parseInt(val, 10);
+    const cr = document.getElementById('dashboard-vf-custom-range');
+    if (cr) cr.style.display = 'none';
+    renderDashboardVFCard();
+  }
+});
+
+document.addEventListener('click', function _dvfCustomApplyHandler(e) {
+  if (e.target.id !== 'dashboard-vf-custom-apply') return;
+  const s = document.getElementById('dashboard-vf-start-date')?.value;
+  const end = document.getElementById('dashboard-vf-end-date')?.value;
+  if (!s || !end || s > end) return;
+  _dashboardVfCustomStart = s;
+  _dashboardVfCustomEnd = end;
+  _dashboardVfActiveRange = 'custom';
+  renderDashboardVFCard();
+});
 
 
 function switchToWorkoutsFromToday() {

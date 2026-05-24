@@ -1,6 +1,39 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-23 (Y-Axis Precision + Range Button Delegation + Mobile Padding Override)
+Last updated: 2026-05-23 (Dashboard VF Shell-Preserving Catch + Delegated VF Handlers + Active Button CSS)
+
+## Latest Update (2026-05-23 — VF catch/listeners/CSS active-state hotfix)
+
+- Workflow selected: Main
+- Files changed: `static/index.html` only
+
+### Fix 1 — `_dashboardVfSignal` state
+- Verified `let _dashboardVfSignal = 'tonnage';` already exists in module-level state (line ~3456), so no duplicate declaration added
+
+### Fix 2 — Dashboard VF catch preserves card shell
+- Updated `renderDashboardVFCard()` catch to `catch (err)` with `console.error('Dashboard VF error:', err)`
+- Replaced full-card overwrite with targeted `.vf-chart-wrap` error content so signal/range controls stay intact during failures
+
+### Fix 3 — Dashboard VF listeners moved to delegated handlers
+- Removed in-function listeners for `dashboard-vf-signal-btns`, `dashboard-vf-range-btns`, and `dashboard-vf-custom-apply`
+- Added one-time document-delegated handlers after function:
+	- `_dvfSignalHandler`
+	- `_dvfRangeHandler`
+	- `_dvfCustomApplyHandler`
+
+### Fix 4 — Active secondary button styling
+- Added `.btn-secondary.active` rule after `.btn-secondary:hover`:
+	- `background: var(--accent-sub)`
+	- `border-color: var(--accent)`
+	- `color: var(--accent)`
+	- `font-weight: 600`
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1750 open / 1750 close: PASS
+- Problems check (`static/index.html`): no errors
+- Verified no in-function VF `addEventListener` calls remain
+- Verified delegated handlers and catch-shell behavior strings present
 
 ## Latest Update (2026-05-23 — Fixes 1/2/3: Y-Axis Float, Range Delegation, Mobile Padding)
 

@@ -2,6 +2,28 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+## 2026-05-23 — VF catch/listeners/CSS active-state hotfix
+
+### Workflow
+- Main (targeted frontend bugfix in one file)
+
+### Changes (index.html)
+- **JS verified**: `_dashboardVfSignal` already exists in module-level state (`let _dashboardVfSignal = 'tonnage';`), no duplicate declaration introduced
+- **JS fixed**: `renderDashboardVFCard()` catch now logs error and preserves card shell by writing error only into `.vf-chart-wrap`
+- **JS fixed**: removed in-function VF listeners (`dashboard-vf-signal-btns`, `dashboard-vf-range-btns`, `dashboard-vf-custom-apply`)
+- **JS added**: document-delegated VF handlers after `renderDashboardVFCard()`
+	- `_dvfSignalHandler`
+	- `_dvfRangeHandler`
+	- `_dvfCustomApplyHandler`
+- **CSS added**: `.btn-secondary.active` visual state rule directly after `.btn-secondary:hover`
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1750 open / 1750 close: PASS
+- `read/problems` equivalent (`get_errors` on `static/index.html`): No errors
+
+---
+
 ## 2026-05-23 — Fixes 1/2/3: Y-Axis Float, Range Delegation, Mobile Padding
 
 ### Workflow
