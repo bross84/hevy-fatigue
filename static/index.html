@@ -7219,7 +7219,7 @@ function _renderTrendPatternChart(history, canvasId = 'trend-pattern-chart', win
         ..._trendChartBaseOptions().scales,
         x: {
           ..._trendChartBaseOptions().scales.x,
-          min: Math.max(0, labels.length - (Number(windowDays) + 1)),
+          min: Math.max(0, labels.length - Number(windowDays)),
           max: Math.max(0, labels.length - 1),
         },
       },
