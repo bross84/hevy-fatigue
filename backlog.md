@@ -3,26 +3,14 @@
 ## 🔴 Pre-Release (must fix before public release)
 Items that are known bugs or missing features that would affect any user.
 
-- [ ] Update TSB training state labels to load-descriptive language in Today recommendations.
-- [ ] Resolve the contradictory Today-card state where a Fatigued training state can appear with a low fatigue score.
+- [ ] Resolve dead code: tab-trend section still exists in DOM but is inaccessible from nav - remove section HTML and associated JS (renderVolFatigueView, activateTrendTab, _vfChartRpe/Tonnage/Sets, _vfRenderCharts).
 - [ ] Complete README and FAQ documentation for public-facing release use.
-- [ ] Merge v2 to main after release-gate QA is complete.
-- [ ] Run full Movement Trend live validation with populated data (search/select/chart render, window toggles, clear/reset, theme redraw).
-- [ ] Run real-data visual QA for Trend and Session Log realism (including inline row edit behavior and verified/pending filters).
-- [ ] Run cross-device pass (Safari iOS + Chrome Android) for Today check-in button groups and endpoint labels.
-- [ ] Run Workouts regression click-through: verify queue -> log refresh, pending/verified edit flows, detail/edit mutual exclusion.
-- [ ] Validate full served-app runtime and API behavior in an environment with app dependencies installed (not file:// context).
 
 ## 🟡 Bookmarked (flagged for future work)
 Items that have been explicitly flagged during development as things to revisit but are not blocking release.
 
-- 7-day readiness trend bands should be user-configurable.
-- Movement Trend chart date axis currently shows month/day only; include year context.
-- Expand exercise stats page similar to Hevy Insights exercise detail view:
-  Total, Active, Gaining, Declining summary plus per-exercise charts.
-- Add a dedicated movement pattern percentage editor experience on the Exercises tab.
+- Add e1RM trend direction tag (Gaining / Steady / Declining) per exercise on the Exercise Metrics detail view, derived from linear regression slope over recent sessions.
 - Optional cleanup of obsolete helper names/comments still referencing legacy dashboard wording.
-- Add a lightweight release checklist for pre-commit UI and endpoint regression checks.
 - Unit toggle in settings, selection of Lbs or KG
 
 ## 🟢 Nice to Have (low priority wants)
@@ -30,18 +18,18 @@ Features or improvements that would be good eventually but are not urgent.
 
 - Auto-sync on page load or tab focus (similar to Hevy Insights behavior).
 - Add a clearer in-app confirmation UX around workout deletion handling.
-- Add in-app notification surfacing for deleted workouts.
+- Surface in-app notification when workouts are removed during sync (deleted from Hevy).
 
 ## ✅ Recently Completed
 Last 10 completed items with brief descriptions for context.
 
-1. Preserved verification state on initial import in importer so reimported sessions keep verification_status, verified_at, and srpe.
-2. Reworked Needs Review section UI into a collapsible card with conflict-aware default expansion behavior.
-3. Removed Exercise Name Overrides and Rename Exercise cards from Exercises tab and cleaned related frontend state.
-4. Added inline Add Override flow inside Needs Review with autocomplete, canonical save, cancel, and inline error feedback.
-5. Removed sync cooldown from POST /api/sync while keeping already-running lock protection.
-6. Added incremental sync gate coverage for first-sync bootstrap, cursor advancement, delete simulation, and canonical substitution checks.
-7. Added one-time incremental sync migration and GET /api/sync/last-sync endpoint.
-8. Refactored importer into initial import + incremental sync paths with shared workout processing logic.
-9. Added Hevy workout events client support (GET /v1/workouts/events) with robust error handling.
-10. Added startup dedup migration + unique index enforcement for workout_logs natural key protection.
+1. Complete dashboard layout overhaul - sidebar (readiness, pattern stress gauges, recent sessions) + full-width chart stack, responsive single-column on mobile.
+2. Check-in moved to modal - opens on page load if no check-in today, accessible via prompt banner.
+3. New color theme - #3772FF primary accent, dark slate (#0F172A/#111827), light mode (#F1F5F9/#FFFFFF).
+4. Bottom nav (mobile) + bottom sheet More menu replacing hamburger/drawer - Dashboard, Exercises, Workouts, AI Coach, More.
+5. Top nav restructured - Dashboard, Exercises, Workouts, AI Coach, Log, Patterns, Docs, Settings; tab renamed AI -> AI Coach.
+6. Vol-Fatigue correlation chart - daily tonnage/RPE load/set count as bars vs rolling readiness as dashed line; signal toggle (Tonnage/RPE Load/Sets); block window selector (4/8/12 weeks/custom).
+7. Per-Pattern Fatigue Trend - ATL and tonnage EWMA per pattern (Knee/Hip/Push/Pull); ATL/Tonnage signal toggle; 30-day window with 7/14/30 day smoothing term selector.
+8. Pattern stress redesigned as horizontal gauge rows - fill length + color (green/amber/red) replaces 2x2 dot grid.
+9. Toggle button groups redesigned as segmented strips (Option D) - joined, slim, solid accent fill on active.
+10. Per-pattern tonnage EWMA added to training load history payload - ton_atl field per pattern, same EWMA decay as ATL, tonnage distributed via pct_* exercise mapping weights.
