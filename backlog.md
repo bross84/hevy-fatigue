@@ -23,6 +23,7 @@ Items that have been explicitly flagged during development as things to revisit 
 - Add a dedicated movement pattern percentage editor experience on the Exercises tab.
 - Optional cleanup of obsolete helper names/comments still referencing legacy dashboard wording.
 - Add a lightweight release checklist for pre-commit UI and endpoint regression checks.
+- Unit toggle in settings, selection of Lbs or KG
 
 ## 🟢 Nice to Have (low priority wants)
 Features or improvements that would be good eventually but are not urgent.

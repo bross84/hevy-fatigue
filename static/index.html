@@ -6848,15 +6848,15 @@ async function renderTodayPatternFatigueCard() {
 
   try {
     const payload = await ensureTrainingLoadPayload();
-    const history = _trendSliceByDays(payload?.history || [], _todayPatternRange);
+    const history = _trendSlice(payload?.history || [], 30);
     const hasPatternLoads = history.some(h => h && typeof h === 'object' && h.pattern_loads && h.pattern_loads.knee && h.pattern_loads.hip && h.pattern_loads.push && h.pattern_loads.pull);
 
     card.innerHTML = `
       <div class="card-title">Per-Pattern Fatigue Trend</div>
       <div class="trend-range" id="today-pattern-range">
-        <button class="btn btn-secondary${_todayPatternRange === 3 ? ' active' : ''}" data-pattern-range="3">3 Day</button>
         <button class="btn btn-secondary${_todayPatternRange === 7 ? ' active' : ''}" data-pattern-range="7">7 Day</button>
         <button class="btn btn-secondary${_todayPatternRange === 14 ? ' active' : ''}" data-pattern-range="14">14 Day</button>
+        <button class="btn btn-secondary${_todayPatternRange === 30 ? ' active' : ''}" data-pattern-range="30">30 Day</button>
       </div>
       <div class="trend-range" id="today-pattern-signal" style="margin-top:4px;">
         <button class="btn btn-secondary${_todayPatternSignal === 'atl' ? ' active' : ''}" data-pattern-signal="atl">ATL</button>
@@ -7175,10 +7175,10 @@ function _renderTrendPatternChart(history, canvasId = 'trend-pattern-chart', win
   const hipRaw = history.map(h => Number(h.pattern_loads?.hip?.[field] || 0));
   const pushRaw = history.map(h => Number(h.pattern_loads?.push?.[field] || 0));
   const pullRaw = history.map(h => Number(h.pattern_loads?.pull?.[field] || 0));
-  const kneeSmoothed = _trendRollingAvg(kneeRaw, trendSmoothingDays);
-  const hipSmoothed = _trendRollingAvg(hipRaw, trendSmoothingDays);
-  const pushSmoothed = _trendRollingAvg(pushRaw, trendSmoothingDays);
-  const pullSmoothed = _trendRollingAvg(pullRaw, trendSmoothingDays);
+  const kneeSmoothed = _trendRollingAvg(kneeRaw, windowDays);
+  const hipSmoothed = _trendRollingAvg(hipRaw, windowDays);
+  const pushSmoothed = _trendRollingAvg(pushRaw, windowDays);
+  const pullSmoothed = _trendRollingAvg(pullRaw, windowDays);
 
   const chart = new Chart(ctx, {
     type: 'line',
@@ -7233,8 +7233,6 @@ function _renderTrendPatternChart(history, canvasId = 'trend-pattern-chart', win
         ..._trendChartBaseOptions().scales,
         x: {
           ..._trendChartBaseOptions().scales.x,
-          min: Math.max(0, labels.length - Number(windowDays)),
-          max: Math.max(0, labels.length - 1),
         },
         y: {
           ..._trendChartBaseOptions().scales?.y,

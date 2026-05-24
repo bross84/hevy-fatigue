@@ -1,6 +1,30 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-24 (Per-Pattern ATL/Tonnage toggle)
+Last updated: 2026-05-24 (Per-Pattern chart range/smoothing fix)
+
+## Latest Update (2026-05-24 — Per-Pattern Fatigue chart range/smoothing behavior)
+
+- Workflow selected: Express
+- Files changed: `static/index.html` only
+
+### Summary of fix
+- Changed history slice from `_trendSliceByDays()` to fixed `_trendSlice(..., 30)` so chart always spans 30 calendar days
+- Replaced button values from 3/7/14 to 7/14/30 Day; default remains 7
+- Remapped EWMA smoothing window from `trendSmoothingDays` to the selected `windowDays` parameter
+- Removed x-axis min/max boundary logic since display window is now always 30 days
+
+### Behavior change
+- Per-Pattern chart now displays 30 days on X-axis regardless of button selection
+- Buttons control the EWMA smoothing window (7, 14, or 30 days) instead of the date range
+- Switching buttons now changes line smoothness without changing the date range
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1796 open / 1796 close: PASS
+- History slice: `_trendSlice(payload?.history || [], 30)` present
+- Button values: 7/14/30 Day confirmed
+- EWMA smoothing: `_trendRollingAvg(..., windowDays)` confirmed
+- X-axis boundaries: min/max logic removed from x-axis config
 
 ## Latest Update (2026-05-24 — Spec Task B: Per-Pattern Tonnage EWMA + ATL/Tonnage Toggle)
 

@@ -2,6 +2,28 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+## 2026-05-24 — Per-Pattern Fatigue chart range/smoothing behavior
+
+### Workflow
+- Express (targeted frontend fix to chart window and smoothing behavior)
+
+### Changes (index.html)
+- **JS fixed**: history slice now always uses `_trendSlice(..., 30)` instead of `_trendSliceByDays()`, so X-axis spans full 30 days
+- **JS updated**: button values changed from 3/7/14 to 7/14/30 Day; default `_todayPatternRange` remains 7
+- **JS fixed**: EWMA smoothing window now uses the selected button value (`windowDays`) instead of the global `trendSmoothingDays`
+- **JS removed**: x-axis boundary logic (`min` and `max` properties) since display window is now constant at 30 days
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1796 open / 1796 close: PASS
+- History slice: `_trendSlice(payload?.history || [], 30)` confirmed
+- Button values: 7/14/30 Day confirmed, no 3 Day option
+- EWMA smoothing: `_trendRollingAvg(..., windowDays)` for all four patterns
+- X-axis boundaries: no `min`/`max` properties in x-axis config
+- Editor problems check (`static/index.html`, `main.py`): No errors
+
+---
+
 ## 2026-05-24 — Spec Task B: Per-Pattern Tonnage EWMA + ATL/Tonnage Toggle
 
 ### Workflow
