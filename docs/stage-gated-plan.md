@@ -2,6 +2,47 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+## 2026-05-24 — Spec Task A: Per-Pattern Fatigue Trend window control
+
+### Workflow
+- Main (frontend trend slicing and chart boundary update)
+
+### Changes (index.html)
+- **JS replaced**: `_trendSliceByDays(history, days)` now filters by ISO date cutoff instead of entry count
+- **JS verified**: `ensureTrainingLoadPayload` fetch remains `/api/training-load?days=180` (no change)
+- **JS updated**: `_renderTrendPatternChart(history, canvasId = 'trend-pattern-chart', windowDays = 14)`
+- **JS updated**: call site now passes selected range: `_renderTrendPatternChart(history, 'today-pattern-fatigue-chart', _todayPatternRange)`
+- **JS updated**: explicit x-axis `min/max` bounds added to span selected window density
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1786 open / 1786 close: PASS
+- Script tag balance: 4/4: PASS
+- `read/problems` equivalent (`get_errors` on `static/index.html`, `main.py`): No errors
+
+---
+
+## 2026-05-24 — Dashboard Pattern card gauge-row refactor
+
+### Workflow
+- Main (renderer swap + scoped CSS addition/cleanup)
+
+### Changes (index.html)
+- **JS replaced**: `_renderTodayCards()` pattern-card section now builds four horizontal gauge rows from `dots_filled`
+- **JS behavior**: threshold mapping preserved (1/2-3/4/5), pending state shows muted fill and `—`
+- **JS removed**: dashboard pattern explainer line from card assignment
+- **CSS added**: `/* ── Pattern stress gauges ── */` section with row/item/track/fill/status classes and state variants
+- **CSS removed**: unused legacy grid/dot/name/day/level classes and associated mobile overrides after reference audit
+- **Constraint honored**: `_patternCellClass()` and `_safePatternStatus()` unchanged
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1784 open / 1784 close: PASS
+- Script tag balance: 4/4: PASS
+- `read/problems` equivalent (`get_errors` on `static/index.html`): No errors
+
+---
+
 ## 2026-05-24 — Fatigue tab bar+line conversion + dashboard Training Load removal
 
 ### Workflow
