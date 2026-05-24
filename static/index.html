@@ -2798,11 +2798,6 @@ body.ai-open main {
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
-      <!-- Training load -->
-      <div class="dashboard-card" id="today-training-load-card">
-        <div class="loading-wrap"><span class="spinner"></span></div>
-      </div>
-
       <!-- Per-pattern fatigue -->
       <div class="dashboard-card" id="today-pattern-fatigue-card">
         <div class="loading-wrap"><span class="spinner"></span></div>
@@ -3438,7 +3433,6 @@ let _readinessCombinedHistoryFetchPromise = null;
 let trendMainChart = null;
 let trendPatternChart = null;
 let todayReadinessChart = null;
-let todayTrainingLoadChart = null;
 let todayPatternFatigueChart = null;
 let trendSmoothingDays = 7;
 let sessionLogRows = [];
@@ -6583,6 +6577,10 @@ async function renderDashboardVFCard() {
       <button class="btn btn-primary" id="dashboard-vf-custom-apply">Apply</button>
     </div>
     <div class="vf-chart-wrap"><canvas id="dashboard-vf-chart"></canvas></div>
+    <div style="display:flex;gap:16px;margin-top:6px;font-size:11px;color:var(--muted);flex-wrap:wrap;" id="dashboard-vf-legend">
+      <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--accent);opacity:0.8;"></span><span id="dvf-legend-signal">Tonnage</span></span>
+      <span style="display:flex;align-items:center;gap:4px;"><span style="width:20px;height:0;border-top:2px dashed #F59E0B;display:inline-block;"></span>Readiness</span>
+    </div>
     <div class="vf-chart-note" id="dashboard-vf-note"></div>
   `;
 
@@ -6604,30 +6602,34 @@ async function renderDashboardVFCard() {
 
     let signalData, signalLabel, signalColor, signalAxis, noteText;
     if (_dashboardVfSignal === 'tonnage') {
-      signalData  = data.data.map(d => d.rolling_tonnage);
-      signalLabel = 'Rolling Tonnage';
+      signalData  = data.data.map(d => d.daily_tonnage);
+      signalLabel = 'Tonnage';
       signalColor = c.warn;
       signalAxis  = 'Lbs';
-      noteText    = 'Rolling 7-day total tonnage (lbs lifted) vs. rolling readiness.';
+      noteText    = 'Daily tonnage (lbs lifted) vs. rolling readiness. Zero bars are rest days.';
     } else if (_dashboardVfSignal === 'rpe') {
-      signalData  = data.data.map(d => d.rolling_stress);
-      signalLabel = 'RPE-Weighted Load';
+      signalData  = data.data.map(d => d.daily_stress);
+      signalLabel = 'RPE Load';
       signalColor = c.accent;
       signalAxis  = 'Stress';
-      noteText    = 'Rolling 7-day RPE-weighted stress load vs. rolling readiness.';
+      noteText    = 'Daily RPE-weighted stress load vs. rolling readiness. Zero bars are rest days.';
     } else {
-      signalData  = data.data.map(d => d.rolling_set_count);
+      signalData  = data.data.map(d => d.daily_set_count);
       signalLabel = 'Set Count';
       signalColor = c.push;
       signalAxis  = 'Sets';
-      noteText    = 'Rolling 7-day total working sets vs. rolling readiness.';
+      noteText    = 'Daily working sets vs. rolling readiness. Zero bars are rest days.';
     }
 
     const noteEl = document.getElementById('dashboard-vf-note');
     if (noteEl) noteEl.textContent = noteText;
 
     if (_dashboardVfChart) { _dashboardVfChart.destroy(); _dashboardVfChart = null; }
-    _dashboardVfChart = _vfBuildChart('dashboard-vf-chart', signalData, signalLabel, signalColor, signalAxis, readiness, labels, data.data);
+    _dashboardVfChart = _vfBuildBarLineChart('dashboard-vf-chart', signalData, signalLabel, signalColor, signalAxis, readiness, labels, data.data);
+    const legendSignal = document.getElementById('dvf-legend-signal');
+    if (legendSignal) legendSignal.textContent = signalLabel;
+    const legendDot = document.querySelector('#dashboard-vf-legend span span');
+    if (legendDot) legendDot.style.background = signalColor;
 
   } catch (err) {
     console.error('Dashboard VF error:', err);
@@ -6651,7 +6653,7 @@ document.addEventListener('click', function _dvfRangeHandler(e) {
   const val = btn.dataset.dashboardVfRange;
   if (val === 'custom') {
     _dashboardVfActiveRange = 'custom';
-    document.getElementById('dashboard-vf-custom-range').style.display = 'flex';
+    renderDashboardVFCard();
   } else {
     _dashboardVfActiveRange = parseInt(val, 10);
     const cr = document.getElementById('dashboard-vf-custom-range');
@@ -6707,7 +6709,6 @@ async function loadTrainingLoadCard() {
     ]);
     _renderTodayCards(trainingRes, 0);
     renderTodayReadinessChart(readinessHistory);
-    renderTodayTrainingLoadCard();
     renderTodayPatternFatigueCard();
     renderDashboardRecentSessions(trainingRes);
     renderDashboardVFCard();
@@ -6790,13 +6791,6 @@ function _destroyTodayReadinessChart() {
   }
 }
 
-function _destroyTodayTrainingLoadChart() {
-  if (todayTrainingLoadChart) {
-    todayTrainingLoadChart.destroy();
-    todayTrainingLoadChart = null;
-  }
-}
-
 function _destroyTodayPatternFatigueChart() {
   if (todayPatternFatigueChart) {
     todayPatternFatigueChart.destroy();
@@ -6828,49 +6822,6 @@ function _todayReadinessBandsPlugin() {
     },
   };
 }
-
-let _todayLoadRange = 6;
-
-async function renderTodayTrainingLoadCard() {
-  const card = document.getElementById('today-training-load-card');
-  if (!card) return;
-
-  try {
-    const payload = await ensureTrainingLoadPayload();
-    const history = _trendSlice(payload?.history || []);
-    card.innerHTML = `
-      <div class="card-title">Training Load Trend</div>
-      <div class="trend-range" id="today-load-range">
-        <button class="btn btn-secondary${_todayLoadRange === 3 ? ' active' : ''}" data-load-range="3">3 Day</button>
-        <button class="btn btn-secondary${_todayLoadRange === 6 ? ' active' : ''}" data-load-range="6">6 Day</button>
-        <button class="btn btn-secondary${_todayLoadRange === 12 ? ' active' : ''}" data-load-range="12">12 Day</button>
-      </div>
-      ${!history.length
-        ? '<div class="today-chart-empty">No training history yet.</div>'
-        : '<div class="today-chart-wrap"><canvas id="today-training-load-chart"></canvas></div><div class="today-chart-note">Stress Index is shown for the last 30 days. Dotted baseline reflects your accustomed workload for the selected 3/6/12-day term.</div>'
-      }
-    `;
-
-    if (!history.length) {
-      _destroyTodayTrainingLoadChart();
-      return;
-    }
-
-    _destroyTodayTrainingLoadChart();
-    _renderTrendMainChart(history, payload?.thresholds || {}, 'today-training-load-chart');
-  } catch {
-    _destroyTodayTrainingLoadChart();
-    card.innerHTML = '<div class="card-title">Training Load Trend</div><div class="today-chart-empty">Unable to load training data.</div>';
-  }
-}
-
-document.addEventListener('click', async function _todayLoadRangeHandler(e) {
-  const btn = e.target.closest('#today-load-range button[data-load-range]');
-  if (!btn) return;
-  _todayLoadRange = Number(btn.dataset.loadRange);
-  document.querySelectorAll('#today-load-range button').forEach(b => b.classList.toggle('active', b === btn));
-  await renderTodayTrainingLoadCard();
-});
 
 let _todayPatternRange = 7;
 
@@ -7046,10 +6997,6 @@ function _trendRollingAvg(values, windowDays) {
 }
 
 function _destroyTrendCharts() {
-  if (todayTrainingLoadChart) {
-    todayTrainingLoadChart.destroy();
-    todayTrainingLoadChart = null;
-  }
   if (todayPatternFatigueChart) {
     todayPatternFatigueChart.destroy();
     todayPatternFatigueChart = null;
@@ -7098,9 +7045,6 @@ function _renderTrendMainChart(history, thresholds, canvasId = 'trend-main-chart
   const atlSmoothed = _trendRollingAvg(atlRaw, trendSmoothingDays);
   const ctlSmoothed = _trendRollingAvg(ctlRaw, trendSmoothingDays);
   const tsbSmoothed = _trendRollingAvg(tsbRaw, trendSmoothingDays);
-  const isTodayLoadChart = canvasId === 'today-training-load-chart';
-  const baselineDays = isTodayLoadChart ? _todayLoadRange : trendSmoothingDays;
-  const baselineSeries = _trendRollingAvg(atlRaw, baselineDays);
 
   const chart = new Chart(ctx, {
     type: 'line',
@@ -7139,8 +7083,8 @@ function _renderTrendMainChart(history, thresholds, canvasId = 'trend-main-chart
         },
         {
           label: '__zero__',
-          data: isTodayLoadChart ? baselineSeries : history.map(() => 0),
-          borderColor: isTodayLoadChart ? c.warn : 'rgba(255,255,255,0.15)',
+          data: history.map(() => 0),
+          borderColor: 'rgba(255,255,255,0.15)',
           borderDash: [4, 4],
           pointRadius: 0,
           borderWidth: 1,
@@ -7173,15 +7117,6 @@ function _renderTrendMainChart(history, thresholds, canvasId = 'trend-main-chart
               if (ctxItem.dataset.label === 'Fitness') return `Fitness: ${_fmt1(plotted)}`;
               return `Form: ${_fmt1(plotted)}`;
             },
-            afterBody(items) {
-              if (!isTodayLoadChart) return undefined;
-              const idx = items?.[0]?.dataIndex ?? 0;
-              const baseline = baselineSeries[idx];
-              return baseline == null
-                ? [`Baseline (${baselineDays}d): —`]
-                : [`Baseline (${baselineDays}d): ${_fmt1(baseline)}`];
-            },
-
           },
         },
       },
@@ -7190,8 +7125,6 @@ function _renderTrendMainChart(history, thresholds, canvasId = 'trend-main-chart
 
   if (canvasId === 'trend-main-chart') {
     trendMainChart = chart;
-  } else if (canvasId === 'today-training-load-chart') {
-    todayTrainingLoadChart = chart;
   }
 }
 
@@ -7355,6 +7288,108 @@ async function renderVolFatigueView() {
   }
 }
 
+function _vfBuildBarLineChart(canvasId, barData, barLabel, barColor, barAxisTitle, readinessData, labels, rawData) {
+  const c = themeColors();
+  const ctx = document.getElementById(canvasId)?.getContext('2d');
+  if (!ctx) return null;
+
+  const maxBar = Math.ceil(Math.max(...barData.filter(v => v !== null && v > 0), 1));
+  const readinessColor = '#F59E0B';
+
+  return new Chart(ctx, {
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: barLabel,
+          data: barData,
+          backgroundColor: barColor + '33',
+          borderColor: barColor,
+          borderWidth: 1.5,
+          borderRadius: 3,
+          yAxisID: 'y',
+          order: 2,
+        },
+        {
+          type: 'line',
+          label: 'Readiness',
+          data: readinessData,
+          borderColor: readinessColor,
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderDash: [5, 3],
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          pointBackgroundColor: readinessColor,
+          tension: 0.35,
+          yAxisID: 'y1',
+          order: 1,
+          spanGaps: false,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title(items) {
+              const idx = items?.[0]?.dataIndex ?? 0;
+              return _dateLabel(rawData[idx]?.date || labels[idx]);
+            },
+            label(ctxItem) {
+              const value = ctxItem.parsed?.y;
+              if (ctxItem.dataset.label === 'Readiness') {
+                return value !== null && value !== undefined ? `Readiness: ${_fmt1(value)}` : 'Readiness: —';
+              }
+              if (value === 0) return 'Rest day';
+              return `${ctxItem.dataset.label}: ${_fmt1(value)}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: c.muted,
+            font: { size: 11 },
+            maxTicksLimit: 10,
+            maxRotation: 0,
+          },
+          grid: { color: 'rgba(128,128,128,0.08)' },
+        },
+        y: {
+          position: 'left',
+          title: { display: true, text: barAxisTitle, color: c.muted, font: { size: 11 } },
+          ticks: {
+            color: c.muted,
+            font: { size: 11 },
+            callback: v => {
+              if (barAxisTitle === 'Lbs' && v >= 1000) return Math.round(v / 1000) + 'k';
+              return Math.ceil(v);
+            },
+          },
+          grid: { color: 'rgba(128,128,128,0.08)' },
+          min: 0,
+          max: Math.ceil(maxBar * 1.1),
+        },
+        y1: {
+          position: 'right',
+          title: { display: true, text: 'Readiness', color: readinessColor, font: { size: 11 } },
+          ticks: { color: readinessColor, font: { size: 11 } },
+          grid: { drawOnChartArea: false },
+          min: 0,
+          max: 10,
+        },
+      },
+    },
+  });
+}
+
 function _vfBuildChart(canvasId, leftData, leftLabel, leftColor, leftAxisTitle, readinessData, labels, rawData) {
   const c = themeColors();
   const ctx = document.getElementById(canvasId).getContext('2d');
@@ -7444,15 +7479,12 @@ function _vfRenderCharts(data) {
   const c = themeColors();
   _vfDestroyChart();
 
-  const labels      = data.data.map(d => _dateLabel(d.date));
-  const stressData  = data.data.map(d => d.rolling_stress);
-  const tonnageData = data.data.map(d => d.rolling_tonnage);
-  const setData     = data.data.map(d => d.rolling_set_count);
-  const readiness   = data.data.map(d => d.rolling_readiness);
+  const labels    = data.data.map(d => _dateLabel(d.date));
+  const readiness = data.data.map(d => d.rolling_readiness);
 
-  _vfChartRpe     = _vfBuildChart('vf-chart-rpe-canvas',     stressData,  'RPE-Weighted Load', c.accent,    'Stress', readiness, labels, data.data);
-  _vfChartTonnage = _vfBuildChart('vf-chart-tonnage-canvas', tonnageData, 'Rolling Tonnage',   c.quad,      'Lbs',    readiness, labels, data.data);
-  _vfChartSets    = _vfBuildChart('vf-chart-sets-canvas',    setData,     'Set Count',         c.posterior, 'Sets',   readiness, labels, data.data);
+  _vfChartRpe     = _vfBuildBarLineChart('vf-chart-rpe-canvas',     data.data.map(d => d.daily_stress),    'RPE Load',  c.accent,    'Stress', readiness, labels, data.data);
+  _vfChartTonnage = _vfBuildBarLineChart('vf-chart-tonnage-canvas', data.data.map(d => d.daily_tonnage),   'Tonnage',   c.warn,      'Lbs',    readiness, labels, data.data);
+  _vfChartSets    = _vfBuildBarLineChart('vf-chart-sets-canvas',    data.data.map(d => d.daily_set_count), 'Set Count', c.posterior, 'Sets',   readiness, labels, data.data);
 }
 
 // Wire up Vol-Fatigue range button events

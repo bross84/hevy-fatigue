@@ -2246,8 +2246,9 @@ def get_vol_fatigue_summary(
       start_date: ISO date string (default: 28 days ago)
       end_date: ISO date string (default: today)
 
-    Returns rolling 7-day sums/averages for each signal per day.
-    rolling_readiness is null when fewer than 3 of the trailing 7 days have check-in data.
+    Returns both daily values (daily_tonnage, daily_stress, daily_set_count) and
+    rolling 7-day sums/averages (rolling_stress, rolling_tonnage, rolling_set_count, rolling_readiness) per day.
+    Daily values are zero on rest days. Rolling readiness is null when fewer than 3 of the trailing 7 days have check-in data.
     """
     # Parse or default dates
     if end_date:
@@ -2380,6 +2381,9 @@ def get_vol_fatigue_summary(
         data.append(
             {
                 "date": str(date),
+                "daily_tonnage": round(tonnage_by_date.get(date, 0.0), 1),
+                "daily_stress": round(stress_by_date.get(date, 0.0), 1),
+                "daily_set_count": set_count_by_date.get(date, 0),
                 "rolling_stress": round(rolling_stress, 1),
                 "rolling_tonnage": round(rolling_tonnage, 1),
                 "rolling_set_count": rolling_set_count,

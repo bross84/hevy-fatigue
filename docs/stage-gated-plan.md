@@ -2,6 +2,107 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+## 2026-05-24 — Fatigue tab bar+line conversion + dashboard Training Load removal
+
+### Workflow
+- Main (multi-slice frontend renderer replacement and UI removal)
+
+### Changes (index.html)
+- **JS replaced**: `_vfRenderCharts(data)` now builds all three Fatigue tab charts with `_vfBuildBarLineChart()`
+- **JS updated**: Fatigue tab charts now use `daily_stress`, `daily_tonnage`, and `daily_set_count` for left-axis bars while keeping `rolling_readiness` overlay
+- **HTML removed**: dashboard `today-training-load-card`
+- **JS removed**: `renderTodayTrainingLoadCard()`, `_todayLoadRangeHandler`, `_destroyTodayTrainingLoadChart()`, `_todayLoadRange` state
+- **JS updated**: `loadTrainingLoadCard()` no longer calls removed Training Load renderer; `renderTodayPatternFatigueCard()` and `renderDashboardVFCard()` remain
+- **JS cleaned up**: removed leftover today-training-load references from `_renderTrendMainChart()` and module state
+
+### Schema verification
+- `PRAGMA table_info(workout_sessions)`: PASS
+- `PRAGMA table_info(daily_readiness)`: PASS
+- `PRAGMA table_info(workout_logs)`: PASS
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1774 open / 1774 close: PASS
+- Script tag balance: 4/4: PASS
+- `read/problems` equivalent (`get_errors` on `static/index.html`, `main.py`): No errors
+- `/api/volfatigue/summary`: daily fields present on every row; rest-day zero sample verified
+- Local DB has no workout sessions/logs, so non-zero training-day sample could not be verified here
+
+---
+
+## 2026-05-24 — Dashboard VF uses daily values + bar/line chart
+
+### Workflow
+- Main (frontend renderer update using new API fields and new helper)
+
+### Changes (index.html)
+- **JS updated**: `renderDashboardVFCard()` now maps dashboard VF signals to `daily_tonnage`, `daily_stress`, and `daily_set_count`
+- **JS updated**: dashboard VF chart now uses `_vfBuildBarLineChart()` instead of `_vfBuildChart()`
+- **HTML updated**: custom inline legend added below dashboard VF canvas
+- **JS updated**: legend label text and swatch color now update after chart creation
+
+### Gate Results
+- `read/problems` equivalent (`get_errors` on `static/index.html`): No errors
+- JS brace audit: 1792 open / 1792 close: PASS
+- Script tag balance: 4/4: PASS
+
+---
+
+## 2026-05-24 — Frontend _vfBuildBarLineChart helper
+
+### Workflow
+- Express (single helper addition in frontend chart utilities)
+
+### Changes (index.html)
+- **JS added**: `_vfBuildBarLineChart(canvasId, barData, barLabel, barColor, barAxisTitle, readinessData, labels, rawData)` immediately before `_vfBuildChart()`
+- **Behavior included**: mixed bar/line datasets, amber readiness line, integerized left-axis max, `k` formatting for lbs, rest-day tooltip label for zero bars
+
+### Gate Results
+- `read/problems` equivalent (`get_errors` on `static/index.html`): No errors
+- JS brace audit: 1792 open / 1792 close: PASS
+- Script tag balance: 4/4: PASS
+
+---
+
+## 2026-05-24 — Backend daily signal fields for /api/volfatigue/summary
+
+### Workflow
+- Express (single endpoint payload/docstring update)
+
+### Changes (main.py)
+- **API updated**: `get_vol_fatigue_summary()` now returns per-day fields in each `data` row:
+	- `daily_tonnage`
+	- `daily_stress`
+	- `daily_set_count`
+- **Behavior preserved**: existing rolling fields remain unchanged for Fatigue tab compatibility
+- **Docstring updated**: endpoint description now documents both daily and rolling fields plus readiness nullability rule
+
+### Schema verification
+- `PRAGMA table_info(workout_sessions)`: PASS
+- `PRAGMA table_info(daily_readiness)`: PASS
+- `PRAGMA table_info(workout_logs)`: PASS
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- `read/problems` equivalent (`get_errors` on `main.py`): No errors
+
+---
+
+## 2026-05-23 — VF custom range button-state sync
+
+### Workflow
+- Express (single-line frontend behavior fix)
+
+### Changes (index.html)
+- **JS fixed**: in `_dvfRangeHandler`, custom branch now calls `renderDashboardVFCard()` after setting `_dashboardVfActiveRange = 'custom'`
+- This keeps the custom date row open and updates range button active state so `Custom` is visibly active
+
+### Gate Results
+- `read/problems` equivalent (`get_errors` on `static/index.html`): No errors
+- JS brace audit: 1757 open / 1757 close: PASS
+
+---
+
 ## 2026-05-23 — Training Load 30-day semantics correction
 
 ### Workflow
