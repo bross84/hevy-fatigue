@@ -1,6 +1,59 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-24 (Per-Pattern chart range/smoothing fix)
+Last updated: 2026-05-24 (Mobile Exercises HTTP 404 + AI input size follow-up)
+
+## Latest Update (2026-05-24 — Mobile Exercises HTTP 404 + AI chat composer follow-up)
+
+- Workflow selected: Debug
+- Files changed: `static/index.html` only
+
+### Reproduction
+- On mobile, Exercise Metrics tab showed: `Failed to load exercises: HTTP 404`
+- AI chat input still felt too short for comfortable entry
+
+### Hypothesis
+- Some deployments expose a legacy singular Exercise Metrics route while the current frontend uses only the plural route, and chat autosize cap plus rows=1 kept the composer visually small.
+
+### Fixes
+- Added fetch fallback in `loadExerciseMetrics(filter)`:
+	- primary: `/api/exercises/metrics?...`
+	- fallback on 404: `/api/exercise/metrics?...`
+- Added same fallback behavior in `loadExerciseDetail(exerciseId, windowDays)`
+- Increased chat composer baseline size:
+	- textarea `rows` changed `1 -> 2`
+	- `.ai-chat-input` `min-height` changed `56px -> 64px`
+	- autosize cap changed `120px -> 180px` in `_initAIChatHandlers()`
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1817 open / 1817 close: PASS
+- Problems check (`static/index.html`, `main.py`): no errors
+
+## Latest Update (2026-05-24 — Mobile Exercises card clipping and AI chat input UI)
+
+- Workflow selected: Express
+- Files changed: `static/index.html` only
+
+### Summary of fix
+- Added mobile-only bottom clearance for Exercise Metrics content so cards are not obscured by the fixed bottom nav
+- Increased AI chat textarea minimum height for both mobile and desktop
+- Added themed scrollbar styling for AI chat textarea overflow to match existing UI conventions
+
+### CSS changes
+- `@media (max-width: 767px)`:
+	- `#tab-exercise-metrics { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }`
+	- `#exm-list { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }`
+- `.ai-chat-input`:
+	- `padding` increased to `12px 14px`
+	- `min-height` increased from `44px` to `56px`
+	- `max-height` increased from `160px` to `200px`
+	- added `scrollbar-width` and `scrollbar-color`
+- Added `.ai-chat-input::-webkit-scrollbar*` rules (track/thumb/hover)
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1811 open / 1811 close: PASS
+- Problems check (`static/index.html`, `main.py`): no errors
 
 ## Latest Update (2026-05-24 — Per-Pattern Fatigue chart range/smoothing behavior)
 

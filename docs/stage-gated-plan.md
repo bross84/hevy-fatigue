@@ -2,6 +2,56 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+## 2026-05-24 — Mobile Exercises HTTP 404 + AI chat composer follow-up
+
+### Workflow
+- Debug (reproduced mobile user-visible error and applied minimal frontend fix)
+
+### Reproduction
+- Exercise Metrics mobile view rendered `Failed to load exercises: HTTP 404`
+- AI chat composer appeared too short despite prior CSS increase
+
+### Hypothesis
+- API route naming mismatch across deployments (plural vs singular path) caused 404 in frontend fetch, and chat composer remained constrained by rows/autosize cap.
+
+### Changes (index.html)
+- **JS fixed**: `loadExerciseMetrics(filter)` now falls back to `/api/exercise/metrics` when `/api/exercises/metrics` returns 404
+- **JS fixed**: `loadExerciseDetail(exerciseId, windowDays)` uses the same 404 fallback logic
+- **HTML updated**: AI textarea rows changed from `1` to `2`
+- **CSS updated**: `.ai-chat-input` min-height changed to `64px`
+- **JS updated**: chat autosize cap in `_initAIChatHandlers()` raised from `120` to `180`
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1817 open / 1817 close: PASS
+- `read/problems` equivalent (`get_errors` on `static/index.html`, `main.py`): No errors
+
+---
+
+## 2026-05-24 — Mobile Exercises card clipping and AI chat input UI
+
+### Workflow
+- Express (CSS-only targeted UI fix)
+
+### Changes (index.html)
+- **CSS added** under `@media (max-width: 767px)` to protect Exercise Metrics list from fixed bottom nav overlap:
+	- `#tab-exercise-metrics { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }`
+	- `#exm-list { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }`
+- **CSS updated** for `.ai-chat-input` to increase composer height on desktop + mobile:
+	- `padding: 12px 14px`
+	- `min-height: 56px`
+	- `max-height: 200px`
+- **CSS added** for `.ai-chat-input` scrollbar styling:
+	- Firefox (`scrollbar-width`, `scrollbar-color`)
+	- WebKit (`::-webkit-scrollbar`, `::-webkit-scrollbar-track`, `::-webkit-scrollbar-thumb`, hover)
+
+### Gate Results
+- `python -m py_compile main.py`: PASS
+- JS brace audit: 1811 open / 1811 close: PASS
+- `read/problems` equivalent (`get_errors` on `static/index.html`, `main.py`): No errors
+
+---
+
 ## 2026-05-24 — Per-Pattern Fatigue chart range/smoothing behavior
 
 ### Workflow

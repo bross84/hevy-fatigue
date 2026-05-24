@@ -2318,15 +2318,30 @@ body.ai-open main {
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 10px 14px;
+  padding: 12px 14px;
   font-size: 14px;
   font-family: inherit;
   resize: none;
-  min-height: 44px;
-  max-height: 160px;
+  min-height: 64px;
+  max-height: 200px;
   line-height: 1.5;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--accent) 35%, var(--border)) transparent;
 }
 .ai-chat-input:focus { outline: none; border-color: var(--accent); }
+.ai-chat-input::-webkit-scrollbar {
+  width: 6px;
+}
+.ai-chat-input::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ai-chat-input::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: 999px;
+}
+.ai-chat-input::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--accent) 52%, var(--border));
+}
 .ai-chat-send {
   min-height: 44px;
   height: 44px;
@@ -2423,6 +2438,12 @@ body.ai-open main {
   }
   .ai-settings-card { max-width: none; }
   .ai-chat-card { max-width: none; }
+  #tab-exercise-metrics {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+  #exm-list {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
   .tab-content#tab-ai.active { height: 100%; }
   .ai-chat-messages { min-height: 0; }
 }
@@ -3117,7 +3138,7 @@ body.ai-open main {
     </div>
     <div class="ai-chat-status" id="ai-chat-status"></div>
     <div class="ai-chat-input-row">
-      <textarea class="ai-chat-input" id="ai-chat-input" rows="1" placeholder="Ask about today's readiness or session…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="send"></textarea>
+      <textarea class="ai-chat-input" id="ai-chat-input" rows="2" placeholder="Ask about today's readiness or session…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="send"></textarea>
       <button class="btn btn-primary ai-chat-send" id="ai-chat-send" type="button" onclick="sendAIMessage()">Send</button>
     </div>
   </div>
@@ -4431,7 +4452,7 @@ function _initAIChatHandlers() {
 
   input.addEventListener('input', () => {
     input.style.height = 'auto';
-    input.style.height = `${Math.min(input.scrollHeight, 120)}px`;
+    input.style.height = `${Math.min(input.scrollHeight, 180)}px`;
   });
 
   input.addEventListener('keydown', e => {
@@ -7744,7 +7765,12 @@ async function loadExerciseMetrics(filter) {
   });
 
   try {
-    const res = await fetch(`/api/exercises/metrics?filter=${encodeURIComponent(filter)}`);
+    const q = `filter=${encodeURIComponent(filter)}`;
+    let res = await fetch(`/api/exercises/metrics?${q}`);
+    if (res.status === 404) {
+      // Fallback for deployments still exposing the legacy singular route.
+      res = await fetch(`/api/exercise/metrics?${q}`);
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     _exmAllExercises = data.exercises || [];
@@ -7930,8 +7956,12 @@ async function loadExerciseDetail(exerciseId, windowDays = 0) {
 
   let data;
   try {
-    const url = `/api/exercises/metrics?exercise_id=${encodeURIComponent(exerciseId)}&window_days=${windowDays}`;
-    const res = await fetch(url);
+    const q = `exercise_id=${encodeURIComponent(exerciseId)}&window_days=${windowDays}`;
+    let res = await fetch(`/api/exercises/metrics?${q}`);
+    if (res.status === 404) {
+      // Keep detail view compatible with legacy route naming.
+      res = await fetch(`/api/exercise/metrics?${q}`);
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data = await res.json();
   } catch (e) {
