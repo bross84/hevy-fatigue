@@ -1,8 +1,52 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-24 (Mobile Exercises HTTP 404 + AI input size follow-up)
+Last updated: 2026-05-24 (Fix 1 + Fix 2: Dashboard Recent Sessions + Pattern Breakdown)
 
-## Latest Update (2026-05-24 — Mobile Exercises HTTP 404 + AI chat composer follow-up)
+## Latest Update (2026-05-24 — Fix 1 + Fix 2: Dashboard Recent Sessions + Pattern Breakdown)
+
+- Workflow selected: Main
+- Files changed: `static/index.html`, `main.py`
+
+### Summary
+- **Fix 1** — Dashboard Recent Sessions: Updated `renderDashboardRecentSessions()` to check `last_10_session_classifications` first before falling back to other sources
+- **Fix 2** — Pattern Breakdown on Workout Card: Replaced fatigue annotation display with pattern breakdown percentages
+  - Backend: Added `_compute_session_pattern_summary()` helper to query WorkoutLog+ExerciseMapping and compute pattern percentages
+  - Backend: Updated `get_workout_sessions()` to include `pattern_summary` field in response
+  - Frontend: Replaced `_sessionFatigueAnnotation()` to display pattern tags when available (e.g. Push 60% · Pull 40%), falls back to ATL/CTL/TSB, and returns empty string when neither available
+
+### Changes
+
+#### main.py
+- **Added** `_compute_session_pattern_summary(hevy_workout_id: str, db: Session) -> dict` helper function above `get_workout_sessions()`
+  - Queries WorkoutLog for session exercises
+  - Joins to ExerciseMapping via exercise_title
+  - Sums pattern percentages across all logs
+  - Normalizes to percentages (knee, hip, push, pull)
+  - Returns only patterns with >0%, empty dict if no mappings
+- **Updated** `get_workout_sessions()` list comprehension to include:
+  - `"pattern_summary": _compute_session_pattern_summary(row.hevy_workout_id, db),`
+
+#### static/index.html
+- **Updated** `renderDashboardRecentSessions(payload)` source check:
+  - Now checks `last_10_session_classifications` first, then other sources
+- **Replaced** `_sessionFatigueAnnotation(session)` function:
+  - Checks `session.pattern_summary` first
+  - If available and non-empty, renders pattern tags (e.g. "Push 60% · Pull 40%")
+  - Falls back to ATL/CTL/TSB lookup from history
+  - Returns empty string if no data available
+
+### Gate Results
+- `python -m py_compile main.py`: **PASS**
+- `get_errors(main.py)`: **PASS** (no errors)
+- `get_errors(static/index.html)`: **PASS** (no errors)
+- Gate tests (manual application testing required):
+  - Dashboard Recent Sessions card shows today's session after reload — no "No recent sessions found"
+  - Workout card second line shows pattern breakdown e.g. Push 60% · Pull 40% instead of Fatigue 0.0
+  - A session with no mapped exercises shows ATL/CTL/TSB fallback, not an empty line
+  - /api/workout-sessions response for a HYP session includes pattern_summary with at least one key
+  - Existing ATL/CTL/TSB values on the card are unchanged for sessions where pattern_summary is empty
+
+## Latest Update (2026-05-24 — Mobile Exercises HTTP 404 + AI input size follow-up)
 
 - Workflow selected: Debug
 - Files changed: `static/index.html` only

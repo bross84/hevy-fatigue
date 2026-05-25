@@ -2988,6 +2988,43 @@ def get_recent_workouts(count: int = 12, db: Session = Depends(get_db)):
     return result
 
 
+def _compute_session_pattern_summary(hevy_workout_id: str, db: Session) -> dict:
+    """
+    Returns pattern distribution for a session as normalized percentages.
+    Keys: knee, hip, push, pull. Values: 0.0–100.0, rounded to 0 decimal places.
+    Only patterns with >0% are included. Returns empty dict if no mappings found.
+    """
+    logs = db.query(WorkoutLog).filter(WorkoutLog.workout_id == hevy_workout_id).all()
+    titles = {s.exercise_title for s in logs if s.exercise_title}
+    if not titles:
+        return {}
+    maps = db.query(ExerciseMapping).filter(ExerciseMapping.exercise_title.in_(titles)).all()
+    if not maps:
+        return {}
+    map_lookup = {m.exercise_title: m for m in maps}
+    knee = hip = push = pull = 0.0
+    count = 0
+    for log in logs:
+        m = map_lookup.get(log.exercise_title)
+        if not m:
+            continue
+        knee += m.pct_quad_dom or 0.0
+        hip  += m.pct_posterior or 0.0
+        push += m.pct_upper_push or 0.0
+        pull += m.pct_upper_pull or 0.0
+        count += 1
+    if count == 0:
+        return {}
+    total = knee + hip + push + pull
+    if total == 0.0:
+        return {}
+    return {
+        k: round(v / total * 100)
+        for k, v in [("knee", knee), ("hip", hip), ("push", push), ("pull", pull)]
+        if v > 0.0
+    }
+
+
 @app.get("/api/workout-sessions")
 def get_workout_sessions(
     days: int = 30,
@@ -3039,6 +3076,7 @@ def get_workout_sessions(
             "verified_at": row.verified_at,
             "srpe": row.srpe,
             "needs_manual_duration": row.duration_minutes is None,
+            "pattern_summary": _compute_session_pattern_summary(row.hevy_workout_id, db),
         }
         for row in rows
     ]

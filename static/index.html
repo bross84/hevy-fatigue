@@ -5345,11 +5345,16 @@ function _sessionFilterMatches(session) {
 }
 
 function _sessionFatigueAnnotation(session) {
+  const summary = session?.pattern_summary;
+  if (summary && Object.keys(summary).length) {
+    return Object.entries(summary)
+      .map(([k, v]) => `${k.charAt(0).toUpperCase() + k.slice(1)} ${v}%`)
+      .join(' · ');
+  }
   const history = sessionLogFatiguePayload?.history || [];
-  const item = history.find(entry => entry.date === session.workout_date);
-  if (!item) return 'Fatigue annotation unavailable for this date.';
-  const score = Number(item.fatigue_score ?? 0);
-  return `Fatigue ${_fmt1(score)} · ATL ${_fmt1(item.atl)} · CTL ${_fmt1(item.ctl)} · TSB ${_fmt1(item.tsb)}`;
+  const item = history.find(h => h.date === (session?.workout_date || session?.date));
+  if (!item) return '';
+  return `ATL ${_fmt1(item.atl)} · CTL ${_fmt1(item.ctl)} · TSB ${_fmt1(item.tsb)}`;
 }
 
 function _sessionStatusNote(session) {
@@ -6624,13 +6629,15 @@ function renderDashboardRecentSessions(payload) {
   const card = document.getElementById('dashboard-recent-card');
   if (!card) return;
 
-  const source = Array.isArray(payload?.recent_sessions)
-    ? payload.recent_sessions
-    : Array.isArray(payload?.sessions)
-      ? payload.sessions
-      : Array.isArray(payload?.today?.recent_sessions)
-        ? payload.today.recent_sessions
-        : [];
+  const source = Array.isArray(payload?.last_10_session_classifications)
+    ? payload.last_10_session_classifications
+    : Array.isArray(payload?.recent_sessions)
+      ? payload.recent_sessions
+      : Array.isArray(payload?.sessions)
+        ? payload.sessions
+        : Array.isArray(payload?.today?.recent_sessions)
+          ? payload.today.recent_sessions
+          : [];
 
   const sessions = source.slice(0, 3);
   if (!sessions.length) {

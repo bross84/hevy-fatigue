@@ -2,6 +2,51 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+## 2026-05-24 — Fix 1 + Fix 2: Dashboard Recent Sessions + Pattern Breakdown
+
+### Workflow
+- Main (frontend + backend changes to render pattern breakdown and update dashboard recent sessions)
+
+### Understanding
+- Fix 1: Dashboard Recent Sessions — update source check to include `last_10_session_classifications`
+- Fix 2: Pattern Breakdown on Workout Card — replace fatigue annotation with computed pattern percentages from exercise mappings
+
+### Changes
+
+#### Backend (main.py)
+- **Added helper function** `_compute_session_pattern_summary(hevy_workout_id: str, db: Session) -> dict`:
+  - Queries WorkoutLog filtered by workout_id
+  - Extracts unique exercise_titles
+  - Queries ExerciseMapping for those titles
+  - Sums `pct_quad_dom`, `pct_posterior`, `pct_upper_push`, `pct_upper_pull` across all logs
+  - Normalizes to percentages (total must be > 0)
+  - Returns dict with keys from {knee, hip, push, pull}, values 0.0–100.0 rounded to 0 decimal places
+  - Only includes patterns with >0%, returns empty dict if no mappings found
+- **Updated** `get_workout_sessions()` list comprehension to add `"pattern_summary": _compute_session_pattern_summary(row.hevy_workout_id, db)` field
+
+#### Frontend (index.html)
+- **Updated** `renderDashboardRecentSessions(payload)` source selection:
+  - Now checks `payload.last_10_session_classifications` first
+  - Falls back to existing sources: `recent_sessions` → `sessions` → `today.recent_sessions` → `[]`
+- **Replaced** `_sessionFatigueAnnotation(session)` function:
+  - Checks `session.pattern_summary` for available patterns
+  - If present and non-empty, renders pattern tags (e.g. "Push 60% · Pull 40%")
+  - Falls back to ATL/CTL/TSB from history lookup
+  - Returns empty string if no data available
+
+### Gate Results
+- `python -m py_compile main.py`: **PASS**
+- `get_errors(main.py)`: **PASS** — No errors
+- `get_errors(static/index.html)`: **PASS** — No errors
+- **Manual gate tests required** (application-level testing):
+  1. Dashboard Recent Sessions card shows today's session after reload — no "No recent sessions found"
+  2. Workout card second line shows pattern breakdown e.g. Push 60% · Pull 40% instead of Fatigue 0.0
+  3. A session with no mapped exercises shows ATL/CTL/TSB fallback, not an empty line
+  4. /api/workout-sessions response for a HYP session includes pattern_summary with at least one key
+  5. Existing ATL/CTL/TSB values on the card are unchanged for sessions where pattern_summary is empty
+
+---
+
 ## 2026-05-24 — Mobile Exercises HTTP 404 + AI chat composer follow-up
 
 ### Workflow
