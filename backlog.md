@@ -32,4 +32,4 @@ Last 10 completed items with brief descriptions for context.
 7. Per-Pattern Fatigue Trend - ATL and tonnage EWMA per pattern (Knee/Hip/Push/Pull); ATL/Tonnage signal toggle; 30-day window with 7/14/30 day smoothing term selector.
 8. Pattern stress redesigned as horizontal gauge rows - fill length + color (green/amber/red) replaces 2x2 dot grid.
 9. Toggle button groups redesigned as segmented strips (Option D) - joined, slim, solid accent fill on active.
-10. Readiness chart correctness fix - inverted readiness scales corrected in /api/volfatigue/summary and /api/readiness/combined-history, and #today-readiness-trend-card restored so the 7-Day Readiness Trend chart renders again.
+10. Readiness orientation follow-up - subjective readiness scaling was reverted in main.py so `/api/volfatigue/summary` and `/api/readiness/combined-history` again move higher with more fatigue.

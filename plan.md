@@ -1,38 +1,29 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-25 (Fix readiness inversion + restore 7-Day Readiness Trend card)
+Last updated: 2026-05-25 (Revert readiness inversion, main.py only)
 
-## Latest Update (2026-05-25 — Fix readiness inversion + restore 7-Day Readiness Trend card)
+## Latest Update (2026-05-25 — Revert readiness inversion, main.py only)
 
-- Workflow selected: Main
-- Files changed: `main.py`, `static/index.html`
+- Workflow selected: Express
+- Files changed: `main.py`
 
 ### Summary
-- Corrected readiness direction in two backend endpoints so higher values mean fresher state
-- Restored missing dashboard card mount point for the 7-Day Readiness Trend chart
+- Reverted the two subjective readiness conversions in `main.py` back to the original orientation
+- Higher subjective scores now once again mean more fatigue in both affected endpoints
 
 ### Changes
 
 #### main.py
 - **Updated** `get_vol_fatigue_summary(...)`:
-	- `subjective_score` changed from `subj * 10.0` to `(1.0 - subj) * 10.0`
-	- Fixes rolling readiness inversion on the Volume-Fatigue chart
+	- `subjective_score` changed from `(1.0 - subj) * 10.0` back to `subj * 10.0`
 - **Updated** `get_readiness_combined_history(...)`:
-	- `subjective_score` changed from `_subjective_fatigue(checkin) * 20.0` to `(1.0 - _subjective_fatigue(checkin)) * 20.0`
-	- Aligns combined readiness orientation with band labels (higher = fresher)
-
-#### static/index.html
-- **Updated** dashboard main stack after `#today-pattern-fatigue-card`:
-	- Re-added missing `#today-readiness-trend-card` container so `renderTodayReadinessChart(...)` has a valid target
+	- `subjective_score` changed from `(1.0 - _subjective_fatigue(checkin)) * 20.0` back to `_subjective_fatigue(checkin) * 20.0`
 
 ### Gate Results
 - `python -m py_compile main.py`: **PASS**
-- `get_errors(main.py, static/index.html)`: **PASS**
-- API smoke checks:
-	- `GET /api/volfatigue/summary` returned 200 with data rows
-	- `GET /api/readiness/combined-history?days=7` returned 200 with expected keys
-	- `GET /api/training-load?days=60` still includes ATL/CTL/TSB fields
-- Local data note: this environment currently has no `daily_readiness` rows, so numeric gate assertions tied to specific check-in values (for example green-band 8.3) require seeded/imported readiness data
+- `get_errors(main.py)`: **PASS**
+- Schema check: `PRAGMA table_info(daily_readiness)` via Python `sqlite3`: **PASS**
+- Data-dependent API gates: **BLOCKED in this shell** because the active local database has `0` `daily_readiness` rows, so endpoint assertions tied to real check-ins and chart bands could not be executed here
 
 ## Latest Update (2026-05-24 — Spec: Recent Sessions show 7 + Workouts tab link)
 

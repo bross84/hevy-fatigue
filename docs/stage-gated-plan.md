@@ -2,39 +2,30 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
-## 2026-05-25 — Fix readiness inversion + restore 7-Day Readiness Trend card
+## 2026-05-25 — Revert readiness inversion, main.py only
 
 ### Workflow
-- Main (backend scoring correction + frontend card restoration)
+- Express (single-file backend revert)
 
 ### Understanding
-- Fix inverted readiness scaling in Volume-Fatigue and Readiness Combined History endpoints
-- Re-add missing dashboard card container consumed by `renderTodayReadinessChart(...)`
+- Revert the two subjective readiness conversions in `main.py` back to the prior orientation
+- Keep scope limited to the two specified lines in the Volume-Fatigue and Combined History endpoints
 
 ### Schema verification (required)
-- `PRAGMA table_info(daily_readiness)` executed successfully
-- `PRAGMA table_info(workout_sessions)` executed successfully
+- `PRAGMA table_info(daily_readiness)` executed successfully via Python `sqlite3`
 
 ### Changes
 
 #### Backend (main.py)
 - **Updated** `get_vol_fatigue_summary(...)`:
-	- `subjective_score = round((1.0 - subj) * 10.0, 2)`
+	- `subjective_score = round(subj * 10.0, 2)`
 - **Updated** `get_readiness_combined_history(...)`:
-	- `subjective_score = round((1.0 - _subjective_fatigue(checkin)) * 20.0, 2) if checkin else None`
-
-#### Frontend (index.html)
-- **Updated** dashboard main stack:
-	- Re-added `#today-readiness-trend-card` directly after `#today-pattern-fatigue-card`
+	- `subjective_score = round(_subjective_fatigue(checkin) * 20.0, 2) if checkin else None`
 
 ### Gate Results
 - `python -m py_compile main.py`: **PASS**
-- `get_errors(main.py, static/index.html)`: **PASS**
-- API smoke checks:
-	- `/api/volfatigue/summary` returned 200
-	- `/api/readiness/combined-history?days=7` returned 200 with `combined_score`, `subjective_score`, `objective_score`
-	- `/api/training-load?days=60` still returns `today.atl`, `today.ctl`, `today.tsb`
-- Data note: local DB has no readiness rows, so score-band assertions for specific target values require seeded check-ins
+- `get_errors(main.py)`: **PASS**
+- Data-dependent API gates: **BLOCKED in this shell** because the active local database has `0` `daily_readiness` rows
 
 ---
 
