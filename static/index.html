@@ -6629,15 +6629,13 @@ function renderDashboardRecentSessions(payload) {
   const card = document.getElementById('dashboard-recent-card');
   if (!card) return;
 
-  const source = Array.isArray(payload?.last_10_session_classifications)
-    ? payload.last_10_session_classifications
-    : Array.isArray(payload?.recent_sessions)
-      ? payload.recent_sessions
-      : Array.isArray(payload?.sessions)
-        ? payload.sessions
-        : Array.isArray(payload?.today?.recent_sessions)
-          ? payload.today.recent_sessions
-          : [];
+  const source = Array.isArray(payload?.recent_sessions)
+    ? payload.recent_sessions
+    : Array.isArray(payload?.sessions)
+      ? payload.sessions
+      : Array.isArray(payload?.today?.recent_sessions)
+        ? payload.today.recent_sessions
+        : [];
 
   const sessions = source.slice(0, 3);
   if (!sessions.length) {

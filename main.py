@@ -2039,6 +2039,13 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
         item["fatigue_score"] = h_fatigue
         item["recommendation_adjusted"] = _fatigue_recommendation(h_fatigue, thresholds)
 
+    recent_sessions_data = (
+        db.query(WorkoutSession)
+        .order_by(WorkoutSession.workout_date.desc(), WorkoutSession.start_time.desc())
+        .limit(5)
+        .all()
+    )
+
     return {
         "today": {
             "date":                    today["date"],
@@ -2080,6 +2087,18 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
             "mode": thresholds.get("mode", "default"),
             "sample_size": thresholds.get("sample_size"),
         },
+        "recent_sessions": [
+            {
+                "hevy_workout_id": s.hevy_workout_id,
+                "workout_date": str(s.workout_date),
+                "workout_title": s.workout_title,
+                "modality": s.modality,
+                "duration_minutes": s.duration_minutes,
+                "srpe": s.srpe,
+                "verification_status": s.verification_status,
+            }
+            for s in recent_sessions_data
+        ],
         "history": history,
     }
 

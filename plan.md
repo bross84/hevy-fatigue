@@ -1,6 +1,35 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-24 (Fix 1 + Fix 2: Dashboard Recent Sessions + Pattern Breakdown)
+Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load)
+
+## Latest Update (2026-05-24 — Spec: Dashboard Recent Sessions via /api/training-load)
+
+- Workflow selected: Main
+- Files changed: `main.py`, `static/index.html`
+
+### Summary
+- Added top-level `recent_sessions` payload to `GET /api/training-load` sourced from the latest 5 `WorkoutSession` rows
+- Reverted dashboard recent-session source fallback in `renderDashboardRecentSessions(payload)` to the original three keys so `payload.recent_sessions` is primary
+
+### Changes
+
+#### main.py
+- **Updated** `get_training_load(days, db)` near the return block:
+	- Added `recent_sessions_data` query:
+		- `WorkoutSession` ordered by `workout_date desc, start_time desc`, limited to 5
+	- Added top-level `"recent_sessions"` to response dict with fields:
+		- `hevy_workout_id`, `workout_date`, `workout_title`, `modality`, `duration_minutes`, `srpe`, `verification_status`
+
+#### static/index.html
+- **Updated** `renderDashboardRecentSessions(payload)` source selection:
+	- Removed `last_10_session_classifications`
+	- Restored original chain: `recent_sessions -> sessions -> today.recent_sessions -> []`
+
+### Gate Results
+- `python -m py_compile main.py`: **PASS**
+- `get_errors(main.py, static/index.html)`: **PASS**
+- API smoke test: `GET /api/training-load?days=60` returns `recent_sessions` key
+- Local data note: `workout_sessions` table contains `0` rows in this environment, so `recent_sessions` is currently an empty list and the "at least one item" gate requires seeded/imported session data
 
 ## Latest Update (2026-05-24 — Fix 1 + Fix 2: Dashboard Recent Sessions + Pattern Breakdown)
 

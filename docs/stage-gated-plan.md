@@ -2,6 +2,39 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+## 2026-05-24 — Spec: Dashboard Recent Sessions via /api/training-load
+
+### Workflow
+- Main (backend payload extension + frontend source reversion)
+
+### Understanding
+- Add `recent_sessions` at top-level of `get_training_load` response in `main.py`
+- Revert dashboard recent-session source fallback in `index.html` to original three keys
+
+### Schema verification (required)
+- `PRAGMA table_info(workout_sessions)` executed successfully; verified required columns: `hevy_workout_id`, `workout_date`, `workout_title`, `modality`, `duration_minutes`, `srpe`, `verification_status`, `start_time`
+
+### Changes
+
+#### Backend (main.py)
+- **Updated** `get_training_load(days, db)`:
+	- Added pre-return query:
+		- `db.query(WorkoutSession).order_by(WorkoutSession.workout_date.desc(), WorkoutSession.start_time.desc()).limit(5).all()`
+	- Added top-level `recent_sessions` array in return payload with required session fields
+
+#### Frontend (index.html)
+- **Updated** `renderDashboardRecentSessions(payload)`:
+	- Removed `last_10_session_classifications` source
+	- Restored source priority to `recent_sessions`, then `sessions`, then `today.recent_sessions`
+
+### Gate Results
+- `python -m py_compile main.py`: **PASS**
+- `get_errors(main.py, static/index.html)`: **PASS**
+- API smoke check: `/api/training-load?days=60` includes `recent_sessions` key and `history`
+- Data note: local DB has `workout_sessions_count = 0`, so gate requiring at least one recent session item cannot be validated until data exists
+
+---
+
 ## 2026-05-24 — Fix 1 + Fix 2: Dashboard Recent Sessions + Pattern Breakdown
 
 ### Workflow
