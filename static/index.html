@@ -2908,6 +2908,11 @@ body.ai-open main {
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
+      <!-- 7-Day Readiness Trend -->
+      <div class="dashboard-card" id="today-readiness-trend-card">
+        <div class="loading-wrap"><span class="spinner"></span></div>
+      </div>
+
     </div>
   </div>
 
@@ -6637,7 +6642,7 @@ function renderDashboardRecentSessions(payload) {
         ? payload.today.recent_sessions
         : [];
 
-  const sessions = source.slice(0, 3);
+  const sessions = source.slice(0, 7);
   if (!sessions.length) {
     card.innerHTML = '<div class="dashboard-card-title">Recent Sessions</div><div class="today-chart-empty">No recent sessions found.</div>';
     return;
@@ -6652,7 +6657,7 @@ function renderDashboardRecentSessions(payload) {
     const srpe = session.srpe != null ? `sRPE ${_fmt1(Number(session.srpe))}` : null;
     const meta = [dateLabel, duration, srpe].filter(Boolean).join(' · ');
     return `
-      <div class="recent-session-item">
+      <div class="recent-session-item" style="cursor:pointer;" onclick="navigateToSession('${escHtml(String(session.hevy_workout_id))}')">
         <div class="recent-session-title"><span class="${_sessionBadgeClass(modality)}">${escHtml(modalityLabel)}</span> ${title}</div>
         <div class="recent-session-meta">${meta}</div>
       </div>
@@ -6660,6 +6665,36 @@ function renderDashboardRecentSessions(payload) {
   }).join('');
 
   card.innerHTML = `<div class="dashboard-card-title">Recent Sessions</div>${rows}`;
+}
+
+async function navigateToSession(hevy_workout_id) {
+  activateTab('workouts');
+  await new Promise(r => setTimeout(r, 100));
+
+  if (sessionLogFilter !== 'all') {
+    sessionLogFilter = 'all';
+    renderSessionLog();
+  }
+
+  if (!sessionLogRows.length) {
+    await loadSessionLog();
+  }
+
+  let card = document.querySelector(`.session-log-item[data-session-id="${CSS.escape(hevy_workout_id)}"]`);
+  let guard = 0;
+  while (!card && sessionLogHasMore && guard < 20) {
+    await _loadSessionLogPage(true);
+    card = document.querySelector(`.session-log-item[data-session-id="${CSS.escape(hevy_workout_id)}"]`);
+    guard += 1;
+  }
+
+  if (!card) return;
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const detailWrap = card.querySelector('.session-detail-wrap');
+  if (detailWrap && detailWrap.style.display === 'none') {
+    const btn = card.querySelector('.session-detail-btn');
+    if (btn) toggleSessionDetail(btn);
+  }
 }
 
 function _dashboardVfDateRange() {

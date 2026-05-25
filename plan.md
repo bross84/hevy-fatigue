@@ -1,6 +1,74 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load)
+Last updated: 2026-05-25 (Fix readiness inversion + restore 7-Day Readiness Trend card)
+
+## Latest Update (2026-05-25 — Fix readiness inversion + restore 7-Day Readiness Trend card)
+
+- Workflow selected: Main
+- Files changed: `main.py`, `static/index.html`
+
+### Summary
+- Corrected readiness direction in two backend endpoints so higher values mean fresher state
+- Restored missing dashboard card mount point for the 7-Day Readiness Trend chart
+
+### Changes
+
+#### main.py
+- **Updated** `get_vol_fatigue_summary(...)`:
+	- `subjective_score` changed from `subj * 10.0` to `(1.0 - subj) * 10.0`
+	- Fixes rolling readiness inversion on the Volume-Fatigue chart
+- **Updated** `get_readiness_combined_history(...)`:
+	- `subjective_score` changed from `_subjective_fatigue(checkin) * 20.0` to `(1.0 - _subjective_fatigue(checkin)) * 20.0`
+	- Aligns combined readiness orientation with band labels (higher = fresher)
+
+#### static/index.html
+- **Updated** dashboard main stack after `#today-pattern-fatigue-card`:
+	- Re-added missing `#today-readiness-trend-card` container so `renderTodayReadinessChart(...)` has a valid target
+
+### Gate Results
+- `python -m py_compile main.py`: **PASS**
+- `get_errors(main.py, static/index.html)`: **PASS**
+- API smoke checks:
+	- `GET /api/volfatigue/summary` returned 200 with data rows
+	- `GET /api/readiness/combined-history?days=7` returned 200 with expected keys
+	- `GET /api/training-load?days=60` still includes ATL/CTL/TSB fields
+- Local data note: this environment currently has no `daily_readiness` rows, so numeric gate assertions tied to specific check-in values (for example green-band 8.3) require seeded/imported readiness data
+
+## Latest Update (2026-05-24 — Spec: Recent Sessions show 7 + Workouts tab link)
+
+- Workflow selected: Main
+- Files changed: `main.py`, `static/index.html`
+
+### Summary
+- Increased backend `recent_sessions` payload cap from 5 to 7 in `get_training_load`
+- Increased dashboard card render count from 3 to 7
+- Made each dashboard recent-session row clickable; click now switches to Workouts tab, scrolls to matching session card, and opens details when collapsed
+
+### Changes
+
+#### main.py
+- **Updated** `get_training_load(days, db)`:
+	- `recent_sessions_data` query limit changed from `5` to `7`
+
+#### static/index.html
+- **Updated** `renderDashboardRecentSessions(payload)`:
+	- Session display cap changed from `source.slice(0, 3)` to `source.slice(0, 7)`
+	- Replaced row template with clickable items:
+		- Adds inline `onclick="navigateToSession('...')"`
+		- Preserves title, modality badge, and date/duration/sRPE metadata
+- **Added** `navigateToSession(hevy_workout_id)`:
+	- Activates `workouts` tab
+	- Waits 100ms for DOM render
+	- Resets Workouts filter to `all` so target session can be found
+	- Loads session log if empty, then auto-loads additional pages while `sessionLogHasMore` until the target appears
+	- Locates `.session-log-item[data-session-id="..."]`
+	- Scrolls card into view and opens details if currently hidden
+
+### Gate Results
+- `python -m py_compile main.py`: **PASS**
+- `get_errors(main.py, static/index.html)`: **PASS**
+- API smoke test: `GET /api/training-load?days=60` returns `recent_sessions` list with `len <= 7`
+- Local data note: `workout_sessions` table has `0` rows in this environment, so click-to-scroll/open UX gates require seeded/imported sessions to validate fully
 
 ## Latest Update (2026-05-24 — Spec: Dashboard Recent Sessions via /api/training-load)
 

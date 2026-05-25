@@ -2042,7 +2042,7 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
     recent_sessions_data = (
         db.query(WorkoutSession)
         .order_by(WorkoutSession.workout_date.desc(), WorkoutSession.start_time.desc())
-        .limit(5)
+        .limit(7)
         .all()
     )
 
@@ -2398,7 +2398,7 @@ def get_vol_fatigue_summary(
     # Build readiness lookup (subjective_score on 0-10 scale)
     for entry in readiness_entries:
         subj = _subjective_fatigue(entry)
-        subjective_score = round(subj * 10.0, 2)
+        subjective_score = round((1.0 - subj) * 10.0, 2)
         readiness_by_date[entry.date] = subjective_score
 
     # Build raw tonnage and set count lookup by date (all modalities)
@@ -2729,7 +2729,7 @@ def get_readiness_combined_history(days: int = 7, db: Session = Depends(get_db))
     while current <= today:
         checkin = readiness_by_date.get(current)
         objective_score = _objective_score_for_date(current, db)
-        subjective_score = round(_subjective_fatigue(checkin) * 20.0, 2) if checkin else None
+        subjective_score = round((1.0 - _subjective_fatigue(checkin)) * 20.0, 2) if checkin else None
         combined_score = (
             round((0.80 * subjective_score) + (0.20 * objective_score), 2)
             if subjective_score is not None
