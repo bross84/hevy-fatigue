@@ -2,6 +2,71 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+## 2026-05-25 — Change 2: Readiness card score breakdown row (JS)
+
+### Workflow
+- Express (targeted frontend template update)
+
+### Understanding
+- Add Subjective / Objective / Combined breakdown row to readiness card template
+- Render only when `checkinExists` is true
+- Bind values to `/api/training-load` `recommendation_v2` score fields already extracted in `_renderTodayCards`
+
+### Changes
+
+#### Frontend (index.html)
+- **Updated** `_renderTodayCards(data, pendingCount)` in readiness card template:
+	- Added conditional block after `.readiness-rec`
+	- Added `readiness-score-breakdown` with three `readiness-breakdown-item` entries:
+	  - `Subjective`: `${subjScore != null ? Number(subjScore).toFixed(1) : '—'}`
+	  - `Objective`: `${objScore != null ? Number(objScore).toFixed(1) : '—'}`
+	  - `Combined`: `${combScore != null ? Number(combScore).toFixed(1) : '—'}`
+	- Added divider nodes between items
+	- Guarded with `${checkinExists ? ... : ''}` so row is hidden when no check-in exists
+
+### Gate Results
+- Readiness card shows Subjective / Objective / Combined row when check-in exists: **PASS (code path verified)**
+- Row hidden when no check-in exists: **PASS (conditional branch verified)**
+- Values map to `recommendation_v2.subjective_score/objective_score/combined_score`: **PASS**
+- Existing readiness card structure retained (no regression expected): **PASS**
+- `get_errors(static/index.html)`: **PASS**
+
+---
+
+## 2026-05-25 — Spec: Vol-Fatigue rolling_readiness scale 0-10 to 0-20
+
+### Workflow
+- Express (targeted backend + frontend chart axis update)
+
+### Understanding
+- Update Vol-Fatigue readiness conversion in `main.py` from 0-10 to 0-20
+- Update Vol-Fatigue right y-axis max in `static/index.html` from 10 to 20
+- Keep 7-day Readiness Trend chart unchanged
+
+### Changes
+
+#### Backend (main.py)
+- **Updated** `get_vol_fatigue_summary(...)`:
+	- Comment changed from `0-10` to `0-20`
+	- `subjective_score = round(subj * 20.0, 2)`
+
+#### Frontend (index.html)
+- **Updated** `_vfBuildBarLineChart(...)` right-axis config:
+	- `y1.max` changed `10 -> 20`
+- **Verified unchanged** `_vfBuildChart(...)` right-axis config:
+	- `y1.max` remains `10`
+
+### Gate Results
+- `python -m py_compile main.py`: **PASS**
+- `get_errors(main.py)`: **PASS**
+- `get_errors(static/index.html)`: **PASS**
+- Vol-Fatigue readiness line now in 0-20 range by code path (`subj * 20.0`): **PASS**
+- Vol-Fatigue right y-axis now 0-20: **PASS**
+- 7-day Readiness Trend unchanged (`max: 10`): **PASS**
+- No regression on dashboard combined score logic (no touched code paths): **PASS**
+
+---
+
 ## 2026-05-25 — Revert readiness inversion, main.py only
 
 ### Workflow

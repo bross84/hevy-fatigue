@@ -2395,10 +2395,10 @@ def get_vol_fatigue_summary(
         session_stress = scores["central"] + scores["peripheral"]
         stress_by_date[date] += session_stress
 
-    # Build readiness lookup (subjective_score on 0-10 scale)
+    # Build readiness lookup (subjective_score on 0-20 scale)
     for entry in readiness_entries:
         subj = _subjective_fatigue(entry)
-        subjective_score = round(subj * 10.0, 2)
+        subjective_score = round(subj * 20.0, 2)
         readiness_by_date[entry.date] = subjective_score
 
     # Build raw tonnage and set count lookup by date (all modalities)

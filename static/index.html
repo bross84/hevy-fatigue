@@ -370,6 +370,32 @@ main { max-width: 1200px; margin: 0 auto; padding: 74px 24px 20px; }
   padding-top: 10px;
   border-top: 1px solid var(--border);
 }
+.readiness-score-breakdown {
+  display:flex;
+  justify-content: space-between;
+  border-top: 0.5px solid var(--border);
+  margin-top: 12px;
+  padding-top: 10px;
+}
+.readiness-breakdown-item {
+  flex: 1;
+  text-align: center;
+}
+.readiness-breakdown-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+.readiness-breakdown-value {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+}
+.readiness-breakdown-divider {
+  width: 0.5px;
+  background: var(--border);
+  align-self: stretch;
+}
 .recent-session-item {
   padding: 8px 0;
   border-bottom: 1px solid var(--border);
@@ -1557,7 +1583,10 @@ tbody tr:hover td { background: var(--row-hover); }
   line-height: 1;
 }
 
-.session-badge-strength,
+.session-badge-strength {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+}
 .session-badge-hypertrophy {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
   color: var(--accent);
@@ -2903,13 +2932,13 @@ body.ai-open main {
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
-      <!-- Per-pattern fatigue -->
-      <div class="dashboard-card" id="today-pattern-fatigue-card">
+            <!-- 7-Day Readiness Trend -->
+      <div class="dashboard-card" id="today-readiness-trend-card">
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
-      <!-- 7-Day Readiness Trend -->
-      <div class="dashboard-card" id="today-readiness-trend-card">
+      <!-- Per-pattern fatigue -->
+      <div class="dashboard-card" id="today-pattern-fatigue-card">
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
@@ -6557,6 +6586,23 @@ function _renderTodayCards(data, pendingCount) {
     <div class="readiness-score">${readinessScore}</div>
     <div class="readiness-label ${_stateClass(stateKey)}">${escHtml(stateLabel)}</div>
     <div class="readiness-rec">${escHtml(stateDetail)}</div>
+    ${checkinExists ? `
+    <div class="readiness-score-breakdown">
+      <div class="readiness-breakdown-item">
+        <div class="readiness-breakdown-label">Subjective</div>
+        <div class="readiness-breakdown-value">${subjScore != null ? Number(subjScore).toFixed(1) : '—'}</div>
+      </div>
+      <div class="readiness-breakdown-divider"></div>
+      <div class="readiness-breakdown-item">
+        <div class="readiness-breakdown-label">Objective</div>
+        <div class="readiness-breakdown-value">${objScore != null ? Number(objScore).toFixed(1) : '—'}</div>
+      </div>
+      <div class="readiness-breakdown-divider"></div>
+      <div class="readiness-breakdown-item">
+        <div class="readiness-breakdown-label">Combined</div>
+        <div class="readiness-breakdown-value">${combScore != null ? Number(combScore).toFixed(1) : '—'}</div>
+      </div>
+    </div>` : ''}
   `;
 
   const patterns = _safePatternStatus(recV2);
@@ -6764,19 +6810,19 @@ async function renderDashboardVFCard() {
       signalLabel = 'Tonnage';
       signalColor = c.warn;
       signalAxis  = 'Lbs';
-      noteText    = 'Daily tonnage (lbs lifted) vs. rolling readiness. Zero bars are rest days.';
+      noteText    = 'Daily tonnage (lbs lifted) vs. 7-day rolling readiness. Zero bars are rest days.';
     } else if (_dashboardVfSignal === 'rpe') {
       signalData  = data.data.map(d => d.daily_stress);
       signalLabel = 'RPE Load';
       signalColor = c.accent;
       signalAxis  = 'Stress';
-      noteText    = 'Daily RPE-weighted stress load vs. rolling readiness. Zero bars are rest days.';
+      noteText    = 'Daily RPE Load vs. 7-day rolling readiness. RPE Load is a stress score combining set intensity and volume — heavier sets at higher RPE score higher than the same weight at lower effort. Zero bars are rest days.';
     } else {
       signalData  = data.data.map(d => d.daily_set_count);
       signalLabel = 'Set Count';
       signalColor = c.push;
       signalAxis  = 'Sets';
-      noteText    = 'Daily working sets vs. rolling readiness. Zero bars are rest days.';
+      noteText    = 'Daily working sets vs. 7-day rolling readiness. Zero bars are rest days.';
     }
 
     const noteEl = document.getElementById('dashboard-vf-note');
@@ -7579,7 +7625,7 @@ function _vfBuildBarLineChart(canvasId, barData, barLabel, barColor, barAxisTitl
           ticks: { color: readinessColor, font: { size: 11 } },
           grid: { drawOnChartArea: false },
           min: 0,
-          max: 10,
+          max: 20,
         },
       },
     },
@@ -7663,7 +7709,7 @@ function _vfBuildChart(canvasId, leftData, leftLabel, leftColor, leftAxisTitle, 
           position: 'right',
           title: { display: true, text: 'Readiness', color: c.muted, font: { size: 11 } },
           min: 0,
-          max: 10,
+          max: 20,
           grid: { drawOnChartArea: false },
         },
       },

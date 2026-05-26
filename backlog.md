@@ -3,6 +3,7 @@
 ## 🔴 Pre-Release (must fix before public release)
 Items that are known bugs or missing features that would affect any user.
 
+- [ ] Bug: HYP sRPE fallback double-counts stress when sets have no RPE. Location: `calculate_stress_scores()` in `main.py` and `get_intensity_pct()` in `rpe_table.py`. Trigger: verified HYP session with >=50% sets missing RPE. Pathway 1 currently estimates intensity via Wendler fallback and contributes central/peripheral stress for all sets, then Pathway 4 adds sRPE fallback stress on top. Expected: when Pathway 4 triggers, exclude Pathway 1 set-level stress for that session so Pathway 4 is the sole stress source. Evidence: CC4.3.4 HYP @8 (May 11, 24 min, all sets missing RPE) shows RPE Load 345.6 vs expected fallback value 6.62 (8 x 24 / 29).
 - [ ] Resolve dead code: tab-trend section still exists in DOM but is inaccessible from nav - remove section HTML and associated JS (renderVolFatigueView, activateTrendTab, _vfChartRpe/Tonnage/Sets, _vfRenderCharts).
 - [ ] Complete README and FAQ documentation for public-facing release use.
 

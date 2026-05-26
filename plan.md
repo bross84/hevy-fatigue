@@ -1,6 +1,65 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-25 (Revert readiness inversion, main.py only)
+Last updated: 2026-05-25 (Change 2 — JS: readiness card score breakdown row)
+
+## Latest Update (2026-05-25 — Change 2: Readiness card score breakdown row)
+
+- Workflow selected: Express
+- Files changed: `static/index.html`
+
+### Summary
+- Added a conditional readiness score breakdown row to the dashboard readiness card template
+- Row renders only when a check-in exists and shows Subjective, Objective, and Combined values
+
+### Changes
+
+#### static/index.html
+- **Updated** `_renderTodayCards(data, pendingCount)` readiness card template (`dashboard-readiness-card`):
+	- Inserted conditional block after `.readiness-rec`:
+	  - `readiness-score-breakdown`
+	  - `readiness-breakdown-item` for `Subjective`, `Objective`, and `Combined`
+	  - values bound to `recommendation_v2` fields already assigned in scope:
+	    - `subjScore` (`recommendation_v2.subjective_score`)
+	    - `objScore` (`recommendation_v2.objective_score`)
+	    - `combScore` (`recommendation_v2.combined_score`)
+	- Guard condition: `${checkinExists ? ... : ''}`
+
+### Gate Results
+- Readiness card shows Subjective / Objective / Combined row when check-in exists: **PASS (template guard + insertion verified)**
+- Row is hidden when no check-in exists: **PASS (conditional empty string branch)**
+- Values match `/api/training-load` `recommendation_v2` fields: **PASS (direct field binding verified)**
+- No regression on existing card layout: **PASS (existing title/score/label/rec elements preserved; CSS classes already present)**
+- `get_errors(static/index.html)`: **PASS**
+
+## Latest Update (2026-05-25 — Spec: Vol-Fatigue rolling_readiness scale 0-10 to 0-20)
+
+- Workflow selected: Express
+- Files changed: `main.py`, `static/index.html`
+
+### Summary
+- Updated Vol-Fatigue readiness mapping in backend from 0-10 to 0-20
+- Updated Vol-Fatigue chart right y-axis max from 10 to 20
+- Kept 7-day Readiness Trend chart axis unchanged
+
+### Changes
+
+#### main.py
+- **Updated** `get_vol_fatigue_summary(...)`:
+	- Comment changed to `# Build readiness lookup (subjective_score on 0-20 scale)`
+	- `subjective_score` changed from `round(subj * 10.0, 2)` to `round(subj * 20.0, 2)`
+
+#### static/index.html
+- **Updated** `_vfBuildBarLineChart(...)` right y-axis (`y1`):
+	- `max` changed from `10` to `20`
+- **Unchanged** `_vfBuildChart(...)` right y-axis (`y1`) remains `max: 10` (7-day Readiness Trend unchanged)
+
+### Gate Results
+- `python -m py_compile main.py`: **PASS**
+- `get_errors(main.py, static/index.html)`: **PASS**
+- Vol-Fatigue readiness mapping path now emits values based on 0-20 subjective scale: **PASS (code path verified)**
+- Vol-Fatigue right y-axis now shows 0-20: **PASS (config verified)**
+- 7-day Readiness Trend chart unchanged (`y1 max: 10`): **PASS (config verified)**
+- Dashboard combined score path unchanged: **PASS (no code changes in combined-score logic)**
 
 ## Latest Update (2026-05-25 — Revert readiness inversion, main.py only)
 
