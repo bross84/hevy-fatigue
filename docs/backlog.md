@@ -1,6 +1,6 @@
 # Hevy Fatigue — Backlog
 
-Last updated: 22MAY2026
+Last updated: 26MAY2026
 
 ---
 
@@ -9,6 +9,13 @@ Last updated: 22MAY2026
 ---
 
 ## Planned Features / Refactors
+
+### `26MAY2026` - Canonnical Name Notification
+If exercise name needs review for canonical naming, there should be a flag of some type.
+
+Move renaming confirmation to exercise tab.
+
+Movement trend from Workouts also should move to exercise tab.
 
 ### `11MAY2026` — MRV Stats
 Surface Maximum Recoverable Volume indicators informed by JTS fatigue framework.

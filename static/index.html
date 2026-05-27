@@ -7040,7 +7040,7 @@ async function renderTodayPatternFatigueCard() {
     const hasPatternLoads = history.some(h => h && typeof h === 'object' && h.pattern_loads && h.pattern_loads.knee && h.pattern_loads.hip && h.pattern_loads.push && h.pattern_loads.pull);
 
     card.innerHTML = `
-      <div class="card-title">Per-Pattern Fatigue Trend</div>
+      <div class="card-title">Per-Pattern Fatigue Trend<span style="position:relative;display:inline-flex;align-items:center;margin-left:6px;cursor:default;" onmouseenter="this.querySelector('.pf-tooltip').style.display='block'" onmouseleave="this.querySelector('.pf-tooltip').style.display='none'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);vertical-align:middle;" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><circle cx="12" cy="8" r="0.5" fill="currentColor"/></svg><span class="pf-tooltip" style="display:none;position:absolute;top:20px;right:0;width:260px;background:var(--card);border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text-secondary);z-index:100;line-height:1.5;">Shows the 7-day EWMA training load (ATL) per movement pattern across your full training history. The 7/14/30 day buttons control the smoothing window applied to the data - wider windows produce smoother lines. ATL shows stress-weighted load; Tonnage shows raw volume EWMA.</span></span></div>
       <div class="trend-range" id="today-pattern-range">
         <button class="btn btn-secondary${_todayPatternRange === 7 ? ' active' : ''}" data-pattern-range="7">7 Day</button>
         <button class="btn btn-secondary${_todayPatternRange === 14 ? ' active' : ''}" data-pattern-range="14">14 Day</button>
@@ -7065,7 +7065,7 @@ async function renderTodayPatternFatigueCard() {
     _renderTrendPatternChart(history, 'today-pattern-fatigue-chart', _todayPatternRange, _todayPatternSignal);
   } catch {
     _destroyTodayPatternFatigueChart();
-    card.innerHTML = '<div class="card-title">Per-Pattern Fatigue Trend</div><div class="today-chart-empty">Unable to load pattern data.</div>';
+    card.innerHTML = '<div class="card-title">Per-Pattern Fatigue Trend<span style="position:relative;display:inline-flex;align-items:center;margin-left:6px;cursor:default;" onmouseenter="this.querySelector(\'.pf-tooltip\').style.display=\'block\'" onmouseleave="this.querySelector(\'.pf-tooltip\').style.display=\'none\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);vertical-align:middle;" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><circle cx="12" cy="8" r="0.5" fill="currentColor"/></svg><span class="pf-tooltip" style="display:none;position:absolute;top:20px;right:0;width:260px;background:var(--card);border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text-secondary);z-index:100;line-height:1.5;">Shows the 7-day EWMA training load (ATL) per movement pattern across your full training history. The 7/14/30 day buttons control the smoothing window applied to the data - wider windows produce smoother lines. ATL shows stress-weighted load; Tonnage shows raw volume EWMA.</span></span></div><div class="today-chart-empty">Unable to load pattern data.</div>';
   }
 }
 
