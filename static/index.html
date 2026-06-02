@@ -6373,11 +6373,11 @@ function openModal(ex) {
   document.getElementById('mv-canonical-name').value = ex.canonical_name || '';
   document.getElementById('mv-cond').checked = ex.is_conditioning;
   syncModal();
-  document.getElementById('edit-modal').classList.add('open');
+  document.getElementById('edit-modal').classList.add('active');
 }
 
 function closeModal() {
-  document.getElementById('edit-modal').classList.remove('open');
+  document.getElementById('edit-modal').classList.remove('active');
   editingTitle = null;
   editingId    = null;
   editingExerciseId = null;

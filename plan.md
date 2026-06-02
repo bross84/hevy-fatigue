@@ -1,6 +1,30 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-25 (Change 2 — JS: readiness card score breakdown row)
+Last updated: 2026-06-02 (Importer UTC-to-local workout_date conversion)
+
+## Latest Update (2026-06-02 — Importer UTC-to-local workout_date conversion)
+
+- Workflow selected: Express
+- Files changed: `importer.py`
+
+### Summary
+- Converted Hevy `start_time` parsing for `workout_date` from direct UTC `.date()` extraction to local-time date extraction using module-level timezone config.
+- Timezone source is now environment-driven via `TZ` (fallback `UTC`).
+
+### Changes
+
+#### importer.py
+- **Updated imports**:
+	- Added `os` and `zoneinfo`
+- **Added module constant**:
+	- `_LOCAL_TZ = zoneinfo.ZoneInfo(os.environ.get("TZ", "UTC"))`
+- **Updated** `_process_workout(...)` date extraction:
+	- Before: `datetime.fromisoformat(...).date()` (UTC date)
+	- After: parse UTC datetime then `astimezone(_LOCAL_TZ).date()` (local date)
+
+### Gate Results
+- `python -m py_compile importer.py`: **PASS**
+- `read/problems` (`get_errors(importer.py)`): **PASS**
 
 ## Latest Update (2026-05-25 — Change 2: Readiness card score breakdown row)
 

@@ -2,6 +2,41 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+## 2026-06-02 — Importer UTC-to-local workout_date conversion
+
+### Workflow
+- Express (single-file importer logic update)
+
+### Understanding
+- Convert Hevy `start_time` from UTC to local timezone before extracting `workout_date`
+- Respect container/application timezone via `TZ` env var
+- Keep change scoped to importer date handling only
+
+### Schema verification (required)
+- `PRAGMA table_info(workout_logs)`: PASS
+- `PRAGMA table_info(workout_sessions)`: PASS
+- `PRAGMA table_info(exercise_mappings)`: PASS
+- `PRAGMA table_info(exercise_canonical)`: PASS
+- `PRAGMA table_info(exercise_conflicts)`: PASS
+
+### Changes
+
+#### Backend (importer.py)
+- **Updated imports**:
+	- Added `import os`
+	- Added `import zoneinfo`
+- **Added module constant**:
+	- `_LOCAL_TZ = zoneinfo.ZoneInfo(os.environ.get("TZ", "UTC"))`
+- **Updated** `_process_workout(...)`:
+	- Parse `raw_start` as UTC datetime
+	- Compute `workout_date` with `utc_dt.astimezone(_LOCAL_TZ).date()`
+
+### Gate Results
+- `python -m py_compile importer.py`: **PASS**
+- `get_errors(importer.py)`: **PASS**
+
+---
+
 ## 2026-05-25 — Change 2: Readiness card score breakdown row (JS)
 
 ### Workflow

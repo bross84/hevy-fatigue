@@ -34,3 +34,4 @@ Last 10 completed items with brief descriptions for context.
 8. Pattern stress redesigned as horizontal gauge rows - fill length + color (green/amber/red) replaces 2x2 dot grid.
 9. Toggle button groups redesigned as segmented strips (Option D) - joined, slim, solid accent fill on active.
 10. Readiness orientation follow-up - subjective readiness scaling was reverted in main.py so `/api/volfatigue/summary` and `/api/readiness/combined-history` again move higher with more fatigue.
+11. Importer timezone fix - converted workout date extraction from UTC date to local date using `TZ` + `zoneinfo` in importer so late-evening local workouts no longer shift to next-day UTC date.

@@ -6,6 +6,8 @@ from hevy_client import HevyClient
 from rpe_table import calculate_e1rm, seed_rpe_table
 from exercise_classifier import classify_exercise, ensure_exercise_mapped
 from datetime import datetime, timezone
+import os
+import zoneinfo
 from sqlalchemy import func
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
@@ -36,6 +38,7 @@ _SRPE_TITLE_TAG_PATTERN = re.compile(r"@(?P<value>\d+(?:\.\d+)?)")
 _IMPORT_CONTEXT_KEY = "importer_sync_context"
 _LAST_SYNC_SETTING_KEY = "last_sync"
 _AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT = 0.87
+_LOCAL_TZ = zoneinfo.ZoneInfo(os.environ.get("TZ", "UTC"))
 
 
 def _extract_srpe_from_title(workout_title):
@@ -320,7 +323,8 @@ def _process_workout(db, workout, canonical_map):
         stats["skipped_workouts_missing_date"] += 1
         return
     try:
-        workout_date = datetime.fromisoformat(raw_date.replace('Z', '+00:00')).date()
+        utc_dt = datetime.fromisoformat(raw_date.replace('Z', '+00:00'))
+        workout_date = utc_dt.astimezone(_LOCAL_TZ).date()
     except ValueError:
         stats["skipped_workouts_missing_date"] += 1
         return
