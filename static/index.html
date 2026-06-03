@@ -1383,6 +1383,69 @@ tbody tr:hover td { background: var(--row-hover); }
   gap: 10px;
   margin-top: 20px;
 }
+.pattern-examples {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 14px;
+  line-height: 1.6;
+}
+.ex-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+.ex-list {
+  color: var(--muted);
+}
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.preset-btn {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.preset-btn:hover { background: var(--accent-sub); color: var(--accent); border-color: var(--accent); }
+.slider-num-row {
+  display: grid;
+  grid-template-columns: 1fr 52px 16px;
+  align-items: center;
+  gap: 8px;
+}
+.slider-num-row input[type="range"] { width: 100%; min-width: 0; }
+.pct-num-input {
+  width: 52px;
+  text-align: right;
+  padding: 4px 6px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+}
+.pct-sym { font-size: 12px; color: var(--muted); }
+.split-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 10px 0 14px;
+  background: var(--border);
+}
+.split-seg { height: 100%; transition: width .15s; }
+.split-quad { background: var(--quad); }
+.split-post { background: var(--posterior); }
+.split-push { background: var(--push); }
+.split-pull { background: var(--pull); }
 
 /* === EXERCISE METRICS TAB === */
 .exm-header {

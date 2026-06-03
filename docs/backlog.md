@@ -1,21 +1,35 @@
 # Hevy Fatigue — Backlog
 
-Last updated: 26MAY2026
+Last updated: 02JUN2026
 
 ---
 
 ## Open Bugs
 
+### `02JUN2026` — Pattern Stress Showing Zero Knee Stress After Heavy Quad Work
+Knee pattern stress card shows 0 despite recent high-volume squat sessions. Likely a TSB signal calculation or pattern distribution issue. Needs `main.py` and pattern stress endpoint review. Investigate before speccing.
+
+### `02JUN2026` — Regular Sync Does Not Pick Up Hevy Exercise Edits
+If an exercise is renamed in Hevy after a workout is already synced, a regular sync does not re-fetch or re-process the affected workout. Full sync re-imports all data and does pick up the change, but also appends duplicate rows if the exercise_id changed (old title rows + new title rows). Root cause: importer does not delete existing `workout_logs` rows for a workout before re-inserting on full sync — it appends. Fix: on full sync, `DELETE FROM workout_logs WHERE workout_id = ?` before re-inserting sets for each workout. Long-term: detect changed workouts via `updated_at` on the Hevy API side and re-process only those in regular sync.
+
+### `02JUN2026` — Edit Modal CSS Missing (Patterns Tab)
+Modal overlay opened but rendered unstyled — `.modal`, `.modal-title`, `.modal-subtitle`, `.modal-footer`, `.pattern-examples`, `.ex-row`, `.ex-list`, `.presets`, `.preset-btn`, `.slider-num-row`, `.pct-num-input`, `.pct-sym`, `.split-bar`, `.split-seg` CSS blocks all missing from stylesheet. Partially resolved: `.modal` box CSS restored. Slider layout still broken — `input[type="range"]` global `width: 100%` conflicts with flex layout in `.slider-num-row`; grid-based fix specced but not yet confirmed. In progress.
+
 ---
 
 ## Planned Features / Refactors
 
-### `26MAY2026` - Canonnical Name Notification
+### `02JUN2026` — Dead Code Audit
+Review `index.html` and `main.py` for dead code — unreachable JS functions, orphaned DOM sections, unused endpoints, and stale CSS classes. Known candidate: `tab-trend` section may still exist in DOM but be inaccessible from nav. Audit before any major feature work to reduce noise for Copilot.
+
+---
+
+### `26MAY2026` — Canonical Name Notification
 If exercise name needs review for canonical naming, there should be a flag of some type.
 
-Move renaming confirmation to exercise tab.
+Move renaming confirmation to Exercises tab.
 
-Movement trend from Workouts also should move to exercise tab.
+Movement trend from Workouts also should move to Exercises tab.
 
 ### `11MAY2026` — MRV Stats
 Surface Maximum Recoverable Volume indicators informed by JTS fatigue framework.
@@ -83,6 +97,7 @@ Pull daily macros (protein, carbs, fat) from Apple Health via Claude iOS Health 
 
 | Item | Resolution |
 |---|---|
+| Edit modal `.open` vs `.active` class mismatch | COMPLETE — 02JUN2026. `openModal()` and `closeModal()` corrected to use `.active` matching the CSS rule. |
 | Docs page check-in schema | COMPLETE — updated `static/docs.html` on 21MAY2026 to match implemented 0–4 fields, subjective weighting formula, current TSB labels, and joint advisory behavior. |
 | Trend history window | Fixed at 30 days. `_trendSlice` hardcodes `slice(-30)` by design. Range buttons change baseline smoothing term only. |
 | HYP sRPE fallback | COMPLETE — merged 11MAY2026. `sRPE × duration_minutes / HYP_SRPE_SCALE` when ≥50% of sets lack RPE values. |
@@ -90,11 +105,11 @@ Pull daily macros (protein, carbs, fat) from Apple Health via Claude iOS Health 
 | CTL time constant | COMPLETE — EWMA with τ=42 days implemented per Allen 2019 / TrainingPeaks standard. |
 | Sticky AI model selection | COMPLETE |
 | Sticky navbar on desktop | COMPLETE |
-| Settings view mobile layout | COMPLETE — 22MAY2026. Updated `static/index.html` settings grid to hold a 2x2 layout on normal widths, collapse to one column at narrow widths, and keep key-row wrapping so cards stack cleanly without horizontal overflow. |
+| Settings view mobile layout | COMPLETE — 22MAY2026. |
 | Combined score formula label truncation | COMPLETE |
 | Pattern stress dots vs trend chart contradiction | COMPLETE — merged 16MAY2026. `_pattern_tsb_signal(tsb, ctl)` replaces ATL/CTL ratio. |
 | Pattern stress card color/label | COMPLETE — Normal → green, Elevated → yellow, High → red, Fresh → teal/blue. |
-| Pre-check-in misleading values | COMPLETE — 16MAY2026. Subjective fallback flagged; pattern cards show distinct no-data state. |
+| Pre-check-in misleading values | COMPLETE — 16MAY2026. |
 | Today page chart load speed | COMPLETE — 17MAY2026. Load time halved (~3s → ~1.5s). |
 | 7-day Readiness Trend band adjustability | COMPLETE |
 | CTL lookback window | COMPLETE — switched to EWMA τ=42 days from flat 6-month rolling window. |

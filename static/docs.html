@@ -743,6 +743,11 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
 
       <p>Inside the soreness composite, each soreness field contributes equally, so each field can contribute up to <strong>1.25 points</strong> of the 20-point subjective total.</p>
 
+      <div class="info-card callout-blue">
+        <div class="callout-label">Scientific basis</div>
+        <p>The structure of this composite is consistent with the <strong>Hooper Index</strong> (Hooper &amp; Mackinnon, 1995 [9]) and the <strong>DALDA</strong> (Daily Analysis of Life Demands for Athletes), both peer-reviewed subjective wellness tools used in applied sports science. Weighted composites of self-report items are the standard approach in athlete monitoring. The specific weights here (45/30/25) are practitioner-selected, not statistically derived from individual data — this is normal practice. Commercial monitoring tools including WHOOP and HRV4Training make the same class of assumption.</p>
+      </div>
+
       <p>On days without a workout, the daily fatigue score is computed from check-in alone. On training days, training load is incorporated as a modifier (see §4).</p>
     </section>
 
@@ -1313,17 +1318,60 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
 
       <p>The readiness score is displayed in the format <strong>X / 10</strong>, where higher is more recovered and lower is more fatigued. This keeps the dashboard framed as readiness, not raw fatigue.</p>
 
-      <p>On training days, the raw check-in readiness signal is adjusted by a training load modifier before display. The Vol-Fatigue endpoint uses <code>subj * 10.0</code> as the subjective scale basis (not <code>subj * 20.0</code>).</p>
+      <h3>Objective load score</h3>
+      <p>The objective component compares recent training volume against the athlete's long-term baseline using an Acute:Chronic Workload Ratio (ACWR) expressed on a 0–10 scale:</p>
+
+      <div class="formula-block">
+        <span class="comment">// Acute load: total tonnage (weight_lbs × reps) over last 7 days</span><br>
+        <span class="comment">// Chronic load: total tonnage over last 6 months ÷ 26 weeks → weekly average</span><br>
+        <span class="var">ratio</span> <span class="op">=</span> <span class="var">acute_tonnage</span> <span class="op">/</span> <span class="var">chronic_weekly_avg</span><br><br>
+        <span class="comment">// Scale to 0–10: ratio of 1.0 (normal week) → score of 5.0</span><br>
+        <span class="var">objective_score</span> <span class="op">=</span> clamp(<span class="var">ratio</span> <span class="op">×</span> <span class="val">5</span>, <span class="val">0</span>, <span class="val">10</span>)
+      </div>
+
+      <table class="ref-table">
+        <thead><tr><th>Ratio</th><th>Objective score</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>0.0</td><td>0.0</td><td>No training this week</td></tr>
+          <tr><td>1.0</td><td>5.0</td><td>Training exactly at historical average</td></tr>
+          <tr><td>2.0</td><td>10.0 (capped)</td><td>Double historical average</td></tr>
+        </tbody>
+      </table>
+
+      <div class="info-card callout-blue">
+        <div class="callout-label">Scientific basis — ACWR</div>
+        <p>The Acute:Chronic Workload Ratio is the most widely cited load monitoring metric in applied sports science (Gabbett, 2016 [10]). The standard implementation uses a 1:4 week window. This app uses a 1:26 week window (7-day acute vs. 6-month chronic baseline) — a more conservative choice that smooths across full training blocks rather than individual phases. The 6-month window is intentional: it gives a stable long-term reference for the subjective-vs-objective comparison rather than reacting to recent block structure.</p>
+      </div>
+
+      <div class="info-card callout-amber">
+        <div class="callout-label">Why tonnage, not session stress scores</div>
+        <p>The objective score deliberately uses raw tonnage (weight × reps) rather than the session stress scores that feed ATL/CTL/TSB. This is by design: the long-term purpose of this signal is to build the longitudinal volume record needed for MRV/MEV analysis. Session stress scores are appropriate for acute fatigue modeling; tonnage is appropriate for volume tracking and eventual volume threshold work. The two systems serve different purposes and operate on different foundations intentionally.</p>
+      </div>
+
+      <h3>Combined readiness score</h3>
+      <p>The subjective and objective scores are blended into a single combined score with an 80/20 weighting that keeps the subjective signal firmly in control:</p>
+
+      <div class="formula-block">
+        <span class="var">combined_score</span> <span class="op">=</span> (<span class="val">0.80</span> <span class="op">×</span> <span class="var">subjective_score</span>) <span class="op">+</span> (<span class="val">0.20</span> <span class="op">×</span> <span class="var">objective_score</span>)
+      </div>
+
+      <div class="info-card callout-blue">
+        <div class="callout-label">Scientific basis — subjective-first weighting</div>
+        <p>The 80/20 split is a practitioner-selected design decision, not statistically derived from individual data. It reflects the documented principle that subjective wellness measures are often more predictive of performance decrements than objective load metrics alone — a finding supported directionally in the athlete monitoring literature (McLean et al., 2010 [11]). Weights are assumed, not validated; full psychometric validation would require structured longitudinal criterion data that is not feasible in a personal tool. Face validity and longitudinal self-comparison are the appropriate standards here.</p>
+      </div>
+
+      <h3>Daily load modifier</h3>
+      <p>On training days, the combined score is further nudged by a small load modifier before display. The Vol-Fatigue endpoint uses <code>subj * 10.0</code> as the subjective scale basis (not <code>subj * 20.0</code>).</p>
 
       <div class="formula-block">
         <span class="comment">// Load modifier: how hard was today's session relative to baseline?</span><br>
         <span class="var">load_modifier</span> <span class="op">=</span> clamp(<span class="var">relative_delta</span> <span class="op">×</span> <span class="val">1.2</span>, <span class="val">-1.5</span>, <span class="val">1.5</span>)<br><br>
         <span class="comment">// Bounds in main.py: −1.5 to +1.5 points</span><br>
         <span class="comment">// Final displayed score (clamped 0-10)</span><br>
-        <span class="var">adjusted_readiness</span> <span class="op">=</span> clamp(<span class="var">check_in_score</span> <span class="op">+</span> <span class="var">load_modifier</span>, <span class="val">0</span>, <span class="val">10</span>)
+        <span class="var">adjusted_readiness</span> <span class="op">=</span> clamp(<span class="var">combined_score</span> <span class="op">+</span> <span class="var">load_modifier</span>, <span class="val">0</span>, <span class="val">10</span>)
       </div>
 
-      <p>The modifier is intentionally small - it nudges the check-in-derived score after an unusually hard session, but never overrides it. The subjective signal remains dominant.</p>
+      <p>The modifier is intentionally small — it nudges the score after an unusually hard session but never overrides the subjective signal. Maximum possible shift is ±1.5 points.</p>
     </section>
 
     <!-- ═══════════════════════════════════════════ -->
@@ -1496,6 +1544,8 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         <h2>Known limitations</h2>
       </div>
 
+      <p><strong>ATL/CTL/TSB and strength sport:</strong> The EWMA model and its 7/42-day time constants were developed for continuous endurance load patterns (cycling power data). Strength training is more intermittent and session stress is more heterogeneous — a 1RM attempt and a hypertrophy pump session may have similar tonnage but very different systemic demands. ATL/CTL/TSB are retained for trend visibility and pattern stress signals but are acknowledged as imperfect tools for strength sport. The subjective check-in score is the primary readiness driver; ATL/CTL/TSB are contextual modifiers.</p>
+
       <p><strong>EWMA stabilization:</strong> Both ATL and CTL require historical data to stabilize. Expect 2–3 weeks before ATL is reliable and 6–8 weeks before CTL is meaningful. Early TSB values are directional only.</p>
 
       <p><strong>sRPE accuracy:</strong> Session RPE is a subjective self-report and is known to be influenced by mood, expectations, and recall timing. Foster et al. recommend collecting sRPE 30 minutes post-session to reduce bias [4].</p>
@@ -1550,6 +1600,18 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         <li>
           <span class="ref-num">[8]</span>
           <span>Tuchscherer, M. <em>TRAC — Training Readiness and Autoregulation Calculator.</em> Reactive Training Systems. Internal software tool; methodology published in RTS training articles at <a href="https://www.reactivetrainingsystems.com" target="_blank">reactivetrainingsystems.com</a>.</span>
+        </li>
+        <li>
+          <span class="ref-num">[9]</span>
+          <span>Hooper, S.L. &amp; Mackinnon, L.T. "Monitoring overtraining in athletes: recommendations." <em>Sports Medicine</em>, 20(5):321–327, 1995. Original validation of the Hooper Index — a four-item subjective wellness questionnaire tracking fatigue, stress, muscle soreness, and sleep quality.</span>
+        </li>
+        <li>
+          <span class="ref-num">[10]</span>
+          <span>Gabbett, T.J. "The training-injury prevention paradox: should athletes be training smarter and harder?" <em>British Journal of Sports Medicine</em>, 50(5):273–280, 2016. Landmark paper establishing and validating the Acute:Chronic Workload Ratio as a practical load monitoring tool across team and individual sports.</span>
+        </li>
+        <li>
+          <span class="ref-num">[11]</span>
+          <span>McLean, B.D. et al. "Physiological and Performance Responses to a Pre-Season AFL Competition." <em>International Journal of Sports Physiology and Performance</em>, 5(4):510–523, 2010. Among papers demonstrating that subjective wellness measures track performance decrements and training adaptation as reliably as — or more reliably than — objective load metrics alone.</span>
         </li>
       </ul>
     </section>
@@ -1634,4 +1696,3 @@ syncSidebarA11y();
 
 </body>
 </html>
-
