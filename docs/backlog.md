@@ -19,6 +19,20 @@ Modal overlay opened but rendered unstyled — `.modal`, `.modal-title`, `.modal
 
 ## Planned Features / Refactors
 
+### `02JUN2026` — Session Verification: Add Workout Detail Context + Unverified Indicator
+Currently the verification UI shows only the session title — not enough context to verify confidently. Two changes needed:
+- **Detail view on verification card:** show date, duration, modality, sRPE, exercise list with set count. User should be able to confirm the session is what the title says it is before verifying.
+- **Unverified indicator:** badge or dot on the Workouts tab nav button when one or more sessions are pending verification. Mirrors the pattern of the existing unreviewed exercise indicator.
+
+### `02JUN2026` — Move Exercise Naming / Needs-Review Card to Exercises Tab
+The canonical name "needs review" card currently lives on the Patterns tab. Patterns is for movement distribution (Knee/Hip/Push/Pull splits) — nomenclature is an exercise-level concern and belongs on the Exercises tab. Changes needed:
+- Move needs-review card UI to Exercises tab
+- Add indicator (badge or flag) on the Exercises tab nav button when one or more exercises have unreviewed canonical names
+- Patterns tab should be clean of naming concerns after this move
+
+### `02JUN2026` — Move Movement Trend to Exercises Tab
+Movement Trend (exercise search + metric toggle + time window chart) currently lives on the Workouts tab. It is an exercise-level metric, not a session-level one. Workouts tab should own session-level views only. Exercises tab should own all per-exercise views: metrics browser, naming/canonical review, and movement trend. Move the Movement Trend card to the Exercises tab.
+
 ### `02JUN2026` — Dead Code Audit
 Review `index.html` and `main.py` for dead code — unreachable JS functions, orphaned DOM sections, unused endpoints, and stale CSS classes. Known candidate: `tab-trend` section may still exist in DOM but be inaccessible from nav. Audit before any major feature work to reduce noise for Copilot.
 

@@ -1865,6 +1865,10 @@ def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness 
             "days_since_loaded": _days_since_loaded(p, last_loaded_dates, ref_today),
             "dots_filled": dots,
             "dots_total": 5,
+            "load_signal": pattern_rows[p]["load_signal"],
+            "load_dots": _dots_filled(pattern_rows[p]["load_signal"]),
+            "soreness_signal": pattern_rows[p]["soreness_signal"],
+            "soreness_dots": _dots_filled(pattern_rows[p]["soreness_signal"]),
         }
 
     return {
