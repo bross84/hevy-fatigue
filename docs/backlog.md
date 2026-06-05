@@ -1,28 +1,14 @@
 # Hevy Fatigue — Backlog
 
-Last updated: 02JUN2026
+Last updated: 04JUN2026
 
 ---
 
 ## Open Bugs
 
-### `02JUN2026` — Pattern Stress Showing Zero Knee Stress After Heavy Quad Work
-Knee pattern stress card shows 0 despite recent high-volume squat sessions. Likely a TSB signal calculation or pattern distribution issue. Needs `main.py` and pattern stress endpoint review. Investigate before speccing.
-
-### `02JUN2026` — Regular Sync Does Not Pick Up Hevy Exercise Edits
-If an exercise is renamed in Hevy after a workout is already synced, a regular sync does not re-fetch or re-process the affected workout. Full sync re-imports all data and does pick up the change, but also appends duplicate rows if the exercise_id changed (old title rows + new title rows). Root cause: importer does not delete existing `workout_logs` rows for a workout before re-inserting on full sync — it appends. Fix: on full sync, `DELETE FROM workout_logs WHERE workout_id = ?` before re-inserting sets for each workout. Long-term: detect changed workouts via `updated_at` on the Hevy API side and re-process only those in regular sync.
-
-### `02JUN2026` — Edit Modal CSS Missing (Patterns Tab)
-Modal overlay opened but rendered unstyled — `.modal`, `.modal-title`, `.modal-subtitle`, `.modal-footer`, `.pattern-examples`, `.ex-row`, `.ex-list`, `.presets`, `.preset-btn`, `.slider-num-row`, `.pct-num-input`, `.pct-sym`, `.split-bar`, `.split-seg` CSS blocks all missing from stylesheet. Partially resolved: `.modal` box CSS restored. Slider layout still broken — `input[type="range"]` global `width: 100%` conflicts with flex layout in `.slider-num-row`; grid-based fix specced but not yet confirmed. In progress.
-
----
+###  NONE
 
 ## Planned Features / Refactors
-
-### `02JUN2026` — Session Verification: Add Workout Detail Context + Unverified Indicator
-Currently the verification UI shows only the session title — not enough context to verify confidently. Two changes needed:
-- **Detail view on verification card:** show date, duration, modality, sRPE, exercise list with set count. User should be able to confirm the session is what the title says it is before verifying.
-- **Unverified indicator:** badge or dot on the Workouts tab nav button when one or more sessions are pending verification. Mirrors the pattern of the existing unreviewed exercise indicator.
 
 ### `02JUN2026` — Move Exercise Naming / Needs-Review Card to Exercises Tab
 The canonical name "needs review" card currently lives on the Patterns tab. Patterns is for movement distribution (Knee/Hip/Push/Pull splits) — nomenclature is an exercise-level concern and belongs on the Exercises tab. Changes needed:
@@ -130,3 +116,6 @@ Pull daily macros (protein, carbs, fat) from Apple Health via Claude iOS Health 
 | Force Full Sync button | COMPLETE |
 | Movement Trend stale exercise names | COMPLETE |
 | Improved Exercise List | COMPLETE |
+| Pattern Stress Showing Zero Knee Stress After Heavy Quad Work | COMPLETE |
+| Edit Modal CSS Missing (Patterns Tab) | COMPLETE |
+| Regular Sync Does Not Pick Up Hevy Exercise Edits | COMPLETE |

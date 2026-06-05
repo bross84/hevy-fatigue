@@ -427,7 +427,9 @@ def _process_workout(db, workout, canonical_map):
             },
         )
     db.execute(session_stmt)
-
+    db.query(WorkoutLog).filter(WorkoutLog.workout_id == workout_id).delete(
+        synchronize_session=False
+    )
     for exercise in exercises:
         exercise_id = exercise.get('exercise_template_id')
         title = _resolve_canonical_title(
@@ -714,12 +716,10 @@ def incremental_sync(db, last_sync: str, canonical_map):
                 workout_id = event.get("id")
                 if workout_id is None:
                     continue
-                db.query(WorkoutLog).filter(WorkoutLog.workout_id == workout_id).delete(
-                    synchronize_session=False,
-                )
                 db.query(WorkoutSession).filter(
                     WorkoutSession.hevy_workout_id == workout_id
                 ).delete(synchronize_session=False)
+                db.query(WorkoutLog).filter(WorkoutLog.workout_id == workout_id).delete(synchronize_session=False)
             elif event_type == "updated":
                 workout = event.get("workout")
                 if workout:

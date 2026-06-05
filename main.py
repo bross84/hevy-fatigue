@@ -3111,6 +3111,42 @@ def get_pending_workout_sessions(days: int = 30, db: Session = Depends(get_db)):
     return get_workout_sessions(days=days, status="pending", db=db)
 
 
+@app.get("/api/workout-sessions/{hevy_workout_id}/exercises")
+def get_session_exercise_summary(hevy_workout_id: str, db: Session = Depends(get_db)):
+    """Return exercise list with set counts for a single session (used by verification card)."""
+    session_row = db.query(WorkoutSession).filter(
+        WorkoutSession.hevy_workout_id == hevy_workout_id
+    ).first()
+    if not session_row:
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    rows = db.execute(
+        text(
+            """
+            SELECT exercise_title, COUNT(*) AS set_count
+            FROM workout_logs
+            WHERE workout_id = :wid
+            GROUP BY exercise_title
+            ORDER BY MIN(id)
+            """
+        ),
+        {"wid": hevy_workout_id},
+    ).fetchall()
+
+    return [{"title": r[0], "set_count": r[1]} for r in rows]
+
+
+@app.get("/api/workout-sessions/pending-count")
+def get_pending_session_count(days: int = 45, db: Session = Depends(get_db)):
+    """Returns count of pending sessions within the same date window as the verification queue."""
+    since = date_type.today() - timedelta(days=max(1, days) - 1)
+    count = db.query(WorkoutSession).filter(
+        WorkoutSession.verification_status == "pending",
+        WorkoutSession.workout_date >= since,
+    ).count()
+    return {"count": count}
+
+
 @app.get("/api/workout-sessions/{hevy_workout_id}")
 def get_workout_session_detail(hevy_workout_id: str, db: Session = Depends(get_db)):
     """Return one session plus on-demand detail for the Workouts session log."""

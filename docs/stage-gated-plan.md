@@ -2,6 +2,81 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+---
+
+## 2026-06-04 — Badge count window fix
+
+### Workflow
+- Express (single backend filter change + matching frontend fetch update)
+
+### Understanding
+- Make the Workouts pending badge use the same 45-day window as the verification queue so the badge count matches what the queue can show
+
+### Schema verification (required)
+- `PRAGMA table_info(workout_sessions)`: PASS
+
+### Changes
+
+#### Backend (main.py)
+- **Updated** `GET /api/workout-sessions/pending-count`:
+	- Added `days: int = 45`
+	- Reused queue-style `since` calculation
+	- Filter now includes `WorkoutSession.workout_date >= since`
+
+#### Frontend (static/index.html)
+- **Updated** `_updateWoPendingBadge()`:
+	- Fetches `/api/workout-sessions/pending-count?days=45`
+
+### Gate Results
+- `python -m py_compile main.py`: **PASS**
+- `get_errors(main.py, static/index.html)`: **PASS**
+- `GET /api/workout-sessions/pending-count?days=45`: **PASS** (`{"count":0}`)
+
+---
+
+## 2026-06-04 — Verification detail card + pending workouts badge
+
+### Workflow
+- Main (backend route addition + verification queue UI update)
+
+### Understanding
+- Add a session exercise summary endpoint for the verification card
+- Show date, duration, modality/sRPE, confidence, and exercise breakdown on each pending session card
+- Add a pending-session count badge on the Workouts nav buttons and refresh it on app load and after verification
+
+### Schema verification (required)
+- `PRAGMA table_info(workout_logs)`: PASS
+- `PRAGMA table_info(workout_sessions)`: PASS
+
+### Changes
+
+#### Backend (main.py)
+- **Added** `GET /api/workout-sessions/{hevy_workout_id}/exercises`:
+	- Confirms the session exists
+	- Aggregates `workout_logs` by `exercise_title`
+	- Preserves first-seen order with `ORDER BY MIN(id)`
+	- Returns a list of `{ title, set_count }`
+- **Added** `GET /api/workout-sessions/pending-count`:
+	- Returns `{ count }` for pending verification sessions
+
+#### Frontend (static/index.html)
+- **Updated** `loadSessionVerificationQueue()`:
+	- Added `_fmtVerifDate()` and `_fmtVerifModality()` helpers
+	- Expanded the meta line to include date, duration, modality/sRPE, and confidence
+	- Inserted per-card exercise detail blocks that load asynchronously after render
+- **Updated** `verifySessionFromCard()`:
+	- Refreshes the pending badge after successful verification
+- **Updated** `DOMContentLoaded`:
+	- Refreshes the pending badge on app init
+- **Updated** nav buttons:
+	- Desktop and mobile Workouts buttons now include pending-count badges
+
+### Gate Results
+- `python -m py_compile main.py`: **PASS**
+- `get_errors(main.py, static/index.html)`: **PENDING**
+- Route ordering: **PASS** — new routes placed before `/api/workout-sessions/{hevy_workout_id}`
+- Visual gate: **PENDING** — requires browser/app check to confirm badges and verification-card details
+
 ## 2026-06-02 — Importer UTC-to-local workout_date conversion
 
 ### Workflow
