@@ -2937,11 +2937,11 @@ body.ai-open main {
   </a>
   <div class="nav-tabs">
     <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
-    <button class="nav-tab" data-tab="exercise-metrics">Exercises</button>
+    <button class="nav-tab" data-tab="exercise-metrics">Exercises<span id="ex-conflict-badge" class="badge badge-conflict" style="display:none;margin-left:5px;"></span></button>
     <button class="nav-tab" data-tab="workouts">Workouts<span id="wo-pending-badge" class="badge badge-conflict" style="display:none;margin-left:5px;"></span></button>
     <button class="nav-tab" data-tab="ai">AI Coach</button>
     <button class="nav-tab" data-tab="log">Log</button>
-    <button class="nav-tab" data-tab="exercises">Patterns<span id="ex-conflict-badge" class="badge badge-conflict" style="display:none;margin-left:5px;"></span></button>
+    <button class="nav-tab" data-tab="exercises">Patterns</button>
     <a href="/static/docs.html" class="nav-tab">Docs</a>
     <button class="nav-tab" data-tab="settings">Settings</button>
   </div>
@@ -2964,7 +2964,7 @@ body.ai-open main {
     <button class="bottom-nav-btn" data-tab="exercise-metrics">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
   <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 3v5M6 3v5m14.5-4v1.5m0 0V7m0-1.5H22M3.5 4v1.5m0 0V7m0-1.5H2m16 0H6m4 0V10m4-4.5V10m4.952 6H5.062m9.194-6h-4.05c-1.007 0-1.38.144-1.934.992l-3.013 4.612c-.186.284-.259.51-.259.854C5 18.611 5.873 19 7.847 19h8.25C18.133 19 19 18.616 19 16.408c0-.306-.057-.51-.204-.773l-2.537-4.53c-.534-.953-.918-1.105-2.003-1.105M16 19v2m-8-2v2"/></svg>
-      Exercises
+      Exercises<span id="ex-conflict-badge-mobile" class="badge badge-conflict" style="display:none;margin-left:4px;font-size:10px;"></span>
     </button>
     <button class="bottom-nav-btn" data-tab="workouts">
       <svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 20 20">
@@ -2995,7 +2995,7 @@ body.ai-open main {
     </button>
     <button class="bottom-sheet-item" data-tab="exercises">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      Patterns<span id="ex-conflict-badge-mobile" class="badge" style="display:none;margin-left:5px;"></span>
+      Patterns
     </button>
     <a class="bottom-sheet-item" href="/static/docs.html">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -3188,25 +3188,6 @@ body.ai-open main {
 
 <!-- ══════════════ EXERCISE METRICS TAB ══════════════ -->
 <section id="tab-exercise-metrics" class="tab-content">
-  <div class="exm-header">
-    <input type="text" id="exm-search" placeholder="Search exercises by name…" autocomplete="off">
-    <div class="exm-filters">
-      <button class="exm-filter-btn active" data-filter="all">All</button>
-      <button class="exm-filter-btn" data-filter="active">Active (8 wks)</button>
-    </div>
-    <div class="exm-summary" id="exm-summary"><!-- populated by JS --></div>
-  </div>
-  <div id="exm-list"><!-- exercise cards populated by JS --></div>
-
-  <!-- Detail view (hidden by default) -->
-  <div id="exm-detail" class="exm-detail-view" style="display:none;">
-    <button id="exm-back-btn" class="exm-back-btn">← Back to Exercises</button>
-    <div id="exm-detail-content"><!-- populated by JS --></div>
-  </div>
-</section>
-
-<!-- ══════════════ EXERCISES TAB ══════════════ -->
-<section id="tab-exercises" class="tab-content">
   <div class="card" id="ex-conflict-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
       <div class="card-title" style="margin-bottom:0;">Exercise Names — Needs Review</div>
@@ -3240,7 +3221,25 @@ body.ai-open main {
       </div>
     </div>
   </div>
+  <div class="exm-header">
+    <input type="text" id="exm-search" placeholder="Search exercises by name…" autocomplete="off">
+    <div class="exm-filters">
+      <button class="exm-filter-btn active" data-filter="all">All</button>
+      <button class="exm-filter-btn" data-filter="active">Active (8 wks)</button>
+    </div>
+    <div class="exm-summary" id="exm-summary"><!-- populated by JS --></div>
+  </div>
+  <div id="exm-list"><!-- exercise cards populated by JS --></div>
 
+  <!-- Detail view (hidden by default) -->
+  <div id="exm-detail" class="exm-detail-view" style="display:none;">
+    <button id="exm-back-btn" class="exm-back-btn">← Back to Exercises</button>
+    <div id="exm-detail-content"><!-- populated by JS --></div>
+  </div>
+</section>
+
+<!-- ══════════════ EXERCISES TAB ══════════════ -->
+<section id="tab-exercises" class="tab-content">
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
       <div class="card-title" style="margin-bottom:0;">Exercise Movement Mappings</div>
@@ -3795,8 +3794,8 @@ function activateTab(tabName) {
   document.body.classList.toggle('ai-open', tabName === 'ai');
   if (tabName === 'dashboard') { loadTrainingLoadCard(); checkTodayReadiness(); }
   if (tabName === 'trend')                               activateTrendTab();
-  if (tabName === 'exercises')                           { loadExerciseConflicts(); if (exercises.length === 0) loadExercises(); }
-  if (tabName === 'exercise-metrics')                    loadExerciseMetrics('all');
+  if (tabName === 'exercises')                           { if (exercises.length === 0) loadExercises(); }
+if (tabName === 'exercise-metrics')                    { loadExerciseConflicts(); loadExerciseMetrics('all'); }
   if (tabName === 'workouts'  && !workoutsLoaded)        loadWorkouts();
   if (tabName === 'ai')                                   loadAISettings().then(() => loadAIContext());
   if (tabName === 'log'       && !logLoaded)             loadLog();

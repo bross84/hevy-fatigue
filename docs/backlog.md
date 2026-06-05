@@ -10,14 +10,8 @@ Last updated: 04JUN2026
 
 ## Planned Features / Refactors
 
-### `02JUN2026` — Move Exercise Naming / Needs-Review Card to Exercises Tab
-The canonical name "needs review" card currently lives on the Patterns tab. Patterns is for movement distribution (Knee/Hip/Push/Pull splits) — nomenclature is an exercise-level concern and belongs on the Exercises tab. Changes needed:
-- Move needs-review card UI to Exercises tab
-- Add indicator (badge or flag) on the Exercises tab nav button when one or more exercises have unreviewed canonical names
-- Patterns tab should be clean of naming concerns after this move
-
 ### `02JUN2026` — Move Movement Trend to Exercises Tab
-Movement Trend (exercise search + metric toggle + time window chart) currently lives on the Workouts tab. It is an exercise-level metric, not a session-level one. Workouts tab should own session-level views only. Exercises tab should own all per-exercise views: metrics browser, naming/canonical review, and movement trend. Move the Movement Trend card to the Exercises tab.
+Movement Trend (exercise search + metric toggle + time window chart) currently lives on the Workouts tab. It is an exercise-level metric, not a session-level one. Workouts tab should own session-level views only. Exercises tab should own all per-exercise views: metrics browser, naming/canonical review, and movement trend. Keep this item open until the card is actually moved out of the Workouts tab.
 
 ### `02JUN2026` — Dead Code Audit
 Review `index.html` and `main.py` for dead code — unreachable JS functions, orphaned DOM sections, unused endpoints, and stale CSS classes. Known candidate: `tab-trend` section may still exist in DOM but be inaccessible from nav. Audit before any major feature work to reduce noise for Copilot.
@@ -28,8 +22,6 @@ Review `index.html` and `main.py` for dead code — unreachable JS functions, or
 If exercise name needs review for canonical naming, there should be a flag of some type.
 
 Move renaming confirmation to Exercises tab.
-
-Movement trend from Workouts also should move to Exercises tab.
 
 ### `11MAY2026` — MRV Stats
 Surface Maximum Recoverable Volume indicators informed by JTS fatigue framework.
@@ -98,6 +90,7 @@ Pull daily macros (protein, carbs, fat) from Apple Health via Claude iOS Health 
 | Item | Resolution |
 |---|---|
 | Edit modal `.open` vs `.active` class mismatch | COMPLETE — 02JUN2026. `openModal()` and `closeModal()` corrected to use `.active` matching the CSS rule. |
+| Session verification detail card + pending Workouts badge | COMPLETE — 04JUN2026. Added the verification-card exercise summary, richer meta line, and pending-session nav badge updates. |
 | Docs page check-in schema | COMPLETE — updated `static/docs.html` on 21MAY2026 to match implemented 0–4 fields, subjective weighting formula, current TSB labels, and joint advisory behavior. |
 | Trend history window | Fixed at 30 days. `_trendSlice` hardcodes `slice(-30)` by design. Range buttons change baseline smoothing term only. |
 | HYP sRPE fallback | COMPLETE — merged 11MAY2026. `sRPE × duration_minutes / HYP_SRPE_SCALE` when ≥50% of sets lack RPE values. |
@@ -119,3 +112,4 @@ Pull daily macros (protein, carbs, fat) from Apple Health via Claude iOS Health 
 | Pattern Stress Showing Zero Knee Stress After Heavy Quad Work | COMPLETE |
 | Edit Modal CSS Missing (Patterns Tab) | COMPLETE |
 | Regular Sync Does Not Pick Up Hevy Exercise Edits | COMPLETE |
+| Move Exercise Naming / Needs-Review Card to Exercises Tab | COMPLETE — 04JUN2026. Conflict card, badge, and tab trigger moved from Patterns to Exercises tab. HTML structure repaired after initial split. |

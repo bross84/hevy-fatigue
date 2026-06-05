@@ -1,6 +1,69 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-06-04 (Badge count window fix)
+Last updated: 2026-06-04 (Move Exercise Naming / Needs-Review Card to Exercises Tab)
+
+## Latest Update (2026-06-04 — Move Exercise Naming / Needs-Review Card to Exercises Tab)
+
+- Workflow selected: Main
+- Files changed: `static/index.html`
+
+### Summary
+- Moved the Exercise Names — Needs Review card from the Patterns tab (`#tab-exercises`) to the Exercises tab (`#tab-exercise-metrics`)
+- Moved the conflict nav badge from the Patterns nav buttons to the Exercises nav buttons (desktop + mobile)
+- Rewired `activateTab()` so `loadExerciseConflicts()` fires on `exercise-metrics` instead of `exercises`
+- Required a structural HTML repair pass after the initial move split the card across two tab sections
+
+### Changes
+
+#### static/index.html
+- **Moved** `#ex-conflict-card` block (title, toggle button, body, override form) into `#tab-exercise-metrics` as the first child, before `<div class="exm-header">`
+- **Removed** orphaned `#ex-conflict-body` from `#tab-exercises`
+- **Updated** desktop nav: `ex-conflict-badge` span moved from Patterns button to Exercises button
+- **Updated** bottom nav: `ex-conflict-badge-mobile` span moved from Patterns bottom-sheet item to Exercises bottom-nav button
+- **Updated** `activateTab()`: `loadExerciseConflicts()` moved from `exercises` branch to `exercise-metrics` branch alongside `loadExerciseMetrics()`
+
+### Gate Results
+- Visual — Exercises tab: conflict card renders above exercise list as a distinct card: **PASS**
+- Visual — Patterns tab: no orphaned content, no badge: **PASS**
+- Functional — Details toggle expands/collapses body: **PASS**
+- Functional — Badge updates after conflict resolve/dismiss: **PASS**
+- Mobile — bottom nav Exercises button shows badge when conflicts exist: **PASS**
+
+## Latest Update (2026-06-04 — Backlog closed-section bookkeeping)
+
+- Workflow selected: Express
+- Files changed: `docs/backlog.md`
+
+### Summary
+- Added the completed verification detail + pending badge work to the closed section of the backlog so the removed planning item is also recorded as done
+
+### Changes
+
+#### docs/backlog.md
+- **Updated** the `Design Decisions / Closed / Won't Fix` table:
+	- added `Session verification detail card + pending Workouts badge` as COMPLETE on `04JUN2026`
+
+### Gate Results
+- `get_errors(docs/backlog.md)`: **PASS**
+
+## Latest Update (2026-06-04 — Backlog status correction for Movement Trend)
+
+- Workflow selected: Express
+- Files changed: `docs/backlog.md`
+
+### Summary
+- Corrected backlog state for the Movement Trend relocation item after verifying the UI still renders the card under the Workouts tab
+
+### Changes
+
+#### docs/backlog.md
+- **Updated** the `Move Movement Trend to Exercises Tab` item:
+	- clarified that it remains open until the card is actually moved
+- **Removed** the stale legacy note under `Canonical Name Notification` that implied the Movement Trend move had already been handled
+
+### Gate Results
+- `get_errors(docs/backlog.md)`: **PASS**
+- UI status verification: **PASS** — `static/index.html` still defines the Movement Trend card under `#tab-workouts`
 
 ## Latest Update (2026-06-04 — Badge count window fix)
 

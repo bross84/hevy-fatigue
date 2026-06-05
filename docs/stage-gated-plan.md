@@ -4,6 +4,84 @@ This document locks implementation to strict stage gates and dependency order.
 
 ---
 
+## 2026-06-04 — Move Exercise Naming / Needs-Review Card to Exercises Tab
+
+### Workflow
+- Main (multi-surface frontend relocation and wiring update)
+
+### Understanding
+- Relocate the needs-review conflict card from Patterns to Exercises, move its nav badges to Exercises (desktop + mobile), and retarget conflict loading to the `exercise-metrics` tab path so behavior and UI location stay aligned
+
+### Schema verification (required)
+- N/A
+
+### Changes
+
+#### Frontend (static/index.html)
+- **Moved** `#ex-conflict-card` into `#tab-exercise-metrics` before the exercise metrics header
+- **Removed** orphaned conflict body content from `#tab-exercises`
+- **Moved** conflict badge spans to Exercises nav controls:
+	- desktop `ex-conflict-badge`
+	- mobile `ex-conflict-badge-mobile`
+- **Updated** `activateTab()` routing:
+	- `loadExerciseConflicts()` now runs under `exercise-metrics` (with `loadExerciseMetrics('all')`) instead of `exercises`
+- **Repaired** tab HTML structure after initial split side effects
+
+### Gate Results
+- Visual — Exercises tab conflict card location: **PASS**
+- Visual — Patterns tab cleanliness/no badge: **PASS**
+- Functional — details toggle behavior: **PASS**
+- Functional — conflict badge refresh after resolve/dismiss: **PASS**
+- Mobile — Exercises bottom-nav badge behavior: **PASS**
+
+---
+
+## 2026-06-04 — Backlog closed-section bookkeeping
+
+### Workflow
+- Express (docs-only backlog bookkeeping)
+
+### Understanding
+- The completed verification detail + pending badge work should also appear in the closed section of `docs/backlog.md` after being removed from the planned list
+
+### Schema verification (required)
+- N/A
+
+### Changes
+
+#### Documentation
+- **Updated** `docs/backlog.md`:
+	- added `Session verification detail card + pending Workouts badge` to the closed section table as COMPLETE on `04JUN2026`
+
+### Gate Results
+- `get_errors(docs/backlog.md)`: **PASS**
+
+---
+
+## 2026-06-04 — Backlog status correction for Movement Trend
+
+### Workflow
+- Express (docs-only status correction)
+
+### Understanding
+- The backlog should not mark the Movement Trend relocation as complete unless the card has actually been moved out of the Workouts tab
+
+### Schema verification (required)
+- N/A
+
+### Changes
+
+#### Documentation
+- **Updated** `docs/backlog.md`:
+	- clarified that `Move Movement Trend to Exercises Tab` remains open
+	- removed the stale legacy note that implied the move was already resolved
+
+### Gate Results
+- `get_errors(docs/backlog.md)`: **PASS**
+- UI status verification: **PASS** — `static/index.html` still contains the Movement Trend card inside `#tab-workouts`
+
+---
+
 ## 2026-06-04 — Badge count window fix
 
 ### Workflow
