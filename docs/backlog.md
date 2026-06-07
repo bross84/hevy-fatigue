@@ -113,3 +113,4 @@ Pull daily macros (protein, carbs, fat) from Apple Health via Claude iOS Health 
 | Edit Modal CSS Missing (Patterns Tab) | COMPLETE |
 | Regular Sync Does Not Pick Up Hevy Exercise Edits | COMPLETE |
 | Move Exercise Naming / Needs-Review Card to Exercises Tab | COMPLETE — 04JUN2026. Conflict card, badge, and tab trigger moved from Patterns to Exercises tab. HTML structure repaired after initial split. |
+| Volume·Fatigue chart rolling readiness mislabeled as "Readiness" | COMPLETE — 06JUN2026. Rolling readiness in Volume·Fatigue chart relabeled to "Fatigue" throughout (legend, axis, tooltip, note text). Main Readiness card and 7-Day Readiness Trend card unchanged. `index.html` only. |

@@ -587,6 +587,44 @@ main { max-width: 1200px; margin: 0 auto; padding: 74px 24px 20px; }
   color: var(--muted);
   line-height: 1.5;
 }
+.today-chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.today-chart-legend-swatch {
+  display: inline-block;
+  width: 24px;
+  height: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.today-chart-legend-label {
+  line-height: 1;
+}
+.today-chart-bands-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.today-band-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.today-band-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 0px;
+}
 .today-chart-empty {
   min-height: 180px;
   display: flex;
@@ -6984,7 +7022,7 @@ async function renderDashboardVFCard() {
     <div class="vf-chart-wrap"><canvas id="dashboard-vf-chart"></canvas></div>
     <div style="display:flex;gap:16px;margin-top:6px;font-size:11px;color:var(--muted);flex-wrap:wrap;" id="dashboard-vf-legend">
       <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--accent);opacity:0.8;"></span><span id="dvf-legend-signal">Tonnage</span></span>
-      <span style="display:flex;align-items:center;gap:4px;"><span style="width:20px;height:0;border-top:2px dashed #F59E0B;display:inline-block;"></span>Readiness</span>
+      <span style="display:flex;align-items:center;gap:4px;"><span style="width:20px;height:0;border-top:2px dashed #F59E0B;display:inline-block;"></span>Fatigue</span>
     </div>
     <div class="vf-chart-note" id="dashboard-vf-note"></div>
   `;
@@ -7011,19 +7049,19 @@ async function renderDashboardVFCard() {
       signalLabel = 'Tonnage';
       signalColor = c.warn;
       signalAxis  = 'Lbs';
-      noteText    = 'Daily tonnage (lbs lifted) vs. 7-day rolling readiness. Zero bars are rest days.';
+      noteText    = 'Daily tonnage (lbs lifted) vs. 7-day rolling fatigue. Zero bars are rest days.';
     } else if (_dashboardVfSignal === 'rpe') {
       signalData  = data.data.map(d => d.daily_stress);
       signalLabel = 'RPE Load';
       signalColor = c.accent;
       signalAxis  = 'Stress';
-      noteText    = 'Daily RPE Load vs. 7-day rolling readiness. RPE Load is a stress score combining set intensity and volume — heavier sets at higher RPE score higher than the same weight at lower effort. Zero bars are rest days.';
+      noteText    = 'Daily RPE Load vs. 7-day rolling fatigue. RPE Load is a stress score combining set intensity and volume — heavier sets at higher RPE score higher than the same weight at lower effort. Zero bars are rest days.';
     } else {
       signalData  = data.data.map(d => d.daily_set_count);
       signalLabel = 'Set Count';
       signalColor = c.push;
       signalAxis  = 'Sets';
-      noteText    = 'Daily working sets vs. 7-day rolling readiness. Zero bars are rest days.';
+      noteText    = 'Daily working sets vs. 7-day rolling fatigue. Zero bars are rest days.';
     }
 
     const noteEl = document.getElementById('dashboard-vf-note');
@@ -7297,7 +7335,17 @@ function renderTodayReadinessChart(history) {
   }
 
   card.innerHTML = `
-    <div class="card-title">7-Day Readiness Trend</div>
+<div class="today-chart-legend">
+      <span class="today-chart-legend-swatch" id="today-readiness-legend-swatch"></span>
+      <span class="today-chart-legend-label">Combined Score</span>
+    </div>
+<div class="today-chart-bands-legend">
+      <span class="today-band-item"><span class="today-band-swatch" style="background:rgba(2,47,64,0.60)"></span><span class="today-band-label">Low (0–6)</span></span>
+      <span class="today-band-item"><span class="today-band-swatch" style="background:rgba(82,178,207,0.70)"></span><span class="today-band-label">Recovery (6–8)</span></span>
+      <span class="today-band-item"><span class="today-band-swatch" style="background:rgba(79,180,119,0.70)"></span><span class="today-band-label">Optimal (8–13)</span></span>
+      <span class="today-band-item"><span class="today-band-swatch" style="background:rgba(255,178,15,0.70)"></span><span class="today-band-label">Elevated (13–14)</span></span>
+      <span class="today-band-item"><span class="today-band-swatch" style="background:rgba(158,43,37,0.70)"></span><span class="today-band-label">High (14–20)</span></span>
+    </div>
     <div class="today-chart-wrap"><canvas id="today-readiness-chart"></canvas></div>
     <div class="today-chart-note">Combined score uses the 80/20 subjective and objective weighting. Missing check-ins render as gaps.</div>
   `;
@@ -7375,6 +7423,8 @@ function renderTodayReadinessChart(history) {
     },
     plugins: [_todayReadinessBandsPlugin()],
   });
+    const swatch = document.getElementById('today-readiness-legend-swatch');
+    if (swatch) swatch.style.backgroundColor = c.accent;
 }
 
 function _resolveStateLabel(item, thresholds) {
@@ -7756,7 +7806,7 @@ function _vfBuildBarLineChart(canvasId, barData, barLabel, barColor, barAxisTitl
         },
         {
           type: 'line',
-          label: 'Readiness',
+          label: 'Fatigue',
           data: readinessData,
           borderColor: readinessColor,
           backgroundColor: 'transparent',
@@ -7786,8 +7836,8 @@ function _vfBuildBarLineChart(canvasId, barData, barLabel, barColor, barAxisTitl
             },
             label(ctxItem) {
               const value = ctxItem.parsed?.y;
-              if (ctxItem.dataset.label === 'Readiness') {
-                return value !== null && value !== undefined ? `Readiness: ${_fmt1(value)}` : 'Readiness: —';
+              if (ctxItem.dataset.label === 'Fatigue') {
+                return value !== null && value !== undefined ? `Fatigue: ${_fmt1(value)}` : 'Fatigue: —';
               }
               if (value === 0) return 'Rest day';
               return `${ctxItem.dataset.label}: ${_fmt1(value)}`;
@@ -7822,7 +7872,7 @@ function _vfBuildBarLineChart(canvasId, barData, barLabel, barColor, barAxisTitl
         },
         y1: {
           position: 'right',
-          title: { display: true, text: 'Readiness', color: readinessColor, font: { size: 11 } },
+          title: { display: true, text: 'Fatigue', color: readinessColor, font: { size: 11 } },
           ticks: { color: readinessColor, font: { size: 11 } },
           grid: { drawOnChartArea: false },
           min: 0,
