@@ -23,6 +23,8 @@ Features or improvements that would be good eventually but are not urgent.
 
 ## ✅ Recently Completed
 
+- 30OCT2026: Pattern Stress preserves exact soreness ratings, residual decaying load, and a separate gradual trend. Completed training is no longer discarded during monitoring gaps. Added pattern decay, evidence-gap, causal-cutoff and UI tests.
+
 - 30OCT2026: Shared smoother daily recommendations with immediate worsening, confirmed single-level recovery, and “Continue Training as Normal” for insufficient data. Startup/long-gap monitoring gates preserve continued training history. Dashboard, chart, log, diagnostics and AI snapshot agree. Regression coverage includes monitoring gaps and UI fallback rendering.
 Last 10 completed items with brief descriptions for context.
 

@@ -30,7 +30,7 @@ const context = vm.createContext({
   _trendChartBaseOptions:()=>({plugins:{tooltip:{}},scales:{x:{ticks:{}},y:{ticks:{}}}}),
   Chart:function(ctx,config) {this.config=config;context.lastChart=config;},
 });
-for (const name of ['escHtml','_stateClass','_renderTodayCards','renderTodayReadinessChart']) vm.runInContext(extract(page,name),context);
+for (const name of ['escHtml','_stateClass','_safePatternStatus','_safeJointAdvisory','_renderTodayCards','renderTodayReadinessChart']) vm.runInContext(extract(page,name),context);
 const fallback = {training_state:'insufficient_data',training_state_label:'Continue Training as Normal',
   training_state_detail:'Insufficient data to recommend a change.', data_sufficient:false,
   combined_score:2, smoothed_score:2};
@@ -58,3 +58,23 @@ html=diag.renderEngineSnapshot({checkin_exists:false,recommendation_v2:fallback}
 assert.ok(html.includes('Continue Training as Normal'));
 assert.ok(!html.includes('neutral fallback'));
 console.log('UI checks passed: fallback label, unavailable score, smoothed dashboard score, chart gaps, diagnostics, script syntax.');
+
+for (let rating=0;rating<=4;rating++) {
+  const labels=['None','Mild','Moderate','Significant','Severe'];
+  const profile={load_signal:.5,load_dots:3,load_data_sufficient:true,
+    soreness_rating:rating,soreness_signal:rating/4,soreness_dots:rating+1,
+    combined_signal:.8,dots_filled:5,data_sufficient:true};
+  context._renderTodayCards({today:{checkin_exists:true,recommendation_v2:{...fallback,pattern_status:{knee:profile}}}},0);
+  const patternHtml=element('dashboard-pattern-card').innerHTML;
+  const knee=patternHtml.slice(patternHtml.indexOf('pattern-gauge-name">Knee'),patternHtml.indexOf('pattern-gauge-name">Hip'));
+  assert.ok(knee.includes(labels[rating]),`Soreness ${rating} preserves its own label`);
+  assert.ok(knee.includes(`width:${(rating/4*100).toFixed(1)}%`));
+  assert.ok(knee.includes('Trend'));
+}
+context._renderTodayCards({today:{checkin_exists:false,recommendation_v2:{...fallback,pattern_status:{knee:{
+  load_signal:.5,load_dots:3,load_data_sufficient:true,soreness_rating:null,data_sufficient:false,
+}}}}},0);
+const missing=element('dashboard-pattern-card').innerHTML;
+assert.ok(missing.includes('width:50.0%'));
+assert.ok(missing.includes('pattern-gauge-status-pending">—'));
+console.log('Pattern UI checks passed: exact 0-4 labels, continuous fills, missing observations, persistent training load.');

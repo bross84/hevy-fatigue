@@ -118,6 +118,28 @@ Warm-up sets are excluded.
 
 Exercises marked "Exclude from stress calculations" are also excluded.
 
+## Pattern Stress
+
+The pattern card separates three signals for Knee, Hip, Push and Pull:
+
+- **Load:** recent imported stress with the existing 7/42-day EWMAs. Its relative
+  display uses `ATL / (2 × CTL)`, capped at 1, so residual load remains visible
+  after ATL falls below CTL. Completed-day training remains included during
+  monitoring gaps; today's workouts enter the following morning.
+- **Soreness:** your actual 0–4 regional rating, without smoothing or relabeling.
+  The labels are None, Mild, Moderate, Significant and Severe.
+- **Trend:** the higher of normalized load and observed soreness, with immediate
+  rises and gradual recovery (35% current signal, 65% previous trend). A lower
+  soreness answer does not instantly erase yesterday's pattern fatigue.
+
+A missing rating is unknown. Load can still display when its baseline is present;
+soreness and trend show gaps where appropriate. Trend monitoring needs three
+consecutive observations at startup/after gaps over seven days, plus at least
+three pattern-loading dates with 28 days since the oldest in the prior 180 days.
+The display is descriptive and its parameters are provisional, not measured
+physiological recovery rates. Existing pattern sensitivity settings classify the
+trend. The implementation is versioned `pattern-recovery-v1`.
+
 ## Daily Workflow
 
 1. Open the app

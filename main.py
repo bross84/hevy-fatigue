@@ -15,6 +15,8 @@ import json
 import os
 import threading
 
+from pattern_recovery import build_pattern_history
+
 from recommendations import build_history as build_recommendation_history, RATING_FIELDS
 
 from database import SessionLocal, DailyReadiness, WorkoutLog, WorkoutSession, ExerciseMapping, ExerciseCanonical, ExerciseConflict, AppSetting, init_db
@@ -1217,17 +1219,9 @@ def backfill_sessions_from_logs(db: Session = Depends(get_db)):
 # ── Training Load (ATL / CTL / TSB) ──────────────────────────────────────────
 
 def _training_stress_included_through(db: Session) -> date_type:
-    """
-    Freeze imported workout impact until the next check-in is submitted.
-
-    A readiness entry dated D is assumed to reflect training completed through D-1.
-    So only workout stress up to (latest_readiness_date - 1) is allowed to affect
-    ATL/CTL/TSB and fatigue recommendation math.
-    """
-    latest_readiness = db.query(func.max(DailyReadiness.date)).scalar()
-    if latest_readiness:
-        return latest_readiness - timedelta(days=1)
+    """Imported training through yesterday remains active even without check-ins."""
     return date_type.today() - timedelta(days=1)
+
 
 def _compute_training_load(days: int, db: Session) -> tuple[list[dict], float, float, dict, dict]:
     """
@@ -1347,8 +1341,7 @@ def _compute_training_load(days: int, db: Session) -> tuple[list[dict], float, f
     included_through = _training_stress_included_through(db)
 
     while current <= end:
-        # Ignore workouts that are newer than the unlocked stress window.
-        # They become active once the following day's readiness is submitted.
+        # Morning monitoring uses completed days; missing check-ins never erase training.
         locked_in = current <= included_through
         stress = stress_by_date.get(current, 0.0) if locked_in else 0.0
         p_stress = pattern_stress_by_date.get(current, {p: 0.0 for p in _PATTERNS}) if locked_in else {p: 0.0 for p in _PATTERNS}
@@ -1382,8 +1375,9 @@ def _compute_training_load(days: int, db: Session) -> tuple[list[dict], float, f
                 "stress":     round(stress, 2),
                 "pattern_loads": {
                     p: {
-                        "atl":     round(p_atl[p], 3),
-                        "ctl":     round(p_ctl[p], 3),
+                        "stress":  p_stress.get(p, 0.0),
+                        "atl":     round(p_atl[p], 6),
+                        "ctl":     round(p_ctl[p], 6),
                         "tsb":     round(p_ctl[p] - p_atl[p], 3),
                         "ton_atl": round(p_ton_atl[p], 1),
                     }
@@ -1815,39 +1809,27 @@ def _resolve_joint_advisory(joint_upper: int, joint_lower: int) -> dict:
     }
 
 
-def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness | None, calibration: dict | None = None, db: Session | None = None, today_date: date_type | None = None, today_tsb: float = 0.0, fatigue_score: float = 0.0, subjective_score: float | None = None, objective_score: float = 0.0, combined_score: float = 0.0, stress_by_date: dict | None = None, pattern_stress_by_date: dict | None = None, daily_recommendation: dict | None = None) -> dict:
+def _pattern_signal_history(db: Session, load_history: list[dict] | None = None) -> list[dict]:
+    if load_history is None:
+        load_history = _compute_training_load(365, db)[0]
+    rows = db.query(DailyReadiness).filter(DailyReadiness.date <= date_type.today()).all()
+    checkins = [dict(date=str(r.date), **{field: getattr(r, field) for field in
+                ("sore_quad_dom", "sore_posterior", "sore_upper_push", "sore_upper_pull")}) for r in rows]
+    return build_pattern_history(load_history, checkins)
+
+
+def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness | None, calibration: dict | None = None, db: Session | None = None, today_date: date_type | None = None, today_tsb: float = 0.0, fatigue_score: float = 0.0, subjective_score: float | None = None, objective_score: float = 0.0, combined_score: float = 0.0, stress_by_date: dict | None = None, pattern_stress_by_date: dict | None = None, daily_recommendation: dict | None = None, pattern_profiles: dict | None = None) -> dict:
     """
     Stage 6 recommendation engine using pattern ATL/CTL/TSB and same-day soreness.
     Produces a pattern-aware recommendation without implying hidden physiology.
     """
     thresholds = _resolve_v2_thresholds(calibration)
     tsb_thresholds = _resolve_tsb_state_thresholds(calibration)
-    soreness = _pattern_soreness_signals(checkin)
     joint_upper = int((checkin.joint_upper if checkin else 0) or 0)
     joint_lower = int((checkin.joint_lower if checkin else 0) or 0)
     joint_advisory = _resolve_joint_advisory(joint_upper, joint_lower)
-
-    pattern_rows = {}
-    for p in _PATTERN_KEYS:
-        pl = (today_pattern_loads or {}).get(p, {})
-        atl = float(pl.get("atl", 0.0) or 0.0)
-        ctl = float(pl.get("ctl", 0.0) or 0.0)
-        tsb = float(pl.get("tsb", ctl - atl) or 0.0)
-
-        load_signal = _pattern_tsb_signal(tsb, ctl)
-        soreness_signal = float(soreness[p])
-        combined_signal = round(_clamp((0.70 * load_signal) + (0.30 * soreness_signal), 0.0, 1.0), 3)
-        state = _state_from_signal(combined_signal, thresholds)
-
-        pattern_rows[p] = {
-            "atl": round(atl, 3),
-            "ctl": round(ctl, 3),
-            "tsb": round(tsb, 3),
-            "load_signal": round(load_signal, 3),
-            "soreness_signal": round(soreness_signal, 3),
-            "combined_signal": combined_signal,
-            "state": state,
-        }
+    if pattern_profiles is None:
+        pattern_profiles = _pattern_signal_history(db)[-1]["patterns"] if db is not None else {}
 
     daily = daily_recommendation
     if daily is None:
@@ -1861,28 +1843,13 @@ def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness 
         if fatigue_score is not None and daily["data_sufficient"]
         else ("Unavailable", "Insufficient monitoring data"))
 
-    ref_today = today_date or date_type.today()
-    if db is not None:
-        last_loaded_dates = _pattern_last_loaded_dates(db, ref_today, stress_by_date, pattern_stress_by_date)
-    else:
-        last_loaded_dates = {p: None for p in _PATTERN_KEYS}
-
     pattern_status = {}
     for p in _PATTERN_KEYS:
-        state = pattern_rows[p]["state"]
-        dots = _dots_filled(pattern_rows[p]["combined_signal"])
-        pattern_status[p] = {
-            "status": state,
-            "stress_level_label": _stress_level_label(dots),
-            "combined_signal": pattern_rows[p]["combined_signal"],
-            "days_since_loaded": _days_since_loaded(p, last_loaded_dates, ref_today),
-            "dots_filled": dots,
-            "dots_total": 5,
-            "load_signal": pattern_rows[p]["load_signal"],
-            "load_dots": _dots_filled(pattern_rows[p]["load_signal"]),
-            "soreness_signal": pattern_rows[p]["soreness_signal"],
-            "soreness_dots": _dots_filled(pattern_rows[p]["soreness_signal"]),
-        }
+        profile = dict(pattern_profiles.get(p, {}))
+        signal = profile.get("combined_signal")
+        profile["status"] = _state_from_signal(signal, thresholds) if signal is not None else "unknown"
+        profile["stress_level_label"] = ["Very low", "Low", "Moderate", "Elevated", "High"][profile["dots_filled"]-1] if signal is not None else "Insufficient data"
+        pattern_status[p] = profile
 
     return {
         "training_state": training_state,
@@ -1912,7 +1879,9 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
     """
     Return ATL/CTL/TSB history for the chart and today's summary values.
     """
-    history, atl_max, ctl_max, stress_by_date, pattern_stress_by_date = _compute_training_load(days, db)
+    all_loads, atl_max, ctl_max, stress_by_date, pattern_stress_by_date = _compute_training_load(max(365, days), db)
+    pattern_profiles = _pattern_signal_history(db, all_loads[-365:])[-1]["patterns"]
+    history = all_loads[-max(1, days):]
     today = history[-1] if history else {"date": str(date_type.today()), "atl": 0, "ctl": 0, "tsb": 0, "stress": 0}
     stress_included_through = _training_stress_included_through(db)
     latest_workout_date = db.query(func.max(WorkoutLog.date)).scalar()
@@ -1953,6 +1922,7 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
         today.get("pattern_loads", {}), checkin, calibration, db, date_type.today(),
         today.get("tsb", 0.0), fatigue_score, subjective_score, objective_score,
         combined_score, stress_by_date, pattern_stress_by_date, daily_recommendation=daily,
+        pattern_profiles=pattern_profiles,
     )
     daily_by_date = {r["date"]: r for r in recommendation_history}
     for item in history:
@@ -2028,7 +1998,9 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
 
 def _build_diagnostics_snapshot(db: Session) -> dict:
     today_date = date_type.today()
-    history, _, _, _, _ = _compute_training_load(60, db)
+    all_loads = _compute_training_load(365, db)[0]
+    pattern_profiles = _pattern_signal_history(db, all_loads)[-1]["patterns"]
+    history = all_loads[-60:]
     today = history[-1] if history else {
         "date": str(today_date),
         "atl": 0.0,
@@ -2118,6 +2090,7 @@ def _build_diagnostics_snapshot(db: Session) -> dict:
         objective_score,
         combined_score,
         daily_recommendation=daily,
+        pattern_profiles=pattern_profiles,
     )
 
     recent_sessions = (

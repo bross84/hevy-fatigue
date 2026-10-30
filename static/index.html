@@ -6735,23 +6735,7 @@ async function _getPendingSessionCount() {
 }
 
 function _safePatternStatus(r2) {
-    const _defaultPattern = () => ({ status: 'neutral', stress_level_label: 'Moderate', combined_signal: 0.0, days_since_loaded: null, dots_filled: 1, dots_total: 5, load_dots: 1, soreness_dots: 1 });
-    const fallback = { knee: _defaultPattern(), hip: _defaultPattern(), push: _defaultPattern(), pull: _defaultPattern() };
-    if (!r2 || !r2.pattern_status) return fallback;
-    const out = {};
-    for (const p of ['knee','hip','push','pull']) {
-      const v = r2.pattern_status[p] || {};
-      out[p] = {
-        status: v.status || 'neutral',
-        combined_signal: Number(v.combined_signal || 0),
-        days_since_loaded: v.days_since_loaded ?? null,
-        dots_filled: Math.max(1, Math.min(5, Number(v.dots_filled || 1))),
-        stress_level_label: v.stress_level_label || ['Fresh','Min. Stress','Normal Stress','Moderate Stress','High Stress'][Math.max(1,Math.min(5,Number(v.dots_filled||1)))-1],
-        load_dots: Math.max(1, Math.min(5, Number(v.load_dots || 1))),
-        soreness_dots: Math.max(1, Math.min(5, Number(v.soreness_dots || 1))),
-      };
-    }
-    return out;
+  return Object.fromEntries(['knee','hip','push','pull'].map(p => [p, r2?.pattern_status?.[p] || {}]));
 }
 
 function _safeJointAdvisory(r2) {
@@ -6823,64 +6807,36 @@ function _renderTodayCards(data, pendingCount) {
   `;
 
   const patterns = _safePatternStatus(recV2);
-  const forceNeutral = !checkinExists;
-  const GAUGE_META = {
-    1: { fillClass: 'pattern-gauge-fill-fresh',    statusClass: 'pattern-gauge-status-fresh',    label: 'Fresh',    pct: 10 },
-    2: { fillClass: 'pattern-gauge-fill-normal',   statusClass: 'pattern-gauge-status-normal',   label: 'Low',      pct: 30 },
-    3: { fillClass: 'pattern-gauge-fill-normal',   statusClass: 'pattern-gauge-status-normal',   label: 'Moderate', pct: 50 },
-    4: { fillClass: 'pattern-gauge-fill-elevated', statusClass: 'pattern-gauge-status-elevated', label: 'Elevated', pct: 75 },
-    5: { fillClass: 'pattern-gauge-fill-stressed', statusClass: 'pattern-gauge-status-stressed', label: 'High',     pct: 95 },
-  };
-  const SORENESS_META = {
-    1: { fillClass: 'pattern-gauge-fill-fresh',    statusClass: 'pattern-gauge-status-fresh',    label: 'None',        pct: 10 },
-    2: { fillClass: 'pattern-gauge-fill-normal',   statusClass: 'pattern-gauge-status-normal',   label: 'Mild',        pct: 30 },
-    3: { fillClass: 'pattern-gauge-fill-normal',   statusClass: 'pattern-gauge-status-normal',   label: 'Moderate',    pct: 50 },
-    4: { fillClass: 'pattern-gauge-fill-elevated', statusClass: 'pattern-gauge-status-elevated', label: 'Significant', pct: 75 },
-    5: { fillClass: 'pattern-gauge-fill-stressed', statusClass: 'pattern-gauge-status-stressed', label: 'Severe',      pct: 95 },
-  };
-
+  const META = [
+    {fill:'fresh',status:'fresh',label:'Very low'},
+    {fill:'normal',status:'normal',label:'Low'},
+    {fill:'normal',status:'normal',label:'Moderate'},
+    {fill:'elevated',status:'elevated',label:'Elevated'},
+    {fill:'stressed',status:'stressed',label:'High'},
+  ];
+  const soreLabels = ['None','Mild','Moderate','Significant','Severe'];
+  function gaugeRow(label, signal, dots, available, observedLabel) {
+    if (!available || signal == null || dots == null) return `
+      <div class="pattern-gauge-sub-row"><div class="pattern-gauge-sub-label">${label}</div>
+      <div class="pattern-gauge-track"><div class="pattern-gauge-fill pattern-gauge-fill-pending" style="width:0%"></div></div>
+      <div class="pattern-gauge-status pattern-gauge-status-pending">—</div></div>`;
+    const meta = META[Math.max(0,Math.min(4,dots-1))];
+    const pct = Math.max(0,Math.min(100,Number(signal)*100));
+    return `<div class="pattern-gauge-sub-row"><div class="pattern-gauge-sub-label">${label}</div>
+      <div class="pattern-gauge-track"><div class="pattern-gauge-fill pattern-gauge-fill-${meta.fill}" style="width:${pct.toFixed(1)}%"></div></div>
+      <div class="pattern-gauge-status pattern-gauge-status-${meta.status}">${observedLabel || meta.label}</div></div>`;
+  }
   const gauges = ['knee','hip','push','pull'].map(p => {
     const d = patterns[p];
-    const label = p.charAt(0).toUpperCase() + p.slice(1);
-    if (forceNeutral) {
-      return `
-      <div class="pattern-gauge-item">
-        <div class="pattern-gauge-name">${label}</div>
-        <div class="pattern-gauge-sub-row">
-          <div class="pattern-gauge-sub-label">Load</div>
-          <div class="pattern-gauge-track"><div class="pattern-gauge-fill pattern-gauge-fill-pending" style="width:15%;"></div></div>
-          <div class="pattern-gauge-status pattern-gauge-status-pending">—</div>
-        </div>
-        <div class="pattern-gauge-sub-row">
-          <div class="pattern-gauge-sub-label">Soreness</div>
-          <div class="pattern-gauge-track"><div class="pattern-gauge-fill pattern-gauge-fill-pending" style="width:15%;"></div></div>
-          <div class="pattern-gauge-status pattern-gauge-status-pending">—</div>
-        </div>
-      </div>`;
-    }
-    const loadMeta = GAUGE_META[Math.max(1, Math.min(5, d.load_dots))];
-    const soreMeta = SORENESS_META[Math.max(1, Math.min(5, d.soreness_dots))];
-    return `
-    <div class="pattern-gauge-item">
-      <div class="pattern-gauge-name">${label}</div>
-      <div class="pattern-gauge-sub-row">
-        <div class="pattern-gauge-sub-label">Load</div>
-        <div class="pattern-gauge-track"><div class="pattern-gauge-fill ${loadMeta.fillClass}" style="width:${loadMeta.pct}%;"></div></div>
-        <div class="pattern-gauge-status ${loadMeta.statusClass}">${loadMeta.label}</div>
-      </div>
-      <div class="pattern-gauge-sub-row">
-        <div class="pattern-gauge-sub-label">Soreness</div>
-        <div class="pattern-gauge-track"><div class="pattern-gauge-fill ${soreMeta.fillClass}" style="width:${soreMeta.pct}%;"></div></div>
-        <div class="pattern-gauge-status ${soreMeta.statusClass}">${soreMeta.label}</div>
-      </div>
+    return `<div class="pattern-gauge-item"><div class="pattern-gauge-name">${p.charAt(0).toUpperCase()+p.slice(1)}</div>
+      ${gaugeRow('Load',d.load_signal,d.load_dots,d.load_data_sufficient)}
+      ${gaugeRow('Soreness',d.soreness_signal,d.soreness_dots,d.soreness_rating != null,soreLabels[d.soreness_rating])}
+      ${gaugeRow('Trend',d.combined_signal,d.dots_filled,d.data_sufficient)}
     </div>`;
   }).join('');
-
   document.getElementById('dashboard-pattern-card').innerHTML = `
-    <div class="dashboard-card-title">Pattern Stress</div>
-    <div class="pattern-gauge-row">${gauges}</div>
-    ${!checkinExists ? '<div class="today-grid-note">No check-in today — pattern signals based on training load only</div>' : ''}
-  `;
+    <div class="dashboard-card-title">Pattern Stress</div><div class="pattern-gauge-row">${gauges}</div>
+    <div class="today-grid-note">Load uses training through yesterday and decays on rest days. Soreness shows your latest rating unchanged. Trend retains recent pattern fatigue as recovery improves. Missing or insufficient observations show —.</div>`;
 
   const jointCard = document.getElementById('today-joint-card');
   const jointAdv = _safeJointAdvisory(recV2);

@@ -100,7 +100,7 @@ docker exec -it hevy-fatigue sqlite3 /data/hevy_fatigue.db
 
 Four patterns: Knee, Hip, Push, Pull. There is no fifth pattern bucket. Each exercise in `exercise_mappings` carries percentage weights across four columns (`pct_quad_dom`, `pct_posterior`, `pct_upper_push`, `pct_upper_pull`). Session stress is distributed to pattern buckets proportionally based on these weights. For conditioning sessions with no mapped exercises, the system falls back to 25/25/25/25 equal distribution.
 
-Pattern stress dots use `_pattern_tsb_signal(tsb, ctl)` — not an ATL/CTL ratio. Do not substitute.
+Updated 30OCT2026 at the user's request: `pattern_recovery.py` implements `pattern-recovery-v1`. The card separates exact 0–4 soreness, decaying load (`ATL / (2 × CTL)`, capped at 1) and a gradual fatigue trend. This supersedes the old clipped-TSB display, which dropped to zero at balance. Legacy `_pattern_tsb_signal` is retained for compatibility, not used by the active pattern card. Monitoring gaps never remove completed training from the EWMAs; unknown ratings are not zero. See README Pattern Stress for evidence gates and provisional parameters.
 
 ---
 
