@@ -5075,15 +5075,15 @@ async function loadLog() {
     count.textContent = `${entries.length} entr${entries.length === 1 ? 'y' : 'ies'}`;
 
     function _sparkline(values, width = 56, height = 18) {
-      const nums = (values || []).map(v => +v).filter(v => Number.isFinite(v));
+      const nums = (values || []).filter(v => v != null).map(Number).filter(Number.isFinite);
       if (!nums.length) return '';
       if (nums.length === 1) {
-        const y = height - ((nums[0] / 10) * height);
+        const y = height - ((nums[0] / 20) * height);
         return `<svg class="sparkline" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none"><line x1="0" y1="${y.toFixed(2)}" x2="${width}" y2="${y.toFixed(2)}" stroke="var(--accent)" stroke-width="1.8" /></svg>`;
       }
       const pts = nums.map((v, idx) => {
         const x = (idx / (nums.length - 1)) * width;
-        const y = height - ((Math.max(0, Math.min(10, v)) / 10) * height);
+        const y = height - ((Math.max(0, Math.min(20, v)) / 20) * height);
         return `${x.toFixed(2)},${y.toFixed(2)}`;
       }).join(' ');
       return `<svg class="sparkline" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none"><polyline fill="none" stroke="var(--accent)" stroke-width="1.8" points="${pts}" /></svg>`;
@@ -5102,7 +5102,7 @@ async function loadLog() {
       <tbody>
       ${entries.map((e, i) => {
         const rec = REC_META[e.recommendation_adjusted] || REC_META.continue;
-        const fatigueVal = Number.isFinite(+e.fatigue_score) ? (+e.fatigue_score).toFixed(1) : '—';
+        const fatigueVal = e.fatigue_score != null && Number.isFinite(+e.fatigue_score) ? (+e.fatigue_score).toFixed(1) : '—';
         const trendWindow = entries.slice(i, i + 7).map(x => x.fatigue_score).reverse();
         return `<tr>
         <td style="white-space:nowrap;">${e.date}</td>
@@ -6663,6 +6663,7 @@ function syncModal() {
 
 // ═══ Training Load card (Dashboard) ══════════════════
 const REC_META = {
+  insufficient_data: { label: 'Continue Training as Normal', cls: 'rec-continue', img: 'normal.png' },
   large_increase: { label: '↑↑ Large Increase', cls: 'rec-large-increase', img: 'fresh.png'   },
   increase:       { label: '↑ Increase',         cls: 'rec-increase',       img: 'fresh.png'   },
   continue:       { label: '→ Continue',          cls: 'rec-continue',       img: 'normal.png'  },
@@ -6795,7 +6796,8 @@ function _renderTodayCards(data, pendingCount) {
   const subjScore = recV2?.subjective_score ?? null;
   const objScore = recV2?.objective_score ?? null;
   const combScore = recV2?.combined_score ?? null;
-  const readinessScore = checkinExists ? Number(combScore ?? objScore ?? 0).toFixed(1) : '—';
+  const readinessScore = recV2?.data_sufficient && recV2?.smoothed_score != null
+    ? Number(recV2.smoothed_score).toFixed(1) : '—';
   document.getElementById('dashboard-readiness-card').innerHTML = `
     <div class="dashboard-card-title">Readiness</div>
     <div class="readiness-score">${readinessScore}</div>
@@ -7337,7 +7339,7 @@ function renderTodayReadinessChart(history) {
   card.innerHTML = `
 <div class="today-chart-legend">
       <span class="today-chart-legend-swatch" id="today-readiness-legend-swatch"></span>
-      <span class="today-chart-legend-label">Combined Score</span>
+      <span class="today-chart-legend-label">Fatigue Trend</span>
     </div>
 <div class="today-chart-bands-legend">
       <span class="today-band-item"><span class="today-band-swatch" style="background:rgba(2,47,64,0.60)"></span><span class="today-band-label">Low (0–6)</span></span>
@@ -7347,13 +7349,13 @@ function renderTodayReadinessChart(history) {
       <span class="today-band-item"><span class="today-band-swatch" style="background:rgba(158,43,37,0.70)"></span><span class="today-band-label">High (14–20)</span></span>
     </div>
     <div class="today-chart-wrap"><canvas id="today-readiness-chart"></canvas></div>
-    <div class="today-chart-note">Combined score uses the 80/20 subjective and objective weighting. Missing check-ins render as gaps.</div>
+    <div class="today-chart-note">Fatigue trend retains recent fatigue as recovery improves. Missing or insufficient monitoring data renders as gaps. Increases also require confirmation.</div>
   `;
 
   const c = themeColors();
   const ctx = document.getElementById('today-readiness-chart').getContext('2d');
   const labels = history.map(item => _weekdayLabel(item.date));
-  const points = history.map(item => item.combined_score == null ? null : Number(item.combined_score));
+  const points = history.map(item => !item.data_sufficient || item.smoothed_score == null ? null : Number(item.smoothed_score));
   _destroyTodayReadinessChart();
 
   todayReadinessChart = new Chart(ctx, {
@@ -7362,7 +7364,7 @@ function renderTodayReadinessChart(history) {
       labels,
       datasets: [
         {
-          label: 'Combined score',
+          label: 'Fatigue trend',
           data: points,
           borderColor: c.accent,
           backgroundColor: c.accent + '33',
@@ -7392,13 +7394,15 @@ function renderTodayReadinessChart(history) {
             },
             label(ctxItem) {
               if (ctxItem.parsed?.y == null) return 'Combined: no check-in';
-              return `Combined: ${Number(ctxItem.parsed.y).toFixed(1)}`;
+              return `Fatigue trend: ${Number(ctxItem.parsed.y).toFixed(1)}`;
             },
             afterBody(items) {
               const idx = items?.[0]?.dataIndex ?? 0;
               const day = history[idx] || {};
               return [
-                `Objective: ${Number(day.objective_score ?? 0).toFixed(1)}`,
+                `Recommendation: ${day.recommendation_label || 'Continue Training as Normal'}`,
+                `Combined: ${day.combined_score == null ? 'unavailable' : Number(day.combined_score).toFixed(1)}`,
+                `Objective: ${day.objective_score == null ? 'unavailable' : Number(day.objective_score).toFixed(1)}`,
                 `Subjective: ${day.subjective_score == null ? 'none' : Number(day.subjective_score).toFixed(1)}`,
               ];
             },

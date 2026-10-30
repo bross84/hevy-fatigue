@@ -3,7 +3,7 @@
 ## 🔴 Pre-Release (must fix before public release)
 Items that are known bugs or missing features that would affect any user.
 
-- [ ] Bug: HYP sRPE fallback double-counts stress when sets have no RPE. Location: `calculate_stress_scores()` in `main.py` and `get_intensity_pct()` in `rpe_table.py`. Trigger: verified HYP session with >=50% sets missing RPE. Pathway 1 currently estimates intensity via Wendler fallback and contributes central/peripheral stress for all sets, then Pathway 4 adds sRPE fallback stress on top. Expected: when Pathway 4 triggers, exclude Pathway 1 set-level stress for that session so Pathway 4 is the sole stress source. Evidence: CC4.3.4 HYP @8 (May 11, 24 min, all sets missing RPE) shows RPE Load 345.6 vs expected fallback value 6.62 (8 x 24 / 29).
+- [x] Fixed 30OCT2026: HYP sRPE fallback double-counting in `calculate_stress_scores()`. Verified HYP sessions with sRPE, duration, and >=50% missing RPE now use Pathway 4 exclusively; their sets are excluded from Pathway 1. Existing fallback scaling and pattern distribution are preserved. Regression tests: `tests/test_hypertrophy_stress.py`.
 - [ ] Resolve dead code: tab-trend section still exists in DOM but is inaccessible from nav - remove section HTML and associated JS (renderVolFatigueView, activateTrendTab, _vfChartRpe/Tonnage/Sets, _vfRenderCharts).
 - [ ] Complete README and FAQ documentation for public-facing release use.
 
@@ -22,6 +22,8 @@ Features or improvements that would be good eventually but are not urgent.
 - Surface in-app notification when workouts are removed during sync (deleted from Hevy).
 
 ## ✅ Recently Completed
+
+- 30OCT2026: Shared smoother daily recommendations with immediate worsening, confirmed single-level recovery, and “Continue Training as Normal” for insufficient data. Startup/long-gap monitoring gates preserve continued training history. Dashboard, chart, log, diagnostics and AI snapshot agree. Regression coverage includes monitoring gaps and UI fallback rendering.
 Last 10 completed items with brief descriptions for context.
 
 1. Complete dashboard layout overhaul - sidebar (readiness, pattern stress gauges, recent sessions) + full-width chart stack, responsive single-column on mobile.
