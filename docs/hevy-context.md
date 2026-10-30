@@ -160,3 +160,18 @@ Do not touch without an explicit spec. Log any incidental observation under "Out
 | Commits | No `git commit` or `git push`. Brian commits after review. |
 | Deletions | No permanent deletions without explicit written instruction. |
 | Column names | Always verify with `PRAGMA table_info`. Never assume. |
+## Cross-project continuation (2026-10-30)
+
+Daily recommendations use `recovery-confirmation-v1`; the pattern card uses
+`pattern-recovery-v1`. Rackbook records the pinned daily model as a separate
+`hf-recovery-shadow-v1` arm while retaining its existing `shared-trial-v0` trial.
+Two homelab shadow observations were unavailable, while a later read-only probe
+succeeded; the original failure cause is unknown. Rackbook now logs safe capture
+phase/cause diagnostics without rewriting trial records or changing model rules.
+
+Continue with Rackbook's [fatigue handoff guide](https://github.com/bross84/rackbook/blob/main/docs/fatigue-handoff.md),
+plus its `AGENTS.md`, context and backlog. It contains deployment, bridge/logging
+checks, preserved-record guarantees and next steps. This logging follow-up needs
+only a Rackbook rebuild; this Hevy Fatigue follow-up is documentation-only.
+Private replay exports under `data/analysis/` are ignored by Git and are not
+transferred to another PC. Production databases/keys remain on the homelab.

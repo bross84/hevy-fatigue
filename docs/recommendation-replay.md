@@ -73,3 +73,15 @@ gaps, continued training, incomplete data, evidence boundaries, causal windows,
 recovery confirmation and HTTP consistency across dashboard/history/log/diagnostics.
 `node tests/test_recommendation_ui.cjs` checks fallback rendering, smoothed scores,
 chart gaps and diagnostics without contacting a live service.
+
+## Other-PC continuation and live capture diagnostics
+
+Rackbook's new trial arm freezes the actual daily model alongside the legacy
+movement trial; it does not rewrite the historical replay or original trial data.
+The October 30 unavailable captures later proved readable via a fresh probe,
+but their original failure cause remains unknown. New Rackbook diagnostic logs
+identify future failures without altering frozen observations. See the
+[cross-project handoff](https://github.com/bross84/rackbook/blob/main/docs/fatigue-handoff.md)
+for current status, update/verification commands and a development checklist.
+The local private exports referenced above are intentionally not committed;
+obtain new read-only snapshots if continuing analysis elsewhere.
