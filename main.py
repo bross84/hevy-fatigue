@@ -183,7 +183,7 @@ def calculate_stress_scores(
     hyp_scale: float = 29.0,
 ) -> dict:
     """
-    Calculate central and peripheral stress for a given day across three pathways,
+    Calculate central and peripheral stress for a given day across four pathways,
     plus per-pattern (knee/hip/push/pull) stress for Stage 5 EWMA inputs.
 
     Pathway 1 — Strength / Hypertrophy (per-set RPE math, unchanged):
@@ -202,6 +202,10 @@ def calculate_stress_scores(
         central   = raw × 0.30
         peripheral = raw × 0.70
         pattern_stress — zero (cardio has no pattern distribution)
+
+    Pathway 4 — Hypertrophy sRPE fallback (verified sessions only):
+        When >=50% of sets lack RPE and sRPE + duration exist, replace Pathway 1
+        for the entire session using the conditioning formula and hyp_scale.
 
     Unverified conditioning/cardio sessions contribute zero stress (silent).
     Multiple sessions on the same date are summed.
@@ -232,6 +236,55 @@ def calculate_stress_scores(
         if not (s.is_conditioning or s.exercise_title in conditioning_titles)
     ]
 
+    # Choose the HYP stress source before accumulating any per-set stress.
+    # A qualifying fallback replaces the entire session, including sets with RPE.
+    hyp_sessions = (
+        db.query(WorkoutSession)
+        .filter(
+            WorkoutSession.workout_date == target_date,
+            WorkoutSession.verification_status == "verified",
+            WorkoutSession.srpe.isnot(None),
+            WorkoutSession.duration_minutes.isnot(None),
+            WorkoutSession.modality == "hypertrophy",
+        )
+        .all()
+    )
+
+    hyp_fallback_sessions = []
+    for session in hyp_sessions:
+        # Check per-set RPE coverage for this session's sets
+        session_sets = [
+            s for s in working_sets
+            if s.workout_id == session.hevy_workout_id
+        ]
+        if not session_sets:
+            # No sets found in working_sets for this session -
+            # all sets may have been excluded as conditioning.
+            # Still attempt fallback using all sets on the date
+            # that match this workout_id.
+            session_sets = [
+                s for s in sets
+                if s.workout_id == session.hevy_workout_id
+            ]
+
+        total_sets = len(session_sets)
+        if total_sets == 0:
+            continue
+
+        missing_rpe = sum(
+            1 for s in session_sets
+            if s.rpe is None or s.rpe == 0.0
+        )
+        missing_ratio = missing_rpe / total_sets
+
+        if missing_ratio < HYP_FALLBACK_THRESHOLD:
+            # Sufficient RPE coverage: retain the per-set pathway.
+            continue
+
+        hyp_fallback_sessions.append((session, session_sets))
+
+    hyp_fallback_ids = {session.hevy_workout_id for session, _ in hyp_fallback_sessions}
+
     # Fetch pct mappings for all working-set exercises in one query so pattern
     # stress can be accumulated in the same pass as central/peripheral.
     strength_titles = {s.exercise_title for s in working_sets if s.exercise_title}
@@ -248,6 +301,8 @@ def calculate_stress_scores(
     knee = hip = push = pull = 0.0
 
     for s in working_sets:
+        if s.workout_id in hyp_fallback_ids:
+            continue
         c = get_set_central_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
         p = get_set_peripheral_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
         central    += c
@@ -331,49 +386,7 @@ def calculate_stress_scores(
     # Uses same formula as conditioning but with a separate scale factor.
     hyp_scaling_factor = hyp_scale if hyp_scale > 0.0 else 29.0
 
-    hyp_sessions = (
-        db.query(WorkoutSession)
-        .filter(
-            WorkoutSession.workout_date == target_date,
-            WorkoutSession.verification_status == "verified",
-            WorkoutSession.srpe.isnot(None),
-            WorkoutSession.duration_minutes.isnot(None),
-            WorkoutSession.modality == "hypertrophy",
-        )
-        .all()
-    )
-
-    for session in hyp_sessions:
-        # Check per-set RPE coverage for this session's sets
-        session_sets = [
-            s for s in working_sets
-            if s.workout_id == session.hevy_workout_id
-        ]
-        if not session_sets:
-            # No sets found in working_sets for this session -
-            # all sets may have been excluded as conditioning.
-            # Still attempt fallback using all sets on the date
-            # that match this workout_id.
-            session_sets = [
-                s for s in sets
-                if s.workout_id == session.hevy_workout_id
-            ]
-
-        total_sets = len(session_sets)
-        if total_sets == 0:
-            continue
-
-        missing_rpe = sum(
-            1 for s in session_sets
-            if s.rpe is None or s.rpe == 0.0
-        )
-        missing_ratio = missing_rpe / total_sets
-
-        if missing_ratio < HYP_FALLBACK_THRESHOLD:
-            # Per-set RPE data is sufficient - Pathway 1 already
-            # handled this session. Skip fallback.
-            continue
-
+    for session, session_sets in hyp_fallback_sessions:
         # Fallback: sRPE x duration x (1 / hyp_scaling_factor)
         if session.srpe is None or session.duration_minutes is None:
             continue
