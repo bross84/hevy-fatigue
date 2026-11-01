@@ -175,3 +175,73 @@ checks, preserved-record guarantees and next steps. This logging follow-up needs
 only a Rackbook rebuild; this Hevy Fatigue follow-up is documentation-only.
 Private replay exports under `data/analysis/` are ignored by Git and are not
 transferred to another PC. Production databases/keys remain on the homelab.
+
+
+## Phase 1 combined application (2026-10-31)
+
+The workout workflow now lives in the isolated rackbook package at /training.
+The host retains its monitoring engine, SQLAlchemy database and input selection;
+logging retains sqlite3 and a separate RACKBOOK_DB_PATH. These are explicit
+exceptions to the old host-only ORM/file-layout constraints above. credentials.py
+owns the shared active Hevy credential. Host startup initializes both applications.
+Log Workout and Plans are separate destinations; the old Log tab label is Check-in
+History. Settings can be opened with /#settings using an allowlisted tab hash.
+
+Save recovery, source revisions, tests and inventory: [integration](training-integration.md).
+Draft transfer, backup, controlled switch and rollback: [cutover](training-cutover.md).
+No production deployment or old-service retirement is part of implementation.
+The coding assistant implements directly; no Copilot handoff is required.
+
+Production backup/copy preflight passed on the operator's 20261101T025736Z
+snapshots: key-pair decryption, existing-record preservation, frozen trials and
+same-cutoff host outputs verified offline. Private copies are outside Git under
+the user's hevy-phase1-verification directory. No deployment occurred; final
+quiesced backups and the remaining cutover gates still apply. See the release
+evidence in training-verification.md for the explained RPE CSV fingerprint change.
+
+The write-disabled cutover-review Compose override pins discovered external
+volumes/network and requires a reviewed image. Local and homelab merged config
+rendering passed (homelab Compose v5.4.0, exit code 0); CasaOS metadata is inherited
+from the active host Compose. The combined app retains the existing Cloudflare
+origin and requires no Tailscale route change. The operator reports
+no unfinished work on the only two Rackbook devices (PC and tablet on Tailscale
+HTTPS); recheck before cutover if either is used again. No services were stopped.
+
+Deployment image `hevy-fatigue:phase1-cutover-20261031-233737` is staged in the
+homelab image store, not running. Server and local immutable image IDs match
+(`sha256:ced9a086530c228f1bea17f7f704ab2fbfca7e073d9ecb07be49b33f28f46801`);
+write-disabled defaults, transfer checksum and exact-image isolated Python
+suites/startup smoke checks passed. Final snapshots and logging-volume staging
+still require later authorization. No commit, push or deployment occurred.
+
+Current testing status supersedes the preceding release-preparation notes:
+the operator temporarily stopped and then restarted both old apps; both are
+running again and no combined deployment occurred. The new logging volume was
+created and verified empty, with no final staging reported. The manually staged
+image is superseded and must remain unused. The final local review fixed mounted
+preview-path blocking and Recent's obsolete credential instructions; 74 host,
+467 logging (one expected failure) and 24 JS checks plus mocked browsers and
+Docker verification pass. Tablet/PWA checks remain explicitly deferred. Review
+and acceptance precede any separately authorized commit/push and GitHub-based
+release; do not resume the manual server sequence.
+
+The user subsequently authorized committing the reviewed integration and
+pushing only `codex/rackbook-integration`. Deployment, merging main and image
+publication remain unauthorized. The image workflow runs on main/manual dispatch,
+so this branch push does not publish an image or change either running app.
+
+Merge preparation (2026-11-01): `origin/main` is still the integration baseline
+`5bef649`, with no conflicts against reviewed commit `25bba2b`. Added PR-only
+read-only CI for Python, JavaScript and container startup; exact commands passed
+locally (74 host, 467 logging with one expected failure, 24 JS files). No new
+application changes. Prepare the PR and inspect hosted checks; do not merge,
+publish an image or deploy while the hold remains. Existing main image-publish
+workflow is unchanged and would trigger on a later main merge. Tablet/PWA
+acceptance remains deferred and the manually staged image is superseded.
+
+PR #70 is open for the integration, unmerged. Initial GitHub integration tests
+passed; CodeQL surfaced test-harness HTML extraction patterns. Shared test-only
+mixed-case script extraction plus a regression replaces duplicated patterns;
+all 25 JS checks pass locally without weakening existing behavioral assertions.
+Read hosted check results on the PR before merging; publication/deployment holds
+remain unchanged.

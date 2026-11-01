@@ -255,19 +255,8 @@ def _get_client_api_key(db) -> str | None:
     if api_key:
         return api_key
 
-    raw = _get_setting_value(db, "hevy_api_key")
-    if not raw:
-        return None
-
-    raw = raw.strip()
-    if not raw:
-        return None
-
-    # API-layer sync calls inject the decrypted key through db.info.
-    # When the DB still contains legacy plaintext, preserve that fallback.
-    if raw.startswith("gAAAA"):
-        return None
-    return raw
+    from credentials import get_db_api_key
+    return get_db_api_key(db)
 
 
 def load_canonical_map(db) -> dict[str, str]:

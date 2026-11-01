@@ -6,3 +6,5 @@ __pycache__/
 .claude/
 *.pyc
 data/analysis/
+*.log
+artifacts/

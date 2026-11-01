@@ -1,0 +1,35 @@
+# Initial write-disabled cutover configuration. Review/config-render only for now.
+# PHASE1_IMAGE must identify the reviewed image present on the deployment host.
+# This file deliberately refuses implicit creation of production volumes/network.
+services:
+  hevy-fatigue:
+    image: ${PHASE1_IMAGE:?Set PHASE1_IMAGE to the reviewed immutable image ID or digest}
+    build: !reset null
+    pull_policy: never
+    volumes:
+      - hevy-data:/data
+      - training-data:/training-data
+    environment:
+      DB_PATH: /data/hevy_fatigue.db
+      RACKBOOK_DB_PATH: /training-data/rackbook.db
+      HEVY_FATIGUE_DB_PATH: /data/hevy_fatigue.db
+      FERNET_KEY_PATH: /data/app.key
+      HEVY_WRITES_ENABLED: "0"
+      RACKBOOK_READ_ONLY_PREVIEW: "1"
+      TZ: America/New_York
+
+volumes:
+  hevy-data:
+    name: hevy-fatigue_hevy-data
+    external: true
+    driver: !reset null
+  training-data:
+    name: hevy-fatigue_training-data
+    external: true
+    driver: !reset null
+
+networks:
+  hevy-net:
+    name: hevy-fatigue_hevy-net
+    external: true
+    driver: !reset null

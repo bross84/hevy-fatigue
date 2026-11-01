@@ -2975,10 +2975,12 @@ body.ai-open main {
   </a>
   <div class="nav-tabs">
     <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
+    <a class="nav-tab" href="/training/log">Log Workout</a>
+    <a class="nav-tab" href="/training/microcycles">Plans</a>
     <button class="nav-tab" data-tab="exercise-metrics">Exercises<span id="ex-conflict-badge" class="badge badge-conflict" style="display:none;margin-left:5px;"></span></button>
     <button class="nav-tab" data-tab="workouts">Workouts<span id="wo-pending-badge" class="badge badge-conflict" style="display:none;margin-left:5px;"></span></button>
     <button class="nav-tab" data-tab="ai">AI Coach</button>
-    <button class="nav-tab" data-tab="log">Log</button>
+    <button class="nav-tab" data-tab="log">Check-in History</button>
     <button class="nav-tab" data-tab="exercises">Patterns</button>
     <a href="/static/docs.html" class="nav-tab">Docs</a>
     <button class="nav-tab" data-tab="settings">Settings</button>
@@ -3027,9 +3029,11 @@ body.ai-open main {
   <div class="bottom-sheet-handle"></div>
   <div class="bottom-sheet-title">More</div>
   <div class="bottom-sheet-items">
+    <a class="bottom-sheet-item" href="/training/log">Log Workout</a>
+    <a class="bottom-sheet-item" href="/training/microcycles">Plans</a>
     <button class="bottom-sheet-item" data-tab="log">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-      Log
+      Check-in History
     </button>
     <button class="bottom-sheet-item" data-tab="exercises">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -3365,6 +3369,7 @@ body.ai-open main {
 
 <!-- ══════════════ SETTINGS TAB ══════════════ -->
 <section id="tab-settings" class="tab-content">
+<p><a href="/training/legacy#settings">Training settings and performance model trial</a></p>
   <div class="card settings-card settings-card-api">
     <div class="card-title">Settings</div>
 
@@ -3821,7 +3826,11 @@ document.querySelectorAll('.bottom-sheet-item[data-tab]').forEach(item => {
   });
 });
 
+const tabIds = new Set(['dashboard','trend','workouts','exercise-metrics','exercises','log','settings','ai']);
+window.addEventListener('hashchange', () => activateTab(location.hash.slice(1)));
 function activateTab(tabName) {
+  if (!tabIds.has(tabName)) return;
+  if (location.hash !== '#' + tabName) history.replaceState(null, '', '#' + tabName);
   setBottomSheetOpen(false);
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
   document.querySelectorAll('.bottom-nav-btn[data-tab]').forEach(b =>
@@ -3888,6 +3897,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   checkTodayReadiness(true);
   loadTrainingLoadCard();
   _updateWoPendingBadge();
+  if (tabIds.has(location.hash.slice(1))) activateTab(location.hash.slice(1));
 });
 
 function initTrendRangeSelector() {

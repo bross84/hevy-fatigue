@@ -1,6 +1,21 @@
 # Hevy Fatigue — Backlog
 
-Last updated: 04JUN2026
+Last updated: 31OCT2026
+
+Phase 1 integration is prepared locally on `codex/rackbook-integration`; see
+[release evidence](training-verification.md) and [cutover/rollback](training-cutover.md).
+Production-copy/data verification passed; physical tablet/PWA acceptance remains
+explicitly deferred. No production cutover or retirement has occurred. Both old
+apps are running again after a temporary stop/restart; release preparation is
+paused until code acceptance and separate commit/push authorization.
+The six pre-cutover review findings have regression fixes, including correction
+and preflight recovery, legacy HTTP compatibility, draft validation/transfer and
+replay-safe finalization status. See the updated release evidence for the second
+review and final checks.
+The latest review additionally fixed preview blocking through mounted paths
+and Recent's outdated credential instructions. Verification now passes 74 host,
+467 logging (one expected failure), all 24 JS files, mocked browsers and Docker.
+The previously transferred image is superseded and must not be deployed.
 
 ---
 

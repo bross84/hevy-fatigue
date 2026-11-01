@@ -1,68 +1,59 @@
-# CLAUDE.md — hevy-fatigue
+# Hevy-Fatigue repository guidance
 
-## Project Overview
-Python/FastAPI application that logs daily readiness scores and workout data from Hevy.
-- **Stack:** Python, FastAPI, SQLite (`/data/hevy_fatigue.db`)
-- **Infra:** Docker container on Ubuntu homelab (CasaOS)
-- **Copilot:** Handles routine coding tasks — defer boilerplate and implementation detail to it
+AGENTS.md and CLAUDE.md contain the same instructions; keep them synchronized.
+Start with docs/hevy-context.md and docs/training-integration.md. Release and
+rollback instructions are in docs/training-cutover.md.
 
----
+## Application boundaries
 
-## Role & Behavior
+- One FastAPI host, vanilla-JavaScript pages, no bundler/framework or redesign.
+- Host monitoring owns SQLAlchemy and DB_PATH. Rackbook logging owns stdlib
+  sqlite3 and RACKBOOK_DB_PATH, mounted at /training. Never merge their tables or
+  assign the logging path to DB_PATH. Startup must explicitly initialize both.
+- Preserve host daily/pattern models and Hevy-imported inputs. Exact local RPEs
+  belong only to logging. Same-day cutoff, missing-data rules and trial model
+  timing remain unchanged. Never regenerate frozen trial records.
+- credentials.py owns active Hevy credentials, encryption and fallback behavior.
+  Keep the host key with host encrypted settings. Do not copy credentials into
+  logging storage or print keys/encrypted values/key-file contents.
+- Keep package-relative imports and package-relative asset paths. No sys.path
+  shims or temporary environment swapping to work around module collisions.
+- Use the trainingUrl helper for training requests/dynamic navigation. Static
+  training links/assets live under /training; host Settings is /#settings. The
+  training worker scope must remain /training/ and network-only.
+- Preserve TS pinning, TM behavior, low exact RPEs, canonical completed weights,
+  keypad/tap stability, timers and microcycle completion only after save.
 
-You are a senior engineering partner, not a code monkey. Your job is to think before acting.
+## Implementation and safety
 
-**You may freely:**
-- Read and analyze any file in the repo
-- Diagnose bugs and identify root causes
-- Make architectural and design decisions
-- Write or modify complex logic, database queries, API design, and tests
-- Commit and push when a meaningful, working change is complete
+Implement requested changes directly. Keep service logic separate from routes,
+SQL parameterized and request models explicit. Preserve unrelated edits.
+HEVY_WRITES_ENABLED defaults to 0; preview also blocks at the client layer.
+Never use the real Hevy account or real databases in tests/experiments. Mock the
+client below routes and use temporary SQLite. tools.preview_app provides an
+entirely mocked disposable preview. Never deploy intermediate logging builds.
 
-**Defer to Copilot (generate a prompt instead of writing the code):**
-- Boilerplate (CRUD endpoints, Pydantic models, simple utility functions)
-- Repetitive patterns already established in the codebase
-- Minor formatting or style fixes
-- Straightforward refactors with no design decisions involved
+Every combined UI save supplies a persisted UUID and frozen payload. Commit
+sending before remote I/O, remote ID before local effects, and all required local
+records plus journal completion atomically. Never automatically repost sending
+or uncertain attempts. Reconciliation is read-only and requires a full match.
+Trial and monitoring refresh run after required local commit and are nonblocking.
 
-When deferring, output a ready-to-use Copilot prompt in this format:
-```
-### Copilot Prompt
-[Context: what file/function this relates to]
-[Task: exactly what to generate]
-[Constraints: any patterns, types, or conventions to follow]
-```
+Keep existing container identity, port 8125, network and CasaOS configuration.
+Prepare/test locally; no incidental production cutover, service retirement or
+source-project edits. Keep old database/key rollback material intact.
 
----
+## Verification and delivery
 
-## Priorities
+- python -X utf8 -m unittest discover -s tests
+- python -X utf8 -m unittest discover -s rackbook/tests -t .
+- node tests/test_recommendation_ui.cjs
+- node tests/test_draft_transfer.cjs
+- node tests/test_save_recovery_ui.cjs
+- Run every rackbook/tests/*.cjs, Docker build/startup, and mocked browser checks.
+- Record baseline failures separately; do not weaken behavioral assertions.
+- Report physical-device/deployed-data checks separately from automation.
+- Update context, release evidence and cutover instructions with behavior changes.
 
-1. **Architecture & design** — Raise concerns about structure early. Don't implement something you think is wrong without saying so first.
-2. **Bug diagnosis** — Explain root cause before proposing a fix. Don't just patch symptoms.
-3. **Database/API design** — Think about schema and contract decisions carefully; they're hard to undo.
-4. **Test writing** — Write tests for non-trivial logic. Don't test what Copilot scaffolded unless it's critical path.
-5. **Copilot prompt generation** — When delegating, write prompts that are specific enough that Copilot doesn't need to guess.
-
----
-
-## Conventions
-
-- FastAPI route handlers stay thin — business logic goes in service modules
-- SQLite queries use parameterized statements, no f-string SQL
-- Pydantic models for all request/response shapes
-- Environment config via `.env` / `python-dotenv`, never hardcoded
-- Docker-aware: assume the app runs in a container, paths like `/data/` are volume mounts
-
----
-
-## Commit Style
-
-- Conventional commits: `feat:`, `fix:`, `refactor:`, `test:`, `chore:`
-- One logical change per commit — don't bundle unrelated changes
-- Push only when tests pass (or tests don't exist yet and the change is intentional)
-
----
-
-## What to Ask Before Acting
-
-If a task is ambiguous or has meaningful design tradeoffs, ask one clarifying question before proceeding. Don't ask multiple questions at once.
+Do not commit or push: the host context reserves commits for Brian's review.
+Use conventional logical commits if that restriction is explicitly lifted.

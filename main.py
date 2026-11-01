@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date as date_type, timedelta, datetime
 from uuid import UUID
-from cryptography.fernet import Fernet
 import httpx
 import json
 import os
@@ -21,36 +20,7 @@ from recommendations import build_history as build_recommendation_history, RATIN
 
 from database import SessionLocal, DailyReadiness, WorkoutLog, WorkoutSession, ExerciseMapping, ExerciseCanonical, ExerciseConflict, AppSetting, init_db
 
-# ── Encryption ────────────────────────────────────────────────────────────────
-# A Fernet key is generated once and stored in the Docker volume at /data/app.key.
-# The API key in the DB is encrypted with it, so a DB dump alone can't expose it.
-_FERNET_KEY_PATH = os.getenv("FERNET_KEY_PATH", "/data/app.key")
-_fernet: Fernet | None = None
-
-def _get_fernet() -> Fernet:
-    global _fernet
-    if _fernet is not None:
-        return _fernet
-    if os.path.exists(_FERNET_KEY_PATH):
-        with open(_FERNET_KEY_PATH, "rb") as f:
-            key = f.read().strip()
-    else:
-        key = Fernet.generate_key()
-        os.makedirs(os.path.dirname(_FERNET_KEY_PATH), exist_ok=True)
-        with open(_FERNET_KEY_PATH, "wb") as f:
-            f.write(key)
-        try:
-            os.chmod(_FERNET_KEY_PATH, 0o600)
-        except OSError:
-            pass  # Windows doesn't support chmod — safe to ignore
-    _fernet = Fernet(key)
-    return _fernet
-
-def _encrypt(plaintext: str) -> str:
-    return _get_fernet().encrypt(plaintext.encode()).decode()
-
-def _decrypt(ciphertext: str) -> str:
-    return _get_fernet().decrypt(ciphertext.encode()).decode()
+from credentials import _encrypt, _decrypt, get_db_api_key as _get_db_api_key
 from rpe_table import get_set_central_stress, get_set_peripheral_stress, seed_rpe_table, calculate_e1rm
 from importer import import_hevy_data, reclassify_existing_sessions
 
@@ -447,6 +417,9 @@ def calculate_stress_scores(
 # --- Startup ---
 @app.on_event("startup")
 def startup():
+    from rackbook.config import validate_database_paths
+    from database import _db_path
+    validate_database_paths(_db_path)
     init_db()
     db = SessionLocal()
     try:
@@ -456,27 +429,16 @@ def startup():
     finally:
         db.close()
 
+    from rackbook.main import initialize
+    initialize()
+    import training_integration
+    training_integration.enable()
+
 # --- Sync state (prevents concurrent imports and rate-limits manual triggers) ---
 _sync_lock = threading.Lock()
 _sync_status = {"running": False, "last_result": None, "last_run": None}
 
 # --- Settings helper ---
-def _get_db_api_key(db: Session) -> str | None:
-    """Read and decrypt the Hevy API key stored in the app_settings table."""
-    row = db.query(AppSetting).filter(AppSetting.key == "hevy_api_key").first()
-    if not row or not row.value:
-        return None
-    try:
-        return _decrypt(row.value)
-    except Exception:
-        # One-time compatibility migration from legacy plaintext storage.
-        legacy_plaintext = row.value.strip()
-        if not legacy_plaintext:
-            return None
-        row.value = _encrypt(legacy_plaintext)
-        db.commit()
-        return legacy_plaintext
-
 _CONDITIONING_SCALING_DEFAULT = 29.0
 _HYP_SCALING_DEFAULT = 29.0
 _AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT = 0.87
@@ -4336,3 +4298,8 @@ if os.path.isdir(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 if os.path.isdir(RESOURCES_DIR):
     app.mount("/resources", StaticFiles(directory=RESOURCES_DIR), name="resources")
+
+
+# Mounted pages retain their own sqlite3 services and tables.
+from rackbook.main import app as training_app
+app.mount("/training", training_app)

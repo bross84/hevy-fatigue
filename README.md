@@ -328,3 +328,19 @@ node tests/test_recommendation_ui.cjs
 ```
 
 Tests use isolated in-memory SQLite databases and do not sync with Hevy.
+
+
+## Integrated workout logging (Phase 1)
+
+Log Workout and Plans open the full Rackbook workflow inside Hevy-Fatigue at
+`/training`. Exact local sets, TS/TM, units, keypad, timers, plate loading,
+microcycles, progress and RPE charts remain separate from monitoring's Hevy data.
+The Settings tab owns the shared credential; Training settings links to the
+optional trial and remaining logging preferences.
+
+Use separate `DB_PATH` and `RACKBOOK_DB_PATH` files. Docker mounts logging data at
+`/training-data/rackbook.db`. Workout posting defaults to disabled with
+`HEVY_WRITES_ENABLED=0`; enable it only during the controlled production cutover.
+The local preview in `tools.preview_app` uses temporary databases and a mocked
+Hevy client. See [integration boundaries and verification](docs/training-integration.md)
+and [draft transfer, cutover and rollback](docs/training-cutover.md).
