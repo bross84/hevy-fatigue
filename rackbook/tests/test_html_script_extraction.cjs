@@ -4,7 +4,7 @@ const inlineScriptMatches = require('./helpers/html-scripts.cjs');
 
 const html = '<SCRIPT data-fixture="one">const first = 1;</SCRIPT>\n' +
   '<sCrIpT type="text/javascript">const second = 2;</ScRiPt >\n' +
-  '<script>const third = 3;</script><scripty>not JavaScript</scripty>';
+  '<script>const third = 3;</script\t\n ignored-attribute><scripty>not JavaScript</scripty>';
 const bodies = [...inlineScriptMatches(html)].map(match => match[1]);
 assert.deepEqual(bodies, ['const first = 1;', 'const second = 2;', 'const third = 3;']);
 for (const source of bodies) new vm.Script(source);
@@ -12,4 +12,4 @@ for (const source of bodies) new vm.Script(source);
 assert.throws(() => {
   for (const match of inlineScriptMatches('<SCRIPT>const = ;</SCRIPT>')) new vm.Script(match[1]);
 }, SyntaxError);
-console.log('HTML script extraction: mixed-case tags, closing whitespace, tag boundaries and syntax failures passed.');
+console.log('HTML script extraction: mixed-case tags, closing tag attributes/whitespace, tag boundaries and syntax failures passed.');

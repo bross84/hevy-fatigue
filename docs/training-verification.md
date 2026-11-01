@@ -29,7 +29,7 @@ The initial hosted integration check passed, but the separate CodeQL alert gate
 flagged case-sensitive script-extraction regexes in imported test harnesses.
 These operate on trusted repository fixtures, not user HTML. Replaced the 14
 duplicated extractors with a shared test-only helper that recognizes mixed-case
-tags and closing whitespace. Added a regression proving mixed-case script bodies
+tags, closing whitespace and ignored closing-tag attributes. Added a regression proving mixed-case script bodies
 are checked and invalid JavaScript still fails instead of being skipped. All
 existing behavioral assertions remain intact. No alerts were dismissed or
 suppressed; the PR's rerun determines the hosted security result.
