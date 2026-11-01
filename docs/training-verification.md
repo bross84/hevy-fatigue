@@ -1,6 +1,35 @@
 # Phase 1 verification — 2026-10-31
 
-## Current status: reviewed branch publication authorized, no deployment authorized
+## Merge-readiness review — 2026-11-01
+
+The user requested preparing the integration branch for merge, while keeping
+deployment and real Hevy writes on hold. Fetched `origin/main` remains `5bef649`;
+it is an ancestor of the reviewed integration commit `25bba2b`, so no rebase or
+conflict resolution is needed. No additional application correctness issues were
+found in the reviewed storage, credential, startup, save/recovery and host-sync
+boundaries. Application code is unchanged by this merge-preparation follow-up.
+
+Added `.github/workflows/integration-checks.yml` for PRs targeting main and
+manual test dispatch. It has read-only repository permissions, no registry login
+or publisher, and builds only a disposable test image. Tests run without external
+network access, real credentials, production mounts or published ports. The
+existing image-publishing workflow is unchanged; merging main would trigger it,
+so this task prepares a PR without merging or dispatching publication.
+
+The exact proposed CI commands passed locally: 74 host/integration tests, 467
+logging tests with one existing expected failure, all 24 JavaScript files under
+Node 22, and repeated startup/mounted asset/schema/preview write-block checks.
+Workflow YAML, trigger/permission structure and embedded smoke-script syntax
+were validated. Previous mocked browser and production-copy evidence remains
+applicable because this follow-up changes only CI and documentation. GitHub's
+hosted check result is separate and must be read from the PR, not inferred from
+local results. No branch-protection rules or production settings were changed.
+
+Tablet/PWA checks remain explicitly deferred. Final fresh backups and logging
+volume staging remain later release tasks. The superseded manually staged image
+must remain unused. Existing standalone apps remain the production entry points.
+
+## Earlier review and branch publication authorization
 
 After the final testing/review pass, the user authorized committing the reviewed
 changes and pushing only `codex/rackbook-integration` to GitHub. This does not

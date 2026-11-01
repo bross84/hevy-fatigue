@@ -229,3 +229,12 @@ The user subsequently authorized committing the reviewed integration and
 pushing only `codex/rackbook-integration`. Deployment, merging main and image
 publication remain unauthorized. The image workflow runs on main/manual dispatch,
 so this branch push does not publish an image or change either running app.
+
+Merge preparation (2026-11-01): `origin/main` is still the integration baseline
+`5bef649`, with no conflicts against reviewed commit `25bba2b`. Added PR-only
+read-only CI for Python, JavaScript and container startup; exact commands passed
+locally (74 host, 467 logging with one expected failure, 24 JS files). No new
+application changes. Prepare the PR and inspect hosted checks; do not merge,
+publish an image or deploy while the hold remains. Existing main image-publish
+workflow is unchanged and would trigger on a later main merge. Tablet/PWA
+acceptance remains deferred and the manually staged image is superseded.

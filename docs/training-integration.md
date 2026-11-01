@@ -168,4 +168,7 @@ while retaining reads. The Recent credential-error screen directs users to
 shared host Settings. Host/integration count is now 74; see the current status
 at the top of training-verification.md. Both old services are running again;
 the previously staged uncommitted image is superseded and must remain unused.
-Commit/push and deployment remain unauthorized. Tablet acceptance is deferred.
+The user authorized and completed branch publication as `25bba2b`, then requested
+merge preparation. A PR-only test workflow now verifies the Python suites, all
+JavaScript checks and write-disabled container startup without image publication.
+Merge/deployment and real Hevy writes remain on hold. Tablet acceptance is deferred.
