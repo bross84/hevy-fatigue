@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script src="/training/static/training.js"></script>
+  <script src="/training/static/draft-transfer.js"></script>
+  <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="manifest" href="/training/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/training/static/apple-touch-icon.png" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f5f8" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#111923" />
+  <title>Progress</title>
+  <style id="rackbook-theme">
+
+    /* Rackbook visual system: kept inline so every page remains self-contained. */
+    :root {
+      color-scheme: light;
+      --bg: #f3f5f8; --card: #ffffff; --text: #17243a; --muted: #59687c;
+      --line: #dce3ec; --accent: #2459b8; --chip: #edf1f7; --soft: #f7f9fc;
+      --accent-soft: #edf3ff; --done: #edf7f1; --done-line: #28784b;
+      --shadow: 0 2px 5px rgba(23,36,58,.025), 0 10px 28px rgba(23,36,58,.035);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --bg: #111923; --card: #1a2533; --text: #e8eef8; --muted: #a5b4c9;
+        --line: #344358; --accent: #95baff; --chip: #243246; --soft: #202d3d;
+        --accent-soft: #243b5b; --done: #20392f; --done-line: #3f825f;
+        --shadow: 0 4px 20px rgba(0,0,0,.12);
+      }
+    }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+    main { max-width: 1120px; padding: 24px; margin: 0 auto; }
+    .app-header { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 16px; margin: 0 0 24px; }
+    .page-heading { gap: 12px; }
+    .page-title { min-width: 0; }
+    .eyebrow { display: block; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .18em; margin: 0 0 3px; }
+    .page-title h1 { font-size: 26px; font-weight: 700; letter-spacing: -.035em; line-height: 1.2; margin: 0; }
+    .app-header .page-back { width: auto; padding: 0 10px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); font-size: 13px; }
+    .header-tools { justify-self: end; }
+    .app-header .app-nav { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; padding: 5px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; white-space: normal; }
+    .app-header .app-nav a { display: flex; align-items: center; justify-content: center; flex: 1 0 auto; min-height: 40px; padding: 6px 14px; margin: 0; border-radius: 9px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 550; }
+    .app-header .app-nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 650; }
+    .card { border-radius: 16px; border-color: var(--line); box-shadow: var(--shadow); margin-bottom: 16px; }
+    h2, h3, .wk-title, .ex-title { letter-spacing: -.02em; font-weight: 650; }
+    button, input, select { transition: border-color .12s ease, background-color .12s ease, box-shadow .12s ease; }
+    button { font-weight: 550; }
+    button.primary { font-weight: 650; color: var(--card); }
+    button:disabled { cursor: default; }
+    :where(button, a, input, select, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    input, select { accent-color: var(--accent); }
+    .lifts { gap: 6px; padding: 5px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); margin-bottom: 20px; }
+    .lifts button { border-color: transparent; background: transparent; min-height: 44px; font-weight: 600; }
+    .lifts button.on, .lifts button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+    .movement-card { padding: 18px; background: var(--card); border-radius: 16px; box-shadow: var(--shadow); }
+    .movement-card[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+    .card-score { font-size: 30px; font-weight: 700; letter-spacing: -.04em; margin: 8px 0; }
+    .metrics { gap: 16px; }
+    .metric { padding: 12px; border-radius: 12px; background: var(--soft); }
+    .metric strong { font-size: 28px; font-weight: 700; letter-spacing: -.03em; }
+    .controls { gap: 12px; padding: 14px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 16px; }
+    .controls label { font-size: 13px; color: var(--muted); font-weight: 550; }
+    .controls select { color: var(--text); background: var(--soft); }
+    th { font-weight: 600; }
+    .wk-head { flex-wrap: wrap; gap: 4px 12px; }
+    .wk-meta { margin-top: 6px; }
+    .intro { line-height: 1.65; }
+    @media (hover: hover) {
+      .app-header .app-nav a:hover { background: var(--soft); color: var(--text); }
+      button:not(:disabled):hover { border-color: var(--accent); }
+    }
+    @media (max-width: 599px) {
+      main { padding: 16px 12px; }
+      .app-header { gap: 12px; margin-bottom: 18px; }
+      .page-heading { gap: 8px; }
+      .page-title h1 { font-size: 23px; }
+      .app-header .app-nav a { flex: 1 0 28%; padding: 6px 8px; min-height: 44px; font-size: 13px; }
+      .card { border-radius: 14px; }
+      .metric { padding: 10px 8px; }
+      .metric strong { font-size: 23px; }
+      .controls { padding: 12px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
+  <style>
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 system-ui,sans-serif; }
+    button,input,select { font:inherit; }
+    button { cursor:pointer; }
+    [hidden] { display:none !important; }
+    .card { background:var(--card); border:1px solid var(--line); }
+    .lifts { display:flex; gap:4px; margin-bottom:20px; }
+    .lifts button { flex:1; border:0; border-radius:8px; color:var(--muted); }
+    .progress-layout { display:grid; grid-template-columns:228px minmax(0,1fr); gap:18px; align-items:start; }
+    .summary-card { padding:18px; border-radius:12px; }
+    .section-label,.chart-header h2 { font-size:11px; font-weight:550; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); margin:0; }
+    .stats { display:grid; gap:14px; margin-top:18px; }
+    .stat + .stat { padding-top:14px; border-top:1px solid var(--line); }
+    .stat .k { font-size:12px; color:var(--muted); }
+    .stat .v { font-size:28px; line-height:1.25; font-weight:650; letter-spacing:-.035em; font-variant-numeric:tabular-nums; }
+    .stat .v.unavailable { font-size:17px; overflow-wrap:anywhere; }
+    .stat .d { color:var(--muted); font-size:12px; margin-top:4px; }
+    .comparison { font-size:12px; color:var(--muted); margin-top:18px; padding-top:14px; border-top:1px solid var(--line); }
+    .comparison p { margin:6px 0; }
+    .comparison strong { color:var(--text); font-weight:550; }
+    .comparison details { margin-top:10px; }
+    .comparison summary { cursor:pointer; color:var(--accent); min-height:30px; }
+    .chart-stack { display:grid; gap:16px; min-width:0; }
+    .chart-card { min-width:0; padding:16px; border-radius:12px; margin:0; }
+    .chart-header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px; }
+    .range-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:10px; }
+    .segmented { display:inline-flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+    .segmented button { border:0; border-right:1px solid var(--line); padding:4px 10px; min-height:28px; font-size:11px; color:var(--muted); background:var(--card); white-space:nowrap; }
+    .segmented button:last-child { border-right:0; }
+    .segmented button[aria-pressed="true"] { background:var(--accent); color:var(--card); }
+    .zoom-actions { display:flex; gap:3px; margin-left:auto; }
+    .zoom-actions button,.session-step { min-height:30px; min-width:30px; padding:3px 8px; border:1px solid var(--line); border-radius:5px; background:var(--card); color:var(--muted); font-size:12px; }
+    button:disabled { opacity:.4; cursor:default; }
+    .period { display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px 12px; font-size:11px; color:var(--muted); margin-bottom:8px; font-variant-numeric:tabular-nums; }
+    .custom-range { display:flex; flex-wrap:wrap; gap:8px; align-items:end; margin-bottom:12px; }
+    .custom-range label { display:grid; gap:3px; font-size:11px; color:var(--muted); min-width:0; }
+    .custom-range input,.custom-range button { min-height:36px; padding:5px 8px; background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:5px; min-width:0; }
+    .plot-wrap { height:260px; position:relative; width:100%; min-width:0; }
+    .plot-wrap canvas { touch-action:pan-y !important; }
+    .plot-wrap canvas:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+    .chart-note,.note { font-size:11px; color:var(--muted); line-height:1.55; margin:8px 0 0; }
+    .empty-overlay { position:absolute; inset:35px 45px; display:grid; place-items:center; color:var(--muted); font-size:12px; text-align:center; background:var(--card); opacity:.93; pointer-events:none; }
+    .chart-tooltip { position:absolute; z-index:2; width:250px; max-width:calc(100% - 12px); padding:10px 12px; border:1px solid var(--line); border-radius:7px; background:var(--card); color:var(--text); box-shadow:var(--shadow); font-size:11px; pointer-events:none; }
+    .chart-tooltip strong { display:block; margin-bottom:6px; font-size:12px; }
+    .tooltip-row { display:flex; justify-content:space-between; gap:16px; color:var(--muted); }
+    .tooltip-row b { color:var(--text); font-weight:550; }
+    .chart-tooltip .note { border-top:1px solid var(--line); padding-top:6px; margin-top:6px; font-size:10px; }
+    .inspector { border-top:1px solid var(--line); margin-top:12px; padding-top:12px; }
+    .inspector-head { display:flex; align-items:center; gap:6px; }
+    .inspector-head label { font-size:11px; color:var(--muted); margin-right:auto; }
+    #sessionSelect { max-width:190px; min-height:30px; background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:5px; padding:3px 6px; font-size:12px; }
+    .detail-values { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:12px; }
+    .detail-values span { display:block; color:var(--muted); font-size:11px; }
+    .detail-values b { display:block; font-size:17px; font-weight:550; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+    .error { border:1px solid var(--line); border-radius:8px; padding:12px; margin-bottom:12px; color:var(--danger,#b33); }
+    .progress-loading { display:flex; align-items:center; gap:12px; padding:24px; margin-bottom:16px; border:1px solid var(--line); border-radius:14px; background:var(--card); color:var(--muted); }
+    .loading-spinner { width:24px; height:24px; flex-shrink:0; border:3px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:progress-spin .8s linear infinite; }
+    @keyframes progress-spin { to { transform:rotate(360deg); } }
+    @media(prefers-reduced-motion:reduce) { .loading-spinner { animation:none; } }
+    .empty { padding:36px 16px; text-align:center; color:var(--muted); }
+    #foot { margin-top:14px; max-width:850px; }
+    @media(max-width:800px) {
+      .progress-layout { grid-template-columns:1fr; gap:12px; }
+      .summary-card { padding:14px; }
+      .stats { grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:10px; }
+      .stat + .stat { padding:0; border:0; }
+      .stat .v { font-size:23px; }
+      .comparison { margin-top:12px; padding-top:10px; }
+      .comparison-period { display:flex; flex-wrap:wrap; gap:2px 8px; }
+      .plot-wrap { height:230px; }
+    }
+    @media(max-width:480px) {
+      .chart-card { padding:12px; }
+      .plot-wrap { height:220px; }
+      .range-row { gap:8px 4px; }
+      .segmented { flex:1; }
+      .segmented button { flex:1; padding:6px 7px; min-height:36px; }
+      .zoom-actions { width:100%; justify-content:flex-end; }
+      .zoom-actions button,.session-step { min-height:36px; min-width:36px; }
+      .stat .d { font-size:10px; }
+      .stat .v { font-size:22px; }
+      .custom-range label { flex:1; }
+      .custom-range input { width:100%; }
+      #sessionSelect { max-width:155px; }
+    }
+    @media(max-width:350px) {
+      .segmented { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); flex-basis:100%; }
+      .segmented button:nth-child(-n+3) { border-bottom:1px solid var(--line); }
+      .segmented button:nth-child(3) { border-right:0; }
+      .stat .v { font-size:18px; white-space:nowrap; }
+      .stat .v.unavailable { font-size:13px; white-space:normal; }
+    }
+    @media(pointer:coarse) { .segmented button,.zoom-actions button,.session-step,#sessionSelect { min-height:44px; } }
+  </style>
+</head>
+<body>
+<main>
+  <header class="app-header">
+    <div class="page-heading"><div class="page-title"><span class="eyebrow">Hevy-Fatigue</span><h1>Progress</h1></div></div>
+    <nav class="app-nav" aria-label="Pages"><a href="/">Today</a><a href="/training/log">Log Workout</a><a href="/training/microcycles">Plans</a><a href="/training/recent">Recent</a><a href="/training/progress" aria-current="page">Progress</a><a href="/training/stress">Stress</a><a href="/training/rpe-charts">RPE Charts</a><a href="/#settings">Settings</a></nav>
+  </header>
+  <div id="status" role="status"></div>
+  <div class="lifts" id="lifts" role="group" aria-label="Lift">
+    <button type="button" data-lift="squat">Squat</button><button type="button" data-lift="bench">Bench</button><button type="button" data-lift="deadlift">Deadlift</button><button type="button" data-lift="press">Press</button>
+  </div>
+  <div id="progressLoading" class="progress-loading" role="status" aria-live="polite"><span class="loading-spinner" aria-hidden="true"></span><span>Loading progress… Fetching workout and bodyweight history.</span></div>
+  <div id="empty" class="empty" hidden></div>
+  <div class="progress-layout" id="progress" hidden>
+    <aside class="card summary-card" aria-label="Overall progress">
+      <h2 class="section-label">Overall progress</h2><div class="stats" id="stats"></div><div class="comparison" id="comparison"></div>
+    </aside>
+    <div class="chart-stack">
+      <section class="card chart-card" aria-labelledby="strengthTitle">
+        <div class="chart-header"><h2 id="strengthTitle">Strength · Bodyweight</h2></div>
+        <div class="range-row">
+          <div class="segmented" id="ranges" role="group" aria-label="Chart date range"></div>
+          <div class="zoom-actions" id="zoomControls" role="group" aria-label="Zoom and pan"></div>
+        </div>
+        <form class="custom-range" id="customRange" hidden>
+          <label>From<input id="dateFrom" type="date" required></label><label>To<input id="dateTo" type="date" required></label><button type="submit">Apply</button><span id="dateError" role="alert"></span>
+        </form>
+        <div class="period"><span id="periodLabel"></span><span id="sessionCount"></span></div>
+        <div class="plot-wrap" id="strengthWrap"><canvas id="strengthCanvas" tabindex="0" role="img" aria-label="e1RM and bodyweight over time" aria-describedby="chartHelp selectedSource"></canvas><div class="chart-tooltip" id="strengthTooltip" hidden></div><div class="empty-overlay" id="strengthEmpty" hidden></div></div>
+        <p class="chart-note" id="chartHelp">Drag to zoom · Shift-drag to pan · Ctrl + wheel or pinch to zoom. Zoom buttons work with touch and keyboard.</p>
+      </section>
+      <section class="card chart-card" aria-labelledby="scoreTitle">
+        <div class="chart-header"><h2 id="scoreTitle">Strength score</h2><span class="note">DOTS-style · this lift</span></div>
+        <div class="plot-wrap" id="scoreWrap"><canvas id="scoreCanvas" tabindex="0" role="img" aria-label="Strength score over time" aria-describedby="chartHelp selectedSource"></canvas><div class="chart-tooltip" id="scoreTooltip" hidden></div><div class="empty-overlay" id="scoreEmpty" hidden></div></div>
+        <div class="inspector" id="inspector">
+          <div class="inspector-head"><label for="sessionSelect">Session detail</label><button class="session-step" id="previousSession" type="button" aria-label="Previous session">←</button><select id="sessionSelect" aria-label="Session to inspect"></select><button class="session-step" id="nextSession" type="button" aria-label="Next session">→</button></div>
+          <div id="selectedValues" class="detail-values" aria-live="polite"></div><p class="note" id="selectedSource"></p>
+        </div>
+      </section>
+    </div>
+  </div>
+  <p class="note" id="foot" hidden>Bodyweight is the seven-day average at the latest available weigh-in, carried forward for up to 14 days. Strength score applies DOTS to this lift’s e1RM; use it to compare your own history. Sets without RPE are excluded.</p>
+</main>
+<script src="/training/static/vendor/chart-4.4.0.umd.js"></script>
+<script src="/training/static/vendor/hammer-2.0.8.min.js"></script>
+<script src="/training/static/vendor/chartjs-plugin-zoom-2.2.0.min.js"></script>
+<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register(trainingUrl("/sw.js")).catch(() => {});</script>
+<script>
+  const $ = id => document.getElementById(id);
+  const DAY = 86400000;
+  const timeOf = value => Date.parse(value + "T00:00:00Z");
+  const isoDay = value => new Date(value).toISOString().slice(0, 10);
+  const fullDate = value => new Date(timeOf(value)).toLocaleDateString(undefined, {month:"short", day:"numeric", year:"numeric", timeZone:"UTC"});
+  const number = value => value == null ? "Unavailable" : value.toLocaleString(undefined, {maximumFractionDigits:1, minimumFractionDigits:1});
+  let current = "squat", loadId = 0, data = null, charts = [];
+  let windowStart = null, windowEnd = null, activeRange = 84, selectedIndex = -1;
+  let visibleIndices = [], syncing = false;
+  try { current = localStorage.getItem("training.progress.lift") || current; } catch (_) {}
+  if (!["squat","bench","deadlift","press"].includes(current)) current = "squat";
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+  function sourceInfo(point) {
+    if (!point?.bodyweight_source_date) return "Bodyweight source: Unavailable";
+    const age = point.bodyweight_age_days, count = point.bodyweight_weigh_in_count;
+    const source = age ? "Carried forward from " : "Same-day average: ";
+    return source + fullDate(point.bodyweight_source_date) + ` · ${age} day${age === 1 ? "" : "s"} old · ${count} weigh-in${count === 1 ? "" : "s"} in seven-day average`;
+  }
+  function domain() {
+    const rows = data?.series || [];
+    if (!rows.length) return [0, 0];
+    const first = timeOf(rows[0].date), last = timeOf(rows.at(-1).date);
+    return [first - DAY / 2, last + DAY / 2];
+  }
+  function fitWindow(start, end) {
+    const [first, last] = domain();
+    const width = Math.min(last - first, Math.max(DAY, end - start));
+    const left = Math.max(first, Math.min(last - width, start));
+    return [left, left + width];
+  }
+  function setWindow(start, end, range = null) {
+    [windowStart, windowEnd] = fitWindow(start, end);
+    activeRange = range;
+    updateView();
+  }
+  function setRange(days) {
+    if (!data?.series.length) return;
+    const [first, last] = domain();
+    setWindow(days ? Math.max(first, last - days * DAY) : first, last, days);
+  }
+  function zoom(factor) {
+    const center = (windowStart + windowEnd) / 2;
+    const width = Math.max(DAY, (windowEnd - windowStart) * factor);
+    setWindow(center - width / 2, center + width / 2);
+  }
+  function pan(direction) {
+    const shift = Math.max(DAY, (windowEnd - windowStart) / 2) * direction;
+    setWindow(windowStart + shift, windowEnd + shift);
+  }
+  function rangeButton(label, days) {
+    const b = el("button", null, label); b.type = "button"; b.dataset.days = String(days);
+    b.addEventListener("click", () => {
+      $("customRange").hidden = true;
+      $("customButton").setAttribute("aria-expanded","false");
+      setRange(days);
+    });
+    return b;
+  }
+  function initControls() {
+    for (const [label, days] of [["4 Weeks",28],["8 Weeks",56],["12 Weeks",84],["1 Year",365],["All",0]]) $("ranges").append(rangeButton(label, days));
+    const custom = el("button", null, "Custom"); custom.type = "button"; custom.id = "customButton";
+    custom.addEventListener("click", () => {
+      $("customRange").hidden = !$("customRange").hidden;
+      custom.setAttribute("aria-expanded", String(!$("customRange").hidden));
+      if (!$("customRange").hidden) $("dateFrom").focus();
+    });
+    custom.setAttribute("aria-controls", "customRange"); custom.setAttribute("aria-expanded", "false");
+    $("ranges").append(custom);
+    for (const [label, name, action] of [["←","Earlier",()=>pan(-1)],["+","Zoom in",()=>zoom(.5)],["−","Zoom out",()=>zoom(2)],["→","Later",()=>pan(1)],["Reset","Reset zoom",()=>setRange(0)]]) {
+      const b = el("button", null, label); b.type = "button"; b.dataset.action = name;
+      b.setAttribute("aria-label", name); b.title = name; b.addEventListener("click", action); $("zoomControls").append(b);
+    }
+    $("customRange").addEventListener("submit", event => {
+      event.preventDefault();
+      const from = timeOf($("dateFrom").value), to = timeOf($("dateTo").value);
+      const rows = data.series, first = timeOf(rows[0].date), last = timeOf(rows.at(-1).date);
+      if (!Number.isFinite(from) || !Number.isFinite(to) || from > to || from < first || to > last) {
+        $("dateError").textContent = "Choose dates within this history, From on or before To."; return;
+      }
+      $("dateError").textContent = "";
+      // A same-day selection gets a centered one-day axis without admitting adjacent sessions.
+      if (from === to) {
+        setWindow(from - DAY / 2, to + DAY / 2, "custom");
+      } else setWindow(from - DAY / 2, to + DAY / 2, "custom");
+    });
+    $("previousSession").addEventListener("click", () => stepSession(-1));
+    $("nextSession").addEventListener("click", () => stepSession(1));
+    $("sessionSelect").addEventListener("change", () => selectSession(Number($("sessionSelect").value)));
+    for (const id of ["strengthCanvas", "scoreCanvas"]) {
+      $(id).addEventListener("keydown", event => {
+        if (!["ArrowLeft","ArrowRight","Home","End","+","=","-","Escape"].includes(event.key)) return;
+        event.preventDefault();
+        if (event.key === "ArrowLeft" || event.key === "ArrowRight") stepSession(event.key === "ArrowRight" ? 1 : -1);
+        if (event.key === "Home" && visibleIndices.length) selectSession(visibleIndices[0]);
+        if (event.key === "End" && visibleIndices.length) selectSession(visibleIndices.at(-1));
+        if (event.key === "+" || event.key === "=") zoom(.5);
+        if (event.key === "-") zoom(2);
+        if (event.key === "Escape") setRange(0);
+      });
+      $(id).addEventListener("focus", () => { if (visibleIndices.length) selectSession(selectedIndex); });
+      $(id).addEventListener("mouseleave", () => hideTooltips());
+    }
+  }
+  function stepSession(direction) {
+    if (!visibleIndices.length) return;
+    const position = Math.max(0, visibleIndices.indexOf(selectedIndex));
+    selectSession(visibleIndices[Math.max(0, Math.min(visibleIndices.length - 1, position + direction))]);
+  }
+  function valuesInto(box, point, tooltip = false) {
+    box.replaceChildren();
+    for (const [label,key,unit] of [["e1RM","e1rm_lb"," lb"],["Bodyweight","bodyweight_lb"," lb"],["Strength score","dots",""]]) {
+      const row = el(tooltip ? "div" : "div", tooltip ? "tooltip-row" : null);
+      row.append(el("span",null,label), el("b",null,number(point[key]) + (point[key] == null ? "" : unit))); box.append(row);
+    }
+  }
+  function selectSession(index, draw = true) {
+    if (!visibleIndices.includes(index)) return;
+    selectedIndex = index;
+    const point = data.series[index];
+    $("sessionSelect").value = String(index);
+    valuesInto($("selectedValues"),point);
+    $("selectedSource").textContent = sourceInfo(point);
+    const at = visibleIndices.indexOf(index);
+    $("previousSession").disabled = at === 0; $("nextSession").disabled = at === visibleIndices.length - 1;
+    const description = fullDate(point.date) + ". e1RM " + number(point.e1rm_lb) + " lb. Bodyweight " + number(point.bodyweight_lb) + ". Strength score " + number(point.dots) + ". " + sourceInfo(point);
+    for (const chart of charts) {
+      chart.canvas.setAttribute("aria-label", chart.$label + ". " + description);
+      if (draw) chart.draw();
+    }
+  }
+  function hideTooltips() { $("strengthTooltip").hidden = true; $("scoreTooltip").hidden = true; }
+  function inspect(chart, event) {
+    if (!visibleIndices.length || !Number.isFinite(event.x)) return;
+    const {left,right,top,bottom} = chart.chartArea;
+    if (event.x < left || event.x > right || event.y < top || event.y > bottom) { hideTooltips(); return; }
+    const target = chart.scales.x.getValueForPixel(event.x);
+    const index = visibleIndices.reduce((best,i) => Math.abs(timeOf(data.series[i].date)-target) < Math.abs(timeOf(data.series[best].date)-target) ? i : best, visibleIndices[0]);
+    selectSession(index);
+    hideTooltips();
+    const point = data.series[index], tooltip = $(chart.$tooltip);
+    const rows = el("div"); valuesInto(rows,point,true);
+    tooltip.replaceChildren(el("strong",null,fullDate(point.date)),rows,el("p","note",sourceInfo(point)));
+    tooltip.hidden = false;
+    tooltip.style.left = Math.max(6, Math.min(chart.width - tooltip.offsetWidth - 6, event.x + 12)) + "px";
+    tooltip.style.top = Math.max(6, Math.min(chart.height - tooltip.offsetHeight - 6, event.y - tooltip.offsetHeight - 12)) + "px";
+  }
+  function colors() {
+    const style = getComputedStyle(document.documentElement);
+    return {muted:style.getPropertyValue("--muted").trim(),text:style.getPropertyValue("--text").trim(),card:style.getPropertyValue("--card").trim(),grid:style.getPropertyValue("--line").trim(),blue:"#4a79f5",orange:"#d99132"};
+  }
+  // Keep numeric timestamps: category axes would compress long gaps between sessions.
+  function dateTicks(start, end, width) {
+    const first=Math.ceil(start/DAY)*DAY, last=Math.floor(end/DAY)*DAY;
+    const count=Math.min(width < 500 ? 3 : 7,Math.round((last-first)/DAY)+1);
+    if(count<=1)return [{value:first}];
+    return Array.from({length:count},(_,i)=>({value:Math.round((first+(last-first)*i/(count-1))/DAY)*DAY}));
+  }
+
+  function axisRange(points, key) {
+    const values = points.map(p=>p[key]).filter(v=>v!=null);
+    if (!values.length) return {min:0,max:1};
+    const low = Math.min(...values), high = Math.max(...values), span = high-low || Math.abs(high)*.04 || 1;
+    const rawStep = span*1.3/4, power = 10 ** Math.floor(Math.log10(rawStep));
+    const step = [1,2,2.5,5,10].find(n=>n*power>=rawStep)*power;
+    return {min:Math.floor((low-span*.12)/step)*step, max:Math.ceil((high+span*.12)/step)*step};
+  }
+  function gestureWindow({chart}) {
+    if (syncing) return;
+    setWindow(chart.scales.x.min,chart.scales.x.max);
+  }
+  const selectionGuide = {
+    id:"progressSelection",
+    afterDatasetsDraw(chart) {
+      if (!visibleIndices.includes(selectedIndex)) return;
+      const x = chart.scales.x.getPixelForValue(timeOf(data.series[selectedIndex].date));
+      const {top,bottom,left,right} = chart.chartArea;
+      if (x < left || x > right) return;
+      const ctx=chart.ctx; ctx.save(); ctx.beginPath(); ctx.setLineDash([3,4]); ctx.strokeStyle=colors().muted; ctx.lineWidth=1;
+      ctx.moveTo(x,top); ctx.lineTo(x,bottom); ctx.stroke(); ctx.restore();
+    }
+  };
+  function chartOptions() {
+    const c = colors(), [first,last] = domain();
+    return {
+      responsive:true, maintainAspectRatio:false, animation:false,
+      interaction:{mode:"nearest",axis:"x",intersect:false},
+      onHover:(event,_items,chart)=>inspect(chart,event), onClick:(event,_items,chart)=>inspect(chart,event),
+      plugins:{
+        legend:{position:"bottom",align:"start",labels:{color:c.muted,boxWidth:12,boxHeight:2,padding:14,font:{size:11}}},
+        tooltip:{enabled:false},
+        zoom:{
+          limits:{x:{min:first,max:last,minRange:DAY}},
+          pan:{enabled:true,mode:"x",modifierKey:"shift",onPan:gestureWindow},
+          zoom:{mode:"x",wheel:{enabled:true,modifierKey:"ctrl",speed:.12},pinch:{enabled:true},drag:{enabled:true,backgroundColor:"rgba(74,121,245,.12)",borderColor:c.blue,borderWidth:1,threshold:12},onZoom:gestureWindow}
+        }
+      },
+      scales:{
+        x:{type:"linear",min:windowStart,max:windowEnd,border:{display:false},grid:{color:c.grid,lineWidth:.5},
+          afterBuildTicks:scale=>{scale.ticks=dateTicks(scale.min,scale.max,scale.width);},
+          ticks:{color:c.muted,font:{size:10},maxRotation:0,autoSkip:true,callback:value=>new Date(value).toLocaleDateString(undefined,{month:"short",day:"numeric",year:isoDay(windowStart).slice(0,4)!==isoDay(windowEnd).slice(0,4)?"2-digit":undefined,timeZone:"UTC"})}},
+        y:{position:"left",border:{display:false},grid:{color:c.grid,lineWidth:.5},ticks:{color:c.muted,font:{size:10},maxTicksLimit:5,callback:value=>Number(value.toFixed(1))},title:{display:true,text:"e1RM (lb)",color:c.blue,font:{size:11}}}
+      }
+    };
+  }
+  function dataset(key,label,color,axis="y",dashed=false) {
+    return {label,data:data.series.map(p=>({x:timeOf(p.date),y:p[key]})),borderColor:color,backgroundColor:color,
+      borderWidth:2,pointRadius:data.series.length>80?1.5:2.5,pointHoverRadius:5,pointHitRadius:12,
+      pointBackgroundColor:color,pointBorderColor:colors().card,pointBorderWidth:1,
+      tension:.15,spanGaps:false,fill:false,yAxisID:axis,borderDash:dashed?[4,3]:[],progressKey:key};
+  }
+  function destroyCharts() { for (const chart of charts) chart.destroy(); charts=[]; hideTooltips(); }
+  function createCharts() {
+    const c=colors(), strengthOptions=chartOptions(), scoreOptions=chartOptions();
+    strengthOptions.scales.y1={...strengthOptions.scales.y,position:"right",grid:{drawOnChartArea:false},title:{display:true,text:"Bodyweight (lb)",color:c.orange,font:{size:11}}};
+    const strength=new Chart($("strengthCanvas"),{type:"line",data:{datasets:[dataset("e1rm_lb","e1RM",c.blue),dataset("bodyweight_lb","Bodyweight · 7-day avg",c.orange,"y1",true)]},options:strengthOptions,plugins:[selectionGuide]});
+    scoreOptions.scales.y.title={display:true,text:"Score",color:c.blue,font:{size:11}};
+    const score=new Chart($("scoreCanvas"),{type:"line",data:{datasets:[dataset("dots","Strength score",c.blue)]},options:scoreOptions,plugins:[selectionGuide]});
+    strength.$label="e1RM and bodyweight"; strength.$tooltip="strengthTooltip";
+    score.$label="Strength score"; score.$tooltip="scoreTooltip";
+    charts=[strength,score];
+  }
+  function renderSummary() {
+    const scored=data.series.filter(p=>p.dots!=null), span=scored.length?scored:data.series, first=span[0], last=span.at(-1);
+    $("stats").replaceChildren();
+    for (const [label,key,unit] of [["e1RM","e1rm_lb"," lb"],["Bodyweight","bodyweight_lb"," lb"],["Strength score","dots",""]]) {
+      const stat=el("div","stat"); stat.append(el("div","k",label),el("div",last[key]==null?"v unavailable":"v",number(last[key])+(last[key]==null?"":unit)));
+      if(first[key]!=null && first[key]!==0 && last[key]!=null) {
+        const pct=(last[key]/first[key]-1)*100;
+        stat.append(el("div","d",`${pct>=0?"+":""}${pct.toFixed(1)}% over comparison`));
+      } else stat.append(el("div","d","No comparison available"));
+      $("stats").append(stat);
+    }
+    const comparison=$("comparison"); comparison.replaceChildren(el("strong",null,"Overall comparison"),el("p","comparison-period",fullDate(first.date)+" → "+fullDate(last.date)),
+      el("p",null,"Bodyweight: "+number(first.bodyweight_lb)+(first.bodyweight_lb==null?"":" lb")+" → "+number(last.bodyweight_lb)+(last.bodyweight_lb==null?"":" lb")));
+    const provenance=el("details"); provenance.append(el("summary",null,"Bodyweight sources"),el("p",null,"Start · "+sourceInfo(first)),el("p",null,"End · "+sourceInfo(last)));
+    comparison.append(provenance,el("p","note","Chart zoom does not change this comparison."));
+  }
+  function updateView() {
+    if (!data?.series.length) return;
+    hideTooltips();
+    visibleIndices=data.series.map((p,i)=>({time:timeOf(p.date),i})).filter(p=>p.time>=windowStart && p.time<=windowEnd).map(p=>p.i);
+    const points=visibleIndices.map(i=>data.series[i]);
+    if (!visibleIndices.includes(selectedIndex)) selectedIndex=visibleIndices.at(-1) ?? -1;
+    $("periodLabel").textContent=fullDate(isoDay(Math.ceil(windowStart/DAY)*DAY))+" – "+fullDate(isoDay(Math.floor(windowEnd/DAY)*DAY));
+    $("sessionCount").textContent=visibleIndices.length+" session"+(visibleIndices.length===1?"":"s");
+    for(const button of $("ranges").querySelectorAll("[data-days]")) button.setAttribute("aria-pressed",String(String(activeRange)===button.dataset.days));
+    $("customButton").setAttribute("aria-pressed",String(activeRange==="custom"));
+    const [first,last]=domain(), all=windowStart<=first && windowEnd>=last;
+    const disabled={Earlier:windowStart<=first,Later:windowEnd>=last,"Zoom in":windowEnd-windowStart<=DAY,"Zoom out":all,"Reset zoom":all};
+    for(const button of $("zoomControls").children) button.disabled=disabled[button.dataset.action];
+    $("dateFrom").value=isoDay(Math.ceil(windowStart/DAY)*DAY); $("dateTo").value=isoDay(Math.floor(windowEnd/DAY)*DAY);
+    for(const id of ["dateFrom","dateTo"]) {$(id).min=data.series[0].date;$(id).max=data.series.at(-1).date;}
+    $("sessionSelect").replaceChildren();
+    for(const i of visibleIndices) {const option=el("option",null,fullDate(data.series[i].date)); option.value=String(i); $("sessionSelect").append(option);}
+    $("inspector").hidden=!points.length;
+    if (!points.length) {
+      $("selectedValues").replaceChildren(); $("selectedSource").textContent="No session selected in this date range.";
+      for (const chart of charts) chart.canvas.setAttribute("aria-label",chart.$label+". No sessions in this date range.");
+    }
+    $("strengthEmpty").hidden=!!points.length; $("strengthEmpty").textContent="No sessions in this date range. Zoom out or choose another range.";
+    $("scoreEmpty").hidden=points.some(p=>p.dots!=null); $("scoreEmpty").textContent=points.length?"Strength score unavailable: no recent bodyweight for these sessions.":"No sessions in this date range.";
+    syncing=true;
+    try {
+      for(const chart of charts) {
+        chart.options.scales.x.min=windowStart; chart.options.scales.x.max=windowEnd;
+        for(const set of chart.data.datasets) Object.assign(chart.options.scales[set.yAxisID],axisRange(points,set.progressKey));
+        chart.update("none");
+      }
+    } finally {syncing=false;}
+    selectSession(selectedIndex);
+  }
+  function render(payload) {
+    destroyCharts(); data=payload; selectedIndex=-1;
+    $("progress").hidden=!data.series.length; $("foot").hidden=!data.series.length; $("empty").hidden=!!data.series.length;
+    if (!data.series.length) { $("empty").textContent="No sets with an RPE logged for "+data.title+" yet."; return; }
+    renderSummary();
+    const [first,last]=domain(); windowStart=Math.max(first,last-84*DAY); windowEnd=last; activeRange=84;
+    $("customRange").hidden=true; $("customButton").setAttribute("aria-expanded","false"); $("dateError").textContent="";
+    createCharts(); updateView();
+  }
+  async function load() {
+    const id=++loadId;
+    destroyCharts(); data=null; visibleIndices=[];
+    $("progressLoading").hidden=false;
+    $("progress").hidden=true; $("foot").hidden=true; $("empty").hidden=true; $("status").replaceChildren();
+    for(const button of $("lifts").querySelectorAll("button")) button.setAttribute("aria-pressed",String(button.dataset.lift===current));
+    try {
+      const response=await fetch(trainingUrl("/progress/data?lift=")+encodeURIComponent(current));
+      if(id!==loadId)return;
+      if(!response.ok) { let message="Could not load progress ("+response.status+")."; try {message=(await response.json()).detail||message;}catch(_){} throw new Error(message); }
+      const payload=await response.json();
+      if(id!==loadId)return;
+      if(typeof Chart!=="function" || !Chart.registry.plugins.get("zoom")) throw new Error("Chart files could not load. Refresh to try again.");
+      render(payload);
+    } catch(error) {
+      if(id!==loadId)return;
+      destroyCharts(); $("progress").hidden=true; $("empty").hidden=true; $("status").replaceChildren(el("div","error",error.message||"Could not reach the server."));
+    } finally { if(id===loadId)$("progressLoading").hidden=true; }
+  }
+  // Boot. All data requests are unchanged; this page never posts workouts.
+  initControls();
+  $("lifts").addEventListener("click",event=>{
+    const lift=event.target.dataset?.lift;
+    if(!["squat","bench","deadlift","press"].includes(lift)||lift===current)return;
+    current=lift; try{localStorage.setItem("training.progress.lift",lift);}catch(_){} load();
+  });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{
+    if(!data?.series.length)return;
+    destroyCharts(); createCharts(); updateView();
+  });
+  fetch(trainingUrl("/body-weight/sync"),{method:"POST"}).catch(()=>{}).then(load);
+</script>
+</body>
+</html>

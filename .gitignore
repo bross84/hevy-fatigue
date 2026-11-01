@@ -5,3 +5,5 @@ __pycache__/
 .claude/
 # Private offline history exports and replay reports
 data/analysis/
+*.log
+artifacts/

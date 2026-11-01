@@ -1,0 +1,339 @@
+# Controlled Phase 1 cutover and rollback
+
+Current state: return to testing/review. The operator restored both original
+apps after a temporary stop. No combined app was deployed and no final staging
+was reported. The new logging volume exists and was verified empty. Do not run
+the stop/backup/staging sequence again until release is separately authorized.
+Physical tablet/PWA acceptance remains explicitly deferred by the user. Code
+acceptance and an authorized GitHub commit/release workflow precede future
+cutover work; a manually transferred uncommitted image is not the release path.
+
+These instructions prepare a later operator-controlled switch. Do not run them
+against production as part of implementation or testing. Keep access on the
+existing private network; retain container `hevy-fatigue`, port 8125 and its
+existing network/CasaOS configuration.
+
+## Reviewed configuration, not yet applied
+
+`docker-compose.cutover-review.yml` is an additive, initial write-disabled
+override for the repository Compose file. Render it only during this review;
+no `up`, `down`, restart, volume creation or service stop is authorized yet.
+It requires Compose support for `!reset`; local Compose is v5.6.1 and the
+operator reports homelab Compose v5.4.0. The final merged homelab validation
+returned exit code 0. No configuration was applied.
+
+| Item | Reviewed value |
+| --- | --- |
+| Project / container | `hevy-fatigue` / `hevy-fatigue` |
+| Image | Required `PHASE1_IMAGE`: reviewed immutable image ID or repository digest; never infer from `latest` |
+| Host storage | External existing `hevy-fatigue_hevy-data` at `/data` |
+| Logging storage | External dedicated `hevy-fatigue_training-data` at `/training-data`; created and verified empty, not populated |
+| Host database / key | `/data/hevy_fatigue.db` / `/data/app.key` |
+| Logging database | `/training-data/rackbook.db` |
+| Bridge | `/data/hevy_fatigue.db` |
+| Network | External existing `hevy-fatigue_hevy-net` |
+| Port | Existing 8125 to container 8000 |
+| Write policy | Literal `HEVY_WRITES_ENABLED=0`, `RACKBOOK_READ_ONLY_PREVIEW=1` |
+| Build / pull | Inherited build removed; `pull_policy: never` |
+
+The override's external declarations refuse empty replacement volumes or a new
+network. The logging volume must later be deliberately staged with the final
+SQLite snapshot before any start; neither old Rackbook storage nor its key is
+mounted writable into the combined app. The host keeps its original data/key
+volume. `PHASE1_IMAGE` must exist on the deployment host before a future start;
+the development machine's image ID is not evidence that it exists there.
+
+The prepared image has now been loaded (not started) on the homelab as
+`hevy-fatigue:phase1-cutover-20261031-233737`. The operator verified server image
+ID `sha256:ced9a086530c228f1bea17f7f704ab2fbfca7e073d9ecb07be49b33f28f46801`,
+matching the local reviewed artifact, Linux/amd64 and `HEVY_WRITES_ENABLED=0`.
+That image is now superseded by later review fixes and must not be selected for
+deployment. A future `PHASE1_IMAGE` must identify the release built from the
+reviewed committed revision. Loading an image does not stage the logging volume
+or authorize a service start. See training-verification.md for historical image
+tests/checksum and the current review status.
+
+Local config rendering confirmed both blockers remain set even with an
+environment file containing `HEVY_WRITES_ENABLED=1`. Enabling real writes later
+requires an explicit reviewed configuration change to both blockers; an `.env`
+edit alone cannot enable this override. No write-enabling override is supplied.
+
+Production's active host Compose file is
+`/var/lib/docker-data/AppData/hevy-fatigue/docker-compose.yml`. The old Rackbook
+uses its sibling `rackbook/docker-compose.yml` plus
+`rackbook/docker-compose.fatigue-bridge.yml`. Host environment names show no
+extra user-configured variables beyond `DB_PATH` and `TZ`; it has an `icon` label
+that the repository base file does not contain. Preserve this label and all
+CasaOS metadata by using the active host Compose as the base for the future
+override, rather than replacing it with the repository base. The override now
+explicitly adds the logging mount even when the deployed base lacks that mount.
+The operator's active-file render confirms `restart: unless-stopped`, the
+existing port/mount/network values, the `icon` service label, and top-level
+CasaOS keys `author`, `category`, `hostname`, `icon`, `index`, `is_uncontrolled`,
+`port_map`, `scheme` and `title`. Keep the current icon, custom title
+`hevy-fatigue`, index `/`, port map `8125`, scheme `http`, empty hostname and
+category `self`. The CasaOS launcher scheme describes its local port; it does
+not replace or reconfigure the external Cloudflare HTTPS endpoint. Preserve
+the unshared author/uncontrolled values by inheritance, not by inventing them.
+A local merge fixture verified complete CasaOS/label preservation, unchanged
+port/restart and the added logging mount against the reported structure,
+including the empty IPAM object. The operator's merged homelab render passed
+with exit code 0. This does not verify image availability or staged-volume contents.
+
+The operator confirms Hevy-Fatigue uses Cloudflare, while Rackbook uses Tailscale.
+The combined app retains the existing Cloudflare host origin, with training at
+`/training/log`; no Tailscale or Cloudflare routing change is planned. Current
+Tailscale serve routes are `https://ubuntu-server.taildbe131.ts.net/` to
+`http://localhost:8126`, and port 8444 to `http://127.0.0.1:3001`. Leave both
+routes and the existing Cloudflare tunnel untouched during review and cutover
+unless a separately authorized requirement arises. Old-service retirement is
+not authorized by this review.
+
+For local render only (using a private env file that sets `PHASE1_IMAGE`):
+
+```sh
+docker compose --env-file /path/to/review.env -f /var/lib/docker-data/AppData/hevy-fatigue/docker-compose.yml -f /path/to/docker-compose.cutover-review.yml config --quiet
+```
+
+This validates syntax, not the existence or contents of external volumes/images.
+
+## Draft transfer on each device
+
+First inventory every device, browser profile, private session and installed
+home-screen app actually used. Record its exact origin, including scheme and
+port: LAN, Tailscale and HTTPS shortcuts may each have separate storage. Do not
+infer that an empty draft at one address means another address/profile is empty.
+The final target origin is the existing Cloudflare host origin plus `/training/log`;
+the mocked preview origin is only for practice and is not the transfer target.
+The old Tailscale origin and new Cloudflare origin have independent browser
+storage and service-worker registrations. The old root-scoped worker cannot
+control the Cloudflare host. Do not delete site storage or unregister workers
+during this review. At cutover open the Cloudflare training URL directly on both
+devices and replace an old Rackbook shortcut if used; its old `/log` URL and root
+manifest do not identify the new `/training/log` app. Verify the new training
+manifest/worker scope is `/training/` on the Cloudflare origin.
+
+For the current review, do not save workouts, discard drafts, reload an open
+old editor or remove home-screen apps. In each already-open old page, this
+optional console snippet reads only the known draft keys and reports presence;
+it makes no API calls and changes no storage:
+
+```javascript
+(() => {
+  const read = key => {
+    try { return {value:JSON.parse(localStorage.getItem(key)), invalid:false}; }
+    catch (_) { return {value:null, invalid:true}; }
+  };
+  const workout=read('logDraft'), editor=read('mesocycleEditor');
+  const form=document.getElementById('editor');
+  console.log({
+    origin:location.origin,
+    workoutDraftPresent:!!workout.value,
+    workoutDraftUnreadable:workout.invalid,
+    workoutHasIdentity:!!workout.value?.client_workout_id,
+    workoutHasFrozenRequest:!!workout.value?.frozenSave,
+    storedEditorPresent:!!editor.value,
+    storedEditorUnreadable:editor.invalid,
+    editorCurrentlyOpen:!!form && !form.hidden
+  });
+})();
+```
+
+Also ask whether Save was ever attempted for each retained draft. The absence of
+an identity/frozen request is not evidence of non-delivery: the old logger has no
+durable save journal. A timeout, closed page or lost response from an old save is
+a blocking ambiguity. Preserve the draft and investigate the existing remote
+workout and local records read-only before transfer/resubmission. Importing it
+and assigning a UUID does not deduplicate a previous unjournaled remote save.
+
+| Device / profile / exact origin | Workout present | Old save ever attempted / outcome | Open unsaved editor | Export retained / verified | Final import verified |
+| --- | --- | --- | --- | --- | --- |
+| Dev PC / existing browser / `https://ubuntu-server.taildbe131.ts.net` | None, operator confirmed | No uncertain outcome reported | None, operator confirmed | Not needed while empty | Not needed while empty |
+| One tablet / existing browser or shortcut / same Tailscale HTTPS origin | None, operator confirmed | No uncertain outcome reported | None, operator confirmed | Not needed while empty | Not needed while empty |
+
+The operator reports only those two devices and nothing unfinished in Rackbook.
+This is device-owner confirmation, not automated access to either device's
+storage. Recheck both immediately before cutover if Rackbook is used again.
+
+Export one file per origin/profile and keep both source and destination drafts
+until verified. Do not merge competing device drafts by importing over one
+another; preserve each export and decide which draft to continue. Inspect a
+replacement prompt deliberately. Exports contain workout details: keep them in
+private device storage, not Git or chat attachments. Re-export after subsequent
+edits before the eventual final snapshot. No draft absence/export/import is
+certified until checked on that actual device/profile.
+
+Before stopping Rackbook, finish its workout or export the draft on **every
+phone/tablet/browser profile**. Storage belongs to the old origin and is not
+accessible from the new address. Run this small helper in the old Rackbook page's
+browser console; it reads only the identified workout/timer/unit keys and never
+calls Hevy or modifies the old repository:
+
+```javascript
+(() => {
+  const draft = JSON.parse(localStorage.getItem('logDraft'));
+  if (!draft) throw Error('No workout draft on this device.');
+  const data = {draft, unit:localStorage.getItem('unit') || 'kg',
+    restSecs:localStorage.getItem('restSecs'), restEnd:localStorage.getItem('restEnd'),
+    restTotal:localStorage.getItem('restTotal')};
+  const blob = new Blob([JSON.stringify({version:1,type:'workout-draft',data},null,2)],
+    {type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='rackbook-workout-draft.json'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+})();
+```
+
+The inspected source does **not** persist current microcycle editor changes and
+clears old editor backups at page load. Save the plan normally before leaving
+the old editor. A plan save does not complete a workout. If a current editor
+snapshot is present in browser storage from an earlier version, export only that
+known key (never dump all localStorage):
+
+```javascript
+(() => {
+  const data=JSON.parse(localStorage.getItem('mesocycleEditor'));
+  if (!data) throw Error('No stored editor draft. Save the open plan before leaving.');
+  // Accepted current shape: {plan, wi:0, si:<selected day>, assignmentCatalog:{...}}.
+  if (!data.plan || !Array.isArray(data.plan.weeks))
+    throw Error('Retired editor format. Keep this backup and save the plan in the old editor.');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify({version:1,type:'microcycle-editor',data},null,2)],{type:'application/json'}));
+  a.download='rackbook-editor-draft.json'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+})();
+```
+
+In the combined app, open Log Workout or Plans → **Transfer device draft**.
+Export creates the same versioned JSON. Import validates the whole file before
+storage changes and asks before replacing an existing draft. It preserves exact
+canonical kg, checked sets, TS, refs, notes and UUID/frozen payload. Old workouts
+without a UUID receive one when restored. Expired timers remain expired. Import
+does not post, activate a plan or create completion records. Reload restores the
+imported draft. Keep the export until the saved workout and exact local records
+are verified.
+
+If a transferred draft has a pending save, use its recovery status first. A
+`remote_saved` draft offers local retry. An `uncertain` draft needs the existing
+Hevy workout ID for read-only reconciliation. Do not start a new save identity
+merely because the response was lost. Definite rejections expose an explicit
+correction action. This includes local plan/TS validation failures. Correction
+retains the edited sets but creates a new save identity and a fresh payload.
+If writes are disabled or credentials are missing, the attempt stays prepared:
+fix the configuration and use **Resume prepared save** with the original identity.
+Do not reinterpret older uncertain records as prepared based only on an error
+message.
+
+## Operator checklist
+
+1. Record the **deployed** source/image revisions of both containers. Inspect
+   actual mounts (`docker inspect hevy-fatigue` and `docker inspect rackbook`),
+   existing network, CasaOS metadata and paths. Do not assume volume names from
+   development. Record the container environment without sharing secret values.
+   Confirm which volume owns `/data/app.key` for each service.
+2. Create consistent timestamped backups of both databases using SQLite's backup
+   API, including WAL content. Use `tools/backup_sqlite.py SOURCE NEW_BACKUP` in a
+   runtime that can read the volume. It refuses to overwrite a destination and
+   runs `PRAGMA integrity_check`. Keep each matching key file with its respective
+   backup, with restrictive permissions. Never print key contents. A database
+   dump alone is insufficient to restore encrypted host settings.
+3. Finish/export each device's drafts using the preceding instructions. Save
+   unsaved old microcycle edits before navigating away. Record daily/pattern
+   outputs from the current host for the same cutoff date and data.
+4. Stop the **old Rackbook writer** and keep its container/volumes recoverable.
+   Do not delete anything. Stop the host briefly for its final database/key
+   snapshot if settings are being changed. Retain the original host volume and
+   encryption key together.
+5. Make the final consistent logging snapshot with the backup API after the old
+   writer is stopped. Copy that snapshot into a **new dedicated logging volume**
+   as `rackbook.db`. Do not mount the original logging volume writable in both
+   applications. Keep the old snapshot/key pair as rollback material.
+6. Build the reviewed revision. Confirm Compose resolves the **existing host
+   volume**, not a newly named empty replacement. The combined service mounts
+   existing `hevy-data:/data` and separate `training-data:/training-data` with
+   `DB_PATH=/data/hevy_fatigue.db`,
+   `RACKBOOK_DB_PATH=/training-data/rackbook.db`,
+   `HEVY_FATIGUE_DB_PATH=/data/hevy_fatigue.db`, `TZ=America/New_York`.
+   First start with `HEVY_WRITES_ENABLED=0`. Preserve existing tunnel/network
+   access, name, port 8125 and CasaOS metadata. Use an override with `external:
+   true`/`name:` for discovered existing volumes where needed; inspect
+   `docker compose config` before starting.
+7. Run `tools/data_inventory.py` against before/after **copies** and compare
+   counts, latest TS values, active plan, completion links and trial hashes.
+   Startup legitimately adds journal/schema/migration setting rows and may
+   deactivate a fully completed plan; investigate all other differences.
+   Existing trial payload hashes must remain identical. Check the logger's
+   previous sets and exact low RPEs. Check cache/exercise references and units.
+   The verified preflight also identified an LF/CRLF-only `rpe_chart_source`
+   fingerprint change: accept this only when both fingerprints match the chosen
+   CSV byte variants, every RPE chart row is identical, and other settings are
+   preserved. Do not dismiss arbitrary setting changes as metadata.
+8. Verify the same daily and pattern outputs against the captured host baseline,
+   at the same date/cutoff and with unchanged check-ins/Hevy data. The deterministic
+   fixture regression is additional evidence, not a replacement for this
+   deployed-data check. Ensure same-day training remains excluded where intended.
+9. Import drafts on each device, resolving replacement prompts deliberately.
+   Confirm weights, checked sets, TS, notes, plan identity and remaining timer.
+   Uninstall/re-add an old home-screen shortcut if it points to the old origin.
+   The combined training manifest starts `/training/log`; its worker scope is
+   `/training/` and cannot own the root dashboard.
+10. Perform the phone checklist below with mocked/disposable data first. Only
+    after save-recovery regressions pass and all operator checks succeed, set
+    `HEVY_WRITES_ENABLED=1` for the controlled cutover. Confirm the shared host
+    credential through Settings; never re-enter it into logging storage.
+11. Keep the old deployment stopped, with source, image and backup/key pair
+    available. Record the cutover timestamp and first combined-app workout ID.
+    No deletion or automatic retirement is part of this phase.
+
+For volume copies, mount the old volume read-only and a separate backup directory
+or new destination volume. Example **inside a maintenance Python container**:
+
+```sh
+python /app/tools/backup_sqlite.py /old-data/rackbook.db /backup/rackbook-final.db
+python /app/tools/data_inventory.py /backup/rackbook-final.db
+```
+
+Do not use `cp rackbook.db` against an actively written SQLite database while
+ignoring its WAL. Copying the already closed, verified backup artifact to the new
+volume is safe. Volume names and maintenance-container commands must use the
+actual names established in step 1.
+
+## Physical phone/tablet checklist
+
+Record device/browser/version separately from automated browser results:
+
+1. Today → submit/review check-in → Plans.
+2. Load a selected pending day; confirm that loading/discarding does not complete it.
+3. Enter weight/reps/RPE by touch. Tap set completion with keypad open and verify
+   the tapped row stays under the finger. Verify TS pins e1RM.
+4. Switch page and per-exercise kg/lb; completed canonical weights stay fixed.
+   Inspect plates and warm-up removal.
+5. Start timer, leave and return; reload and restore the same draft/identity.
+   Test the alarm and wake-lock behavior on the physical device.
+6. Save once. Confirm exact local sets, TS/TM and one plan completion; next pending
+   day appears. Check a low RPE remains exact after normal and full monitoring sync.
+7. Use disposable mocks to exercise uncertain-save and local-finalization recovery.
+8. Open Progress, Recent, Stress and RPE Charts; return to Today and Check-in History.
+   Settings must open the host tab. Revisit the optional trial only through Settings.
+
+## Rollback
+
+**Before any new combined-app writes:** stop the combined service and restart the
+prior host/logger deployments against their original volumes and matching keys.
+Keep the prepared copies for diagnosis. Do not run two logger writers.
+
+**After new writes:** first stop the combined writer and back up its updated
+logging database consistently. Preserve new host check-ins/settings and its key
+as well. Transfer the updated logging database back to the old logger's intended
+volume **before** restarting it. Added journal tables may remain; the old logger
+ignores them. Keep the old logger's matching encryption key and original
+credential rows (inactive but preserved by the combined app). Confirm record
+counts, TS, plans and completion links before resuming. Never restore an older
+logging backup over new workouts or repost them from an exported draft.
+
+The old logger does not understand the new save journal. Resolve every pending or
+uncertain combined save before using its draft in the old app; otherwise return
+temporarily to the combined app for verified reconciliation/local finalization.
+Maintain a copy of the updated database and all device exports until recovery is
+confirmed. If host data must be restored, preserve its newer check-ins/settings
+instead of replacing them with a stale snapshot.

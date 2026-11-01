@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script src="/training/static/training.js"></script>
+  <script src="/training/static/draft-transfer.js"></script>
+  <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="manifest" href="/training/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/training/static/apple-touch-icon.png" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f5f8" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#111923" />
+  <title>Movement stress</title>
+  <style>
+    :root { --bg:#f6f5f1; --card:#fff; --text:#1d1d1b; --muted:#6b6a64; --line:#e3e1d9; --accent:#1f5fbf; --peripheral:#377a58; --central:#a76118; --error:#a32d2d; }
+    @media(prefers-color-scheme:dark) { :root { --bg:#161614; --card:#21211e; --text:#ecebe5; --muted:#a09f97; --line:#34332f; --accent:#7fb0ff; --peripheral:#7ec79b; --central:#e8a15c; --error:#f09595; } }
+    * { box-sizing:border-box; } [hidden] { display:none !important; }
+    body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+    main { max-width:1100px; margin:auto; padding:16px; }
+    header, .controls { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    nav { display:flex; gap:14px; flex-wrap:wrap; } a { color:var(--accent); }
+    h1 { font-size:22px; font-weight:500; margin:8px 0; } h2 { font-size:18px; font-weight:500; margin:0 0 8px; }
+    h3 { font-size:15px; font-weight:500; margin:0 0 6px; } p { margin:6px 0; }
+    .note, small { color:var(--muted); font-size:13px; } .intro { margin:6px 0 16px; }
+    button, select { font:inherit; color:var(--text); background:var(--card); border:1px solid var(--line); border-radius:10px; min-height:44px; padding:8px 12px; }
+    button { cursor:pointer; } select { max-width:100%; } label { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+    .controls { margin:0 0 12px; } .controls label:first-child { flex:1; } #movement { width:min(100%,410px); }
+    .overview { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-bottom:16px; }
+    .movement-card { text-align:left; padding:14px; border-radius:12px; min-width:0; }
+    .movement-card[aria-pressed="true"] { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+    .movement-card span { display:block; } .card-title { font-weight:600; } .card-score { font-size:24px; font-variant-numeric:tabular-nums; }
+    .card { border:1px solid var(--line); border-radius:12px; background:var(--card); padding:16px; margin-bottom:12px; }
+    .metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+    .metric strong { display:block; font-size:25px; font-weight:500; font-variant-numeric:tabular-nums; } .metric span { font-size:13px; color:var(--muted); }
+    .metric small { display:block; font-size:12px; }
+    .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:13px; margin:8px 0; } .legend span:before { content:""; display:inline-block; width:12px; height:3px; vertical-align:middle; margin-right:6px; background:var(--accent); }
+    .legend .ps:before { background:var(--peripheral); } .legend .cs:before { background:var(--central); }
+    .legend .window:before { height:10px; background:var(--accent); opacity:.25; border:1px dashed currentColor; }
+    svg { width:100%; height:auto; display:block; } svg text { fill:var(--muted); font:12px system-ui,sans-serif; }
+    .table-scroll { overflow-x:auto; } table { width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums; }
+    th,td { text-align:right; padding:10px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
+    th:first-child,td:first-child { text-align:left; } th { color:var(--muted); font-weight:500; }
+    td small { display:block; white-space:normal; min-width:120px; max-width:220px; } caption { text-align:left; font-size:13px; color:var(--muted); margin-bottom:8px; }
+    .view-links { display:flex; justify-content:flex-end; gap:12px; margin:8px 0 12px; }
+    #dashboardLink { margin-right:auto; }
+    .compact-stress-chart { max-height:280px; }
+    .compact-stress-chart text { font-size:16px; }
+    .dashboard-heading { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+    .dashboard-summary { display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; margin:8px 0; }
+    .dashboard-summary strong { font-size:16px; font-weight:500; }
+    .dashboard-plots { margin-top:8px; }
+    .relationship-feedback { padding:10px 12px; border-radius:8px; background:var(--accent-soft, var(--bg)); margin:8px 0 0; }
+    .relationship-feedback:empty { display:none; }
+    .relationship-feedback.error { background:var(--card); }
+    body.dashboard-view .movement-card .note { font-size:12px; }
+    @media(max-width:620px) { body.dashboard-view .overview { grid-template-columns:repeat(3,minmax(0,1fr)); } body.dashboard-view .movement-card { padding:10px 8px; } .controls label:first-child { flex:1 0 100%; } }
+    .relationship-row { padding:12px 0; border-bottom:1px solid var(--line); }
+    .relationship-options { display:flex; flex-wrap:wrap; gap:6px 16px; margin:8px 0; }
+    .relationship-options label { min-height:44px; }
+    .relationship-options input { width:20px; height:20px; accent-color:var(--accent); }
+    .relationship-actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+    .context-summary { padding:10px 12px; background:var(--soft, var(--bg)); border-radius:10px; margin:12px 0; }
+    .observation-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin:16px 0; }
+    .observation-grid figure { margin:0; min-width:0; }
+    .observation-grid svg text { font-size:16px; }
+    .observation-grid figcaption { font-size:14px; font-weight:600; }
+    .collection-progress { display:block; width:100%; height:12px; margin:8px 0 12px; accent-color:var(--accent); }
+    @media(max-width:620px) { .observation-grid { grid-template-columns:1fr; } }
+    .error { color:var(--error); } summary { cursor:pointer; min-height:44px; padding:10px 0; } #detail[aria-busy="true"] { opacity:.6; }
+    @media(max-width:620px) { .overview { grid-template-columns:1fr; gap:8px; } .movement-card { padding:10px 12px; } .movement-card .card-score { font-size:20px; } .metrics { gap:6px; } .metric strong { font-size:22px; } .card { padding:12px; } }
+
+    .page-heading { display:flex; align-items:center; gap:8px; min-width:0; }
+    .page-back { flex-shrink:0; min-height:44px; padding:4px 8px; border:0; border-radius:8px; background:transparent; color:var(--accent,currentColor); font:inherit; font-size:14px; cursor:pointer; white-space:nowrap; }
+    .page-back:disabled { opacity:.4; cursor:default; }
+    .page-back:focus-visible { outline:2px solid var(--accent,currentColor); outline-offset:2px; }
+
+    .range-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:10px; }
+    .segmented { display:inline-flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+    .segmented button { border:0; border-right:1px solid var(--line); padding:4px 10px; min-height:28px; font-size:11px; color:var(--muted); background:var(--card); white-space:nowrap; }
+    .segmented button:last-child { border-right:0; }
+    .segmented button[aria-pressed="true"] { background:var(--accent); color:var(--card); }
+    .zoom-actions { display:flex; gap:3px; margin-left:auto; }
+    .zoom-actions button,.session-step { min-height:30px; min-width:30px; padding:3px 8px; border:1px solid var(--line); border-radius:5px; background:var(--card); color:var(--muted); font-size:12px; }
+    .plot-wrap { height:260px; position:relative; width:100%; min-width:0; }
+    .plot-wrap canvas { touch-action:pan-y !important; }
+    .plot-wrap canvas:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+    .stress-chart .chart-note,.stress-chart .note { font-size:11px; color:var(--muted); line-height:1.55; margin:8px 0 0; }
+    .chart-tooltip { position:absolute; z-index:2; width:250px; max-width:calc(100% - 12px); padding:10px 12px; border:1px solid var(--line); border-radius:7px; background:var(--card); color:var(--text); box-shadow:var(--shadow); font-size:11px; pointer-events:none; }
+    .chart-tooltip strong { display:block; margin-bottom:6px; font-size:12px; }
+    .tooltip-row { display:flex; justify-content:space-between; gap:16px; color:var(--muted); }
+    .tooltip-row b { color:var(--text); font-weight:550; }
+    .chart-tooltip .note { border-top:1px solid var(--line); padding-top:6px; margin-top:6px; font-size:10px; }
+    @media(max-width:800px) { .plot-wrap {height:230px;} }
+    @media(max-width:480px) {
+      .plot-wrap {height:220px;} .range-row {gap:8px 4px;} .segmented {flex:1;}
+      .segmented button {flex:1;padding:6px 7px;min-height:36px;}
+      .zoom-actions {width:100%;justify-content:flex-end;} .zoom-actions button {min-height:36px;min-width:36px;}
+    }
+    @media(max-width:350px) {
+      .segmented {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));flex-basis:100%;}
+      .segmented button:nth-child(-n+3) {border-bottom:1px solid var(--line);}
+      .segmented button:nth-child(3) {border-right:0;}
+    }
+.legend {display:none;} .stress-chart { min-width:0; } .stress-chart .chart-selection {font-size:11px;color:var(--muted);margin-top:8px;min-height:34px} .stress-chart input {min-width:0;max-width:145px;font:inherit;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:5px} .stress-chart .range-row {font-size:11px} .observation-grid figure {min-width:0;}
+</style>
+  <style id="rackbook-theme">
+
+    /* Rackbook visual system: kept inline so every page remains self-contained. */
+    :root {
+      color-scheme: light;
+      --bg: #f3f5f8; --card: #ffffff; --text: #17243a; --muted: #59687c;
+      --line: #dce3ec; --accent: #2459b8; --chip: #edf1f7; --soft: #f7f9fc;
+      --accent-soft: #edf3ff; --done: #edf7f1; --done-line: #28784b;
+      --shadow: 0 2px 5px rgba(23,36,58,.025), 0 10px 28px rgba(23,36,58,.035);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --bg: #111923; --card: #1a2533; --text: #e8eef8; --muted: #a5b4c9;
+        --line: #344358; --accent: #95baff; --chip: #243246; --soft: #202d3d;
+        --accent-soft: #243b5b; --done: #20392f; --done-line: #3f825f;
+        --shadow: 0 4px 20px rgba(0,0,0,.12);
+      }
+    }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+    main { max-width: 1120px; padding: 24px; margin: 0 auto; }
+    .app-header { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 16px; margin: 0 0 24px; }
+    .page-heading { gap: 12px; }
+    .page-title { min-width: 0; }
+    .eyebrow { display: block; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .18em; margin: 0 0 3px; }
+    .page-title h1 { font-size: 26px; font-weight: 700; letter-spacing: -.035em; line-height: 1.2; margin: 0; }
+    .app-header .page-back { width: auto; padding: 0 10px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); font-size: 13px; }
+    .header-tools { justify-self: end; }
+    .app-header .app-nav { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; padding: 5px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; white-space: normal; }
+    .app-header .app-nav a { display: flex; align-items: center; justify-content: center; flex: 1 0 auto; min-height: 40px; padding: 6px 14px; margin: 0; border-radius: 9px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 550; }
+    .app-header .app-nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 650; }
+    .card { border-radius: 16px; border-color: var(--line); box-shadow: var(--shadow); margin-bottom: 16px; }
+    h2, h3, .wk-title, .ex-title { letter-spacing: -.02em; font-weight: 650; }
+    button, input, select { transition: border-color .12s ease, background-color .12s ease, box-shadow .12s ease; }
+    button { font-weight: 550; }
+    button.primary { font-weight: 650; color: var(--card); }
+    button:disabled { cursor: default; }
+    :where(button, a, input, select, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    input, select { accent-color: var(--accent); }
+    .lifts { gap: 6px; padding: 5px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); margin-bottom: 20px; }
+    .lifts button { border-color: transparent; background: transparent; min-height: 44px; font-weight: 600; }
+    .lifts button.on, .lifts button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+    .movement-card { padding: 18px; background: var(--card); border-radius: 16px; box-shadow: var(--shadow); }
+    .movement-card[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+    .card-score { font-size: 30px; font-weight: 700; letter-spacing: -.04em; margin: 8px 0; }
+    .metrics { gap: 16px; }
+    .metric { padding: 12px; border-radius: 12px; background: var(--soft); }
+    .metric strong { font-size: 28px; font-weight: 700; letter-spacing: -.03em; }
+    .controls { gap: 12px; padding: 14px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 16px; }
+    .controls label { font-size: 13px; color: var(--muted); font-weight: 550; }
+    .controls select { color: var(--text); background: var(--soft); }
+    th { font-weight: 600; }
+    .wk-head { flex-wrap: wrap; gap: 4px 12px; }
+    .wk-meta { margin-top: 6px; }
+    .intro { line-height: 1.65; }
+    @media (hover: hover) {
+      .app-header .app-nav a:hover { background: var(--soft); color: var(--text); }
+      button:not(:disabled):hover { border-color: var(--accent); }
+    }
+    @media (max-width: 599px) {
+      main { padding: 16px 12px; }
+      .app-header { gap: 12px; margin-bottom: 18px; }
+      .page-heading { gap: 8px; }
+      .page-title h1 { font-size: 23px; }
+      .app-header .app-nav a { flex: 1 0 28%; padding: 6px 8px; min-height: 44px; font-size: 13px; }
+      .card { border-radius: 14px; }
+      .metric { padding: 10px 8px; }
+      .metric strong { font-size: 23px; }
+      .controls { padding: 12px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header class="app-header">
+    <div class="page-heading"><div class="page-title"><span class="eyebrow">Hevy-Fatigue</span><h1 id="stressTitle">Movement stress</h1></div></div>
+    <nav class="app-nav" aria-label="Pages"><a href="/">Today</a><a href="/training/log">Log Workout</a><a href="/training/microcycles">Plans</a><a href="/training/recent">Recent</a><a href="/training/progress">Progress</a><a href="/training/stress" aria-current="page">Stress</a><a href="/training/rpe-charts">RPE Charts</a><a href="/#settings">Settings</a></nav>
+  </header>
+  <p class="note intro" id="stressIntro" hidden data-details-only>Scores, observations and settings for the selected movement.</p>
+  <div class="view-links"><a id="dashboardLink" href="/training/stress" hidden data-details-only>← Back to dashboard</a><a id="detailsLink" href="/training/stress/details">View details →</a></div>
+  <div class="controls">
+    <label>Movement <select id="movement" aria-label="Movement"><option value="">Loading movements…</option></select></label>
+    <label>Stress history <select id="range" aria-label="History range"><option value="56">8 weeks</option><option value="180">6 months</option><option value="365">1 year</option><option value="0">All history</option></select></label>
+    <button id="refresh" type="button">Refresh</button>
+  </div>
+  <div id="status" role="status"></div>
+  <section class="overview" id="overview" aria-label="Main movements"></section>
+  <section id="fatigue" aria-label="Performance and soreness trends"></section>
+  <details class="card" id="relationshipEditor" hidden data-details-only><summary>Related movements</summary>
+    <p class="note">Choose which patterns share workload with each exercise. For example, leg press can contribute to Squat workload. Saving activates those relationships in the fatigue model. Leave every box unchecked to mark an exercise Not related.</p>
+    <div id="relationshipRows" aria-live="polite">Open to review recorded exercises.</div>
+  </details>
+  <section id="detail" aria-label="Selected movement" aria-busy="false"></section>
+  <details class="card" hidden data-details-only><summary>How to read these metrics</summary>
+    <p class="note">Total stress is the average of central and peripheral stress. Central emphasizes relative load; peripheral also weights proximity to failure. These are estimates of workload, not measurements of nervous-system fatigue or recovery limits.</p>
+    <p class="note">Session windows use 80–120% of the median session from the preceding 56 days; elevated is above 120%, much higher above 150%. Fewer than six prior sessions is provisional. Historical windows use only sessions before the workout being assessed. Missed weeks do not become zero-stress sessions.</p>
+    <p class="note">Rolling totals are trailing 7- and 28-day durations, including each saved workout once. Gaps stay visible; the lines join recorded sessions and do not imply workouts occurred between them. Changing the history selector never changes today’s rolling totals or removes earlier data needed for a baseline.</p>
+    <p class="note">Warm-ups are excluded. Unsupported or invalid sets are marked unscored. Historical estimates leave the original workout data untouched. This dashboard covers saved workouts; the active draft is shown on the workout log.</p>
+  </details>
+</main>
+<script src="/training/static/vendor/chart-4.4.0.umd.js"></script>
+<script src="/training/static/vendor/hammer-2.0.8.min.js"></script>
+<script src="/training/static/vendor/chartjs-plugin-zoom-2.2.0.min.js"></script>
+<script src="/training/static/stress-charts.js"></script>
+<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register(trainingUrl("/sw.js")).catch(function () {});</script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const detailsMode = location.pathname === trainingUrl("/stress/details");
+  const pageParams = new URLSearchParams(location.search);
+  let movements = [], selected = "", generation = 0, overviewGeneration = 0;
+  document.body.classList.toggle("dashboard-view", !detailsMode);
+  document.title = detailsMode ? "Movement stress details" : "Movement stress";
+  $("stressTitle").textContent = detailsMode ? "Movement stress details" : "Movement stress";
+  for(const node of document.querySelectorAll("[data-details-only]"))node.hidden = !detailsMode;
+  $("overview").hidden = detailsMode;
+  $("detailsLink").hidden = detailsMode;
+  const requestedRange = pageParams.get("days");
+  if(["56","180","365","0"].includes(requestedRange))$("range").value=requestedRange;
+  function stressViewUrl(id, days, details=false) {
+    const query=new URLSearchParams({movement:id,days:String(days)});
+    return trainingUrl(details?"/stress/details":"/stress")+"?"+query.toString();
+  }
+  function updateViewLinks(id) {
+    const days=$("range").value;
+    $("detailsLink").href=stressViewUrl(id,days,true);
+    $("dashboardLink").href=stressViewUrl(id,days,false);
+    history.replaceState(null,"",stressViewUrl(id,days,detailsMode)+location.hash);
+  }
+  const results = new Map(), cards = new Map();
+  const names = { squat:"Squat", bench:"Bench", deadlift:"Deadlift" };
+  const statuses = { no_sets:"Unscored", no_baseline:"Building history", below_usual:"Below usual", usual:"Usual", elevated:"Elevated", much_higher:"Much higher" };
+  function el(tag, cls, text) { const n=document.createElement(tag); if(cls)n.className=cls; if(text!=null)n.textContent=text; return n; }
+  const fmt = (v) => v == null ? "—" : v.toFixed(2);
+  const date = (s) => new Date(s).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
+  const windowText = (w) => w.median == null ? "Building history" : fmt(w.lower)+"–"+fmt(w.upper)+(w.provisional?" · Provisional":"");
+  async function api(path, options={}) { const r=await fetch(trainingUrl(path), options); const d=await r.json().catch(()=>({})); if(!r.ok)throw new Error(typeof d.detail==="string"?d.detail:"Could not load stress history."); return d; }
+  function paintCard(id, data, error) {
+    const card=cards.get(id); if(!card)return; card.replaceChildren();
+    const movement=movements.find(m=>m.id===id);
+    card.append(el("span","card-title",names[movement.primary_key]));
+    if(error) { card.append(el("span","note error",error),el("span","note","Select to retry")); return; }
+    if(!data) { card.append(el("span","note","Loading…")); return; }
+    const latest=data.sessions.at(-1);
+    card.append(el("span","card-score",latest && latest.score.sets ? fmt(latest.score.total):"—"),
+      el("span","note",latest?date(latest.start_time):"No sessions"));
+    card.setAttribute("aria-label",names[movement.primary_key]+", latest session stress "+(latest&&latest.score.sets?fmt(latest.score.total):"unavailable")+". Select movement.");
+  }
+  async function load(id, force=false) {
+    const key=id+"|"+$("range").value;
+    if(force)results.delete(key);
+    if(!results.has(key)) {
+      const promise=api("/movement-stress/"+encodeURIComponent(id)+"/history?days="+$("range").value);
+      results.set(key,promise);
+      promise.catch(()=>{ if(results.get(key)===promise)results.delete(key); });
+    }
+    return results.get(key);
+  }
+  function chart(rows, compact=false) {
+    return RackbookCharts.create(rows, {
+      title:'Session stress', stress:true, compact,
+      series:[['total','Total','#4a79f5'],['peripheral','Peripheral','#377a58'],['central','Central','#d99132']]
+    });
+  }
+  function renderDetail(data) {
+    const box=$("detail"); box.replaceChildren();
+    const movement=movements.find(m=>m.id===selected), c=data.current, latest=data.sessions.at(-1);
+    const top=el("section","card"); top.append(el("h2",null,movement.title));
+    const metrics=el("div","metrics");
+    for(const [label,score] of [["Latest session",latest && latest.score.sets?latest.score:null],["Rolling 7 days",c.rolling_7],["Rolling 28 days",c.rolling_28]]) {
+      const node=el("div","metric"); node.append(el("span",null,label),el("strong",null,fmt(score?.total)));
+      if(score)node.append(el("small",null,"Peripheral "+fmt(score.peripheral)),el("small",null,"Central "+fmt(score.central)));
+      metrics.append(node);
+    }
+    top.append(metrics,el("p","note","Current session window "+windowText(c.window)+" · "+c.window.sessions+" prior sessions / 56 days"),
+      el("p","note",c.days_since_last==null?"No scored history yet.":"Last trained "+c.days_since_last+" days ago · Updated "+date(data.as_of)),
+      el("p","note",c.rolling_28.estimated_sets+" sets estimated @5 in 28 days · "+c.window.estimated_sessions+" baseline sessions contain estimates"));
+    if(c.rolling_28.skipped_sets)top.append(el("p","error",c.rolling_28.skipped_sets+" sets could not be scored in 28 days; totals are incomplete."));
+    if(latest)top.append(el("p","note","Latest session · "+date(latest.start_time)));
+    box.append(top);
+    const plot=el("section","card"); plot.append(el("h3",null,"Session stress history"));
+    const legend=el("div","legend"); for(const [label,cls] of [["Total",""],["Peripheral","ps"],["Central","cs"],["Usual total-stress window","window"]])legend.append(el("span",cls,label));
+    plot.append(legend,chart(data.sessions),el("p","note","Shading is the session window known before each workout. Red total-stress points are above usual; hollow points are below. No shading means there was no baseline yet.")); box.append(plot);
+    const history=el("section","card"); history.append(el("h3",null,"Saved sessions"));
+    history.append(el("p","note",data.sessions.length+" shown / "+data.available_sessions+" available"+(data.first_recorded_at?" · History starts "+date(data.first_recorded_at):"")));
+    if(!data.sessions.length) { history.append(el("p","note","No saved sessions in this period. Choose a longer history range.")); box.append(history); return; }
+    const wrap=el("div","table-scroll"); wrap.tabIndex=0; wrap.setAttribute("role","region"); wrap.setAttribute("aria-label","Session history; scroll horizontally for rolling totals");
+    const table=el("table"), caption=el("caption",null,"Historical windows use only earlier sessions. Rolling totals are as of each workout.");
+    const head=el("thead"), tr=el("tr");
+    for(const name of ["Session","Total","Peripheral","Central","Session window","7 days","28 days","Coverage"]) { const th=el("th",null,name); th.scope="col"; tr.append(th); } head.append(tr);
+    const body=el("tbody");
+    for(const row of [...data.sessions].reverse()) {
+      const r=el("tr"), when=el("td",null,date(row.start_time)); when.append(el("small",null,row.title)); r.append(when);
+      for(const key of ["total","peripheral","central"])r.append(el("td",null,row.score.sets?fmt(row.score[key]):"—"));
+      const band=el("td",null,windowText(row.window)); band.append(el("small",null,statuses[row.status]||row.status)); r.append(band);
+      r.append(el("td",null,fmt(row.rolling_7.total)),el("td",null,fmt(row.rolling_28.total)));
+      const coverage=el("td",null,row.score.sets+" scored"); coverage.append(el("small",null,row.score.estimated_sets+" estimated @5"+(row.score.skipped_sets?" · "+row.score.skipped_sets+" unscored":""))); r.append(coverage); body.append(r);
+    }
+    table.append(caption,head,body); wrap.append(table); history.append(wrap); box.append(history);
+  }
+  const patternLabels = {squat:"Squat", bench_press:"Bench/Press", deadlift:"Deadlift"};
+  let relationshipGeneration=0, fatigueGeneration=0;
+  function relationshipRow(item) {
+    const row=el("div","relationship-row");
+    row.append(el("strong",null,item.title));
+    const status=el("p","note",item.reviewed?(item.patterns.length?"Confirmed: "+item.patterns.map(p=>patternLabels[p]).join(", "):"Confirmed: Not related"):"Unreviewed · suggestions are not active");
+    row.append(status);
+    const options=el("div","relationship-options"), inputs=[];
+    const initial=item.reviewed?item.patterns:item.suggested_patterns;
+    for(const [key,title] of Object.entries(patternLabels)) {
+      const label=el("label"), input=el("input"); input.type="checkbox"; input.value=key; input.checked=initial.includes(key);
+      input.setAttribute("aria-label",item.title+" affects "+title); label.append(input,el("span",null,title)); inputs.push(input); options.append(label);
+    }
+    const actions=el("div","relationship-actions"), save=el("button",null,item.reviewed?"✓ Saved":initial.length?"Use these relationships":"Mark as not related"), message=el("p","relationship-feedback");
+    save.type="button"; save.disabled=item.reviewed; message.setAttribute("role","status");
+    for(const input of inputs)input.addEventListener("change",()=>{
+      save.disabled=false;
+      save.textContent=inputs.some(input=>input.checked)?"Save relationships":"Mark as not related";
+      message.className="relationship-feedback"; message.setAttribute("role","status"); message.textContent="Unsaved changes";
+    });
+    save.addEventListener("click",async()=>{
+      save.disabled=true; for(const input of inputs)input.disabled=true;
+      save.textContent="Saving…"; message.className="relationship-feedback"; message.setAttribute("role","status"); message.textContent="Saving your choice…";
+      let succeeded=false;
+      try {
+        const saved=await api("/fatigue/relationships/"+encodeURIComponent(item.exercise_template_id),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({patterns:inputs.filter(input=>input.checked).map(input=>input.value)})});
+        const groups=saved.patterns.map(p=>patternLabels[p]).join(", ");
+        status.textContent=saved.patterns.length?"Confirmed: "+groups:"Confirmed: Not related";
+        message.textContent=saved.patterns.length?"✓ Saved. "+item.title+" now counts toward "+groups+" workload in the fatigue model.":"✓ Saved as Not related. These sets are excluded from other patterns’ workload.";
+        save.textContent="✓ Saved"; succeeded=true;
+        if(selected)loadFatigue(selected,generation);
+      } catch(error) {
+        message.className="relationship-feedback error"; message.setAttribute("role","alert");
+        message.textContent="Not saved: "+error.message+" Your choices are still here. Try again."; save.textContent="Retry save";
+      } finally { save.disabled=succeeded; for(const input of inputs)input.disabled=false; }
+    });
+    actions.append(save); row.append(options,actions,message); return row;
+  }
+  async function loadRelationships() {
+    const token=++relationshipGeneration, box=$("relationshipRows");
+    box.replaceChildren(el("p","note","Loading recorded exercises…"));
+    try {
+      const rows=await api("/fatigue/relationships"); if(token!==relationshipGeneration)return;
+      box.replaceChildren();
+      if(!rows.length)box.append(el("p","note","No locally recorded exercises yet."));
+      for(const row of rows)box.append(relationshipRow(row));
+    } catch(error) {
+      if(token!==relationshipGeneration)return;
+      const retry=el("button",null,"Retry"); retry.type="button"; retry.addEventListener("click",()=>loadRelationships());
+      box.replaceChildren(el("p","error","Could not load relationships: "+error.message),retry);
+    }
+  }
+  function renderFatigueContext(context) {
+    const box=el("div","context-summary"); box.append(el("h3",null,"Spacing & related work"));
+    const interval=value=>value==null?"Unknown":value.toFixed(1)+" days";
+    box.append(el("p","note","Latest session spacing: "+interval(context.latest_exercise_days)+" · Usual: "+interval(context.reference_exercise_days)),
+      el("p","note","Time since last exercise session: "+interval(context.current_exercise_days)),
+      el("p","note","Latest pattern spacing: "+interval(context.latest_pattern_days)+" · Usual: "+interval(context.reference_pattern_days)),
+      el("p","note","Other related sets in the preceding 7 days: "+(context.latest_related_sets_7??"Unknown")+" · Usual: "+(context.reference_related_sets_7??"Unknown")));
+    for(const reason of context.block_reasons)box.append(el("p","note",reason));
+    if(context.pending_mappings.length) {
+      box.append(el("p","note","Awaiting review: "+context.pending_mappings.map(item=>item.title).join(", ")));
+      const review=el("button",null,"Review related movements"); review.type="button";
+      review.addEventListener("click",()=>{const editor=$("relationshipEditor"); editor.open=true; editor.scrollIntoView({block:"start",behavior:"smooth"});}); box.append(review);
+    }
+    box.append(el("p","note","These context checks only restrict extra-set advice. They use local saved workouts and confirmed relationships, not a recovery percentage."));
+    return box;
+  }
+  const sorenessNames = ["None", "Mild", "Moderate", "Severe"];
+  const trendNames = { building_baseline:"Collecting baseline", stable:"Provisional: stable TS trend", improving:"Provisional: improving TS trend", declining:"Provisional: declining TS trend", pain_flag:"Pain/injury recorded" };
+  function percent(value) { return value == null ? "—" : (value > 0 ? "+" : "") + value.toFixed(1) + "%"; }
+  function observationChart(points, key, title, baselineStart) {
+    const figure=el('figure'); figure.append(el('figcaption',null,title));
+    figure.append(RackbookCharts.create(points,{title,key,baselineStart,
+      categorical:key==='soreness',series:[[key,title,key==='bodyweight_kg'?'#d99132':'#4a79f5']]}));
+    return figure;
+  }
+  function renderFatigue(data) {
+    const box=$("fatigue"); box.replaceChildren();
+    const card=el("section","card"); card.append(el("h2",null,"Performance & soreness"));
+    const collection=data.collection;
+    card.append(el("h3",null,trendNames[data.status] || data.status),el("p",null,data.message));
+    if(!collection.ready) {
+      const count=collection.sessions+" / "+collection.required_sessions+" comparable TS sessions";
+      card.append(el("p",null,count));
+      const progress=el("progress","collection-progress"); progress.max=collection.required_sessions; progress.value=Math.min(collection.sessions,collection.required_sessions);
+      progress.setAttribute("aria-label",count); card.append(progress);
+      card.append(el("p","note","No minimum number of weeks. Each movement builds its own baseline."));
+      card.append(el("p","note","Matched observations: "+collection.previous_paired+" of "+collection.window_sessions+" in the earlier group; "+collection.recent_paired+" of "+collection.window_sessions+" in the latest group. At least "+collection.required_paired_per_window+" are needed in each."));
+      card.append(el("p","note","An observation needs TS, BW, soreness, and recorded sets/reps/RPE. Recent soreness check-ins: "+collection.recent_ratings+" / "+collection.required_recent_ratings+"."));
+    }
+    if(collection.ready && data.e1rm_change_pct!=null) {
+      const metrics=el("div","metrics");
+      for(const [label,value] of [["TS e1RM",percent(data.e1rm_change_pct)],["7-day average BW",percent(data.bw_change_pct)],["e1RM / BW",percent(data.relative_change_pct)]]) {
+        const node=el("div","metric"); node.append(el("span",null,label),el("strong",null,value)); metrics.append(node);
+      }
+      card.append(metrics);
+    }
+    card.append(el("p","note",data.baseline_start?"Current baseline starts "+date(data.baseline_start):"No active baseline"));
+    if(data.gap_reset)card.append(el("p","note","Baseline reset after a gap of 21 days. Earlier history remains visible in grey."));
+    if(!data.pattern)card.append(el("p","note","No soreness-pattern mapping for this exercise. Interpretations need a mapped main squat, bench, press or deadlift; exercise histories remain separate."));
+    if(data.context)card.append(renderFatigueContext(data.context));
+    const bwLink=el("a","note","Sync bodyweight on Progress"); bwLink.href="/training/progress"; card.append(bwLink);
+    const charts=el("div","observation-grid");
+    for(const [key,title] of [["e1rm_lb","Marked TS e1RM (lb)"],["bodyweight_kg","Bodyweight · 7-day mean (kg)"],["working_sets","Working sets per session"],["soreness","Pre-session soreness"]])charts.append(observationChart(data.points,key,title,data.baseline_start));
+    card.append(charts,el("p","note","Recorded history is visible from the first session. These are observations, not fitted trend lines or predictions. Blank data stays blank; ! marks a reported pain/injury flag. The History selector applies to stress history below."));
+    for(const reason of data.reasons)card.append(el("p","note",reason));
+    const help=el("details"); help.append(el("summary",null,"When interpretations begin"),el("p","note","First collect 12 comparable marked-TS sessions for this movement: the same TS reps and RPE within one point of the latest. At least five sessions in each group of six need BW, soreness and complete sets/reps/RPE, plus soreness at the last three movement sessions. There is no waiting period in weeks."),
+      el("p","note","After collection, comparisons use matched medians from the latest six and previous six sessions. The initial flags are a 3% e1RM change and a 1% BW change. Interpretations and set-change suggestions remain provisional; reaching the count does not establish accuracy. Plans are never changed automatically."));
+    const source=el("a",null,"Training-load monitoring consensus"); source.href="https://pubmed.ncbi.nlm.nih.gov/28463642/";
+    help.append(source,el("p","note","The collection threshold and suggestion rules are Rackbook heuristics; this source does not validate this algorithm. BW provides context and does not establish why strength changed.")); card.append(help);
+    if(data.points.length) {
+      const history=el("details"); history.append(el("summary",null,"TS, BW and soreness observations"));
+      const wrap=el("div","table-scroll"); wrap.tabIndex=0;
+      const table=el("table"), head=el("thead"), row=el("tr");
+      for(const title of ["Session","TS e1RM (lb)","TS reps / RPE","BW 7d (kg)","Sets / reps","Exercise gap (days)","Pattern gap (days)","Related sets / workouts (prior 7d)","Soreness","Pain/injury"]) { const cell=el("th",null,title); cell.scope="col"; row.append(cell); }
+      head.append(row); const body=el("tbody");
+      for(const point of [...data.points].reverse()) {
+        const r=el("tr");
+        const values=[date(point.start_time),point.e1rm_lb?.toFixed(1)??"—",point.ts_reps==null?"—":point.ts_reps+" @"+point.ts_rpe,point.bodyweight_kg?.toFixed(1)??"—",point.working_sets==null?"—":point.working_sets+" / "+(point.total_reps??"—"),point.days_since_exercise?.toFixed(1)??"Unknown",point.days_since_pattern?.toFixed(1)??"Unknown",point.related_sets_7_before==null?"Unknown":point.related_sets_7_before+" / "+point.related_workouts_7_before,point.soreness==null?"Unrated":sorenessNames[point.soreness],point.pain?"Flagged":"—"];
+        for(const value of values)r.append(el("td",null,value)); body.append(r);
+      }
+      table.append(head,body); wrap.append(table); history.append(wrap); card.append(history);
+    }
+    box.append(card);
+  }
+  function renderFatigueDashboard(data) {
+    const box=$("fatigue"); box.replaceChildren();
+    const card=el("section","card"), heading=el("div","dashboard-heading");
+    heading.append(el("h2",null,movements.find(m=>m.id===selected)?.title||"Selected movement"));
+    card.append(heading);
+    const collecting=!data.collection.ready;
+    const summary=el("div","dashboard-summary");
+    summary.append(el("strong",null,data.status==="pain_flag"?"Pain/injury recorded":collecting?"Collecting baseline":trendNames[data.status]));
+    summary.append(el("span","note",data.collection.sessions+" / "+data.collection.required_sessions+" comparable TS sessions"));
+    card.append(summary);
+    if(collecting) {
+      const progress=el("progress","collection-progress"); progress.max=data.collection.required_sessions; progress.value=Math.min(data.collection.sessions,data.collection.required_sessions);
+      progress.setAttribute("aria-label","Baseline collection: "+data.collection.sessions+" of "+data.collection.required_sessions+" comparable sessions"); card.append(progress);
+    }
+    if(data.status==="pain_flag")card.append(el("p","error",data.message));
+    else if(!collecting)card.append(el("p","note",data.action==="hold"?"Current sets held · see details for the comparison.":data.action==="collect"?"More matched observations needed.":data.message));
+    const plots=el("div","observation-grid dashboard-plots");
+    for(const [key,title] of [["e1rm_lb","Marked TS e1RM (lb)"],["bodyweight_kg","Bodyweight · 7-day mean (kg)"],["working_sets","Working sets per session"],["soreness","Pre-session soreness"]])plots.append(observationChart(data.points,key,title,data.baseline_start));
+    card.append(plots); box.append(card);
+  }
+  function renderStressDashboard(data) {
+    const box=$("detail"); box.replaceChildren();
+    const card=el("section","card"), heading=el("div","dashboard-heading");
+    heading.append(el("h2",null,"Session stress"));
+    const metrics=el("div","dashboard-summary");
+    metrics.append(el("span","note","7 days "+fmt(data.current.rolling_7.total)),el("span","note","28 days "+fmt(data.current.rolling_28.total)));
+    const legend=el("div","legend");
+    for(const [label,cls] of [["Total",""],["Peripheral","ps"],["Central","cs"]])legend.append(el("span",cls,label));
+    card.append(heading,metrics,legend,chart(data.sessions,true)); box.append(card);
+  }
+  async function loadFatigue(id, token) {
+    const request=++fatigueGeneration;
+    $("fatigue").replaceChildren(el("p","note","Loading TS and soreness trends…"));
+    try { const data=await api("/movement-fatigue/"+encodeURIComponent(id)); if(token===generation && request===fatigueGeneration){if(detailsMode)renderFatigue(data);else renderFatigueDashboard(data);} }
+    catch(error) { if(token===generation && request===fatigueGeneration)$("fatigue").replaceChildren(el("p","error","Could not load performance trends. Use Refresh to retry.")); }
+  }
+  async function selectMovement(id, force=false) {
+    if(!id)return; selected=id; $("movement").value=id; updateViewLinks(id);
+    for(const [key,card] of cards)card.setAttribute("aria-pressed",String(key===id));
+    const token=++generation; $("detail").setAttribute("aria-busy","true"); $("detail").replaceChildren(el("p","note","Loading stress history…"));
+    loadFatigue(id, token);
+    try { const data=await load(id,force); if(token!==generation)return; if(detailsMode)renderDetail(data);else renderStressDashboard(data); paintCard(id,data); }
+    catch(error) { if(token!==generation)return; $("detail").replaceChildren(el("p","error",error.message),el("p","note","Use Refresh to retry.")); paintCard(id,null,error.message); }
+    finally { if(token===generation)$("detail").setAttribute("aria-busy","false"); }
+  }
+  async function loadOverview(force=false) {
+    const token=++overviewGeneration;
+    await Promise.allSettled([...cards.keys()].map(async id=>{try { const data=await load(id,force); if(token===overviewGeneration)paintCard(id,data); }catch(error){if(token===overviewGeneration)paintCard(id,null,error.message);} }));
+  }
+  async function init() {
+    try {
+      movements=await api("/stress/movements"); $("movement").replaceChildren();
+      const main=["squat","bench","deadlift"].map(key=>movements.find(m=>m.primary_key===key)).filter(Boolean);
+      for(const m of [...main,...movements.filter(m=>!m.primary_key)]) { const option=el("option",null,m.title); option.value=m.id; $("movement").append(option); }
+      for(const key of ["squat","bench","deadlift"]) {
+        const m=main.find(m=>m.primary_key===key);
+        if(!m)continue;
+        const card=el("button","movement-card"); card.type="button"; card.setAttribute("aria-pressed","false"); card.addEventListener("click",()=>selectMovement(m.id)); cards.set(m.id,card); $("overview").append(card); paintCard(m.id);
+      }
+      if(!movements.length) { $("status").textContent="No cached movements. Sync the Hevy exercise list in Settings first."; return; }
+      const requested=pageParams.get("movement");
+      const initial=movements.some(m=>m.id===requested)?requested:(main[0]?.id||movements[0].id);
+      if(!detailsMode)loadOverview(); selectMovement(initial);
+      if(detailsMode && location.hash==="#relationshipEditor") {$("relationshipEditor").open=true;}
+    }catch(error){$("status").replaceChildren(el("p","error",error.message));}
+  }
+  $("relationshipEditor").addEventListener("toggle",()=>{if($("relationshipEditor").open)loadRelationships();});
+  $("movement").addEventListener("change",()=>selectMovement($("movement").value));
+  $("range").addEventListener("change",()=>{if(!detailsMode)loadOverview();selectMovement(selected);});
+  $("refresh").addEventListener("click",()=>{if($("relationshipEditor").open)loadRelationships();if(!movements.length){init();return;} results.clear(); if(!detailsMode)loadOverview(); selectMovement(selected);});
+  init();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script src="/training/static/training.js"></script>
+  <script src="/training/static/draft-transfer.js"></script>
+  <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="manifest" href="/training/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/training/static/apple-touch-icon.png" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f5f8" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#111923" />
+  <title>RPE Charts</title>
+  <style>
+    :root {
+      --bg: #f6f5f1; --card: #ffffff; --text: #1d1d1b; --muted: #6b6a64;
+      --line: #e3e1d9; --accent: #1f5fbf; --chip: #eef0f4;
+      --danger: #a32d2d; --danger-bg: #fcebeb;
+      --near-bg: #e1f1e4; --off-bg: #fbefd5; --far-bg: #f8dfdc;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #161614; --card: #21211e; --text: #ecebe5; --muted: #a09f97;
+        --line: #34332f; --accent: #7fb0ff; --chip: #2b2c30;
+        --danger: #f09595; --danger-bg: #3a1f1f;
+        --near-bg: #1f3a27; --off-bg: #3d3318; --far-bg: #4a2522;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 900px; margin: 0 auto; padding: 16px; }
+    header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+    header a { color: var(--accent); margin-left: 12px; }
+    header nav { white-space: nowrap; }
+    h1 { font-size: 22px; font-weight: 500; margin: 8px 0 12px; }
+    .lifts { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 12px; }
+    .lifts button { font: inherit; font-size: 14px; min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; }
+    .lifts button small { color: var(--muted); margin-left: 4px; }
+    .lifts button[aria-pressed="true"] { background: var(--accent); color: var(--card); border-color: transparent; }
+    .lifts button[aria-pressed="true"] small { color: inherit; opacity: .8; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0 0 12px; }
+    .sum { font-size: 14px; color: var(--muted); margin: 0 0 10px; }
+    .sum b { color: var(--text); font-weight: 500; }
+    .scroll { overflow-x: auto; margin: 0 -14px; padding: 0 14px; }
+    table { border-collapse: separate; border-spacing: 3px; font-variant-numeric: tabular-nums; }
+    th { font-size: 12px; font-weight: 500; color: var(--muted); padding: 2px 4px; }
+    th.rpe { position: sticky; left: 0; background: var(--card); text-align: right; padding-right: 8px; z-index: 1; }
+    td { min-width: 52px; height: 46px; text-align: center; border-radius: 8px; padding: 2px 3px; vertical-align: middle; background: var(--chip); }
+    td .v { font-size: 15px; font-weight: 500; line-height: 1.15; }
+    td .s { font-size: 11px; color: var(--muted); line-height: 1.1; }
+    td.none { background: transparent; border: 1px dashed var(--line); }
+    td.none .v { color: var(--muted); font-weight: 400; opacity: .7; }
+    td.near { background: var(--near-bg); }
+    td.off { background: var(--off-bg); }
+    td.far { background: var(--far-bg); }
+    td.est { background: transparent; border: 1.5px dotted var(--accent); }
+    td.est .v { font-weight: 400; font-style: italic; }
+    td.est .s { color: var(--accent); }
+    .gate { font-size: 13px; color: var(--muted); margin: 0 0 8px; }
+    .gate b { color: var(--text); font-weight: 500; }
+    .gate .ok { color: var(--text); }   /* met: normal text colour plus the tick; the accent colour would read as a link */
+    td.blank { background: transparent; border: 0; }
+    .show { display: block; font-size: 13px; color: var(--muted); margin: 0 0 8px; }
+    .show input { margin-right: 6px; }
+    .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 10px 0 0; }
+    .legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; border: 1px solid var(--line); }
+    .note { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+    .fit h2 { font-size: 15px; font-weight: 500; margin: 0 0 4px; }
+    .fit .big { font-size: 15px; margin: 0 0 8px; }
+    .fit .big b { font-weight: 500; }
+    .fit table { width: 100%; border-spacing: 0; }
+    .fit td, .fit th { background: none; border-radius: 0; height: auto; min-width: 0; padding: 4px 6px 4px 0; text-align: right; font-size: 14px; border-top: 1px solid var(--line); }
+    .fit th { position: static; font-size: 12px; border-top: 0; }
+    .fit td:first-child, .fit th:first-child { text-align: left; }
+    .error { background: var(--danger-bg); color: var(--danger); border-radius: 10px; padding: 10px 12px; margin: 0 0 12px; }
+    .empty { text-align: center; color: var(--muted); padding: 28px 8px; }
+
+    .page-heading { display:flex; align-items:center; gap:8px; min-width:0; }
+    .page-back { flex-shrink:0; min-height:44px; padding:4px 8px; border:0; border-radius:8px; background:transparent; color:var(--accent,currentColor); font:inherit; font-size:14px; cursor:pointer; white-space:nowrap; }
+    .page-back:disabled { opacity:.4; cursor:default; }
+    .page-back:focus-visible { outline:2px solid var(--accent,currentColor); outline-offset:2px; }
+  </style>
+  <style id="rackbook-theme">
+
+    /* Rackbook visual system: kept inline so every page remains self-contained. */
+    :root {
+      color-scheme: light;
+      --bg: #f3f5f8; --card: #ffffff; --text: #17243a; --muted: #59687c;
+      --line: #dce3ec; --accent: #2459b8; --chip: #edf1f7; --soft: #f7f9fc;
+      --accent-soft: #edf3ff; --done: #edf7f1; --done-line: #28784b;
+      --shadow: 0 2px 5px rgba(23,36,58,.025), 0 10px 28px rgba(23,36,58,.035);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --bg: #111923; --card: #1a2533; --text: #e8eef8; --muted: #a5b4c9;
+        --line: #344358; --accent: #95baff; --chip: #243246; --soft: #202d3d;
+        --accent-soft: #243b5b; --done: #20392f; --done-line: #3f825f;
+        --shadow: 0 4px 20px rgba(0,0,0,.12);
+      }
+    }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+    main { max-width: 1120px; padding: 24px; margin: 0 auto; }
+    .app-header { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 16px; margin: 0 0 24px; }
+    .page-heading { gap: 12px; }
+    .page-title { min-width: 0; }
+    .eyebrow { display: block; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .18em; margin: 0 0 3px; }
+    .page-title h1 { font-size: 26px; font-weight: 700; letter-spacing: -.035em; line-height: 1.2; margin: 0; }
+    .app-header .page-back { width: auto; padding: 0 10px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); font-size: 13px; }
+    .header-tools { justify-self: end; }
+    .app-header .app-nav { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; padding: 5px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; white-space: normal; }
+    .app-header .app-nav a { display: flex; align-items: center; justify-content: center; flex: 1 0 auto; min-height: 40px; padding: 6px 14px; margin: 0; border-radius: 9px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 550; }
+    .app-header .app-nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 650; }
+    .card { border-radius: 16px; border-color: var(--line); box-shadow: var(--shadow); margin-bottom: 16px; }
+    h2, h3, .wk-title, .ex-title { letter-spacing: -.02em; font-weight: 650; }
+    button, input, select { transition: border-color .12s ease, background-color .12s ease, box-shadow .12s ease; }
+    button { font-weight: 550; }
+    button.primary { font-weight: 650; color: var(--card); }
+    button:disabled { cursor: default; }
+    :where(button, a, input, select, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    input, select { accent-color: var(--accent); }
+    .lifts { gap: 6px; padding: 5px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); margin-bottom: 20px; }
+    .lifts button { border-color: transparent; background: transparent; min-height: 44px; font-weight: 600; }
+    .lifts button.on, .lifts button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+    .movement-card { padding: 18px; background: var(--card); border-radius: 16px; box-shadow: var(--shadow); }
+    .movement-card[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+    .card-score { font-size: 30px; font-weight: 700; letter-spacing: -.04em; margin: 8px 0; }
+    .metrics { gap: 16px; }
+    .metric { padding: 12px; border-radius: 12px; background: var(--soft); }
+    .metric strong { font-size: 28px; font-weight: 700; letter-spacing: -.03em; }
+    .controls { gap: 12px; padding: 14px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 16px; }
+    .controls label { font-size: 13px; color: var(--muted); font-weight: 550; }
+    .controls select { color: var(--text); background: var(--soft); }
+    th { font-weight: 600; }
+    .wk-head { flex-wrap: wrap; gap: 4px 12px; }
+    .wk-meta { margin-top: 6px; }
+    .intro { line-height: 1.65; }
+    @media (hover: hover) {
+      .app-header .app-nav a:hover { background: var(--soft); color: var(--text); }
+      button:not(:disabled):hover { border-color: var(--accent); }
+    }
+    @media (max-width: 599px) {
+      main { padding: 16px 12px; }
+      .app-header { gap: 12px; margin-bottom: 18px; }
+      .page-heading { gap: 8px; }
+      .page-title h1 { font-size: 23px; }
+      .app-header .app-nav a { flex: 1 0 28%; padding: 6px 8px; min-height: 44px; font-size: 13px; }
+      .card { border-radius: 14px; }
+      .metric { padding: 10px 8px; }
+      .metric strong { font-size: 23px; }
+      .controls { padding: 12px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
+    }
+    #importBridge { font: inherit; min-height: 44px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--accent-soft); color: var(--accent); cursor: pointer; }
+    #importBridge:disabled { opacity: .6; cursor: default; }
+  </style>
+</head>
+<body>
+<main>
+  <header class="app-header">
+    <div class="page-heading"><div class="page-title"><span class="eyebrow">Hevy-Fatigue</span><h1>RPE Charts</h1></div></div>
+    <nav class="app-nav" aria-label="Pages"><a href="/">Today</a><a href="/training/log">Log Workout</a><a href="/training/microcycles">Plans</a><a href="/training/recent">Recent</a><a href="/training/progress">Progress</a><a href="/training/stress">Stress</a><a href="/training/rpe-charts" aria-current="page">RPE Charts</a><a href="/#settings">Settings</a></nav>
+  </header>
+  <div id="status"></div>
+  <details hidden class="card" style="padding:14px 16px;margin-bottom:16px">
+    <summary>BS-Bridge history</summary>
+    <p class="note">Import only BS-Bridge workouts. Movements contribute according to their saved RPE chart assignments in the Microcycle Builder. Movements set to “Do not contribute” are excluded.</p>
+    <p class="note">Original dates and exact Rackbook ratings are kept. Missing historical RPE stays unknown. Each movement in each workout gets its own fitted strength reference. Repeating the import does not duplicate sets.</p>
+    <button id="importBridge" type="button">Import BS-Bridge history</button>
+    <p id="importStatus" class="note" role="status"></p>
+  </details>
+  <div class="lifts" id="lifts" role="group" aria-label="Lift"></div>
+  <div id="view"></div>
+</main>
+
+<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register(trainingUrl("/sw.js")).catch(function () {});</script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const LIFT_KEY = "training.rpeCharts.lift", SHOW_KEY = "training.rpeCharts.showTable";
+  const LB_PER_KG = 2.20462;
+  let lifts = [], table = new Map(), current = null, loadId = 0, showTable = false;
+  const LABELS = { squat: "Squat", bench: "Bench", deadlift: "Deadlift", general: "General" };
+
+  function el(tag, cls, text) {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+  function showError(msg) {
+    const box = $("status");
+    box.replaceChildren();
+    if (msg) box.append(el("div", "error", msg));
+  }
+  async function api(path, options) {
+    const res = await fetch(trainingUrl(path), options);
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.detail || "Something went wrong (" + res.status + ").");
+    return body;
+  }
+  const pct = (f) => (f * 100).toFixed(1);
+  const fmtDate = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }); };
+
+  // Squat, bench and deadlift each get a table of their own; General is the table every other movement shares.
+  function renderLifts() {
+    const box = $("lifts");
+    box.replaceChildren();
+    for (const key of [...new Set([...lifts.map((l) => l.key), "general"])]) {
+      const l = lifts.find((x) => x.key === key);
+      const b = el("button", null, LABELS[key]);
+      b.type = "button"; b.setAttribute("aria-pressed", String(key === current));
+      if (l) b.append(el("small", null, l.sets + (l.sets === 1 ? " set" : " sets")));
+      b.addEventListener("click", () => select(key));
+      box.append(b);
+    }
+  }
+
+  // How far your sets sit from the table in use, in points of e1RM: green within 1, amber within 2.5, red beyond.
+  const band = (diff) => (Math.abs(diff) <= 0.01 ? "near" : Math.abs(diff) <= 0.025 ? "off" : "far");
+
+  function renderTable(data) {
+    const view = $("view");
+    view.replaceChildren();
+    const card = el("div", "card");
+    const sum = el("p", "sum");
+    if (data.referenceOnly) {
+      sum.append("General has no qualifying assigned sets yet. Assign movements in the Microcycle Builder to build it. The current loading table is shown below for reference.");
+    } else if (data.nothingLogged) {
+      sum.append("Nothing logged yet for " + data.title + ". Assign movements in the Microcycle Builder and save working sets with an RPE. A TS marker is not required.");
+    } else if (data.cells.length === 0) {
+      sum.append("Not enough yet to read these sets. A table needs at least one workout with sets at clearly different effort, such as a single and sets of five at lower RPEs. Every set counts, the TS included, and nothing here comes from the table in use.");
+    } else {
+      sum.append("Each movement in each workout gets its own fitted e1RM, so strength changes and movement variations are normalized separately. ");
+    }
+    if (!data.referenceOnly && !data.nothingLogged) {
+      sum.append(data.sets_used + (data.sets_used === 1 ? " set" : " sets") + " used");
+      if (data.ts_sets) sum.append(" (" + data.ts_sets + " of them TS)");
+      sum.append(".");
+    }
+    card.append(sum);
+    if (data.sources?.length) {
+      const sourceList = el("ul", "note");
+      for (const source of data.sources) sourceList.append(el("li", null,
+        source.title + ": " + source.local_sets + " exact local sets + " + source.imported_sets + " imported sets"));
+      card.append(sourceList);
+    }
+
+    if (!data.referenceOnly && !data.nothingLogged && data.gate) {
+      const g = data.gate, gp = el("p", "gate");
+      const part = (have, need, label, fmt) => {
+        const met = have >= need;
+        const span = el("span", met ? "ok" : null);
+        span.append(el("b", null, fmt(have)), " of " + fmt(need) + " " + label + (met ? " ✓" : ""));
+        return span;
+      };
+      if (g.passed) {
+        gp.append(el("b", "ok", "Estimated cells are on. "), "This lift has enough data (" + g.sets + " sets, " + g.workouts + " workouts, " + g.k_span.toFixed(1) + " reps of effort), so cells you haven't hit are interpolated between the efforts your sets measured, never from the table in use. The RPE 10 single anchors 100%; cells beyond the easiest measured effort stay empty.");
+      } else {
+        gp.append("Estimated cells appear once there's enough data: ", part(g.sets, g.min_sets, "sets", String), ", ", part(g.workouts, g.min_workouts, "workouts", String), ", ", part(Math.min(g.k_span, g.min_k_span), g.min_k_span, "reps of effort covered", (v) => String(+v.toFixed(1))), ".");
+      }
+      card.append(gp);
+    }
+
+    if (!data.referenceOnly) {
+      const lab = el("label", "show");
+      const box = el("input"); box.type = "checkbox"; box.checked = showTable;
+      box.addEventListener("change", () => {
+        showTable = box.checked;
+        try { localStorage.setItem(SHOW_KEY, showTable ? "1" : "0"); } catch (e) { /* storage can be unavailable */ }
+        renderTable(data);
+      });
+      lab.append(box, " Show the table in use in empty cells");
+      card.append(lab);
+    }
+
+    const cells = new Map(data.cells.map((c) => [c.rpe + "|" + c.reps, c]));
+    const ests = new Map((data.estimated || []).map((c) => [c.rpe + "|" + c.reps, c]));
+    const rpes = [];
+    for (let r = 10; r >= 5; r -= 0.5) rpes.push(r);
+    for (const c of data.cells) if (!rpes.includes(c.rpe)) rpes.push(c.rpe);
+    rpes.sort((a, b) => b - a);
+    const maxReps = Math.max(10, ...data.cells.map((c) => c.reps), ...(data.estimated || []).map(c => c.reps));
+
+    const t = el("table");
+    const head = el("tr");
+    head.append(el("th", "rpe", "RPE"));
+    for (let n = 1; n <= maxReps; n++) head.append(el("th", null, String(n)));
+    t.append(head);
+    for (const rpe of rpes) {
+      const row = el("tr");
+      row.append(el("th", "rpe", String(rpe)));
+      for (let n = 1; n <= maxReps; n++) {
+        const c = cells.get(rpe + "|" + n), chart = table.get(rpe + "|" + n);
+        const td = el("td");
+        const est = ests.get(rpe + "|" + n);
+        if (c) {
+          const diff = c.chart != null ? c.observed - c.chart : 0;
+          td.className = c.chart != null ? band(diff) : "";
+          td.append(el("div", "v", pct(c.observed)));
+          td.append(el("div", "s", (c.chart != null ? (diff >= 0 ? "+" : "−") + (Math.abs(diff) * 100).toFixed(1) + " · " : "") + "n" + c.n + (c.ts ? " · TS" : "")));
+          td.title = "Your sets: " + pct(c.observed) + "% of each movement-session's fitted e1RM (" + c.n + (c.n === 1 ? " set" : " sets") + (c.ts ? ", including your TS" : "") + (c.chart != null ? "). Table in use: " + pct(c.chart) + "%." : ").");
+        } else if (est) {
+          td.className = "est";
+          td.append(el("div", "v", pct(est.estimated)), el("div", "s", "est"));
+          td.title = "Estimated from your sets at nearby efforts: " + pct(est.estimated) + "%." + (est.chart != null ? " Table in use: " + pct(est.chart) + "%." : "");
+        } else if (chart != null && (showTable || data.referenceOnly)) {
+          td.className = "none";
+          td.append(el("div", "v", pct(chart)));
+          td.title = "Table in use: " + pct(chart) + "%. Nothing logged here yet.";
+        } else {
+          td.className = "blank";
+        }
+        row.append(td);
+      }
+      t.append(row);
+    }
+    const scroll = el("div", "scroll");
+    scroll.append(t);
+    card.append(scroll);
+
+    const legend = el("div", "legend");
+    for (const [cls, text] of [["near", "within 1 point of the table"], ["off", "1 to 2.5 points off"], ["far", "more than 2.5 off"], ...(data.estimated && data.estimated.length ? [["est", "estimated from your other sets"]] : []), ...(showTable || data.referenceOnly ? [["none", "the table in use (nothing logged here yet)"]] : [])]) {
+      const item = el("span");
+      const swatch = el("i"); swatch.className = "";
+      swatch.style.background = cls === "none" || cls === "est" ? "transparent" : "var(--" + cls + "-bg)";
+      if (cls === "none") swatch.style.borderStyle = "dashed";
+      if (cls === "est") { swatch.style.borderStyle = "dotted"; swatch.style.borderColor = "var(--accent)"; }
+      item.append(swatch, text);
+      legend.append(item);
+    }
+    card.append(legend);
+    card.append(el("p", "note", "Each filled cell is the average of your sets at that RPE and reps, as a share of each movement-session's fitted e1RM, with the gap to the table in use and how many sets it rests on (n). Higher than the table means you can do more than it says at that RPE. Warm-ups and drop sets are left out; the TS counts like any other set. A set of 5 at RPE 7 is as hard as 8 reps at RPE 10, so sets at different RPEs and reps all inform the same curve. A cell on one or two sets is a hint, not a result."));
+    view.append(card);
+    if (!data.referenceOnly && !data.nothingLogged) view.append(renderFit(data.fit));
+  }
+
+  // A fit that never uses the table's numbers: only that a set is as hard as a set to failure of reps + reps-in-reserve,
+  // that the share of your max falls in a straight line with those reps, and that a true RPE 10 single is 100%.
+  function renderFit(fit) {
+    const card = el("div", "card fit");
+    card.append(el("h2", null, "Fitted curve"));
+    if (!fit) {
+      card.append(el("p", "note", "Not enough to fit yet. It needs a workout with sets at clearly different effort, such as a single and sets of five at lower RPEs."));
+      return card;
+    }
+    const slope = (fit.slope * 100).toFixed(2), tableSlope = fit.table_slope != null ? (fit.table_slope * 100).toFixed(2) : null;
+    const big = el("p", "big");
+    big.append("Your sets lose ", el("b", null, slope + " points"), " of your max per extra rep to failure");
+    if (tableSlope != null) big.append(" (the table in use: " + tableSlope + ")");
+    big.append(".");
+    card.append(big);
+
+    const t = el("table");
+    const head = el("tr");
+    const compareTs = fit.sessions.some(ss => ss.table_e1rm_lb != null);
+    for (const h of ["Workout", "Movement", "Fitted e1RM", ...(compareTs ? ["From the TS", "Gap"] : [])]) head.append(el("th", null, h));
+    t.append(head);
+    for (const ss of fit.sessions) {
+      const row = el("tr");
+      const lb = Math.round(ss.e1rm_lb), kg = Math.round(ss.e1rm_lb / LB_PER_KG);
+      row.append(el("td", null, fmtDate(ss.workout_start)), el("td", null, ss.exercise_title || "–"), el("td", null, lb + " lb · " + kg + " kg"));
+      if (compareTs && ss.table_e1rm_lb != null) {
+        const gap = ss.e1rm_lb - ss.table_e1rm_lb;
+        row.append(el("td", null, Math.round(ss.table_e1rm_lb) + " lb"), el("td", null, (gap >= 0 ? "+" : "−") + Math.abs(Math.round(gap)) + " lb"));
+      } else if (compareTs) {
+        row.append(el("td", null, "–"), el("td", null, "–"));
+      }
+      t.append(row);
+    }
+    card.append(t);
+    card.append(el("p", "note", "Fitted on " + fit.sets_fitted + " sets in " + fit.informative_sessions + (fit.informative_sessions === 1 ? " movement-session" : " movement-sessions") + ", typically within " + (fit.rms_error * 100).toFixed(1) + "% of the line. " +
+      "Every movement and workout has its own strength reference. These are fitted estimates for those sessions, not tested maxes or today's max. All qualifying sets count, including marked TS sets. " +
+      "It assumes a straight line from a true RPE 10 single at 100%, and one workout is a rough guide: the slope firms up as sessions with a spread of reps and RPEs come in."));
+    return card;
+  }
+
+  async function select(key) {
+    current = key;
+    try { localStorage.setItem(LIFT_KEY, key); } catch (e) { /* storage can be unavailable */ }
+    renderLifts();
+    const mine = ++loadId, lift = lifts.find((l) => l.key === key);
+    if (!lift || (key === "general" && !lift.sets)) { showError(""); renderTable({ referenceOnly: true, cells: [] }); return; }
+    if (!lift.exercise_template_id) { showError(""); renderTable({ nothingLogged: true, title: lift.title, cells: [] }); return; }
+    try {
+      const data = await api("/rpe-observed/group/" + encodeURIComponent(key));
+      if (mine !== loadId) return;
+      showError("");
+      renderTable(data);
+    } catch (err) {
+      if (mine === loadId) showError(err.message);
+    }
+  }
+
+  $("importBridge").addEventListener("click", async () => {
+    const button = $("importBridge"), message = $("importStatus");
+    button.disabled = true;
+    message.textContent = "Reading BS-Bridge history…";
+    try {
+      const result = await api("/rpe-history/import-bs-bridge", {method: "POST"});
+      message.textContent = "Imported " + result.sets_imported + " rated sets from " + result.sessions_imported +
+        " movement-sessions. Kept " + result.local_sessions_preserved + " exact local sessions; " +
+        result.sessions_already_imported + " were already imported.";
+      lifts = await api("/rpe-observed");
+      await select(current || "squat");
+    } catch (err) { message.textContent = err.message + " You can retry; existing sets are preserved."; }
+    finally { button.disabled = false; }
+  });
+
+  async function init() {
+    try {
+      const [list, rows] = await Promise.all([api("/rpe-observed"), api("/rpe-table")]);
+      lifts = list;
+      table = new Map(rows.rows.map(([rpe, reps, f]) => [rpe + "|" + reps, f]));
+    } catch (err) { showError(err.message); return; }
+    let saved = null;
+    try { saved = localStorage.getItem(LIFT_KEY); showTable = localStorage.getItem(SHOW_KEY) === "1"; } catch (e) { /* storage can be unavailable */ }
+    select(saved in LABELS ? saved : "squat");
+  }
+  init();
+</script>
+
+</body>
+</html>
