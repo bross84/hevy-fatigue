@@ -1,7 +1,8 @@
+const inlineScriptMatches = require('./helpers/html-scripts.cjs');
 // Read-only dashboard: no browser, network or Hevy writes.
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const html=fs.readFileSync(require('node:path').join(__dirname,'..','trial.html'),'utf8');
-for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);
+for(const m of inlineScriptMatches(html))new vm.Script(m[1]);
 const code=html.slice(html.indexOf('function category('),html.indexOf('function dateText('));
 const context=vm.createContext({trainingUrl:path=>path.startsWith("/training/")?path:"/training"+path,Date,JSON});vm.runInContext(code,context);
 const rows=[{exercise_template_id:'s',status:'completed',model_version:'v1',mode:'strength',workout_start:'2026-10-24T10:00:00Z',prediction:'uncertain',observed:'unclassified',soreness:0,daily:{status:'available',ratings:{tiredness:0,perceived_recovery:null}}},

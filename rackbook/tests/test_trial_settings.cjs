@@ -1,7 +1,8 @@
+const inlineScriptMatches = require('./helpers/html-scripts.cjs');
 // Settings UI only; no browser/network/Hevy writes.
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const root=path.join(__dirname,'..'),settings=fs.readFileSync(path.join(root,'index.html'),'utf8');
-for(const match of settings.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(match[1]);
+for(const match of inlineScriptMatches(settings))new vm.Script(match[1]);
 const elements=new Map();
 function el(){return {textContent:'',children:[],attrs:{},disabled:true,hidden:true,append(n){this.children.push(n)},replaceChildren(){this.children=[]},setAttribute(k,v){this.attrs[k]=v},addEventListener(k,fn){this[k]=fn},querySelector(){return this.box??=el()}};}
 const get=id=>{if(!elements.has(id))elements.set(id,el());return elements.get(id)};

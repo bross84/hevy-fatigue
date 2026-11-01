@@ -17,13 +17,22 @@ existing image-publishing workflow is unchanged; merging main would trigger it,
 so this task prepares a PR without merging or dispatching publication.
 
 The exact proposed CI commands passed locally: 74 host/integration tests, 467
-logging tests with one existing expected failure, all 24 JavaScript files under
+logging tests with one existing expected failure, all 25 JavaScript files under
 Node 22, and repeated startup/mounted asset/schema/preview write-block checks.
 Workflow YAML, trigger/permission structure and embedded smoke-script syntax
 were validated. Previous mocked browser and production-copy evidence remains
 applicable because this follow-up changes only CI and documentation. GitHub's
 hosted check result is separate and must be read from the PR, not inferred from
 local results. No branch-protection rules or production settings were changed.
+
+The initial hosted integration check passed, but the separate CodeQL alert gate
+flagged case-sensitive script-extraction regexes in imported test harnesses.
+These operate on trusted repository fixtures, not user HTML. Replaced the 14
+duplicated extractors with a shared test-only helper that recognizes mixed-case
+tags and closing whitespace. Added a regression proving mixed-case script bodies
+are checked and invalid JavaScript still fails instead of being skipped. All
+existing behavioral assertions remain intact. No alerts were dismissed or
+suppressed; the PR's rerun determines the hosted security result.
 
 Tablet/PWA checks remain explicitly deferred. Final fresh backups and logging
 volume staging remain later release tasks. The superseded manually staged image

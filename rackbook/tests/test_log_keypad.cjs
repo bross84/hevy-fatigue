@@ -1,10 +1,11 @@
+const inlineScriptMatches = require('./helpers/html-scripts.cjs');
 // Run with: node tests/test_log_keypad.cjs. Exercises the actual keypad controller without Hevy.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const html = fs.readFileSync(path.join(__dirname, '..', 'log.html'), 'utf8');
-for (const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) new vm.Script(match[1]);
+for (const match of inlineScriptMatches(html)) new vm.Script(match[1]);
 const keys = [...html.matchAll(/<button[^>]*data-pad-key="([^"]+)"/g)].map(m => m[1]);
 assert.deepEqual(keys, ['1', '2', '3', 'backspace', '4', '5', '6', 'clear', '7', '8', '9', 'next', '.', '0', 'done']);
 const buttons = Object.fromEntries(keys.map(key => [key, { dataset: { padKey: key }, disabled: false }]));

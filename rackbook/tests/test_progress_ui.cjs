@@ -1,6 +1,7 @@
+const inlineScriptMatches = require('./helpers/html-scripts.cjs');
 const assert=require('node:assert/strict'), fs=require('node:fs'), path=require('node:path'), vm=require('node:vm');
 const html=fs.readFileSync(path.join(__dirname,'..','progress.html'),'utf8');
-const scripts=[...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
+const scripts=[...inlineScriptMatches(html)].map(m=>m[1]);
 for(const source of scripts)new vm.Script(source);
 for(const [,source] of html.matchAll(/<script src="([^"]+)"/g)) {
   assert.ok(source.startsWith('/training/static/'));

@@ -1,8 +1,9 @@
+const inlineScriptMatches = require('./helpers/html-scripts.cjs');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const html=fs.readFileSync(require('node:path').join(__dirname,'..','stress.html'),'utf8');
-for(const match of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(match[1]);
+for(const match of inlineScriptMatches(html))new vm.Script(match[1]);
 function el(tag,cls,text) {return {tag,cls,text,children:[],attrs:{},append(...items){this.children.push(...items);},replaceChildren(...items){this.children=items;},setAttribute(k,v){this.attrs[k]=v;},addEventListener(){}};}
 function svgNode(tag,attrs,text) {const n=el(tag,null,text);n.attrs=attrs;return n;}
 function nodes(node) {return [node,...node.children.flatMap(nodes)];}

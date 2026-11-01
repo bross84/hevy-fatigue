@@ -238,3 +238,10 @@ application changes. Prepare the PR and inspect hosted checks; do not merge,
 publish an image or deploy while the hold remains. Existing main image-publish
 workflow is unchanged and would trigger on a later main merge. Tablet/PWA
 acceptance remains deferred and the manually staged image is superseded.
+
+PR #70 is open for the integration, unmerged. Initial GitHub integration tests
+passed; CodeQL surfaced test-harness HTML extraction patterns. Shared test-only
+mixed-case script extraction plus a regression replaces duplicated patterns;
+all 25 JS checks pass locally without weakening existing behavioral assertions.
+Read hosted check results on the PR before merging; publication/deployment holds
+remain unchanged.

@@ -1,10 +1,11 @@
+const inlineScriptMatches = require('./helpers/html-scripts.cjs');
 // Run with: node tests/test_log_rpe_entry.cjs (no packages or Hevy connection).
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 const html = fs.readFileSync(path.join(__dirname, '..', 'log.html'), 'utf8');
-for (const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) {
+for (const match of inlineScriptMatches(html)) {
   new vm.Script(match[1]);
 }
 

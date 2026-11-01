@@ -1,8 +1,9 @@
+const inlineScriptMatches = require('./helpers/html-scripts.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const html = fs.readFileSync(require('node:path').join(__dirname, '..', 'log.html'), 'utf8');
-for (const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) new vm.Script(m[1]);
+for (const m of inlineScriptMatches(html)) new vm.Script(m[1]);
 const elements = new Map();
 let focused, posts = 0, cleared = 0, shown, errorMessage, resolvePost, rejectPost;
 function element() {

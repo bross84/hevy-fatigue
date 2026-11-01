@@ -1,8 +1,9 @@
+const inlineScriptMatches = require('./helpers/html-scripts.cjs');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const html=fs.readFileSync(require('node:path').join(__dirname,'..','mesocycles.html'),'utf8');
-for(const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(match[1]);
+for(const match of inlineScriptMatches(html))new vm.Script(match[1]);
 function el(tag,cls,text){return {tag,cls,text,children:[],attrs:{},events:{},append(...items){this.children.push(...items);},setAttribute(k,v){this.attrs[k]=v;},addEventListener(k,fn){this.events[k]=fn;}};}
 const movement={exercise_template_id:'same',title:'Whatever movement'};
 let remembers=0,renders=0;

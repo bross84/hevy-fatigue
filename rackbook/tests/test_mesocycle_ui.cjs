@@ -1,7 +1,8 @@
+const inlineScriptMatches = require('./helpers/html-scripts.cjs');
 // Run with node tests/test_mesocycle_ui.cjs; no browser/network/Hevy writes.
 const assert=require('node:assert/strict'), fs=require('node:fs'), vm=require('node:vm'), path=require('node:path');
 const root=path.join(__dirname,'..'), builder=fs.readFileSync(path.join(root,'mesocycles.html'),'utf8'), log=fs.readFileSync(path.join(root,'log.html'),'utf8');
-for(const html of [builder,log])for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);
+for(const html of [builder,log])for(const m of inlineScriptMatches(html))new vm.Script(m[1]);
 let counter=0;
 const pickerContext=vm.createContext({trainingUrl:path=>path.startsWith("/training/")?path:"/training"+path,});
 vm.runInContext(builder.match(/function sortedExerciseMatches\([^\n]+/)[0],pickerContext);

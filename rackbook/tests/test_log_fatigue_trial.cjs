@@ -1,8 +1,9 @@
+const inlineScriptMatches = require('./helpers/html-scripts.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const html = fs.readFileSync(require('node:path').join(__dirname,'..','log.html'),'utf8');
-for (const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) new vm.Script(m[1]);
+for (const m of inlineScriptMatches(html)) new vm.Script(m[1]);
 function el(tag,cls,text) {
   return {tag,cls,textContent:text,children:[],attrs:{},style:{},events:{},append(...x){this.children.push(...x)},
     replaceChildren(...x){this.children=x},setAttribute(k,v){this.attrs[k]=v},addEventListener(k,v){this.events[k]=v}};

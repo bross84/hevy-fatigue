@@ -1,8 +1,9 @@
+const inlineScriptMatches = require('./helpers/html-scripts.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const html = fs.readFileSync(require('node:path').join(__dirname, '..', 'rpe_charts.html'), 'utf8');
-for (const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) new vm.Script(match[1]);
+for (const match of inlineScriptMatches(html)) new vm.Script(match[1]);
 function node(tag) {
   return {tag,children:[],attrs:{},style:{},events:{},textContent:'',
     append(...items){this.children.push(...items);},replaceChildren(...items){this.children=items;},

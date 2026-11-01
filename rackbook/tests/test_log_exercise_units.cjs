@@ -1,7 +1,8 @@
+const inlineScriptMatches = require('./helpers/html-scripts.cjs');
 // Unit choices, canonical kg and rounding; no browser/network/Hevy writes.
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const html=fs.readFileSync(path.join(__dirname,'..','log.html'),'utf8'),factor=2.20462262185;
-for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);
+for(const m of inlineScriptMatches(html))new vm.Script(m[1]);
 const c=vm.createContext({trainingUrl:path=>path.startsWith("/training/")?path:"/training"+path,unit:'kg',LB_PER_KG:factor,trim:n=>String(Number(n.toFixed(2))),refs:{curl:{basis:'e1rm',ls:true,tm_pct:.95,weight_unit:'lb'}},primaryInputs:new Map(),refCells:new Map(),document:{activeElement:null}});
 vm.runInContext(html.slice(html.indexOf('  const lbOfKg ='),html.indexOf("  // One set's e1RM"))+'\nthis.unitFor=unitFor;this.stepOf=stepOf;this.primaryText=primaryText;this.refText=refText;',c);
 const curl={template_id:'curl',title:'Incline curl',ref:{...c.defaultRef(),weightUnit:'lb'},sets:[{kg:String(25/factor),done:true},{kg:'12.5',manual:true},{kg:'',done:false}]};
