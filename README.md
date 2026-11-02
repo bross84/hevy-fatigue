@@ -332,6 +332,12 @@ Tests use isolated in-memory SQLite databases and do not sync with Hevy.
 
 ## Integrated workout logging (Phase 1)
 
+Production's Git-tracked deployment configuration is
+[`deploy/production.compose.yml`](deploy/production.compose.yml); it reproduces
+the current server settings, including the approved write-enabled state and
+immutable release image. The root Compose file remains for development with
+writes disabled by default. See [deployment tracking and read-only drift checks](deploy/README.md).
+
 Log Workout and Plans open the full Rackbook workflow inside Hevy-Fatigue at
 `/training`. Exact local sets, TS/TM, units, keypad, timers, plate loading,
 microcycles, progress and RPE charts remain separate from monitoring's Hevy data.

@@ -172,3 +172,12 @@ The user authorized and completed branch publication as `25bba2b`, then requeste
 merge preparation. A PR-only test workflow now verifies the Python suites, all
 JavaScript checks and write-disabled container startup without image publication.
 Merge/deployment and real Hevy writes remain on hold. Tablet acceptance is deferred.
+
+Current state supersedes that earlier hold: the user authorized PR #70's merge,
+GitHub image publication, cutover and write enablement. Production runs the
+`eb76a99` release by digest, with old Rackbook stopped. The exact running
+configuration is tracked in `deploy/production.compose.yml`, distinct from the
+write-disabled root development configuration. Read-only comparison with the
+operator's captured CasaOS stack reports no differences. See `deploy/README.md`
+for provenance and the GitHub-first update workflow; this tracking correction
+does not restart containers, alter server files or change application data.

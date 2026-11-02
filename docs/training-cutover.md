@@ -1,5 +1,27 @@
 # Controlled Phase 1 cutover and rollback
 
+## Current deployment configuration
+
+PR #70 was merged as `eb76a99`; GitHub published `sha-eb76a99`. The operator
+completed final backups, populated the dedicated logging volume, started the
+combined app from that published image, verified Cloudflare access and exact
+preservation of every original database table, then explicitly enabled workout
+writes. The combined app is healthy; old Rackbook remains stopped.
+
+The canonical tracked configuration is now `deploy/production.compose.yml`,
+reproducing the operator's resolved three-file server configuration exactly.
+See `deploy/README.md` for read-only comparison, current server-file provenance
+and the GitHub-first update workflow. This tracking correction itself does not
+restart/recreate anything, edit server files or alter data. Root development
+Compose and the historical write-disabled cutover template are not production
+configuration. New configuration changes must be reviewed through GitHub first.
+
+The remainder records earlier preparation instructions and rollback procedures;
+its historical authorization/status statements are not the current deployment
+state. Do not rerun earlier backup/staging steps over existing data.
+
+## Historical cutover preparation
+
 Current state: return to testing/review. The operator restored both original
 apps after a temporary stop. No combined app was deployed and no final staging
 was reported. The new logging volume exists and was verified empty. Do not run

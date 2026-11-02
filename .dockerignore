@@ -8,3 +8,5 @@ __pycache__/
 data/analysis/
 *.log
 artifacts/
+# Operator configuration/checks are tracked separately from application images.
+deploy/

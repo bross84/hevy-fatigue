@@ -23,6 +23,11 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Validate tracked production configuration without deploying
+        run: |
+          docker compose -f deploy/production.compose.yml config --format json | python3 deploy/check_config.py validate -
+          python3 -m unittest discover -s deploy/tests -v
+
       - name: Build disposable test image
         run: docker build --tag hevy-fatigue:pr-check .
 
