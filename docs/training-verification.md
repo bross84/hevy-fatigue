@@ -1,5 +1,44 @@
 # Phase 1 verification — 2026-10-31
 
+## Deployed configuration reconciliation
+
+PR #70 merged as `eb76a998bfff57273e20508a3e6fc42f5b2ec8ee`; its GitHub image build
+succeeded and published digest
+`sha256:b6a4799f644714cf5379f6bbb5138cbf9d101ab58bfe0b8d0d7fdedee6aa5f22`.
+The operator deployed that image, validated the running write-disabled app and
+then explicitly enabled workout saving (`HEVY_WRITES_ENABLED=1`,
+`RACKBOOK_READ_ONLY_PREVIEW=0`). Health is healthy; old Rackbook remains stopped.
+No workout was submitted by deployment/enablement commands.
+
+Final backups are at `/var/backups/hevy-phase1/final-20261102T004309Z-25328c25`.
+The host snapshot SHA-256 is
+`f060dda30fe8ba975171e77fc99081361feb67df9a4fc7a1e17c2d5a39a1dbfc`;
+logger snapshot is
+`dd262f59e3cb81da203378af58f2ff9cb54a99adcbdfa390d780288d9e1fc694`.
+Operator's post-start audit confirmed both integrity checks, the matching host
+key, and exact preservation of every original table. Host has 95 check-ins,
+307 workout sessions and 4277 logs; logger has 104 sets, 14 TS rows, 7 completion
+links, 13 snapshots and 2 shadows. Only the empty save journal was added.
+Deployed LAN pages/browser checks passed; the operator confirmed Today, Plans
+and Log Workout through authenticated Cloudflare. Tablet/PWA checks remain deferred.
+
+The user requested correcting the configuration tracking gap without restarting
+the app or changing data. `deploy/production.compose.yml` now represents the
+captured active CasaOS stack, including all metadata, external storage/network,
+image digest, healthcheck and approved write flags. Local Compose rendering
+equals every field in the user-supplied server capture, without ignored fields
+or normalization beyond JSON object key order. Canonical resolved JSON hash is
+`f5a8c0389ff14452f63ff94f43305be04e7e204bb541dca2bcd8ffb38d221281`.
+
+Added read-only validation/comparison tooling, eight drift/safety regressions
+and PR CI coverage. Deployment files are excluded from application images.
+This reconciliation changes Git-tracked files only; it does not claim to have
+replaced the active server source files or recreated the container. See
+`deploy/README.md` for the exact provenance and future GitHub-first workflow.
+
+The following sections are earlier review/preparation evidence, not current
+deployment authorization or status.
+
 ## Merge-readiness review — 2026-11-01
 
 The user requested preparing the integration branch for merge, while keeping

@@ -245,3 +245,14 @@ mixed-case script extraction plus a regression replaces duplicated patterns;
 all 25 JS checks pass locally without weakening existing behavioral assertions.
 Read hosted check results on the PR before merging; publication/deployment holds
 remain unchanged.
+
+Current deployment supersedes the earlier status notes: PR #70 merged as
+`eb76a99`, GitHub built/published its image and the operator deployed it by digest
+`sha256:b6a4799f644714cf5379f6bbb5138cbf9d101ab58bfe0b8d0d7fdedee6aa5f22`.
+Final backups and deployed-record preservation passed; the combined app is
+healthy, Cloudflare pages work, workout saving was explicitly enabled (1/0
+write/preview flags) and old Rackbook remains stopped. Tablet/PWA checks are
+still deferred. The deployment configuration is now tracked under `deploy/`;
+its resolved production file matches the operator's exact server capture.
+Future configuration changes go through a GitHub PR before application.
+The tracking correction itself must not restart the app or change data.
