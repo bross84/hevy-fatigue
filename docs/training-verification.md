@@ -476,3 +476,35 @@ The operator already reported fresh integrity-checked host/logging backups and
 the matching host key. This records configuration preparation; server application
 and physical-device acceptance must be reported separately after the operator
 installs the tracked file and recreates the app.
+
+## Descriptive session review verification — 2026-11-04 (local only)
+
+The preceding latest/RPE release is operator-reported healthy: separate RPE
+fields and the original toggle work, and existing data/settings remain intact.
+That acceptance does not establish deployment or device acceptance of this new
+session-review implementation. Existing unrelated local documentation edits
+were preserved. No commit, push, publication or deployment occurred here.
+
+| Check | Result |
+| --- | --- |
+| Host/integration suite | 81 passed. New coverage verifies one remote post across local failure/retry, rollback of review and all required local effects, durable original plan revision, frozen snapshot conflict protection, read-only review retrieval and ambiguous metadata rejection. Legacy hash compatibility remains covered. |
+| Logging suite | 477 run, OK with one inherited expected failure. Nine new pure review tests cover original sets/reps, omissions/additions and removed movements, changed targets, copied/unknown/unrated effort, TS/back-off comparability, actual completion order, missing data and no invented ad hoc/legacy baseline. |
+| JavaScript | All 26 files passed. New actual capture/display tests verify immutable loaded prescriptions through edits/deletion, original set IDs, suggested/manual loads, RPE provenance, reload/transfer validation, safe text rendering and nonblocking review-fetch errors. Existing real LS on/off and TM/e1RM adjustment, canonical weight, keypad, timer, confirmation and recovery assertions remain intact. |
+| Mocked browser | Headless Edge 390x844 touch and 1280x900 desktop passed: separate fields, reload, one mock save and completion, preserved original prescription, entered versus copied effort, post-save description, Recent review retrieval and no unexpected JS errors. Separate fault/correction/unfinished-transfer recovery checks passed. |
+| Visual QA | Inspected the rendered phone review with expanded set evidence; original/actual values, units, unknown data and descriptive limitations render without page overflow. Screenshot is ignored under artifacts/phase1/session-review-phone.png. |
+| Docker | No local build/start, per the user's explicit preference. Container verification can run in existing PR CI after separately authorized publication; no local container result is claimed. |
+| Physical device / deployed data | Not performed for this follow-up. No real Hevy workout or production database was used for testing. |
+
+The review is versioned session-description-v1 and read-only after atomic local
+commit. Original loaded targets/fixed loads/notes, plan identity/revision, RPE
+curve and set identities are retained alongside actual evidence. No historical
+prescriptions are reconstructed and no frozen trial rows are rewritten. Legacy
+pending identities/payloads remain compatible. Ad hoc sessions explicitly have
+no initial full-session baseline. Copied or unknown effort does not supply
+performance estimates; like-for-like endpoint change requires matching reps,
+effort, role and set type. Estimates are not fatigue measurements. Cross-session
+comparisons and block/program changes are not implemented in this increment.
+
+Publication follow-up (2026-11-05): the user authorized committing and pushing
+this session-review change, opening a PR and checking GitHub CI. Merge, image
+publication on main and deployment are separate from this authorization.

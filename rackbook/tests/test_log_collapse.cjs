@@ -16,6 +16,7 @@ const context=vm.createContext({trainingUrl:path=>path.startsWith("/training/")?
   rpeControl:()=>({reportValidity:()=>true}),setE1rm:()=>null,setE1Cells:new Map(),setStressCells:new Map(),
   makeSwipeable:noop,renderLoader:()=>el('div'),applyAuto:noop,saveDraft:()=>saved++,
   showRpe:noop,restStart:()=>rests++,closeNumberPad:noop,renderWorkout:()=>redraws++,setTimeout:noop});
+vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../static/session-review.js'),'utf8'),context);
 vm.runInContext(html.slice(html.indexOf('  function exerciseComplete('), html.indexOf('  function tickClock()')),context);
 const nodes=n=>[n,...(n.children||[]).flatMap(x=>typeof x==='object'?nodes(x):[])];
 const ticks=card=>nodes(card).filter(n=>n.cls==='tick');

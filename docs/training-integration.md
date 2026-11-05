@@ -208,3 +208,31 @@ At the user's request, routine updates return to published `latest` followed by
 requires the correct latest image and an unblocked default pull policy. Existing
 separate external volumes, database/key paths, settings and write guards retain
 their strict checks. No application or model behavior changes in this follow-up.
+
+## Frozen session evidence and descriptive review (local, 2026-11-04)
+
+`session_review.py` owns explicit snapshot/evidence request models, pure review
+calculation and read-only retrieval. `session_reviews` is an additive logger-only
+table initialized by logger startup. Finalization writes its snapshot/actual/
+versioned review in the same transaction as exact sets, TS, plan completion,
+soreness and journal completion. Failure rolls back required local effects;
+retry finalizes without reposting. New metadata participates in frozen identity;
+absent new optional fields are stripped to preserve pre-upgrade request hashes.
+No existing rows or frozen trials are regenerated.
+
+`static/session-review.js` captures independent loaded-plan/repeated-workout
+prescriptions and displays the read-only review. Set IDs survive deletion,
+undo/reload/transfer; original missing sets stay in the snapshot and extra sets
+receive new IDs. Original notes, fixed weights, plan revision/identity and RPE
+curve are retained. Auto-weight calculation only gains passive suggested-load
+recording. Actual RPE source and completion time are captured without extra
+required taps. The LS toggle, manual/completed load stability and TS/TM remain
+unchanged. Transfer validates both live and frozen metadata.
+
+The review distinguishes original from final targets, completed work, omitted
+and added working sets, and unknown data. Explicitly entered effort with a stored
+percentage can supply e1RM estimates; copied targets are identified and excluded.
+Endpoint change requires matching reps, effort, role and set type. Timing orders
+the endpoints; completion spacing is not measured rest. Ad hoc and pre-upgrade
+sessions do not receive invented initial plans. This increment does not compare
+against prior sessions or produce block/programming changes.

@@ -25,6 +25,9 @@ with sync_playwright() as p:
     page.goto(URL+'/training/microcycles')
     page.get_by_role('link',name='Start next workout',exact=True).click()
     expect(page.locator('#title')).to_have_value('Mock Workout')
+    original_prescription=page.evaluate("JSON.parse(localStorage.getItem('training.logDraft')).prescription")
+    assert original_prescription['source']=='plan'
+    assert original_prescription['exercises'][0]['sets'][1]['reps']==5
     page.evaluate('navigator.serviceWorker.ready')
     scopes=page.evaluate('(async()=> (await navigator.serviceWorker.getRegistrations()).map(r=>r.scope))()')
     assert scopes==[URL+'/training/'],scopes
@@ -86,10 +89,21 @@ with sync_playwright() as p:
     assert posted['target_rpe']==8 and posted['rpe']==7,posted
     assert saved_result['state']=='complete',saved_result
     expect(page.locator('#done')).to_be_visible()
+    expect(page.locator('#sessionReview')).to_contain_text('Session review')
+    expect(page.locator('#sessionReview')).to_contain_text('2 originally planned')
+    review=page.request.get(URL+'/training/session-reviews/'+saved_result['id']).json()
+    assert review['available'],review
+    assert review['prescription']==original_prescription
+    evidence=review['review']['movements'][0]['sets']
+    assert evidence[0]['rpe_source']=='entered' and evidence[1]['rpe_source']=='copied_target',evidence
+    page.locator('#sessionReview summary').first.click()
+    page.screenshot(path=str(out/'session-review-phone.png'),full_page=True)
     assert page.evaluate("localStorage.getItem('training.logDraft')")==None
     history_page=context.new_page()
     history_page.goto(URL+'/training/recent')
     expect(history_page.locator('#list')).to_contain_text('RPErx 8 · RPEact 7')
+    history_page.get_by_role('button',name='Session review',exact=True).first.click()
+    expect(history_page.locator('#list')).to_contain_text('2 originally planned')
     history=page.request.get(URL+'/training/hevy/workouts').json()['workouts'][0]['exercises'][0]['sets'][0]
     assert history['target_rpe']==8 and history['rpe']==7,history
     history_page.close()

@@ -1,4 +1,5 @@
 # Mounted Rackbook route inventory (all paths below /training)
+GET /training/session-reviews/{workout_id}
 GET,HEAD /training/openapi.json
 GET,HEAD /training/docs
 GET,HEAD /training/docs/oauth2-redirect

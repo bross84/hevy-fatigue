@@ -9,10 +9,33 @@ const DraftTransfer = (() => {
   function inputNumber(x) {return typeof x==='string' && numeric(x);}
   function timestamp(x) {return string(x,100)&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(x)&&Number.isFinite(Date.parse(x));}
   function planLink(x) {assert(object(x)&&string(x.mesocycle_id,100)&&x.mesocycle_id.length>0&&string(x.session_id,100)&&x.session_id.length>0);}
+  function optionalNumber(x,min,max=Infinity) {assert(x==null||(typeof x==='number'&&Number.isFinite(x)&&x>=min&&x<=max));}
+  function evidence(x) {
+    assert(object(x)&&string(x.set_id,200)&&x.set_id.length>0&&string(x.exercise_id,200)&&x.exercise_id.length>0);
+    assert(typeof x.manual_weight==='boolean'&&typeof x.ls_enabled==='boolean'&&['e1rm','tm'].includes(x.basis));
+    assert(['entered','copied_target','unrated','unknown'].includes(x.rpe_source)&&timestamp(x.completed_at));
+    optionalNumber(x.suggested_weight_kg,0);optionalNumber(x.actual_percentage,Number.MIN_VALUE,1);
+  }
+  function prescription(x) {
+    assert(object(x)&&x.version===1&&['plan','repeated_workout','ad_hoc'].includes(x.source)&&string(x.name));
+    assert(Array.isArray(x.exercises)&&x.exercises.length<=100&&Array.isArray(x.rpe_chart)&&x.rpe_chart.length<=2000);
+    if(x.plan_revision!=null)assert(Number.isInteger(x.plan_revision)&&x.plan_revision>=0);
+    for(const field of ['plan_id','session_id'])if(x[field]!=null)assert(string(x[field],100));
+    const movements=new Set(),sets=new Set();
+    for(const ex of x.exercises){
+      assert(object(ex)&&string(ex.id,200)&&ex.id.length>0&&!movements.has(ex.id)&&string(ex.exercise_template_id,200)&&ex.exercise_template_id.length>0&&string(ex.title,200)&&Array.isArray(ex.sets)&&ex.sets.length<=200);movements.add(ex.id);
+      if(ex.notes!=null)assert(string(ex.notes));
+      for(const s of ex.sets){assert(object(s)&&string(s.id,200)&&s.id.length>0&&!sets.has(s.id)&&['warmup','normal','failure','dropset'].includes(s.type)&&typeof s.ts==='boolean');sets.add(s.id);
+        if(s.reps!=null)assert(Number.isInteger(s.reps)&&s.reps>=0&&s.reps<=1000);
+        optionalNumber(s.rpe,0,10);optionalNumber(s.weight_kg,0);}
+    }
+    for(const cell of x.rpe_chart){assert(object(cell)&&Number.isInteger(cell.reps)&&cell.reps>=1&&cell.reps<=1000);optionalNumber(cell.rpe,0,10);optionalNumber(cell.percentage,Number.MIN_VALUE,1);assert(cell.rpe!=null&&cell.percentage!=null);}
+  }
   function frozenRequest(x,id) {
     assert(object(x)&&x.client_workout_id===id&&string(x.title)&&timestamp(x.start_time)&&timestamp(x.end_time)&&Date.parse(x.end_time)>=Date.parse(x.start_time)&&Array.isArray(x.exercises)&&x.exercises.length>0);
     assert([undefined,null,'kg','lb'].includes(x.weight_unit));
     if(x.planned_session)planLink(x.planned_session);
+    if(x.prescription!=null)prescription(x.prescription);
     for(const ex of x.exercises){
       assert(object(ex)&&string(ex.exercise_template_id,200)&&ex.exercise_template_id.length>0&&Array.isArray(ex.sets)&&ex.sets.length>0);
       assert([undefined,null,'kg','lb'].includes(ex.weight_unit));if(ex.notes!=null)assert(string(ex.notes));
@@ -21,6 +44,7 @@ const DraftTransfer = (() => {
         if(s.reps!=null)assert(Number.isInteger(s.reps)&&s.reps>=0);
         if(s.rpe!=null)assert(typeof s.rpe==='number'&&Number.isFinite(s.rpe)&&s.rpe>=0&&s.rpe<=10);
         if(s.target_rpe!=null)assert(typeof s.target_rpe==='number'&&Number.isFinite(s.target_rpe)&&s.target_rpe>=0&&s.target_rpe<=10);
+        if(s.review!=null)evidence(s.review);
         if(s.ts!==undefined)assert(typeof s.ts==='boolean');}
     }
   }
@@ -34,6 +58,7 @@ const DraftTransfer = (() => {
     assert(object(d)&&string(d.title)&&timestamp(d.startedAt)&&Array.isArray(d.exercises)&&d.exercises.length<=100);
     if(d.client_workout_id!==undefined)assert(uuid.test(d.client_workout_id));
     if(d.planned_session)planLink(d.planned_session);
+    if(d.prescription!=null)prescription(d.prescription);
     for(const ex of d.exercises){
       assert(object(ex)&&string(ex.id,200)&&ex.id.length>0&&string(ex.template_id,200)&&ex.template_id.length>0&&string(ex.title,200)&&Array.isArray(ex.sets)&&ex.sets.length<=200);
       if(ex.notes!=null)assert(string(ex.notes));
@@ -42,7 +67,10 @@ const DraftTransfer = (() => {
         for(const field of ['state','ts'])if(ex.ref[field]!=null)assert(object(ex.ref[field]));
         if(ex.ref.state?.previous!=null)assert(Array.isArray(ex.ref.state.previous)&&ex.ref.state.previous.every(object));
       }
-      for(const s of ex.sets){assert(object(s)&&['warmup','normal','failure','dropset'].includes(s.type)&&inputNumber(s.kg)&&inputNumber(s.reps)&&inputNumber(s.rpe)&&typeof s.done==='boolean');if(s.arpe!==undefined)assert(inputNumber(s.arpe));if(s.ts!==undefined)assert(typeof s.ts==='boolean');}
+      for(const s of ex.sets){assert(object(s)&&['warmup','normal','failure','dropset'].includes(s.type)&&inputNumber(s.kg)&&inputNumber(s.reps)&&inputNumber(s.rpe)&&typeof s.done==='boolean');if(s.arpe!==undefined)assert(inputNumber(s.arpe));if(s.ts!==undefined)assert(typeof s.ts==='boolean');
+        if(s.review!=null)evidence(s.review);if(s.review_id!=null)assert(string(s.review_id,200)&&s.review_id.length>0);
+        if(s.actualSource!=null)assert(['entered','copied_target','unrated','unknown'].includes(s.actualSource));
+        optionalNumber(s.autoSuggestion,0);}
     }
     if(d.frozenSave)frozenRequest(d.frozenSave,d.client_workout_id);
     safe(d);return d;
