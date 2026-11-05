@@ -397,3 +397,22 @@ active workout drafts before recreation. Verify running health and existing
 history/settings afterward, followed by the RPE controls; normal workout/device
 acceptance remains separate. Rollback can select a known old image with the same
 current volumes; never overwrite newer workouts with a stale database snapshot.
+
+## Session-review release follow-up (local only, 2026-11-04)
+
+Routine deployment continues to use latest with pull/up; do not restore digest
+pins or pull_policy: never. This follow-up adds the logger-only `session_reviews`
+table. Existing DB/key paths, external volumes, settings and host monitoring are
+unchanged. Old histories/frozen trials are not backfilled. Keep newer logging
+records and pending journals on rollback; older application images do not record
+session-review evidence, and a stale backup must not overwrite newer workouts.
+
+Finish or export active workout drafts before updating. Existing drafts and
+frozen save identities remain valid and must not be replaced to add snapshots;
+those without a captured initial prescription show review unavailable. On new
+sessions, confirm original prescriptions survive edits/deletions/reload, LS on/
+off still governs next-set weights, and saving completes the plan once. Verify
+the description after normal save and from Recent; use mocks for fault recovery
+and do not create a production test workout. Physical-device acceptance and
+actual deployment of this change are pending. No commit/push/deployment occurred
+as part of local implementation.

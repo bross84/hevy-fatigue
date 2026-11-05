@@ -281,3 +281,27 @@ Storage, host key/settings, write/preview flags, port 8125, network and CasaOS
 metadata are unchanged. Config changes still go through GitHub; routine app
 updates no longer need an image-pin PR. See deploy/README.md. Server application
 is an operator action and is not proven by the repository change alone.
+
+## Preserved session prescriptions and descriptive review (local, 2026-11-04)
+
+The operator confirms the deployed RPE fields/LSe1RM toggle work and existing
+history/settings are intact after restoring latest-based updates. This is user
+acceptance of the preceding release, not deployment evidence for this follow-up.
+
+Newly loaded planned/repeated workouts capture an independent original session
+snapshot, including set identities, reps, RPE, fixed loads, notes, plan identity/
+revision and the loaded RPE table. Added/omitted work is identifiable without
+rewriting the snapshot. Completed sets retain suggested automatic load, actual
+load/reps/RPE, completion time, fixed/manual state, LS/basis and entered versus
+copied/unrated effort. Existing weight calculations, TS/TM and LS toggle behavior
+are unchanged. Ad hoc sessions explicitly lack an initial session baseline;
+legacy drafts/frozen saves do not gain invented original prescriptions.
+
+The separate logger table `session_reviews` stores the prescription, actual
+exercise evidence and versioned description atomically with required local save
+effects and journal completion. GET `/training/session-reviews/{workout_id}` is
+read-only. The logger shows the review after a completed save/recovery and Recent
+can reopen it. Working-set/reps comparisons and like-for-like e1RM endpoints are
+descriptive only; copied/unknown effort is excluded from performance estimates.
+No cross-session/block recommendations, host model changes or automatic program
+edits are included. Release evidence and limitations: training-verification.md.

@@ -48,6 +48,52 @@ class SaveRecoveryTests(unittest.TestCase):
             return tuple(db.execute('SELECT COUNT(*) FROM '+table).fetchone()[0]
                          for table in ('logged_sets','training_max_history','session_soreness','mesocycle_completions'))
 
+    def test_review_and_original_prescription_commit_once_with_recovery(self):
+        from rackbook.tests.test_session_review import captured_payload
+        payload=captured_payload()
+        payload['client_workout_id']=str(uuid4())
+        data=training.WorkoutEntry(**payload)
+        with patch('rackbook.training_max.record',side_effect=RuntimeError('disk')):
+            with self.assertLogs('rackbook.workout_saves',level='ERROR'):
+                self.assertEqual(saves.save(data,self.factory)['state'],'remote_saved')
+        self.assertEqual(self.counts(),(0,0,0,0))
+        with closing(get_db()) as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM session_reviews').fetchone()[0],0)
+        self.assertEqual(saves.save(data,self.factory)['state'],'complete')
+        self.assertEqual(saves.save(data,self.factory)['state'],'complete')
+        self.remote.create_workout.assert_called_once()
+        from rackbook.session_review import read
+        review=read('remote-1')
+        self.assertTrue(review['available'])
+        self.assertEqual(review['prescription']['plan_revision'],3)
+        self.assertEqual(review['review']['movements'][0]['omitted_sets'],1)
+        with closing(get_db()) as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM session_reviews').fetchone()[0],1)
+        changed=data.model_copy(deep=True)
+        changed.prescription.exercises[0].sets[0].reps=8
+        with self.assertRaises(HTTPException):saves.save(changed,self.factory)
+
+    def test_review_endpoint_is_read_only_and_legacy_history_is_unavailable(self):
+        from rackbook.tests.test_session_review import captured_payload
+        client=TestClient(training.app)
+        self.addCleanup(client.close)
+        missing=client.get('/session-reviews/legacy').json()
+        self.assertFalse(missing['available'])
+        data=training.WorkoutEntry(client_workout_id=uuid4(),**captured_payload())
+        saves.save(data,self.factory)
+        first=client.get('/session-reviews/remote-1')
+        self.assertEqual(first.status_code,200,first.text)
+        self.assertEqual(first.json(),client.get('/session-reviews/remote-1').json())
+        self.remote.create_workout.assert_called_once()
+
+    def test_ambiguous_snapshot_links_rejected_before_remote_io(self):
+        from rackbook.tests.test_session_review import captured_payload
+        from pydantic import ValidationError
+        payload=captured_payload()
+        payload['exercises'][0]['sets'][1]['review']['set_id']='a'
+        with self.assertRaises(ValidationError):training.WorkoutEntry(**payload)
+        self.factory.assert_not_called()
+
     def test_prescribed_and_actual_rpe_survive_local_recovery(self):
         self.data.exercises[0].sets[0].target_rpe = 7
         self.data.exercises[0].sets[1].target_rpe = 6
@@ -75,9 +121,11 @@ class SaveRecoveryTests(unittest.TestCase):
         saves.prepare(self.data)
         old_payload = self.data.model_dump(mode='json')
         old_payload.pop('client_workout_id')
+        old_payload.pop('prescription')
         for ex in old_payload['exercises']:
             for s in ex['sets']:
                 s.pop('target_rpe')
+                s.pop('review')
         frozen = saves.canonical(old_payload)
         self.assertEqual(saves.read(self.data.client_workout_id)['request_payload'], frozen)
         with closing(get_db()) as db, db:

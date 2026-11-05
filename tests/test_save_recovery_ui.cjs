@@ -63,6 +63,7 @@ const draft=()=>({client_workout_id:'old-id',title:'Edited title',planned_sessio
   let cleared=0;const current={client_workout_id:'new-session'};
   const recoveryContext=vm.createContext({draft:current,clearDraft(){cleared++},document:{getElementById:()=>null},
     show(){},$:()=>({querySelector:()=>({})}),WorkoutSave:{monitoring(){}}});
+  vm.runInContext(fs.readFileSync(path.join(__dirname,'../rackbook/static/session-review.js'),'utf8'),recoveryContext);
   vm.runInContext(log.slice(log.indexOf('  function completeRecoveredSave('),log.indexOf("  DraftTransfer.install('workout-draft');")),recoveryContext);
   recoveryContext.completeRecoveredSave({client_workout_id:'old-session',monitoring_refresh:'pending'});
   assert.equal(cleared,0);assert.equal(recoveryContext.draft,current);

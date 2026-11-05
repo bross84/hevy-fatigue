@@ -15,7 +15,7 @@ from pathlib import Path
 PACKAGE_DIR = Path(__file__).resolve().parent
 from fastapi.staticfiles import StaticFiles
 from uuid import UUID
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -38,6 +38,7 @@ from . import rpe_observed
 from . import rpe_history
 from . import rpe_assignments
 from . import set_log
+from . import session_review
 from . import stress_index
 from . import stress_service
 from . import mesocycles
@@ -289,6 +290,7 @@ class EntrySet(BaseModel):
     reps: int | None = Field(default=None, ge=0)
     rpe: float | None = Field(default=None, ge=0, le=10)
     target_rpe: float | None = Field(default=None, ge=0, le=10)
+    review: session_review.SetEvidence | None = None
     ts: bool = False  # the set that sets this movement's TM; only takes effect once the workout is saved
 
 
@@ -342,6 +344,36 @@ class WorkoutEntry(BaseModel):
     exercises: list[EntryExercise]
     soreness: SessionSoreness | None = None
     planned_session: mesocycles.PlanLink | None = None
+    prescription: session_review.Prescription | None = None
+
+    @model_validator(mode='after')
+    def review_identities(self):
+        if self.prescription is None:
+            return self
+        seen = set()
+        originals = {ex.id: ex for ex in self.prescription.exercises}
+        owners = {s.id: ex.id for ex in self.prescription.exercises for s in ex.sets}
+        movements = set()
+        for ex in self.exercises:
+            ids = {s.review.exercise_id for s in ex.sets if s.review}
+            if len(ids) != 1 or ids & movements:
+                raise ValueError('Each completed movement needs a distinct review identity')
+            movements.update(ids)
+            for s in ex.sets:
+                if s.review is None or s.review.set_id in seen:
+                    raise ValueError('Completed sets need unique review identities')
+                meta = s.review
+                seen.add(meta.set_id)
+                if meta.exercise_id in originals and originals[meta.exercise_id].exercise_template_id != ex.exercise_template_id:
+                    raise ValueError('Review movement does not match the prescription')
+                if meta.set_id in owners and owners[meta.set_id] != meta.exercise_id:
+                    raise ValueError('Review set belongs to another prescribed movement')
+        return self
+
+
+@app.get('/session-reviews/{workout_id}', response_model=session_review.ReviewResponse)
+def get_session_review(workout_id: str):
+    return session_review.read(workout_id)
 
 
 class SavedWorkout(BaseModel):

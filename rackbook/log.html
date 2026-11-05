@@ -4,6 +4,7 @@
   <script src="/training/static/training.js"></script>
   <script src="/training/static/save-recovery.js"></script>
   <script src="/training/static/draft-transfer.js"></script>
+  <script src="/training/static/session-review.js"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -428,6 +429,7 @@
   <section id="done" hidden>
     <div class="msg ok">Saved to Hevy.</div>
     <div id="trialResults"></div>
+    <section id="sessionReview" class="card" aria-live="polite"></section>
     <button id="again" class="wide" type="button" style="margin-bottom:8px">Log another workout</button>
     <p style="text-align:center"><a href="/training/recent">See it in Recent workouts</a></p>
   </section>
@@ -902,6 +904,7 @@
       const w = autoWeight(ex, i);
       if (w == null) return;
       s.kg = String(Math.round(w * 1e6) / 1e6);
+      s.autoSuggestion = w;
       showWeight(s, ex);
     });
   }
@@ -1079,6 +1082,7 @@
           reps:String(s.reps), rpe:s.rpe == null ? "" : String(s.rpe), done:false, manual:s.weight_kg != null}))
       }))
     };
+    SessionCapture.start(draft, 'plan', rpeTable, plan.revision);
     saveDraft(); say(""); renderWorkout();
     draft.exercises.forEach(loadState);
   }
@@ -1114,12 +1118,14 @@
     };
     // an exercise that was only warm-ups still needs a set to fill in
     for (const ex of draft.exercises) if (!ex.sets.length) ex.sets.push({ type: "normal", kg: "", reps: "", rpe: "", done: false, manual: false });
+    SessionCapture.start(draft, 'repeated_workout', rpeTable);
     saveDraft(); say(""); renderWorkout();
     draft.exercises.forEach(loadState);
   }
 
   function startEmpty() {
     draft = { title: "Workout", startedAt: new Date().toISOString(), exercises: [] };
+    SessionCapture.start(draft, 'ad_hoc', rpeTable);
     saveDraft(); say(""); renderWorkout();
   }
 
@@ -1749,6 +1755,7 @@
       }, "RPErx");
       const actualRpe = rpeControl(s.arpe ?? (s.done ? s.rpe : ""), (v) => {
         s.arpe = v;
+        s.actualSource = v ? 'entered' : 'unrated';
         if (s.done) applyAuto(ex);   // actual effort replans later sets, never the completed weight
         saveDraft();
       }, "RPEact");
@@ -1771,7 +1778,8 @@
         }
         if (!s.done) ex.collapsed = false;
         updateCollapse();
-        if (s.done && !s.arpe) s.arpe = s.rpe;   // retain the on-target, no-extra-tap completion workflow
+        if (s.done && !s.arpe) { s.arpe = s.rpe; s.actualSource = s.rpe ? 'copied_target' : 'unrated'; }
+        if (s.done) SessionCapture.complete(ex, s);
         row.classList.toggle("done", s.done);
         showRpe(actualRpe, s.arpe || "");
         applyAuto(ex); saveDraft();
@@ -1963,7 +1971,8 @@
         if (kg !== null && (isNaN(kg) || kg < 0)) throw new Error(where + ": the weight isn't a number.");
         const logged = s.arpe ?? s.rpe;
         if (s.ts && !(kg > 0 && reps > 0 && logged)) throw new Error(where + ": the TS set needs a weight, reps and an RPE.");
-        sets.push({ type: s.type, weight_kg: kg, reps, rpe: !logged ? null : Number(logged), target_rpe: s.rpe ? Number(s.rpe) : null, ...(s.ts ? { ts: true } : {}) });
+        sets.push({ type: s.type, weight_kg: kg, reps, rpe: !logged ? null : Number(logged), target_rpe: s.rpe ? Number(s.rpe) : null, ...(s.ts ? { ts: true } : {}),
+          ...(s.review ? {review:SessionCapture.evidence(s, logged ? pctFor(Number(logged), reps) : null)} : {}) });
       }
       if (sets.length) exercises.push({ exercise_template_id: ex.template_id, title: ex.title, notes: ex.notes, ...(ex.ref?.weightUnit ? {weight_unit:ex.ref.weightUnit} : {}), sets });
     }
@@ -1972,6 +1981,7 @@
     const trained = new Set(exercises.map((ex) => sorenessPatterns && sorenessPatterns[ex.title]));
     const soreness = Object.fromEntries(Object.entries(draft.soreness || {}).filter(([key]) => trained.has(key)));
     return { soreness: Object.keys(soreness).length ? soreness : null, title: draft.title.trim() || "Workout", weight_unit: unit, start_time: draft.startedAt, end_time: new Date().toISOString(), exercises,
+      ...(draft.prescription ? { prescription:draft.prescription } : {}),
       ...(draft.planned_session ? { planned_session: draft.planned_session } : {}) };
   }
 
@@ -2019,6 +2029,7 @@
       $("done").querySelector(".msg").textContent = (saved.plan_warning || "Saved to Hevy.") + (saved.monitoring_refresh !== "complete" ? " Monitoring refresh " + saved.monitoring_refresh + "; use Settings to sync." : "");
       showTrialResults(saved.trial_results, entry.exercises);
       WorkoutSave.monitoring(saved);
+      SessionReviewUI.saved(saved);
     } catch (err) {
       if (draft !== workoutBeingSaved) return;
       say(err.message + " Your frozen workout is retained. Check save status before continuing.");
@@ -2035,6 +2046,7 @@
     clearDraft(); document.getElementById('saveRecovery')?.remove(); show('done');
     $('done').querySelector('.msg').textContent='Saved to Hevy and local records. Monitoring refresh '+saved.monitoring_refresh+'.';
     WorkoutSave.monitoring(saved);
+    SessionReviewUI.saved(saved);
   }
   DraftTransfer.install('workout-draft');
 

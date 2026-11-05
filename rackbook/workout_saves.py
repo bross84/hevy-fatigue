@@ -14,7 +14,7 @@ import httpx
 from fastapi import HTTPException
 
 from .database import get_db, get_rpe_percentage
-from . import mesocycles, set_log, training_max, soreness, fatigue_trial, stress_service
+from . import mesocycles, set_log, training_max, soreness, fatigue_trial, stress_service, session_review
 from .workout_payload import build_hevy_workout
 from .hevy_client import WorkoutNotSent
 
@@ -104,10 +104,14 @@ def monitoring_status(workout_id, state):
 
 def prepare(entry):
     payload = entry.model_dump(mode='json')
+    if payload.get('prescription') is None:
+        payload.pop('prescription', None)
     # Keep pre-upgrade frozen requests byte-equivalent for identity/hash checks.
     # An absent prescription remains absent, including on legacy retries.
     for exercise in payload['exercises']:
         for s in exercise['sets']:
+            if s.get('review') is None:
+                s.pop('review', None)
             if s.get('target_rpe') is None:
                 s.pop('target_rpe', None)
     client_id = str(payload.pop('client_workout_id', None) or uuid4())
@@ -171,6 +175,7 @@ def finalize(client_id):
             payload = json.loads(row['request_payload'])
             remote_id = row['hevy_workout_id']
             set_log.record(set_log.rows_from_entry(payload, remote_id), connection=conn)
+            session_review.record(payload, remote_id, conn)
             training_max.record(json.loads(row['ts_rows']), payload['start_time'], connection=conn)
             if payload.get('planned_session'):
                 mesocycles.complete(mesocycles.PlanLink(**payload['planned_session']), remote_id, payload['start_time'], connection=conn)

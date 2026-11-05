@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <script src="/training/static/session-review.js"></script>
   <script src="/training/static/training.js"></script>
   <script src="/training/static/draft-transfer.js"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
@@ -244,6 +245,7 @@
       box.append(list);
       card.append(box);
     }
+    SessionReviewUI.button(w.id, card);
     if (w.soreness_editable) {
       const edit = el("button", null, "Edit soreness"); edit.type = "button";
       const editor = el("div", "soreness-editor"); editor.hidden = true;

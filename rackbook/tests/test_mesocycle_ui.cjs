@@ -69,6 +69,8 @@ const logContext=vm.createContext({trainingUrl:path=>path.startsWith("/training/
  loadState:ex=>loaded.push(ex.template_id),confirm:()=>false,
  document:{querySelector:()=>null},
 });
+logContext.rpeTable=new Map();
+vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../static/session-review.js'),'utf8'),logContext);
 vm.runInContext(log.slice(log.indexOf('  async function loadPlannedWorkout('),log.indexOf('  async function loadPlannedQuery(')),logContext);
 vm.runInContext(log.slice(log.indexOf('  function buildEntry()'),log.indexOf('  const saveDialog =')),logContext);
 (async()=>{
