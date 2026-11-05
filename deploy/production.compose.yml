@@ -1,10 +1,10 @@
 # Production configuration captured from the running CasaOS deployment.
-# Application release: sha-eb76a99. Rendering this file does not deploy it.
+# Application release: sha-9f839b1. Rendering this file does not deploy it.
 name: hevy-fatigue
 
 services:
   hevy-fatigue:
-    image: ghcr.io/bross84/hevy-fatigue@sha256:b6a4799f644714cf5379f6bbb5138cbf9d101ab58bfe0b8d0d7fdedee6aa5f22
+    image: ghcr.io/bross84/hevy-fatigue@sha256:1c97fe05b21864a0620457e339b69a4f8680f86702f2d8867c20c1685ae89d24
     pull_policy: never
     container_name: hevy-fatigue
     command: null
