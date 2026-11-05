@@ -8,7 +8,6 @@ Only differing field paths are reported, never settings or credential values.
 import argparse
 import json
 from pathlib import Path
-import re
 import sys
 
 
@@ -47,10 +46,10 @@ def validate(config):
     require(set(services) == {'hevy-fatigue'}, '$.services')
     service = services.get('hevy-fatigue', {})
     require(service.get('container_name') == 'hevy-fatigue', '$.services.hevy-fatigue.container_name')
-    require(bool(re.fullmatch(r'ghcr\.io/bross84/hevy-fatigue@sha256:[0-9a-f]{64}', service.get('image', ''))),
+    require(service.get('image') == 'ghcr.io/bross84/hevy-fatigue:latest',
             '$.services.hevy-fatigue.image')
     require('build' not in service, '$.services.hevy-fatigue.build')
-    require(service.get('pull_policy') == 'never', '$.services.hevy-fatigue.pull_policy')
+    require(service.get('pull_policy') in (None, 'missing'), '$.services.hevy-fatigue.pull_policy')
     require(service.get('restart') == 'unless-stopped', '$.services.hevy-fatigue.restart')
     require(service.get('command') is None and service.get('entrypoint') is None,
             '$.services.hevy-fatigue.command/entrypoint')

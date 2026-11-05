@@ -271,3 +271,13 @@ records. This does not add session/block advice or nutrition/Health integration.
 The user subsequently authorized committing/pushing this follow-up; deployment
 remains separate. The original LSe1RM toggle remains unchanged: off uses the
 selected e1RM/TM basis, on allows the previous actual set to supply the basis.
+
+## Latest-based production updates (2026-11-04)
+
+The user explicitly restored `docker compose pull && docker compose up -d`.
+Production Compose uses `ghcr.io/bross84/hevy-fatigue:latest` and no restrictive
+pull policy. This supersedes prior digest-pin requirements for routine updates.
+Storage, host key/settings, write/preview flags, port 8125, network and CasaOS
+metadata are unchanged. Config changes still go through GitHub; routine app
+updates no longer need an image-pin PR. See deploy/README.md. Server application
+is an operator action and is not proven by the repository change alone.

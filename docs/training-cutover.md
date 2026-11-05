@@ -380,3 +380,20 @@ PWA/tablet controls separately: Rx 6, actual 5 and then 7 should retain Rx 6 and
 the performed weight while moving eligible next-set suggestions up/down. Check
 reload and Recent history during the next authorized normal workout; do not
 create a production test workout. No deployment or device acceptance occurred here.
+
+## Routine latest-based updates (2026-11-04, supersedes image-pin steps above)
+
+The user authorized restoring `docker compose pull && docker compose up -d`.
+Use the reviewed `deploy/production.compose.yml` with the latest image and no
+`pull_policy: never`; initial installation must retain the existing external
+volumes, network, project identity and all settings. After installing it once,
+future published app updates require only pull and up from the server's existing
+Compose directory. No `down -v`, volume removal or database reset is needed.
+
+The operator has reported fresh integrity-checked backups of both databases and
+the matching host key for this update. Preserve these and the old image; do not
+repeat backup work solely because the image reference changes. Finish/export
+active workout drafts before recreation. Verify running health and existing
+history/settings afterward, followed by the RPE controls; normal workout/device
+acceptance remains separate. Rollback can select a known old image with the same
+current volumes; never overwrite newer workouts with a stale database snapshot.
