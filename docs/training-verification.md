@@ -458,3 +458,21 @@ that off preserves both e1RM and TM bases despite actual-RPE edits, and on
 restores the previous actual-set basis. Targeted logger checks pass. Local
 Docker is not a requirement for branch publication; container checks can run
 in existing GitHub CI. No deployment is authorized by branch publication.
+
+## Restored latest update workflow — 2026-11-04
+
+The user explicitly requested restoring `docker compose pull && docker compose
+up -d`. Production now uses the repository's published `latest`, with no
+`pull_policy: never`. Rendered before/after comparison found exactly two changed
+fields: service image and pull policy. All volume definitions/mounts, database
+and key paths, settings/write flags, container identity, port, network and CasaOS
+metadata match exactly. No app or model code changed.
+
+All 10 read-only deployment configuration tests passed, including rejection of
+blocked pull policies, incorrect images/local builds, storage swaps, changed
+settings, changed ports and extra services. No local image build/start or real
+DB experiment was performed. CI performs the existing broader verification.
+The operator already reported fresh integrity-checked host/logging backups and
+the matching host key. This records configuration preparation; server application
+and physical-device acceptance must be reported separately after the operator
+installs the tracked file and recreates the app.

@@ -59,13 +59,27 @@ class ProductionContract(unittest.TestCase):
     def test_tracked_configuration_satisfies_production_contract(self):
         self.assertEqual(checker.validate(self.config), [])
 
-    def test_mutable_image_and_build_cannot_replace_pinned_release(self):
+    def test_wrong_image_and_local_build_cannot_replace_published_latest(self):
         changed = copy.deepcopy(self.config)
-        changed['services']['hevy-fatigue']['image'] = 'ghcr.io/bross84/hevy-fatigue:latest'
+        changed['services']['hevy-fatigue']['image'] = 'ghcr.io/another-owner/hevy-fatigue:latest'
         changed['services']['hevy-fatigue']['build'] = '.'
         errors = checker.validate(changed)
         self.assertIn('$.services.hevy-fatigue.image', errors)
         self.assertIn('$.services.hevy-fatigue.build', errors)
+
+    def test_default_pull_policy_allows_normal_updates_and_never_is_rejected(self):
+        self.assertEqual(self.config['services']['hevy-fatigue']['image'], 'ghcr.io/bross84/hevy-fatigue:latest')
+        self.assertNotIn('pull_policy', self.config['services']['hevy-fatigue'])
+        changed = copy.deepcopy(self.config)
+        changed['services']['hevy-fatigue']['pull_policy'] = 'never'
+        self.assertIn('$.services.hevy-fatigue.pull_policy', checker.validate(changed))
+
+    def test_fixed_release_pins_are_rejected_for_the_latest_update_workflow(self):
+        for image in ('ghcr.io/bross84/hevy-fatigue:sha-9f839b1',
+                      'ghcr.io/bross84/hevy-fatigue@sha256:' + 'a' * 64):
+            changed = copy.deepcopy(self.config)
+            changed['services']['hevy-fatigue']['image'] = image
+            self.assertIn('$.services.hevy-fatigue.image', checker.validate(changed))
 
     def test_empty_replacement_volume_and_swapped_database_mount_are_rejected(self):
         changed = copy.deepcopy(self.config)

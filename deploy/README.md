@@ -1,9 +1,9 @@
 # Production deployment configuration
 
-`production.compose.yml` is the Git-tracked source for the existing production
-configuration. It renders identically to the operator's captured running
-three-file CasaOS stack. It pins application release `sha-eb76a99` by immutable
-image digest and records the already-approved write-enabled state:
+`production.compose.yml` is the Git-tracked source for production configuration.
+It uses `ghcr.io/bross84/hevy-fatigue:latest` with the default pull policy,
+restoring `docker compose pull && docker compose up -d`. Existing external
+volumes, the host key path and the already-approved write-enabled state remain:
 `HEVY_WRITES_ENABLED=1`, `RACKBOOK_READ_ONLY_PREVIEW=0`.
 
 The root `docker-compose.yml` remains a development/build configuration with
@@ -18,7 +18,7 @@ Do not use either as a substitute for this production file.
   `hevy-fatigue_training-data`, with separate database paths and the host key path.
 - External existing network `hevy-fatigue_hevy-net`.
 - Exact CasaOS icon, title, launcher and metadata.
-- The approved image digest and both write-policy flags.
+- The published `latest` image and both write-policy flags.
 
 No databases, encryption keys, credentials or backups belong in this directory.
 Old Rackbook is deliberately not a service in this file and stays stopped.
@@ -62,14 +62,14 @@ python3 deploy/check_config.py compare "$audit_dir/github.json" "$audit_dir/serv
 
 Expected output is `matches: true` with no differing fields. The comparison is
 strict: it ignores JSON object key order only, not missing metadata, extra
-settings, nulls, list order, image pins or write flags. It reports field paths
+settings, nulls, list order, image references or write flags. It reports field paths
 without disclosing their values. Inspect differences rather than auto-applying.
 The initial captured/rendered canonical JSON SHA-256 is
 `f5a8c0389ff14452f63ff94f43305be04e7e204bb541dca2bcd8ffb38d221281`
 (sorted object keys, compact separators, UTF-8); this identifies the capture,
 not an image or database digest.
 
-## Current server provenance and future updates
+## Historical server provenance
 
 The current container still records the earlier source files in Docker metadata:
 
@@ -82,13 +82,30 @@ them requires no restart, database migration or edit to the active server files.
 This reconciliation does not claim the current container was recreated from the
 new filename. No source-file replacement or container operation is part of it.
 
-For future changes, update this production file in a GitHub PR, review the
-rendered diff and CI, merge the approved configuration, then use that committed
-file during a separately authorized deployment/maintenance window. Do not
-generate new untracked overlays or silently switch to `latest`. An approved
-application update changes the image digest here; it does not enable writes as
-a side effect. Publishing an image does not update this pinned deployment.
+## Normal updates (restored at the user's request, 2026-11-04)
 
-The existing main-branch image publisher remains unchanged. Merging this
-configuration PR may publish an unused image, but cannot change the currently
-pinned running container. Do not deploy or restart simply to record configuration.
+Install this tracked file once as the server's active Compose file, preserving
+its existing project, external volumes and network. From the server directory:
+
+```sh
+cd /var/lib/docker-data/AppData/hevy-fatigue
+docker compose pull && docker compose up -d
+```
+
+Use `sudo` on each Docker command if required by the server. Application updates
+now require no image-pin edits or configuration PR. The main-branch publisher
+updates `latest`; pulling downloads it, and `up -d` recreates the app as needed.
+Publishing alone does not restart the server. There is no local build step.
+The separate named volumes retain both databases and the host encrypted settings
+and key. No volume removal, data migration between stores, or credential reset
+is part of this configuration change. Finish or export active workout drafts
+before updating; existing pending-save identities must be retained.
+
+Future changes to storage, settings, ports, network or CasaOS metadata still go
+through a GitHub PR. The old migration instructions using immutable digests and
+`pull_policy: never` are historical and do not govern normal application updates.
+The read-only validator now requires this repository's `latest` image, rejects
+local builds and blocked pull policies, and retains the existing storage/settings
+checks. For rollback, use the known previous release against the same preserved
+volumes; do not restore older database snapshots over newer workouts. A digest
+can still identify a specific rollback image without being the normal workflow.

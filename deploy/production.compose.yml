@@ -1,11 +1,10 @@
-# Production configuration captured from the running CasaOS deployment.
-# Application release: sha-9f839b1. Rendering this file does not deploy it.
+# Production configuration retaining the existing CasaOS deployment and storage.
+# Updates: docker compose pull && docker compose up -d
 name: hevy-fatigue
 
 services:
   hevy-fatigue:
-    image: ghcr.io/bross84/hevy-fatigue@sha256:1c97fe05b21864a0620457e339b69a4f8680f86702f2d8867c20c1685ae89d24
-    pull_policy: never
+    image: ghcr.io/bross84/hevy-fatigue:latest
     container_name: hevy-fatigue
     command: null
     entrypoint: null

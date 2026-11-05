@@ -200,3 +200,11 @@ Completed/manual loads are unchanged. Draft transfer preserves both fields and
 validates the new field in frozen payloads. Recent exposes the target only when
 local/remote sets match the existing movement/count/reps/type checks; legacy
 history retains its actual-only display. No host monitoring or trial rules change.
+
+## Production update workflow (2026-11-04)
+
+At the user's request, routine updates return to published `latest` followed by
+`docker compose pull && docker compose up -d`. The deployment contract now
+requires the correct latest image and an unblocked default pull policy. Existing
+separate external volumes, database/key paths, settings and write guards retain
+their strict checks. No application or model behavior changes in this follow-up.
