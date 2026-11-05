@@ -305,3 +305,19 @@ can reopen it. Working-set/reps comparisons and like-for-like e1RM endpoints are
 descriptive only; copied/unknown effort is excluded from performance estimates.
 No cross-session/block recommendations, host model changes or automatic program
 edits are included. Release evidence and limitations: training-verification.md.
+
+## Optional weight-source selection (local, 2026-11-05)
+
+Selecting the currently selected e1RM or TM tile now deselects it. With both off,
+weights remain supplied/entered values; RPE, reps, history refresh and unit changes
+do not calculate new weights. LSe1RM is disabled while no source is selected,
+without erasing its remembered preference. Selecting either source re-enables
+the existing calculations. Other movements and existing TS/TM behavior retain
+their prior settings; e1RM tracking and session reviews still work.
+
+An additive logger-only `exercise_refs.auto_weights` flag defaults to 1 for
+existing movements. The remembered basis stays e1rm/tm internally, avoiding a
+rebuild of the constrained table. Draft autoWeights and API auto_weights preserve
+the deselected state across reload/new workouts. New review evidence records
+basis manual and LS off when no weight source is active. No new progression
+algorithm or bodyweight-load calculation was added. Local implementation only.

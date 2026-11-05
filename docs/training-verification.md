@@ -508,3 +508,36 @@ comparisons and block/program changes are not implemented in this increment.
 Publication follow-up (2026-11-05): the user authorized committing and pushing
 this session-review change, opening a PR and checking GitHub CI. Merge, image
 publication on main and deployment are separate from this authorization.
+
+## Optional weight-source verification — 2026-11-05 (local only)
+
+The user requested only that e1RM/TM selection no longer be forced. No new rep/
+load progression rules or bodyweight calculations were introduced. Selecting an
+active tile again leaves both unselected, stops automatic loads for that movement
+and disables LS while preserving the remembered preference. Existing lifts keep
+their existing selection and calculation behavior.
+
+- Host/integration: 81 passed, including legacy frozen-save identity and recovery.
+- Logging: 480 run, OK with the inherited one expected failure. New API/migration
+  checks verify the off preference survives initialization and stays per movement,
+  and the new column preserves every prior row/default. Manual-basis evidence
+  remains compatible with actual-performance review tracking.
+- JavaScript: all 27 checks passed. New real-control/calculation checks exercise
+  deselecting e1RM and TM by mouse/keyboard, stopped LS/base calculations, unchanged
+  supplied/manual/completed weights, and restoration on selection. Transfer and
+  session capture preserve the off/manual state without changing frozen shapes.
+- Mocked browser: phone/desktop acceptance passed, including both tiles off,
+  disabled LS, RPE edits leaving weights fixed, reload, stored preference, fresh
+  workout load, ordinary save/review and Recent. Recovery browser scenarios also
+  passed with no unexpected JavaScript errors. Desktop screenshot inspected.
+- Physical-device/deployed-data checks were not performed for this follow-up.
+  No real database or Hevy account was used. Local Docker build/start was omitted
+  per the user's preference; container CI can run after authorized publication.
+
+Existing unrelated documentation edits were preserved. No commit, push, image
+publication or deployment occurred in this implementation. Disposable mocked
+preview servers were stopped after verification.
+
+Publication follow-up (2026-11-05): the user authorized commit/push, opening
+a PR and checking GitHub CI for this change. Merge/publication on main and
+server deployment remain separate actions.

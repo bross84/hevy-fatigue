@@ -300,6 +300,9 @@ def init_db() -> None:
             );
         """)
 
+        # Existing movements retain their automatic-weight behavior on upgrade.
+        if "auto_weights" not in {row[1] for row in conn.execute("PRAGMA table_info(exercise_refs)")}:
+            conn.execute("ALTER TABLE exercise_refs ADD COLUMN auto_weights INTEGER NOT NULL DEFAULT 1 CHECK(auto_weights IN (0,1))")
         # Historical prescriptions are unknown; never infer them from actual RPE.
         if "target_rpe" not in {row[1] for row in conn.execute("PRAGMA table_info(logged_sets)")}:
             conn.execute("ALTER TABLE logged_sets ADD COLUMN target_rpe REAL CHECK(target_rpe BETWEEN 0 AND 10)")

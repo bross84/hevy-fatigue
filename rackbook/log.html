@@ -777,11 +777,11 @@
     if (input && document.activeElement !== input) input.value = primaryText(s, ex);
     if (cell) cell.textContent = refText(s, ex);
   }
-  function defaultRef() { return { basis: "e1rm", ls: true, tmPct: 0.95, stepKg: 2.5, stepLb: 5, barKg: 20, chainKg: 0, restSec: null, weightUnit: null, state: null, ts: null }; }
+  function defaultRef() { return { basis: "e1rm", autoWeights: true, ls: true, tmPct: 0.95, stepKg: 2.5, stepLb: 5, barKg: 20, chainKg: 0, restSec: null, weightUnit: null, state: null, ts: null }; }
   function refFromServer(id) {
     const r = refs[id];
     if (!r) return defaultRef();
-    return { basis: r.basis, ls: r.ls, tmPct: r.tm_pct, stepKg: r.step_kg || 2.5, stepLb: r.step_lb || 5, barKg: r.bar_kg ?? 20, chainKg: r.chain_kg ?? 0, restSec: r.rest_sec ?? null, weightUnit: r.weight_unit ?? null, state: null, ts: null };
+    return { basis: r.basis, autoWeights: r.auto_weights !== false, ls: r.ls, tmPct: r.tm_pct, stepKg: r.step_kg || 2.5, stepLb: r.step_lb || 5, barKg: r.bar_kg ?? 20, chainKg: r.chain_kg ?? 0, restSec: r.rest_sec ?? null, weightUnit: r.weight_unit ?? null, state: null, ts: null };
   }
 
   // One set's e1RM in lb: its weight / the table percentage for its reps and RPE (the logged RPE once ticked,
@@ -878,6 +878,7 @@
   }
 
   function baseFor(ex, index) {
+    if (ex.ref.autoWeights === false) return null;
     if (ex.ref.ls) {
       const v = lastSetE1rm(ex, index);
       if (v) return v;
@@ -940,7 +941,7 @@
     const id = ex.template_id;
     clearTimeout(refTimers[id]);
     refTimers[id] = setTimeout(async () => {
-      const body = { basis: ex.ref.basis, ls: ex.ref.ls, tm_pct: ex.ref.tmPct, step_kg: ex.ref.stepKg, step_lb: ex.ref.stepLb, bar_kg: ex.ref.barKg, chain_kg: ex.ref.chainKg, rest_sec: ex.ref.restSec, weight_unit: ex.ref.weightUnit ?? null };
+      const body = { basis: ex.ref.basis, auto_weights: ex.ref.autoWeights !== false, ls: ex.ref.ls, tm_pct: ex.ref.tmPct, step_kg: ex.ref.stepKg, step_lb: ex.ref.stepLb, bar_kg: ex.ref.barKg, chain_kg: ex.ref.chainKg, rest_sec: ex.ref.restSec, weight_unit: ex.ref.weightUnit ?? null };
       try {
         refs[id] = await api("/exercise-refs/" + encodeURIComponent(id), {
           method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
@@ -1341,12 +1342,15 @@
 
     const tiles = el("div", "tiles");
     const tile = (key, label, value, caption) => {
-      const t = el("div", "tile" + (ex.ref.basis === key ? " on" : ""));
-      t.setAttribute("role", "radio"); t.setAttribute("aria-checked", String(ex.ref.basis === key)); t.tabIndex = 0;
+      const selected = ex.ref.autoWeights !== false && ex.ref.basis === key;
+      const t = el("div", "tile" + (selected ? " on" : ""));
+      t.setAttribute("role", "button"); t.setAttribute("aria-pressed", String(selected)); t.tabIndex = 0;
+      t.setAttribute("aria-label", key === "tm" ? "Use TM for weights" : "Use e1RM for weights");
+      t.title = "Select to calculate weights; select again to leave weights unchanged.";
       t.append(label, el("span", "tv", value));
       if (caption) t.append(el("span", "cap", caption));
       const choose = () => {
-        if (ex.ref.basis === key) return;
+        ex.ref.autoWeights = !(ex.ref.autoWeights !== false && ex.ref.basis === key);
         ex.ref.basis = key; applyAuto(ex); saveDraft(); saveRef(ex); refreshCard(ex);
       };
       t.addEventListener("click", choose);
@@ -1378,12 +1382,14 @@
     });
     tiles.append(tmTile);
 
-    const ls = el("button", "pill" + (ex.ref.ls ? " on" : ""), "LSe1RM");
-    ls.type = "button"; ls.setAttribute("aria-pressed", String(ex.ref.ls));
-    ls.title = "Plan each set from the e1RM of the last set you ticked. Off: every set uses the e1RM or TM selected here.";
+    const active = ex.ref.autoWeights !== false;
+    const ls = el("button", "pill" + (active && ex.ref.ls ? " on" : ""), "LSe1RM");
+    ls.type = "button"; ls.disabled = !active; ls.setAttribute("aria-pressed", String(active && ex.ref.ls));
+    ls.title = active ? "Plan each set from the e1RM of the last set you ticked. Off: every set uses the e1RM or TM selected here." : "Select e1RM or TM to enable automatic weights.";
     ls.addEventListener("click", () => { ex.ref.ls = !ex.ref.ls; applyAuto(ex); saveDraft(); saveRef(ex); refreshCard(ex); });
     tiles.append(ls);
     wrap.append(tiles);
+    if (!active) wrap.append(el("p", "muted", "Automatic weights off. Select e1RM or TM to enable."));
 
     return wrap;
   }
@@ -2292,7 +2298,7 @@
     if (draft && Array.isArray(draft.exercises)) {
       for (const ex of draft.exercises) {
         const old = ex.ref || {};
-        ex.ref = { basis: old.basis || "e1rm", ls: old.ls === undefined ? true : old.ls, tmPct: old.tmPct || 0.95, stepKg: old.stepKg || 2.5, stepLb: old.stepLb || 5, barKg: old.barKg ?? 20, chainKg: old.chainKg ?? 0, restSec: old.restSec ?? null, weightUnit: old.weightUnit === undefined ? (refs[ex.template_id]?.weight_unit ?? null) : old.weightUnit, state: old.state || null, ts: old.ts || null };
+        ex.ref = { basis: old.basis || "e1rm", autoWeights: old.autoWeights === undefined ? refs[ex.template_id]?.auto_weights !== false : old.autoWeights, ls: old.ls === undefined ? true : old.ls, tmPct: old.tmPct || 0.95, stepKg: old.stepKg || 2.5, stepLb: old.stepLb || 5, barKg: old.barKg ?? 20, chainKg: old.chainKg ?? 0, restSec: old.restSec ?? null, weightUnit: old.weightUnit === undefined ? (refs[ex.template_id]?.weight_unit ?? null) : old.weightUnit, state: old.state || null, ts: old.ts || null };
         for (const s of ex.sets) {
           if (s.manual === undefined) s.manual = false;
           if (s.kg === undefined) { const l = parseFloat(s.lb); s.kg = l > 0 ? String(Math.round(l / LB_PER_KG * 2) / 2) : ""; delete s.lb; }

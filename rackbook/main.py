@@ -405,6 +405,7 @@ class RpeTable(BaseModel):
 class ExerciseRefInput(BaseModel):
     weight_unit: Literal['kg', 'lb'] | None = None  # None follows the page's unit preference.
     basis: Literal["e1rm", "tm"] = "e1rm"
+    auto_weights: bool = True
     ls: bool = True  # plan the next set from the last set's e1RM (LSe1RM)
     tm_pct: float = Field(default=refs_store.DEFAULT_TM_PCT, ge=0.5, le=1.0)
     step_kg: float = Field(default=refs_store.DEFAULT_STEP_KG, ge=0.25, le=10.0)  # plate step planned weights round to, in kg
@@ -859,7 +860,7 @@ def list_exercise_refs():
 
 @app.put("/exercise-refs/{exercise_template_id}", response_model=ExerciseRef)
 def put_exercise_ref(exercise_template_id: str, data: ExerciseRefInput):
-    return refs_store.save_ref(exercise_template_id, data.basis, data.ls, data.tm_pct, data.step_kg, data.step_lb, data.bar_kg, data.chain_kg, data.rest_sec, data.weight_unit)
+    return refs_store.save_ref(exercise_template_id, data.basis, data.ls, data.tm_pct, data.step_kg, data.step_lb, data.bar_kg, data.chain_kg, data.rest_sec, data.weight_unit, data.auto_weights)
 
 
 @app.get("/hevy/exercise-state/{exercise_template_id}", response_model=ExerciseState)

@@ -236,3 +236,20 @@ Endpoint change requires matching reps, effort, role and set type. Timing orders
 the endpoints; completion spacing is not measured rest. Ad hoc and pre-upgrade
 sessions do not receive invented initial plans. This increment does not compare
 against prior sessions or produce block/programming changes.
+
+## Deselectable e1RM/TM weight sources (local, 2026-11-05)
+
+`auto_weights` is an additive, PRAGMA-guarded exercise_refs column with default
+1, distinct from the unused legacy auto column. API models/store round-trip the
+flag. Defaults preserve every existing movement's basis, LS choice, units,
+rounding/rest/bar/chain settings and TS/TM data. Clicking an active source tile
+disables automatic weights; clicking either tile when unselected enables it.
+baseFor returns no calculation basis while disabled, including when LS was
+previously on. No supplied/completed/manual weight is rewritten on deselection.
+
+The logger persists autoWeights in drafts and consults the saved movement flag
+for older drafts without that field. Draft transfer validates/preserves it.
+Session capture uses the existing evidence shape with basis manual, no automatic
+suggestion and LS off in this state. Extending that enum does not change legacy
+serialized defaults or frozen-save hashes. Logging, actual RPE, TS/TM tracking
+and descriptive reviews continue independently of weight-source selection.

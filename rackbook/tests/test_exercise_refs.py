@@ -42,16 +42,39 @@ class TestMovementSettings(RefsCase):
     def test_starts_empty(self):
         self.assertEqual([], self.client.get("/exercise-refs").json())
 
+    def test_no_selected_basis_persists_without_changing_other_movements(self):
+        response=self.client.put('/exercise-refs/pullup',json={'auto_weights':False,'basis':'tm','ls':True,'step_kg':.5})
+        self.assertEqual(response.status_code,200,response.text)
+        self.client.put('/exercise-refs/squat',json={'basis':'e1rm'})
+        rows={r['exercise_template_id']:r for r in self.client.get('/exercise-refs').json()}
+        self.assertFalse(rows['pullup']['auto_weights'])
+        self.assertEqual((rows['pullup']['basis'],rows['pullup']['ls'],rows['pullup']['step_kg']),('tm',True,.5))
+        self.assertTrue(rows['squat']['auto_weights'])
+        database.init_db()
+        rows={r['exercise_template_id']:r for r in self.client.get('/exercise-refs').json()}
+        self.assertFalse(rows['pullup']['auto_weights'])
+
+    def test_auto_weights_migration_preserves_old_references_and_defaults_on(self):
+        self.client.put('/exercise-refs/pullup',json={'basis':'tm','ls':False,'step_kg':.5,'rest_sec':90,'weight_unit':'lb'})
+        with database.get_db() as db:
+            before=dict(db.execute('SELECT * FROM exercise_refs').fetchone())
+            self.assertIn('auto_weights',{r[1] for r in db.execute('PRAGMA table_info(exercise_refs)')})
+            db.execute('ALTER TABLE exercise_refs DROP COLUMN auto_weights')
+        database.init_db()
+        database.init_db()
+        with database.get_db() as db:
+            self.assertEqual(dict(db.execute('SELECT * FROM exercise_refs').fetchone()),before)
+
     def test_defaults_are_e1rm_last_set_on_and_95_percent(self):
         r = self.client.put("/exercise-refs/tpl-bench", json={})
         self.assertEqual(
-            {"exercise_template_id": "tpl-bench", "basis": "e1rm", "ls": True, "tm_pct": 0.95, "step_kg": 2.5, "step_lb": 5.0, "bar_kg": 20.0, "chain_kg": 0.0, "rest_sec": None, "weight_unit": None}, r.json()
+            {"exercise_template_id": "tpl-bench", "basis": "e1rm", "auto_weights": True, "ls": True, "tm_pct": 0.95, "step_kg": 2.5, "step_lb": 5.0, "bar_kg": 20.0, "chain_kg": 0.0, "rest_sec": None, "weight_unit": None}, r.json()
         )
 
     def test_save_and_list(self):
         r = self.client.put("/exercise-refs/tpl-squat", json={"basis": "tm", "ls": False, "tm_pct": 0.9})
         self.assertEqual(200, r.status_code, r.text)
-        expected = {"exercise_template_id": "tpl-squat", "basis": "tm", "ls": False, "tm_pct": 0.9, "step_kg": 2.5, "step_lb": 5.0, "bar_kg": 20.0, "chain_kg": 0.0, "rest_sec": None, "weight_unit": None}
+        expected = {"exercise_template_id": "tpl-squat", "basis": "tm", "auto_weights": True, "ls": False, "tm_pct": 0.9, "step_kg": 2.5, "step_lb": 5.0, "bar_kg": 20.0, "chain_kg": 0.0, "rest_sec": None, "weight_unit": None}
         self.assertEqual(expected, r.json())
         self.assertEqual([expected], self.client.get("/exercise-refs").json())
 
@@ -148,7 +171,7 @@ class TestMovementSettings(RefsCase):
         conn.close()
         database.init_db()
         self.assertEqual(
-            [{"exercise_template_id": "old", "basis": "tm", "ls": True, "tm_pct": 0.95, "step_kg": 2.5, "step_lb": 5.0, "bar_kg": 20.0, "chain_kg": 0.0, "rest_sec": None, "weight_unit": None}],
+            [{"exercise_template_id": "old", "basis": "tm", "auto_weights": True, "ls": True, "tm_pct": 0.95, "step_kg": 2.5, "step_lb": 5.0, "bar_kg": 20.0, "chain_kg": 0.0, "rest_sec": None, "weight_unit": None}],
             self.client.get("/exercise-refs").json(),
         )
 

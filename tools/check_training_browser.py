@@ -77,6 +77,32 @@ with sync_playwright() as p:
     assert updated['exercises'][0]['sets'][0]['kg']==draft['exercises'][0]['sets'][0]['kg']
     assert desk.evaluate('document.documentElement.scrollWidth <= innerWidth')
     desk.screenshot(path=str(out/'logger-desktop.png'),full_page=True)
+    with desk.expect_response(lambda r:r.url.endswith('/exercise-refs/sq') and r.request.method=='PUT') as preference:
+        desk.get_by_role('button',name='Use e1RM for weights',exact=True).click()
+    assert preference.value.ok,preference.value.text()
+    expect(desk.get_by_role('button',name='Use e1RM for weights',exact=True)).to_have_attribute('aria-pressed','false')
+    expect(desk.get_by_role('button',name='Use TM for weights',exact=True)).to_have_attribute('aria-pressed','false')
+    expect(desk.get_by_role('button',name='LSe1RM',exact=True)).to_be_disabled()
+    desk.get_by_role('button',name='+ Add set',exact=True).click()
+    manual_before=desk.get_by_role('textbox',name='Weight in kilograms',exact=True).last.input_value()
+    desk.get_by_role('textbox',name='RPErx',exact=True).last.fill('7')
+    expect(desk.get_by_role('textbox',name='Weight in kilograms',exact=True).last).to_have_value(manual_before)
+    desk.reload()
+    expect(desk.get_by_role('button',name='Use e1RM for weights',exact=True)).to_have_attribute('aria-pressed','false')
+    expect(desk.get_by_role('button',name='Use TM for weights',exact=True)).to_have_attribute('aria-pressed','false')
+    expect(desk.get_by_role('textbox',name='Weight in kilograms',exact=True).last).to_have_value(manual_before)
+    stored=next(r for r in desk.request.get(URL+'/training/exercise-refs').json() if r['exercise_template_id']=='sq')
+    assert stored['auto_weights'] is False and stored['ls'] is True,stored
+    desk.screenshot(path=str(out/'logger-no-source-desktop.png'),full_page=True)
+    fresh=browser.new_context(viewport={'width':390,'height':844},is_mobile=True,has_touch=True)
+    fresh.route('https://**/*',lambda route:route.abort())
+    fresh_page=fresh.new_page();fresh_page.goto(URL+'/training/log')
+    fresh_page.get_by_role('button',name='Load selected workout',exact=True).click()
+    expect(fresh_page.get_by_role('button',name='Use e1RM for weights',exact=True)).to_have_attribute('aria-pressed','false')
+    expect(fresh_page.get_by_role('button',name='Use TM for weights',exact=True)).to_have_attribute('aria-pressed','false')
+    assert fresh_page.get_by_role('textbox',name='Weight in kilograms',exact=True).first.input_value()=='100'
+    fresh.close()
+    assert desk.request.put(URL+'/training/exercise-refs/sq',data={**stored,'auto_weights':True}).ok
     desktop.close()
     page.reload();expect(page.locator('#title')).to_have_value('Mock Workout')
     expect(page.get_by_role('button',name='RPErx 8. Change RPErx',exact=True)).to_be_visible()

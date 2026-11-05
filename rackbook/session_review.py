@@ -56,7 +56,7 @@ class SetEvidence(BaseModel):
     suggested_weight_kg: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     manual_weight: bool
     ls_enabled: bool
-    basis: Literal['e1rm', 'tm']
+    basis: Literal['e1rm', 'tm', 'manual']
     completed_at: datetime
     rpe_source: Literal['entered', 'copied_target', 'unrated', 'unknown']
     actual_percentage: float | None = Field(default=None, gt=0, le=1, allow_inf_nan=False)

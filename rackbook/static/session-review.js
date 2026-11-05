@@ -12,8 +12,8 @@ const SessionCapture = (() => {
   }
   function complete(ex, s) {
     s.review = {set_id:s.review_id ||= id(), exercise_id:ex.id ||= id(),
-      suggested_weight_kg:number(s.autoSuggestion), manual_weight:Boolean(s.manual),
-      ls_enabled:Boolean(ex.ref.ls), basis:ex.ref.basis || 'e1rm',
+      suggested_weight_kg:ex.ref.autoWeights===false?null:number(s.autoSuggestion), manual_weight:Boolean(s.manual),
+      ls_enabled:ex.ref.autoWeights!==false&&Boolean(ex.ref.ls), basis:ex.ref.autoWeights===false?'manual':ex.ref.basis || 'e1rm',
       completed_at:new Date().toISOString(),
       rpe_source:s.actualSource || 'unknown', actual_percentage:null};
   }
