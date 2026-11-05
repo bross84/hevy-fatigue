@@ -416,3 +416,21 @@ the description after normal save and from Recent; use mocks for fault recovery
 and do not create a production test workout. Physical-device acceptance and
 actual deployment of this change are pending. No commit/push/deployment occurred
 as part of local implementation.
+
+## Optional weight-source release follow-up (local, 2026-11-05)
+
+Use the normal latest-based update workflow after a separately authorized
+publication/deployment. Startup adds exercise_refs.auto_weights with default 1;
+existing records/settings remain intact and no databases or keys move. No
+historical workouts/trials/reviews are regenerated. No local container build or
+production data experiment is needed for this UI/preference change.
+
+On the device, tap the selected e1RM/TM tile again: neither should be selected,
+LS should be disabled, and supplied weights should remain unchanged through
+RPE edits and reload. Loading another session for that exercise should remember
+the choice. Another exercise should retain its settings. Selecting either source
+again should restore the existing auto/LS behavior without changing completed or
+fixed/manual weights. Use mocks for fault recovery; verify a normal save/review
+without producing a test Hevy workout. Preserve pending save identities before
+rollback; older images cannot parse new manual-basis review evidence in pending
+requests. Keep the current logger database rather than restoring a stale copy.

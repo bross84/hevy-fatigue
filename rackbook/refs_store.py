@@ -3,6 +3,7 @@ refs_store.py — Per-movement settings for the log page, kept in SQLite.
 
 Keyed by the Hevy exercise template id so the same choices follow the movement into every workout:
   basis   'e1rm' or 'tm': which number weights are planned from
+  auto_weights whether either basis is selected; False leaves both unselected
   ls      whether the last set's e1RM (LSe1RM) feeds the next set's weight
   tm_pct  the TM as a fraction of the e1RM (default 0.95)
   step_kg the plate step planned weights are rounded to (default 2.5 kg; a light lift like a pull-up wants 0.5)
@@ -23,13 +24,14 @@ DEFAULT_STEP_LB = 5.0
 DEFAULT_BAR_KG = 20.0
 DEFAULT_CHAIN_KG = 0.0
 
-_COLUMNS = "exercise_template_id, basis, ls, tm_pct, step_kg, step_lb, bar_kg, chain_kg, rest_sec, weight_unit"
+_COLUMNS = "exercise_template_id, basis, auto_weights, ls, tm_pct, step_kg, step_lb, bar_kg, chain_kg, rest_sec, weight_unit"
 
 
 def _row_to_ref(row) -> dict[str, Any]:
     return {
         "exercise_template_id": row["exercise_template_id"],
         "basis": row["basis"],
+        "auto_weights": bool(row["auto_weights"]),
         "ls": bool(row["ls"]),
         "tm_pct": row["tm_pct"],
         "step_kg": row["step_kg"],
@@ -52,14 +54,16 @@ def save_ref(
     step_kg: float = DEFAULT_STEP_KG, step_lb: float = DEFAULT_STEP_LB,
     bar_kg: float = DEFAULT_BAR_KG, chain_kg: float = DEFAULT_CHAIN_KG, rest_sec: int | None = None,
     weight_unit: str | None = None,
+    auto_weights: bool = True,
 ) -> dict[str, Any]:
     with get_db() as conn:
         conn.execute(
             """
-            INSERT INTO exercise_refs (exercise_template_id, basis, ls, tm_pct, step_kg, step_lb, bar_kg, chain_kg, rest_sec, weight_unit)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO exercise_refs (exercise_template_id, basis, ls, tm_pct, step_kg, step_lb, bar_kg, chain_kg, rest_sec, weight_unit, auto_weights)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(exercise_template_id) DO UPDATE SET
                 basis = excluded.basis,
+                auto_weights = excluded.auto_weights,
                 ls = excluded.ls,
                 tm_pct = excluded.tm_pct,
                 step_kg = excluded.step_kg,
@@ -70,7 +74,7 @@ def save_ref(
                 weight_unit = excluded.weight_unit,
                 updated_at = CURRENT_TIMESTAMP
             """,
-            (exercise_template_id, basis, 1 if ls else 0, tm_pct, step_kg, step_lb, bar_kg, chain_kg, rest_sec, weight_unit),
+            (exercise_template_id, basis, 1 if ls else 0, tm_pct, step_kg, step_lb, bar_kg, chain_kg, rest_sec, weight_unit, int(auto_weights)),
         )
         row = conn.execute(
             f"SELECT {_COLUMNS} FROM exercise_refs WHERE exercise_template_id = ?", (exercise_template_id,)

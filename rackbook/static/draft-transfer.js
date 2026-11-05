@@ -12,7 +12,7 @@ const DraftTransfer = (() => {
   function optionalNumber(x,min,max=Infinity) {assert(x==null||(typeof x==='number'&&Number.isFinite(x)&&x>=min&&x<=max));}
   function evidence(x) {
     assert(object(x)&&string(x.set_id,200)&&x.set_id.length>0&&string(x.exercise_id,200)&&x.exercise_id.length>0);
-    assert(typeof x.manual_weight==='boolean'&&typeof x.ls_enabled==='boolean'&&['e1rm','tm'].includes(x.basis));
+    assert(typeof x.manual_weight==='boolean'&&typeof x.ls_enabled==='boolean'&&['e1rm','tm','manual'].includes(x.basis));
     assert(['entered','copied_target','unrated','unknown'].includes(x.rpe_source)&&timestamp(x.completed_at));
     optionalNumber(x.suggested_weight_kg,0);optionalNumber(x.actual_percentage,Number.MIN_VALUE,1);
   }
@@ -64,6 +64,7 @@ const DraftTransfer = (() => {
       if(ex.notes!=null)assert(string(ex.notes));
       if(ex.ref){
         assert(object(ex.ref)&&[undefined,null,'kg','lb'].includes(ex.ref.weightUnit));
+        if(ex.ref.autoWeights!==undefined)assert(typeof ex.ref.autoWeights==='boolean');
         for(const field of ['state','ts'])if(ex.ref[field]!=null)assert(object(ex.ref[field]));
         if(ex.ref.state?.previous!=null)assert(Array.isArray(ex.ref.state.previous)&&ex.ref.state.previous.every(object));
       }

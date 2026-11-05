@@ -92,3 +92,11 @@ class SessionDescriptionTests(unittest.TestCase):
         payload=captured_payload()
         payload['prescription']['exercises'][0]['sets'][1]['id']='a'
         with self.assertRaises(ValidationError):Prescription(**payload['prescription'])
+
+    def test_manual_weight_basis_still_records_actual_performance(self):
+        from rackbook.session_review import SetEvidence
+        payload=captured_payload()
+        for s in payload['exercises'][0]['sets']:
+            s['review'].update(basis='manual',ls_enabled=False,suggested_weight_kg=None)
+            SetEvidence(**s['review'])
+        self.assertEqual(build(payload)['movements'][0]['opening_e1rm_kg'],125)
