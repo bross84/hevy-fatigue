@@ -60,3 +60,51 @@ assert.equal(context.exerciseComplete({sets:[]}),false);
 assert.equal(context.exerciseComplete({sets:[{type:'warmup',done:true}]}),false);
 assert.equal(context.exerciseComplete({sets:[set(true),{type:'warmup',done:false}]}),true);
 console.log('Exercise completion, manual collapse, reopening, redraw persistence and add-set checks passed.');
+
+// Exercise the rendered Rx/actual controls with the real next-set calculation.
+Object.assign(context, {
+  LB_PER_KG: 2.20462262185, num: Number,
+  lbOfKg: kg => kg * 2.20462262185,
+  pctFor: rpe => ({5: .7, 6: .75, 7: .8})[rpe],
+  plannedKg: lb => Math.round(lb / 2.20462262185 / 2.5) * 2.5,
+  showWeight: noop,
+  rpeControl: (value, change, name) => ({name, value, change, reportValidity:()=>true}),
+  showRpe: (control, value) => { control.value = value; },
+});
+vm.runInContext(html.slice(html.indexOf('  function setE1rm('), html.indexOf('  function refreshCard(')), context);
+const rxSet = () => ({type:'normal',kg:'100',reps:'5',rpe:'6',done:false,manual:false});
+const adaptive = {title:'Squat',ref:{ls:true,basis:'e1rm'},sets:[rxSet(),rxSet(),{...rxSet(),manual:true}]};
+card = context.renderExercise(adaptive);
+const rx = nodes(card).filter(n=>n.name==='RPErx');
+const act = nodes(card).filter(n=>n.name==='RPEact');
+assert.equal(rx.length, 3); assert.equal(act.length, 3);
+act[0].change('5');
+assert.equal(adaptive.sets[0].kg,'100','Entering actual effort never changes the performed load');
+ticks(card)[0].events.click();
+assert.equal(adaptive.sets[0].rpe,'6','Prescription survives actual effort entry');
+assert.equal(adaptive.sets[0].arpe,'5');
+assert.ok(Number(adaptive.sets[1].kg)>100,'Easier actual effort raises the next load');
+assert.equal(adaptive.sets[2].kg,'100','Manual weights remain fixed');
+act[0].change('7');
+assert.ok(Number(adaptive.sets[1].kg)<100,'Harder actual effort lowers the next load');
+assert.equal(adaptive.sets[0].kg,'100','Completed weight remains fixed');
+const nextWeight = adaptive.sets[1].kg;
+rx[0].change('5');
+assert.equal(adaptive.sets[1].kg,nextWeight,'Changing Rx cannot replace completed actual effort');
+// Restore prescription, then check undo/redo and redraw preserve both values.
+rx[0].change('6'); ticks(card)[0].events.click(); ticks(card)[0].events.click();
+card = context.renderExercise(adaptive);
+assert.equal(nodes(card).find(n=>n.name==='RPErx').value,'6');
+assert.equal(nodes(card).find(n=>n.name==='RPEact').value,'7');
+ticks(card)[1].events.click();
+assert.equal(adaptive.sets[1].arpe,'6','On-target completion retains the existing no-extra-tap default');
+adaptive.ref.ts={found:true,e1rm_lb:330};
+adaptive.ref.ls=false;
+assert.equal(context.baseFor(adaptive,1),330,'LS off keeps the existing pinned e1RM basis');
+act[0].change('5');
+assert.equal(context.baseFor(adaptive,1),330,'Actual RPE cannot enable LS when the toggle is off');
+adaptive.ref.basis='tm';adaptive.ref.tmPct=.95;
+assert.equal(context.baseFor(adaptive,1),330*.95,'LS off also preserves the TM basis');
+adaptive.ref.ls=true;
+assert.equal(context.baseFor(adaptive,1),context.setE1rm(adaptive.sets[0]),'LS on uses previous actual effort again');
+console.log('Separate Rx/actual controls, easier/harder adjustments, manual/done weights and undo/redraw passed.');

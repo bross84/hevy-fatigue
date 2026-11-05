@@ -30,6 +30,7 @@ def rows_from_entry(entry: dict[str, Any], hevy_workout_id: str | None) -> list[
                 "weight_kg": s.get("weight_kg"),
                 "reps": s.get("reps"),
                 "rpe": s.get("rpe"),
+                "target_rpe": s.get("target_rpe"),
                 "is_ts": 1 if s.get("ts") else 0,
             })
     return rows
@@ -43,13 +44,13 @@ def record(rows: list[dict[str, Any]], connection=None) -> None:
             """
             INSERT INTO logged_sets (
                 hevy_workout_id, workout_title, workout_start, workout_end, exercise_template_id, exercise_title,
-                set_number, set_type, weight_kg, reps, rpe, is_ts
+                set_number, set_type, weight_kg, reps, rpe, is_ts, target_rpe
             ) VALUES (
                 :hevy_workout_id, :workout_title, :workout_start, :workout_end, :exercise_template_id, :exercise_title,
-                :set_number, :set_type, :weight_kg, :reps, :rpe, :is_ts
+                :set_number, :set_type, :weight_kg, :reps, :rpe, :is_ts, :target_rpe
             )
             """,
-            rows,
+            [{"target_rpe": None, **row} for row in rows],
         )
 
 
@@ -125,6 +126,8 @@ def overlay_summary_rpe(summary: dict[str, Any], local_rows: list[dict[str, Any]
                for s, r in zip(sets, rows)):
             continue
         for s, r in zip(sets, rows):
+            if r.get("target_rpe") is not None:
+                s["target_rpe"] = r["target_rpe"]
             if s.get("rpe") is None and r.get("rpe") is not None:
                 s["rpe"] = r["rpe"]
     return summary

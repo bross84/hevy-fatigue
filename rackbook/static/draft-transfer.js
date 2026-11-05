@@ -20,6 +20,7 @@ const DraftTransfer = (() => {
         if(s.weight_kg!=null)assert(typeof s.weight_kg==='number'&&Number.isFinite(s.weight_kg)&&s.weight_kg>=0);
         if(s.reps!=null)assert(Number.isInteger(s.reps)&&s.reps>=0);
         if(s.rpe!=null)assert(typeof s.rpe==='number'&&Number.isFinite(s.rpe)&&s.rpe>=0&&s.rpe<=10);
+        if(s.target_rpe!=null)assert(typeof s.target_rpe==='number'&&Number.isFinite(s.target_rpe)&&s.target_rpe>=0&&s.target_rpe<=10);
         if(s.ts!==undefined)assert(typeof s.ts==='boolean');}
     }
   }

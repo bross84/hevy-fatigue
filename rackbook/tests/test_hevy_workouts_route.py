@@ -75,12 +75,18 @@ class TestListHevyWorkouts(WorkoutsRouteCase):
         s = w["exercises"][0]["sets"][0]
         self.assertEqual((120.0, 264.6, 5, 6.0), (s["weight_kg"], s["weight_lb"], s["reps"], s["rpe"]))
 
-    def _record(self, reps, rpe, workout_id="w1", set_type="normal"):
+    def _record(self, reps, rpe, workout_id="w1", set_type="normal", target_rpe=None):
         from rackbook import set_log
         set_log.record([{
             "hevy_workout_id": workout_id, "workout_title": "Day 1", "workout_start": "2026-09-30T17:00:00+00:00",
             "workout_end": None, "exercise_template_id": "tpl-squat", "exercise_title": "Squat (Barbell)",
-            "set_number": 1, "set_type": set_type, "weight_kg": 120, "reps": reps, "rpe": rpe, "is_ts": 0}])
+            "set_number": 1, "set_type": set_type, "weight_kg": 120, "reps": reps, "rpe": rpe, "is_ts": 0,
+            "target_rpe": target_rpe}])
+
+    def test_recent_returns_prescription_alongside_actual_without_changing_hevy_rpe(self):
+        self._record(5, 6, target_rpe=7)
+        s = self.client.get('/hevy/workouts').json()['workouts'][0]['exercises'][0]['sets'][0]
+        self.assertEqual((s['target_rpe'], s['rpe']), (7, 6))
 
     def test_rpe_hevy_dropped_comes_back_from_the_local_record(self):
         page = {**RAW_PAGE, "workouts": [{**RAW_PAGE["workouts"][0], "exercises": [
@@ -94,9 +100,10 @@ class TestListHevyWorkouts(WorkoutsRouteCase):
         page = {**RAW_PAGE, "workouts": [{**RAW_PAGE["workouts"][0], "exercises": [
             {**RAW_PAGE["workouts"][0]["exercises"][0], "sets": [{"index": 0, "type": "normal", "weight_kg": 120, "reps": 5}]}]}]}
         self.hevy.list_workouts.return_value = page
-        self._record(3, 5.5)
+        self._record(3, 5.5, target_rpe=7)
         s = self.client.get("/hevy/workouts").json()["workouts"][0]["exercises"][0]["sets"][0]
         self.assertIsNone(s["rpe"])
+        self.assertIsNone(s['target_rpe'])
 
     def test_one_movement_that_does_not_line_up_does_not_hide_the_others(self):
         squat = RAW_PAGE["workouts"][0]["exercises"][0]

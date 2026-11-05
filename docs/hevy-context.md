@@ -256,3 +256,18 @@ still deferred. The deployment configuration is now tracked under `deploy/`;
 its resolved production file matches the operator's exact server capture.
 Future configuration changes go through a GitHub PR before application.
 The tracking correction itself must not restart the app or change data.
+
+## Separate prescribed and actual RPE (local implementation, 2026-11-04)
+
+The logger now shows RPErx (prescribed) and RPEact (actual) independently.
+Draft `rpe` remains the prescription and `arpe` the actual. Marking done copies
+the target into an empty actual field, retaining the existing on-target workflow;
+this default is not an independently confirmed effort rating. Actual edits never
+overwrite the prescription or completed weight. Next-set LS e1RM, TS/TM, stress
+and Hevy output continue to use actual effort. Local `logged_sets.rpe` remains
+actual; nullable `target_rpe` stores the prescription. Old rows remain unknown
+for target RPE, with no historical backfill. Recent shows both for matched new
+records. This does not add session/block advice or nutrition/Health integration.
+The user subsequently authorized committing/pushing this follow-up; deployment
+remains separate. The original LSe1RM toggle remains unchanged: off uses the
+selected e1RM/TM basis, on allows the previous actual set to supply the basis.
