@@ -71,4 +71,14 @@ freezeContext.freeze(old,one);assert.ok(JSON.parse(persisted).client_workout_id)
 assert.equal(freezeContext.freeze(old,two).end_time,'original');
 freezeContext.localStorage.setItem=()=>{throw Error('Quota exceeded');};
 assert.throws(()=>freezeContext.freeze({},one),/Quota/);
-console.log('Draft transfer: exact sets, TS, notes, references, identity, editor, validation, confirmation, expired timer, frozen payload and no API effects passed.');
+// Separate Rx and actual values also survive transfer of a pending frozen save.
+const paired=structuredClone(draft);
+paired.exercises[0].sets[0].rpe='6';paired.exercises[0].sets[0].arpe='5';
+paired.frozenSave={client_workout_id:paired.client_workout_id,title:paired.title,start_time:paired.startedAt,end_time:'2026-10-30T11:00:00Z',exercises:[{exercise_template_id:'sq',sets:[{type:'normal',weight_kg:100.123,reps:1,rpe:5,target_rpe:6,ts:true}]}]};
+source.setItem('training.logDraft',JSON.stringify(paired));
+const pairedFile=context.transfer.exportData('workout-draft',source);
+context.transfer.importData(pairedFile,'workout-draft',dest,()=>true);
+assert.deepEqual(JSON.parse(dest.getItem('training.logDraft')),paired);
+const badTarget=structuredClone(pairedFile);badTarget.data.draft.frozenSave.exercises[0].sets[0].target_rpe=11;
+assert.throws(()=>context.transfer.importData(badTarget,'workout-draft',dest,()=>true));
+console.log('Draft transfer: exact sets, separate Rx/actual, TS, notes, references, identity, editor, validation, confirmation, expired timer, frozen payload and no API effects passed.');

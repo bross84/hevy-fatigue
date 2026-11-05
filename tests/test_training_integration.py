@@ -48,6 +48,62 @@ class SaveRecoveryTests(unittest.TestCase):
             return tuple(db.execute('SELECT COUNT(*) FROM '+table).fetchone()[0]
                          for table in ('logged_sets','training_max_history','session_soreness','mesocycle_completions'))
 
+    def test_prescribed_and_actual_rpe_survive_local_recovery(self):
+        self.data.exercises[0].sets[0].target_rpe = 7
+        self.data.exercises[0].sets[1].target_rpe = 6
+        with patch('rackbook.set_log.record', side_effect=RuntimeError('disk')):
+            with self.assertLogs('rackbook.workout_saves', level='ERROR'):
+                self.assertEqual(saves.save(self.data, self.factory)['state'], 'remote_saved')
+        self.assertEqual(self.counts(), (0, 0, 0, 0))
+        self.assertEqual(saves.save(self.data, self.factory)['state'], 'complete')
+        self.assertEqual(saves.save(self.data, self.factory)['state'], 'complete')
+        self.remote.create_workout.assert_called_once()
+        with closing(get_db()) as db:
+            rows = db.execute('SELECT target_rpe, rpe FROM logged_sets ORDER BY id').fetchall()
+        self.assertEqual([tuple(r) for r in rows], [(7, 8), (6, 5)])
+        remote_sets = self.remote.create_workout.call_args.args[0]['workout']['exercises'][0]['sets']
+        self.assertEqual([s['rpe'] for s in remote_sets], [8, None])
+        self.assertTrue(all('target_rpe' not in s for s in remote_sets))
+        changed = self.data.model_copy(deep=True)
+        changed.exercises[0].sets[1].target_rpe = 7
+        with self.assertRaises(HTTPException) as caught:
+            saves.save(changed, self.factory)
+        self.assertEqual(caught.exception.status_code, 409)
+
+    def test_legacy_journal_payload_hash_stays_compatible(self):
+        from hashlib import sha256
+        saves.prepare(self.data)
+        old_payload = self.data.model_dump(mode='json')
+        old_payload.pop('client_workout_id')
+        for ex in old_payload['exercises']:
+            for s in ex['sets']:
+                s.pop('target_rpe')
+        frozen = saves.canonical(old_payload)
+        self.assertEqual(saves.read(self.data.client_workout_id)['request_payload'], frozen)
+        with closing(get_db()) as db, db:
+            db.execute('UPDATE workout_saves SET request_payload=?,payload_hash=? WHERE client_workout_id=?',
+                       (frozen, sha256(frozen.encode()).hexdigest(), str(self.data.client_workout_id)))
+        self.assertEqual(saves.save(self.data, self.factory)['state'], 'complete')
+
+    def test_target_rpe_migration_preserves_history_without_inventing_targets(self):
+        from rackbook.database import init_db
+        saves.save(self.data, self.factory)
+        with closing(get_db()) as db, db:
+            before = [dict(r) for r in db.execute('SELECT * FROM logged_sets ORDER BY id')]
+            self.assertIn('target_rpe', {r[1] for r in db.execute('PRAGMA table_info(logged_sets)')})
+            db.execute('ALTER TABLE logged_sets DROP COLUMN target_rpe')
+        init_db()
+        init_db()
+        with closing(get_db()) as db:
+            after = [dict(r) for r in db.execute('SELECT * FROM logged_sets ORDER BY id')]
+        self.assertEqual(after, before)
+
+    def test_target_rpe_validation_rejects_out_of_range_and_nonfinite(self):
+        from pydantic import ValidationError
+        for value in (-1, 11, float('nan'), float('inf')):
+            with self.assertRaises(ValidationError):
+                training.EntrySet(target_rpe=value)
+
     def test_freeform_retry_and_conflicting_payload(self):
         first = saves.save(self.data, self.factory)
         self.assertEqual(first['state'], 'complete')

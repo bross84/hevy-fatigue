@@ -293,6 +293,10 @@ def init_db() -> None:
             );
         """)
 
+        # Historical prescriptions are unknown; never infer them from actual RPE.
+        if "target_rpe" not in {row[1] for row in conn.execute("PRAGMA table_info(logged_sets)")}:
+            conn.execute("ALTER TABLE logged_sets ADD COLUMN target_rpe REAL CHECK(target_rpe BETWEEN 0 AND 10)")
+
         try:
             conn.execute("ALTER TABLE exercise_slots ADD COLUMN source_params TEXT")
         except Exception:

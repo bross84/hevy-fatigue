@@ -34,13 +34,18 @@ with sync_playwright() as p:
     page.locator('[data-pad-key="next"]').tap()
     page.locator('[data-pad-key="1"]').tap()
     page.locator('[data-pad-key="done"]').tap()
-    page.get_by_role('button',name='RPE 8. Change RPE',exact=True).tap()
+    page.get_by_role('button',name='RPErx 8. Change RPErx',exact=True).tap()
     page.get_by_role('button',name='8',exact=True).tap()
     page.get_by_role('button',name='Mark set done',exact=True).first.tap()
+    page.get_by_role('button',name='RPEact 8. Change RPEact',exact=True).tap()
+    page.get_by_role('button',name='7',exact=True).tap()
+    expect(page.get_by_role('button',name='RPErx 8. Change RPErx',exact=True)).to_be_visible()
     page.get_by_role('button',name='Mark set done',exact=True).last.tap()
     draft=page.evaluate("JSON.parse(localStorage.getItem('training.logDraft'))")
     assert all(s['done'] for s in draft['exercises'][0]['sets'])
     assert draft['exercises'][0]['sets'][0]['ts']
+    assert draft['exercises'][0]['sets'][0]['rpe']=='8'
+    assert draft['exercises'][0]['sets'][0]['arpe']=='7'
     assert draft['client_workout_id']
     kg=[s['kg'] for s in draft['exercises'][0]['sets']]
     page.locator('#unitLb').tap()
@@ -55,14 +60,39 @@ with sync_playwright() as p:
     expect(page.locator('#title')).to_have_value('Mock Workout')
     assert page.evaluate("JSON.parse(localStorage.getItem('training.logDraft')).client_workout_id")==draft['client_workout_id']
     assert page.evaluate("localStorage.getItem('training.restEnd')")==timer
+    # Desktop direct typing keeps Rx separate and only changes later weights.
+    desktop=browser.new_context(viewport={'width':1280,'height':900})
+    desktop.route('https://**/*',lambda route:route.abort())
+    desk=desktop.new_page();desk.on('pageerror',lambda error:errors.append(str(error)))
+    desk.goto(URL+'/training/log')
+    desk.evaluate('(d)=>localStorage.setItem("training.logDraft",JSON.stringify(d))',draft)
+    desk.reload()
+    desk.get_by_role('textbox',name='RPEact',exact=True).first.fill('6.5')
+    expect(desk.get_by_role('textbox',name='RPErx',exact=True).first).to_have_value('8')
+    updated=desk.evaluate("JSON.parse(localStorage.getItem('training.logDraft'))")
+    assert updated['exercises'][0]['sets'][0]['arpe']=='6.5'
+    assert updated['exercises'][0]['sets'][0]['kg']==draft['exercises'][0]['sets'][0]['kg']
+    assert desk.evaluate('document.documentElement.scrollWidth <= innerWidth')
+    desk.screenshot(path=str(out/'logger-desktop.png'),full_page=True)
+    desktop.close()
     page.reload();expect(page.locator('#title')).to_have_value('Mock Workout')
+    expect(page.get_by_role('button',name='RPErx 8. Change RPErx',exact=True)).to_be_visible()
+    expect(page.get_by_role('button',name='RPEact 7. Change RPEact',exact=True)).to_be_visible()
     page.locator('#finish').tap()
     with page.expect_response(lambda r:'/training/hevy/workouts' in r.url and r.request.method=='POST') as saved:
         page.locator('#confirmSave').tap()
     saved_result=saved.value.json()
+    posted=saved.value.request.post_data_json['exercises'][0]['sets'][0]
+    assert posted['target_rpe']==8 and posted['rpe']==7,posted
     assert saved_result['state']=='complete',saved_result
     expect(page.locator('#done')).to_be_visible()
     assert page.evaluate("localStorage.getItem('training.logDraft')")==None
+    history_page=context.new_page()
+    history_page.goto(URL+'/training/recent')
+    expect(history_page.locator('#list')).to_contain_text('RPErx 8 · RPEact 7')
+    history=page.request.get(URL+'/training/hevy/workouts').json()['workouts'][0]['exercises'][0]['sets'][0]
+    assert history['target_rpe']==8 and history['rpe']==7,history
+    history_page.close()
     plans=page.request.get(URL+'/training/api/mesocycles').json()
     assert len(plans[0]['completed'])==1
     page.get_by_role('button',name='Log another workout',exact=True).click()

@@ -181,3 +181,22 @@ write-disabled root development configuration. Read-only comparison with the
 operator's captured CasaOS stack reports no differences. See `deploy/README.md`
 for provenance and the GitHub-first update workflow; this tracking correction
 does not restart containers, alter server files or change application data.
+
+## RPErx / RPEact follow-up (local, 2026-11-04)
+
+`EntrySet.target_rpe` carries the prescription into the frozen journal payload
+and required atomic local set write. Existing `rpe` continues to mean actual
+for Hevy, exact local history, stress, TS/TM and trend calculations. Startup
+adds nullable `logged_sets.target_rpe` using a PRAGMA-guarded migration; existing
+rows are preserved without inferring prescriptions. Requests lacking a target
+omit the new null field before hashing, preserving legacy frozen-save identity.
+New targets participate in the payload hash, including conflict protection.
+
+The logger has separate accessible Rx/actual controls. Completion retains the
+existing copy-target-if-blank default; actual can be entered before completion
+or corrected afterward. Blank actual cleared after completion stays unrated.
+The original target stays visible across actual edits, undo/redo and reload.
+Completed/manual loads are unchanged. Draft transfer preserves both fields and
+validates the new field in frozen payloads. Recent exposes the target only when
+local/remote sets match the existing movement/count/reps/type checks; legacy
+history retains its actual-only display. No host monitoring or trial rules change.

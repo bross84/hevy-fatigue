@@ -95,5 +95,6 @@ assert.throws(() => context.buildEntry(), /Correct the highlighted RPE/);
 type('7.5');
 const entry = context.buildEntry();
 assert.equal(entry.exercises[0].sets[0].rpe, 7.5);
+assert.equal(entry.exercises[0].sets[0].target_rpe, 8);
 assert.equal(entry.exercises[0].sets[0].weight_kg, 100);
 console.log('RPE typing, validation, keyboard, picker and script syntax checks passed.');

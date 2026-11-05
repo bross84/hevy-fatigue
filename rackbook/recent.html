@@ -237,7 +237,8 @@
         li.append(document.createTextNode(fmtLoad(s)));
         if (s.weight_kg != null) li.append(el("span", "kg", " (" + trim(Math.round(s.weight_kg * 10) / 10) + " kg)"));
         li.append(document.createTextNode(" " + fmtEffort(s)));
-        if (s.rpe != null) li.append(el("span", "rpe", "@" + s.rpe));
+        if (s.target_rpe != null) li.append(el("span", "rpe", "RPErx " + s.target_rpe + " · RPEact " + (s.rpe ?? "—")));
+        else if (s.rpe != null) li.append(el("span", "rpe", "@" + s.rpe));
         list.append(li);
       }
       box.append(list);

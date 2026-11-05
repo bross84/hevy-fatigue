@@ -104,6 +104,12 @@ def monitoring_status(workout_id, state):
 
 def prepare(entry):
     payload = entry.model_dump(mode='json')
+    # Keep pre-upgrade frozen requests byte-equivalent for identity/hash checks.
+    # An absent prescription remains absent, including on legacy retries.
+    for exercise in payload['exercises']:
+        for s in exercise['sets']:
+            if s.get('target_rpe') is None:
+                s.pop('target_rpe', None)
     client_id = str(payload.pop('client_workout_id', None) or uuid4())
     try:
         frozen = canonical(payload)

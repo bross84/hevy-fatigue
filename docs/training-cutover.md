@@ -359,3 +359,24 @@ temporarily to the combined app for verified reconciliation/local finalization.
 Maintain a copy of the updated database and all device exports until recovery is
 confirmed. If host data must be restored, preserve its newer check-ins/settings
 instead of replacing them with a stale snapshot.
+
+## RPErx / RPEact release follow-up (not deployed, 2026-11-04)
+
+The user authorized committing and pushing this follow-up without local Docker.
+Local Docker is not required for publication of the branch; existing GitHub CI
+can verify the container runtime. Before a separately authorized deployment, back
+up both databases with matching rollback key material under the existing procedure.
+Logger startup adds only nullable `logged_sets.target_rpe`; it does not backfill
+historical targets or alter monitoring tables. Keep the new logging database and
+all pending journals on rollback; do not remove the column or restore an older
+snapshot over newer saves. Older code does not record new target values.
+
+Pending/frozen saves from before this upgrade must retain their UUID and payload.
+Do not replace them to add targets: the server preserves legacy hashes and can
+finish their existing local effects with an unknown prescription. Before changing
+versions, preserve/export unfinished device drafts and resolve ambiguous saves
+using the existing read-only reconciliation procedure. Verify the physical
+PWA/tablet controls separately: Rx 6, actual 5 and then 7 should retain Rx 6 and
+the performed weight while moving eligible next-set suggestions up/down. Check
+reload and Recent history during the next authorized normal workout; do not
+create a production test workout. No deployment or device acceptance occurred here.

@@ -200,6 +200,7 @@ class SetView(BaseModel):
     weight_lb: float | None = None
     reps: int | None = None
     rpe: float | None = None
+    target_rpe: float | None = None
     distance_meters: float | None = None
     duration_seconds: float | None = None
 
@@ -287,6 +288,7 @@ class EntrySet(BaseModel):
     weight_kg: float | None = Field(default=None, ge=0)
     reps: int | None = Field(default=None, ge=0)
     rpe: float | None = Field(default=None, ge=0, le=10)
+    target_rpe: float | None = Field(default=None, ge=0, le=10)
     ts: bool = False  # the set that sets this movement's TM; only takes effect once the workout is saved
 
 

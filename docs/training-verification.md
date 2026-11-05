@@ -421,3 +421,40 @@ Docker's image store, a loaded image may
 be identified by its OCI index or image configuration digest; verify the archive
 and configuration identity rather than assuming the two digests are equivalent.
 No commit, registry push, service stop or deployment occurred.
+
+## RPErx / RPEact implementation verification — 2026-11-04
+
+Local-only change; no commit, push, image publication or deployment. Existing
+operator documentation/deployment edits present at task start were preserved.
+All API/browser fixtures use temporary SQLite and mocked Hevy below routes.
+
+| Check | Result |
+| --- | --- |
+| Host/integration Python suite | 78 passed; new regressions cover target/actual recovery with one remote post, target hash conflicts, pre-upgrade frozen hash compatibility, migration twice with unchanged historical rows, and invalid/nonfinite targets. |
+| Logging Python suite | 468 run, OK with the existing one expected failure; added Recent target/actual response and mismatched-history protection assertions. |
+| JavaScript | All 25 `tests/*.cjs` and `rackbook/tests/*.cjs` files passed; real rendered controls plus real LS calculation verify easier/harder effort, original target, fixed completed/manual loads, undo/redo and redraw. Transfer covers separate Rx/actual and frozen-payload target validation. |
+| Mock browser happy path | Headless Edge: 390x844 touch and 1280x900 desktop. Separate controls, low/decimal actual effort, canonical weights, reload, one successful mock save, one plan completion, Recent showing both values, scoped worker and zero unexpected JS errors. Desktop direct typing verified independently of touch picker. |
+| Mock browser recovery | Stale-plan correction, request-model rejection correction, retained pending identity, local recovery and unfinished editor transfer passed; zero JS errors. |
+| Docker build/startup | BLOCKED locally: `docker build --tag hevy-fatigue:rpe-tracking-check .` could not connect to `dockerDesktopLinuxEngine` (pipe absent). No test image was built or started; container verification remains a release gate. |
+| Physical device / deployed data | Not performed; existing normal-workout and physical PWA/tablet acceptance remain pending. |
+
+Initial sandboxed Python attempts stalled in TestClient (including early errors)
+and were stopped after the complete replacement runs passed outside the sandbox.
+These are execution-environment limitations, not accepted baseline application
+failures. The inherited expected failure remains unchanged. No assertions were
+weakened. Disposable localhost previews were stopped after verification.
+
+Behavior: Rx remains the authored target; actual drives subsequent LS weights
+and existing actual-effort consumers. Completing a set with empty actual copies
+the target, preserving the old no-extra-tap default; this is not an explicit RPE
+confirmation flag. Historical prescriptions remain null. New targets are local
+metadata, not sent to Hevy or inserted into host monitoring tables. Frozen trial
+records and model rules are unchanged. Release/rollback follow-up is recorded in
+training-cutover.md; session/block guidance and nutrition are outside this change.
+
+Publication follow-up: the user authorized commit/push without local Docker.
+The original LSe1RM toggle was verified unchanged; an added regression proves
+that off preserves both e1RM and TM bases despite actual-RPE edits, and on
+restores the previous actual-set basis. Targeted logger checks pass. Local
+Docker is not a requirement for branch publication; container checks can run
+in existing GitHub CI. No deployment is authorized by branch publication.
