@@ -51,6 +51,9 @@ def get_db():
         db.close()
 
 # --- Pydantic Models ---
+AI_DEFAULT_MODEL = 'openai/gpt-6.1-terra'
+
+
 class ReadinessInput(BaseModel):
     date: date_type = Field(default_factory=date_type.today)
     sore_quad_dom: Optional[int] = Field(None, ge=0, le=4)
@@ -88,7 +91,7 @@ class AIChatMessage(BaseModel):
 class AIChatRequest(BaseModel):
     message: str
     history: list[AIChatMessage] = []
-    model: str = "openai/gpt-4o-mini"
+    model: str = AI_DEFAULT_MODEL
 
 
 class CoachingCreate(BaseModel):
@@ -2543,7 +2546,7 @@ def ai_chat_proxy(data: AIChatRequest, db: Session = Depends(get_db)):
     if not message:
         raise HTTPException(status_code=422, detail="message cannot be empty.")
 
-    model = (data.model or "").strip() or "openai/gpt-4o-mini"
+    model = (data.model or "").strip() or AI_DEFAULT_MODEL
 
     system_prompt = _build_ai_system_prompt(db)
     history = data.history or []

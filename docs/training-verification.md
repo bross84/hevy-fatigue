@@ -642,3 +642,43 @@ browser checks passed. No listeners remained on preview ports 18127/18128/18129.
 Publication follow-up: the user authorized committing/pushing the AI training
 review changes, opening a PR and checking GitHub CI. Merge and deployment remain
 separate actions. Unrelated local edits are excluded from the feature commit.
+
+## AI model selector and value options — 2026-11-05 (local only)
+
+Read-only catalog verification: https://openrouter.ai/api/v1/models . Official
+OpenAI model/pricing guidance also checked at
+https://developers.openai.com/api/docs/models and
+https://developers.openai.com/api/docs/pricing . OpenRouter IDs and its listed
+rates are authoritative for this integration; provider-specific charges may vary.
+No user API key or training data was sent during catalog verification.
+
+Snapshot USD per 1M input/output tokens:
+- openai/gpt-6.1-terra: 1 / 5 (new-browser default)
+- openai/gpt-6-luna: 0.10 / 0.50
+- anthropic/claude-haiku-5.5: 0.10 / 0.50
+- deepseek/deepseek-v4.1-flash: 0.045 / 0.50
+- qwen/qwen3.8-flash: 0.15 / 0.47
+- google/gemini-3.8-flash: 0.825 / 4.125
+- openai/gpt-6.1-sol: 2 / 10
+- anthropic/claude-sonnet-5.5: 2 / 10
+
+No training-specific quality ranking is claimed. Budget/balanced/higher-cost labels
+are selection aids, not proof of superior coaching or an exact per-review bill.
+Existing saved/custom IDs are preserved; no automatic model replacement occurs.
+Mocked phone/desktop browser checks passed for fresh default, removed preset and
+custom retention, budget-price updates, selection persistence and actual selected
+model recorded on review/follow-up turns. Existing saved evidence, interrupted
+response handling and reference sanitization browser checks also passed. No new
+unit tests merely mirror the preset list. All 28 JavaScript files passed.
+Full Python suite results are recorded below when complete. No local Docker per
+the user's standing preference; live provider quality/cost, physical devices and
+deployed-data verification remain unperformed. No commit, push or deployment is
+part of this local update; unrelated existing edits are preserved.
+
+Final selector regression results: 97 host/integration tests passed; 495 logger
+tests passed with the inherited expected failure; all 28 JavaScript files passed;
+mocked coaching browser checks passed at 390x844 and 1280x900. No live AI calls.
+
+Publication follow-up: the user authorized committing/pushing the model selector
+refresh, opening a PR and checking GitHub CI. Merge and deployment remain separate
+actions; unrelated local deployment/documentation edits are excluded.
