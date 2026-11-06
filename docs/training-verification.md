@@ -585,3 +585,60 @@ original host monitoring models, cutoffs and trial timing/records are preserved.
 Publication follow-up: the user authorized commit/push, opening a PR and
 checking GitHub CI for this feature. Main merge, image publication and server
 deployment remain separate actions.
+
+## AI training-history coaching — 2026-11-05 (local only)
+
+Implemented Review my training and persisted follow-up conversations using the
+existing encrypted key, model selection and OpenRouter proxy. All automated
+experiments use disposable databases, mocked Hevy and mocked provider responses.
+No real database, API key, remote AI call, commit, push, merge or deployment is part
+of this implementation. Unrelated existing documentation/deployment edits remain.
+
+Reference pack reviewed at abstract/publication-record level on 2026-11-05:
+- ACSM (2009), Progression models in resistance training for healthy adults:
+  https://pubmed.ncbi.nlm.nih.gov/19204579/
+- Larsen et al. (2021), subjective/objective autoregulation systematic review:
+  https://pubmed.ncbi.nlm.nih.gov/33520457/
+- Moesgaard et al. (2022), volume-equated periodization systematic review/meta-analysis:
+  https://pubmed.ncbi.nlm.nih.gov/35044672/ ; abstract cross-checked against the
+  authors' institutional record at https://researchprofiles.ku.dk/da/publications/effects-of-periodization-on-strength-and-muscle-hypertrophy-in-vo
+
+These are bounded general principles with explicit applicability limitations,
+not support for app-specific cutoffs or an individual phase-transition date.
+Coaching prompts require report dates/fields for numerical claims and supplied
+reference IDs/URLs for literature claims. The browser verifies citation destinations
+and strips unknown clickable URLs/executable markup. Mocks verify evidence arithmetic
+and plumbing, not the scientific accuracy of arbitrary live model prose.
+
+Verification: all 12 new coaching tests passed, including >7 workouts, exact-local
+precedence, sparse/incomplete monitoring, six-month boundaries, manual/unknown and
+copied-target exclusions, rep/RPE comparability, context-size omissions, read-only
+logger evidence, immutable capture, prior excerpts, stored model/follow-up, duplicate
+message and stale sequence rejection, provider setup/error/partial failures and
+logging availability. Full host/integration and logging suite results follow below.
+All 28 existing JavaScript files passed. Mocked coaching browsers passed at 390x844
+and 1280x900, including review generation, follow-up/reload persistence, original
+evidence, interrupt/reload without another AI request, supplied-only clickable
+references, markup sanitization and no horizontal overflow. Existing mocked workout
+and save-recovery browser flows also passed. Temporary preview servers are stopped
+by their harnesses. Screenshots remain ignored under artifacts/coaching.
+
+Initial sandboxed tests could not open Windows sandbox temporary files; rerunning
+outside that sandbox on the same isolated fixtures resolved the environment issue.
+A test initially assumed the standalone logger initialized the separately owned save
+journal; it now checks the actual logger tables for unchanged training. Browser
+checks wait for initial review loading and distinguish clickable a[href] links from
+labelled unverified anchor text. Behavioral expectations were not weakened.
+
+No local Docker build/start per the user's standing preference. Physical-device,
+production-data and live AI assessment quality/cost have not been verified. No
+fatigue model or logging behavior was changed. Human review remains necessary.
+
+Final automated results: 97 host/integration tests passed; 495 logging tests
+passed with one inherited expected failure; all 28 JavaScript files passed.
+Final mocked coaching phone/desktop rerun, existing training browser and recovery
+browser checks passed. No listeners remained on preview ports 18127/18128/18129.
+
+Publication follow-up: the user authorized committing/pushing the AI training
+review changes, opening a PR and checking GitHub CI. Merge and deployment remain
+separate actions. Unrelated local edits are excluded from the feature commit.

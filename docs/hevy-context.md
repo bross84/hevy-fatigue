@@ -359,3 +359,40 @@ check-ins do not rewrite frozen recommendation/trial records. Recent decisions
 and linked actual counts inform feedback context; this is not automatic fitting
 of a physiological model. Unrelated settings, keys and latest update flow remain
 unchanged. No commit/push/deployment occurred in this local implementation.
+
+## AI training-history reviews (local, 2026-11-05)
+
+The existing OpenRouter assistant now supports saved training-review conversations.
+coaching.py builds six calendar months of evidence from the host SQLAlchemy
+session and a read-only SQLite connection to the separate logger path. No Hevy
+requests or real-account experiments are needed to assemble a report. Local exact
+workout IDs take precedence over matching imports, including zero-set reviews.
+Counts, calendar spans, actual exposure intervals, weekly observed set counts,
+rep distributions and entered RPE deviations are calculated in code. Imported
+roles/targets remain unknown. Matched load comparisons require identical movement,
+reps, entered actual RPE, role and known e1RM/TM basis; manual/unknown-basis sets
+remain visible without invented total-system e1RMs. Recent detail is bounded and
+omissions are labelled; summaries cover the entire available window.
+
+The report includes raw daily and existing pretraining check-ins (separate scales),
+current saved plans/completions, preserved prescriptions/reviews, advisory decision
+and frozen actual-outcome records, selected existing monitoring context, and bounded
+excerpts from previous completed AI conversations. No questionnaire, fatigue model,
+trial, source-selection behavior or workout-save payload changes. Block intent is
+inferred explicitly, not assumed from a title or elapsed weeks. AI programming
+collaboration is authorized; applying changes remains a separate explicit action.
+
+New host-only coaching_conversations/coaching_turns tables preserve evidence date,
+server-built context, user messages, selected model, responses and completion status.
+They are initialized by existing Base.metadata.create_all. Pending is committed
+before provider I/O; completed text is stored before the stream's final marker.
+Failed/interrupted/pending output is visible and never automatically resent. A new
+review refreshes evidence and can reference bounded prior review excerpts; old
+conversations retain their original context. Reloading never calls OpenRouter.
+
+The AI tab has Review my training, a saved-review selector, reload and context
+preview. Ordinary follow-ups use the recorded conversation instead of browser-only
+history. A compact abstract-level reference pack is embedded in the coaching brief;
+only supplied reference URLs become clickable in review answers. Text is sanitized,
+but model reasoning and numerical claims still need human review. No live literature
+search, personalized model training or automatic program editing is claimed.
