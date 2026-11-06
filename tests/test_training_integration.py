@@ -48,6 +48,55 @@ class SaveRecoveryTests(unittest.TestCase):
             return tuple(db.execute('SELECT COUNT(*) FROM '+table).fetchone()[0]
                          for table in ('logged_sets','training_max_history','session_soreness','mesocycle_completions'))
 
+    def test_motivation_saved_once_with_workout_not_sent_to_hevy(self):
+        from rackbook import motivation
+        self.data.motivation=motivation.MotivationInput(level=3,reason='stale',note='Same movements since August',
+            recorded_at='2026-10-29T09:59:00Z',timing='before_working_sets')
+        with patch('rackbook.hevy_client.HevyClient',self.factory):
+            first=saves.save(self.data,self.factory)
+            second=saves.save(self.data,self.factory)
+        self.assertEqual(first['state'],'complete')
+        self.assertEqual(second['state'],'complete')
+        self.assertEqual(self.remote.create_workout.call_count,1)
+        sent=self.remote.create_workout.call_args.args[0]
+        self.assertNotIn('motivation',json.dumps(sent))
+        self.assertNotIn('Same movements since August',json.dumps(sent))
+        saved=motivation.read('remote-1')
+        self.assertEqual(saved['level'],3)
+        self.assertEqual(saved['reason'],'stale')
+        self.assertEqual(saved['timing'],'before_working_sets')
+        with closing(get_db()) as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM session_motivation').fetchone()[0],1)
+        self.assertEqual(training.get_session_review('remote-1')['motivation']['note'],'Same movements since August')
+
+    def test_motivation_failure_rolls_back_and_finalizes_without_remote_repost(self):
+        from rackbook import motivation
+        self.data.motivation=motivation.MotivationInput(level=0)
+        with patch('rackbook.motivation.record',side_effect=RuntimeError('mock local failure')):
+            result=saves.save(self.data,self.factory)
+        self.assertEqual(result['state'],'remote_saved')
+        self.assertEqual(self.counts(),(0,0,0,0))
+        self.assertIsNone(motivation.read('remote-1'))
+        result=saves.finalize(self.data.client_workout_id)
+        self.assertEqual(result['state'],'complete')
+        self.assertEqual(motivation.read('remote-1')['level'],0)
+        self.assertEqual(self.remote.create_workout.call_count,1)
+
+    def test_unanswered_motivation_stays_unknown_and_frozen_change_conflicts(self):
+        from rackbook import motivation
+        identity=saves.prepare(self.data)
+        self.assertNotIn('motivation',json.loads(saves.read(identity)['request_payload']))
+        self.data.motivation=motivation.MotivationInput(level=4,reason='life_stress')
+        with self.assertRaises(HTTPException) as conflict:saves.prepare(self.data)
+        self.assertEqual(conflict.exception.status_code,409)
+
+    def test_motivation_request_validation(self):
+        from rackbook.motivation import MotivationInput
+        for fields in [dict(level=True),dict(level='3'),dict(level=5),dict(level=-1),dict(level=2,reason='unknown'),
+                       dict(level=2,note='x'*501),dict(level=2,recorded_at='2026-11-05T12:00:00')]:
+            with self.subTest(fields=fields),self.assertRaises(ValueError):MotivationInput(**fields)
+        self.assertEqual(MotivationInput(level=0).level,0)
+
     def advised_workout(self,action='accept'):
         from datetime import timedelta
         from rackbook import session_advice as advice
@@ -192,6 +241,7 @@ class SaveRecoveryTests(unittest.TestCase):
         old_payload.pop('client_workout_id')
         old_payload.pop('prescription')
         old_payload.pop('advisory_links')
+        old_payload.pop('motivation')
         for ex in old_payload['exercises']:
             for s in ex['sets']:
                 s.pop('target_rpe')

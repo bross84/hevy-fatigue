@@ -344,3 +344,29 @@ The new-browser frontend default and backend legacy default are both
 openai/gpt-6.1-terra. Explicit model IDs still take precedence, and saved review
 turns continue recording the actual selected model. No routing or reasoning
 parameter changes, model benchmarks, credential requests or billable tests added.
+
+## Motivation check-in contract (local, 2026-11-06)
+
+WorkoutEntry adds optional motivation: strict integer level 0..4, optional reason
+fatigue/stale/life_stress/other, note up to 500 characters, optional timezone-aware
+recorded_at and timing before_working_sets/after_working_sets/unknown. This is
+coaching context, not a fatigue-model input. The new session_motivation table is
+created idempotently only in logger SQLite. No existing tables are merged or
+rewritten. Nullable/absent motivation is removed before canonical save hashing;
+old journal payloads keep their exact identities.
+
+The record commits in the existing required-local-effects transaction before
+journal completion. It is excluded from the outgoing Hevy payload. Retry/finalize
+retains remote-ID-first behavior and records exactly once. Session-review responses
+add nullable motivation (with saved_at), including legacy/ad-hoc review responses.
+Draft transfer validates live and frozen motivation data; malformed types, reasons,
+notes or timestamps reject before replacement. Clearing resets the whole answer;
+zero is an explicit Eager response. The frozen-save controls cannot change intent.
+
+The host reads motivation_checkins through the read-only logger connection, with
+client timing explicitly distinguished from server persistence time. Existing
+six-month bounds, frozen conversation snapshots and context-size notices apply.
+The assistant receives the recorded score/reason/note directly, separate from raw
+daily ratings and pre-movement soreness. No new endpoints or external fetches are
+required. Checks compare full monitoring snapshots before/after an answer to verify
+unchanged fatigue output. Save recovery and exact local RPE behavior remain intact.

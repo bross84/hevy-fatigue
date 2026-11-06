@@ -24,6 +24,8 @@ logger = logging.getLogger(__name__)
 
 from .database import get_db, get_rpe_percentage, init_db
 from . import soreness
+from . import motivation
+from .motivation import MotivationInput
 from . import fatigue
 from . import fatigue_trial
 from . import trial_dashboard
@@ -344,6 +346,7 @@ class WorkoutEntry(BaseModel):
     end_time: str
     exercises: list[EntryExercise]
     soreness: SessionSoreness | None = None
+    motivation: MotivationInput | None = None
     planned_session: mesocycles.PlanLink | None = None
     prescription: session_review.Prescription | None = None
     advisory_links: list[session_advice.AdviceLink] | None = Field(default=None, max_length=100)
@@ -375,7 +378,7 @@ class WorkoutEntry(BaseModel):
 
 @app.get('/session-reviews/{workout_id}', response_model=session_review.ReviewResponse)
 def get_session_review(workout_id: str):
-    return {**session_review.read(workout_id), 'advisory_outcomes':session_advice.outcomes(workout_id)}
+    return {**session_review.read(workout_id), 'advisory_outcomes':session_advice.outcomes(workout_id), 'motivation':motivation.read(workout_id)}
 
 
 @app.post('/session-advice', response_model=session_advice.AdviceView)

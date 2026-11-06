@@ -682,3 +682,52 @@ mocked coaching browser checks passed at 390x844 and 1280x900. No live AI calls.
 Publication follow-up: the user authorized committing/pushing the model selector
 refresh, opening a PR and checking GitHub CI. Merge and deployment remain separate
 actions; unrelated local deployment/documentation edits are excluded.
+
+## Session motivation check-in — local verification, 2026-11-06
+
+Completed the optional session-level motivation question/reason/note and AI review
+context. Concurrent logger-layout and pre-existing deployment/documentation edits
+were preserved; this follow-up does not claim ownership of those edits. No real
+Hevy account, production databases or live AI calls were used.
+
+- Host/integration: 102 passed. New cases cover exact-once local motivation,
+  exclusion from Hevy, atomic rollback and finalize without remote repost,
+  unanswered/zero semantics, frozen payload conflicts, request validation and
+  unchanged legacy hashes. Coaching evidence tests verify the exact answer and
+  note reach the provider system context and compare the complete monitoring
+  diagnostics snapshot before/after the motivation record: unchanged.
+- Logging: 495 passed with one inherited expected failure.
+- JavaScript: all 29 files passed. The new control test covers unanswered/zero,
+  reasons/notes, draft restore, unchanged sets, late timing (including undo),
+  frozen controls and clearing. Transfer tests retain the answer and reject
+  invalid score/type/reason/note/timing before modifying storage.
+- Mocked training browser: passed phone/desktop. Motivation remains after reload,
+  sets stay unchanged, saved review displays the reason/note, and a newly captured
+  host AI report contains the exact saved motivation record. Existing Rx/actual,
+  source toggles, canonical weights, timer/UUID, one remote save and plan completion
+  checks remain intact. No unexpected browser errors.
+- Mocked AI coaching phone/desktop and save-recovery browser flows passed.
+- Targeted reruns passed after the final transfer/timing assertions. git diff
+  --check passed. Disposable preview servers were stopped by their harnesses.
+
+Only saved workouts enter AI history. Unfinished motivation stays in the device
+draft, and discarded/skipped sessions remain unknown. recorded_at/timing are
+client-reported, not verified prospective measurements. Motivation remains separate
+from all daily/pattern/trial models and weight adjustments. Existing frozen review
+snapshots are not rewritten. No local Docker was run for this motivation task,
+consistent with the user's standing preference; concurrent layout verification
+is documented separately above. Physical-device/deployed-data acceptance remains
+unperformed. No commit, push, publication or production deployment occurred.
+
+The previous attempt to launch broad tests was not executed because automatic
+approval review could not complete due to a usage limit. After the user's request
+to resume, authorized isolated runs completed successfully as recorded above.
+
+Publication follow-up: the user authorized commit/push, opening a motivation-only
+PR and checking GitHub CI. The logger layout, its drag/loader/navigation changes,
+layout assets/checker, and unrelated documentation/deployment edits are excluded.
+Merge and production deployment remain separate actions.
+
+PR isolation check: exported only the staged tree to a disposable ignored directory.
+All 29 JavaScript files and the mocked phone/desktop workout browser flow passed
+without logger-layout assets, navigation, rails, loader or drag hooks.

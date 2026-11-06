@@ -32,6 +32,16 @@ def init_db() -> None:
             pass  # already renamed, or new DB (table doesn't exist yet)
 
         conn.executescript("""
+            CREATE TABLE IF NOT EXISTS session_motivation (
+                hevy_workout_id TEXT PRIMARY KEY,
+                workout_start TEXT NOT NULL,
+                level INTEGER NOT NULL CHECK(level BETWEEN 0 AND 4),
+                reason TEXT CHECK(reason IN ('fatigue','stale','life_stress','other')),
+                note TEXT NOT NULL DEFAULT '',
+                recorded_at TEXT,
+                timing TEXT NOT NULL DEFAULT 'unknown',
+                saved_at TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS session_reviews (
                 hevy_workout_id TEXT PRIMARY KEY,
                 workout_start TEXT NOT NULL,

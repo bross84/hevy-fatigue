@@ -12,6 +12,13 @@ const DraftTransfer = (() => {
   function advisoryLinks(x){assert(Array.isArray(x)&&x.length<=100);const seen=new Set();
     for(const link of x){assert(object(link)&&uuid.test(link.recommendation_id)&&!seen.has(link.recommendation_id)&&(link.decision_id==null||uuid.test(link.decision_id)));seen.add(link.recommendation_id);}}
   function optionalNumber(x,min,max=Infinity) {assert(x==null||(typeof x==='number'&&Number.isFinite(x)&&x>=min&&x<=max));}
+  function motivation(x) {
+    assert(object(x)&&Number.isInteger(x.level)&&x.level>=0&&x.level<=4);
+    assert([undefined,null,'fatigue','stale','life_stress','other'].includes(x.reason));
+    if(x.note!==undefined)assert(string(x.note,500));
+    if(x.recorded_at!=null)assert(timestamp(x.recorded_at));
+    assert([undefined,'unknown','before_working_sets','after_working_sets'].includes(x.timing));
+  }
   function evidence(x) {
     assert(object(x)&&string(x.set_id,200)&&x.set_id.length>0&&string(x.exercise_id,200)&&x.exercise_id.length>0);
     assert(typeof x.manual_weight==='boolean'&&typeof x.ls_enabled==='boolean'&&['e1rm','tm','manual'].includes(x.basis));
@@ -34,6 +41,7 @@ const DraftTransfer = (() => {
     for(const cell of x.rpe_chart){assert(object(cell)&&Number.isInteger(cell.reps)&&cell.reps>=1&&cell.reps<=1000);optionalNumber(cell.rpe,0,10);optionalNumber(cell.percentage,Number.MIN_VALUE,1);assert(cell.rpe!=null&&cell.percentage!=null);}
   }
   function frozenRequest(x,id) {
+    if(x?.motivation!=null)motivation(x.motivation);
     assert(object(x)&&x.client_workout_id===id&&string(x.title)&&timestamp(x.start_time)&&timestamp(x.end_time)&&Date.parse(x.end_time)>=Date.parse(x.start_time)&&Array.isArray(x.exercises)&&x.exercises.length>0);
     assert([undefined,null,'kg','lb'].includes(x.weight_unit));
     if(x.planned_session)planLink(x.planned_session);
@@ -58,6 +66,7 @@ const DraftTransfer = (() => {
     if(x&&typeof x==='object')for(const [k,v] of Object.entries(x)){assert(!['__proto__','constructor','prototype'].includes(k));safe(v,depth+1);}
   }
   function validateWorkout(d) {
+    if(d?.motivation!=null)motivation(d.motivation);
     assert(object(d)&&string(d.title)&&timestamp(d.startedAt)&&Array.isArray(d.exercises)&&d.exercises.length<=100);
     if(d.client_workout_id!==undefined)assert(uuid.test(d.client_workout_id));
     if(d.planned_session)planLink(d.planned_session);

@@ -37,6 +37,13 @@ const SessionReviewUI = (() => {
       const data=await response.json();
       if(request!==requests.get(box) || !box.isConnected)return;
       box.replaceChildren(node('h2','Session review'));
+      if(data.motivation){
+        const m=data.motivation,labels=['Eager','Willing','Neutral','Reluctant','Dreading it'];
+        const reasons={fatigue:'Tired / poor recovery',stale:'Training feels stale',life_stress:'Time / life stress',other:'Other'};
+        box.append(node('h3','Motivation to train'));
+        box.append(node('p',labels[m.level]+(m.reason?' · '+reasons[m.reason]:'')+(m.note?' · '+m.note:'')));
+        box.append(node('p','Separate from fatigue. '+(m.timing==='before_working_sets'?'Reported before working sets were checked off.':m.timing==='after_working_sets'?'Updated after a working set was checked off.':'Response timing is unknown.')));
+      }
       if(data.advisory_outcomes?.length){
         const follow=node('section');follow.append(node('h3','Recommendation follow-up'));
         for(const o of data.advisory_outcomes){

@@ -25,6 +25,18 @@ with sync_playwright() as p:
     page.goto(URL+'/training/microcycles')
     page.get_by_role('link',name='Start next workout',exact=True).click()
     expect(page.locator('#title')).to_have_value('Mock Workout')
+    expect(page.locator('#motivation-level')).to_have_value('')
+    before_motivation=page.evaluate("JSON.parse(localStorage.getItem('training.logDraft')).exercises")
+    page.locator('#motivation-level').select_option('3')
+    page.locator('#motivation-reason').select_option('stale')
+    page.locator('#motivation-note').fill('Same movements since August')
+    assert page.evaluate("JSON.parse(localStorage.getItem('training.logDraft')).exercises")==before_motivation
+    page.reload()
+    expect(page.locator('#motivation-level')).to_have_value('3')
+    expect(page.locator('#motivation-reason')).to_have_value('stale')
+    expect(page.locator('#motivation-note')).to_have_value('Same movements since August')
+    motivation=page.evaluate("JSON.parse(localStorage.getItem('training.logDraft')).motivation")
+    assert motivation['timing']=='before_working_sets'
     original_prescription=page.evaluate("JSON.parse(localStorage.getItem('training.logDraft')).prescription")
     assert original_prescription['source']=='plan'
     assert original_prescription['exercises'][0]['sets'][1]['reps']==5
@@ -141,6 +153,16 @@ with sync_playwright() as p:
     review=page.request.get(URL+'/training/session-reviews/'+saved_result['id']).json()
     assert review['available'],review
     assert review['prescription']==original_prescription
+    assert review['motivation']['level']==3 and review['motivation']['reason']=='stale'
+    assert review['motivation']['timing']=='before_working_sets'
+    expect(page.locator('#sessionReview')).to_contain_text('Training feels stale')
+    expect(page.locator('#sessionReview')).to_contain_text('Same movements since August')
+    # Creating evidence alone does not call a provider and must expose the saved context.
+    from uuid import uuid4
+    training_review=page.request.post(URL+'/api/ai/conversations',data={'id':str(uuid4())})
+    assert training_review.ok,training_review.text()
+    motivation_rows=training_review.json()['evidence']['motivation_checkins']
+    assert len(motivation_rows)==1 and motivation_rows[0]['level']==3 and motivation_rows[0]['reason']=='stale'
     follow=review['advisory_outcomes'][0]
     assert follow['decision']['id']==modification['id']
     assert follow['intended']['working_sets']==1 and follow['actual']['working_sets']==2,follow

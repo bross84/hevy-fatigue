@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from .database import get_db
 from .session_advice import OutcomeView
+from .motivation import MotivationRecord
 
 
 class PrescribedSet(BaseModel):
@@ -106,6 +107,7 @@ class SessionReview(BaseModel):
 
 
 class ReviewResponse(BaseModel):
+    motivation: MotivationRecord | None = None
     available: bool
     reason: str | None = None
     review: SessionReview | None = None

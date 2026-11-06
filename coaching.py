@@ -61,6 +61,13 @@ Cite literature ONLY with the provided reference IDs, titles and URLs, and only 
 Do not invent citations, claim live literature search, or present product thresholds as established science.
 This is a small abstract-level reference pack, not an exhaustive or continuously updated literature review.
 Prior AI advice and user acceptance are not proof of correctness, execution, or causal benefit.
+Motivation is separate from fatigue: 0 eager, 1 willing, 2 neutral, 3 reluctant, 4 dreading training.
+Read the optional reason and note, not just the number. Repeated stale-training reasons may support
+discussing variation or phase options alongside performance, recovery and actual exposure counts.
+One low-motivation day is not evidence of overtraining or a failed program. Do not add motivation
+to fatigue scores or assume that boredom proves a need for a deload. Timing is client-reported;
+after-working-set/unknown answers are not prospective pre-training observations. Missing is unknown,
+not eager. Only saved workouts supply motivation here; skipped or discarded sessions are not observed.
 The evidence date is frozen for each conversation. If training has changed, suggest a new review.
 """
 
@@ -90,7 +97,7 @@ def day_of(value):
 def local_evidence(start, end):
     """Read only, no initialization, credentials, settings, or frozen-trial rewrites."""
     result = dict(status='unavailable', sets=[], reviews=[], plans=[], completions=[],
-                  pretraining=[], decisions=[])
+                  pretraining=[], decisions=[], motivation=[])
     try:
         with closing(sqlite3.connect(database_path().as_uri()+'?mode=ro', uri=True, timeout=2)) as conn:
             conn.row_factory = sqlite3.Row
@@ -103,6 +110,7 @@ def local_evidence(start, end):
             result['plan_count'] = conn.execute('SELECT COUNT(*) FROM mesocycles').fetchone()[0]
             result['completions'] = rows('SELECT mesocycle_id,session_id,hevy_workout_id,workout_start FROM mesocycle_completions WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=?', (str(start), str(end)))
             result['pretraining'] = rows('SELECT * FROM session_soreness WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=? ORDER BY workout_start', (str(start), str(end)))
+            result['motivation'] = rows('SELECT hevy_workout_id,workout_start,level,reason,note,recorded_at,timing,saved_at FROM session_motivation WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=? ORDER BY workout_start',(str(start),str(end)))
             # Only original input ratings from captured trials, not predictions or completions.
             for row in rows('SELECT exercise_template_id,workout_start,recorded_at,prospective,snapshot FROM fatigue_trial_snapshots WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=? ORDER BY recorded_at', (str(start), str(end))):
                 data = (parsed(row.pop('snapshot'), {}) or {}).get('input', {})
@@ -228,13 +236,14 @@ def build_report(db, *, today=None, monitoring_context=None):
             missing_checkin_dates=(today-start).days+1-len(checkins),local_source=local['status']),
         weekly_workload=[dict(week_start=k,**v) for k,v in sorted(weeks.items())],exercises=list(exercises.values()),
         recent_sessions=ordered[-RECENT_SESSIONS:],daily_checkins=checkins,
-        pretraining_checkins=local['pretraining'],saved_plans=[dict(id=p['id'],active=bool(p['active']),archived=bool(p['archived']),revision=p['revision'],document=parsed(p['document'],{})) for p in local['plans']],
+        pretraining_checkins=local['pretraining'],motivation_checkins=local['motivation'],saved_plans=[dict(id=p['id'],active=bool(p['active']),archived=bool(p['archived']),revision=p['revision'],document=parsed(p['document'],{})) for p in local['plans']],
         plan_completions=local['completions'],preserved_sessions=[dict(workout_id=k,workout_start=v['workout_start'],prescription=parsed(v['prescription']),review=parsed(v['review'])) for k,v in sorted(reviews.items(),key=lambda x:x[1]['workout_start'])[-RECENT_SESSIONS:]],
         recommendation_feedback=[dict(created_at=r['created_at'],suggestion=parsed(r['snapshot']),decision=parsed(r['record']),actual_outcome=parsed(r['outcome'])) for r in local['decisions']],
         references=REFERENCES,limitations=[
             'Six calendar months of stored data; missing imports are not proof of no training.',
             'Imported set roles and historical targets are unknown. Unknown-role sets are not asserted to be working sets.',
             'Daily check-ins are date-only; pretraining soreness uses a separate 0–3 scale, daily ratings use 0–4 (higher is worse).',
+            'Motivation 0–4 is separate from fatigue (0 eager, 4 dreading it). Missing answers and skipped/discarded sessions are unknown. recorded_at/timing are client-reported; saved_at is server persistence time.',
             'Matched load comparisons require entered effort and the same reps, RPE, set role and automatic weight basis. No e1RM is invented for manual/unknown basis.',
             'Recent raw detail is bounded; full-window exposure counts, spacing and weekly set summaries are calculated before trimming.',
             'Saved plans describe current saved intent, not proof of historical block purpose or execution.',
@@ -250,7 +259,7 @@ def build_report(db, *, today=None, monitoring_context=None):
     report['prior_review_excerpts']=prior
     report['limitations'].append('Prior review excerpts: latest three conversations, last four completed turns each, at most 4000 characters per message/response. They are historical claims, not verified outcomes.')
     # Drop bounded detail first, always record every omitted section. Do not silently send oversized prompts.
-    for section in ('prior_review_excerpts','recommendation_feedback','preserved_sessions','saved_plans','pretraining_checkins','recent_sessions'):
+    for section in ('prior_review_excerpts','recommendation_feedback','preserved_sessions','saved_plans','pretraining_checkins','motivation_checkins','recent_sessions'):
         while len(encode(report))>MAX_CONTEXT_CHARS and report[section]:
             report[section].pop(-1 if section in ('prior_review_excerpts','recommendation_feedback','saved_plans') else 0)
             note=f'{section}: older detail omitted for context size.'
