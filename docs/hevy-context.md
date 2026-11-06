@@ -501,3 +501,17 @@ Logger exercise cards now explicitly fill a shared column capped at 880px with
 border-box sizing from 1100px. Expanded/collapsed cards share both edges, while
 80px weight columns and the existing compact set grid remain unchanged. On
 smaller screens the original touch/keypad layout is retained.
+
+## Chart-focused dashboard follow-up (2026-11-06)
+
+This approved composition supersedes the equal-card dashboard arrangement above.
+Readiness is a compact summary with the same score, state, recommendation and
+subjective/objective/combined breakdown. Fatigue Trend spans the available width.
+Volume/Fatigue and Per-Pattern Fatigue Trend share equal columns from 2000px;
+below that they stack at full width. Pattern stress and Recent sessions follow
+all three charts and share a row from 1100px. Left navigation keeps its existing
+1100/1900px behavior. Phones retain a compact wrapped summary and single column.
+
+The change is presentation-only in static/index.html: existing card IDs,
+renderers, model scores, data gaps, ranges and chart lifecycle are preserved.
+The prior compact logger inputs and consistent exercise card widths are untouched.

@@ -426,3 +426,19 @@ mixed expanded/collapsed movements. The left navigation, compact set inputs,
 loader ownership, timers, draft/save identity and training behavior are retained.
 Only layout files, associated browser acceptance checks and release documentation
 were updated in this follow-up. No database or schema migration is introduced.
+
+## Chart-focused dashboard composition (2026-11-06)
+
+After mockup approval, replaced the oversized Readiness card with a compact
+summary strip and made the three charts the dashboard's primary content.
+Fatigue Trend occupies a full row; the other two charts share a wide desktop
+row at 2000px and above, stacking below that breakpoint. Pattern stress and
+Recent sessions are retained below the charts. DOM order follows that reading
+order, with the same IDs and existing render functions. Left navigation and
+all logger files remain unchanged in this follow-up. No backend/model, schema,
+storage, credential, API or save behavior is changed.
+
+Mocked browser acceptance now checks this composition instead of requiring all
+six cards to have equal widths: compact populated/missing readiness, full-width
+trend, aligned equal secondary charts on wide screens, readable stacked charts,
+secondary content placement, containment and navigation across 320–2560px.

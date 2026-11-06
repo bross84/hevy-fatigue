@@ -837,3 +837,38 @@ Local verification of the approved follow-up:
 Physical-device/PWA and deployed-data acceptance were not performed. Publication
 and merge are tracked in the associated PR; no production server update was
 performed by the coding agent.
+
+## Chart-focused dashboard — 2026-11-06
+
+Local automation for the approved compact-readiness/chart-first composition:
+
+- 102 host Python tests and 495 logger tests passed; the one inherited expected
+  failure remains unchanged. All 29 JavaScript checks passed.
+- The dashboard browser check passed at 320–2560px, including 700/1100/1200/1900/
+  2000px boundaries. It checks compact populated and missing-data summaries,
+  full-width Fatigue Trend, equal secondary chart panels from 2000px, stacking
+  below that, secondary cards after all charts, content containment and advisory
+  spanning. Real shipped Chart.js, history/gaps, range/theme controls, drawer
+  focus, hashes, Settings/check-in and training links passed without page errors.
+- Mocked logger geometry, drafts/UUIDs, weights, notes, loader selection,
+  reordering/reload, timer and frozen-save checks passed. The existing phone
+  workout/save and coaching browser checks passed.
+- Recovery browser checks passed unchanged on a second isolated run. The first
+  run, concurrent with local Docker startup/other acceptance checks, unexpectedly
+  returned complete instead of rejected in the stale-plan fixture. No assertion
+  or application code was changed to make it pass; the cause is unconfirmed.
+  This observed transient is recorded separately from the expected Python failure.
+- Docker was initially unavailable/starting. Once ready, the local image built
+  successfully. Two startup cycles in a read-only, network-disabled container
+  with temporary stores passed health, revised page/asset, separate schemas and
+  preview write-guard checks. No live data/accounts were used.
+
+Physical-device/PWA and deployed-data acceptance remain pending. Publication
+and merge are tracked in the associated PR. No direct server update was performed.
+Prior logger width fixes and unrelated local edits were preserved.
+
+Publication snapshot check: all 29 JavaScript checks and the mocked dashboard
+browser check passed again in an isolated worktree based on current main. A
+fixture/theme-refresh race found during that check was fixed by keeping the
+synthetic readiness summary in the browser-only cached payload before redraw;
+geometry and behavior assertions were retained. No production renderer changed.

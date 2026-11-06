@@ -572,3 +572,19 @@ Fatigue Trend placement, chart readability and menus at the real browser zoom.
 Check long exercise names and mixed expanded/collapsed logger cards, compact set
 inputs, keypad, timer return and rotation. Automation used disposable mock data;
 physical-device and deployed-data acceptance remain pending.
+
+## Chart-focused dashboard acceptance (2026-11-06)
+
+This presentation-only follow-up supersedes the equal-card dashboard composition.
+Readiness becomes a compact summary; Fatigue Trend spans the dashboard, with the
+other charts side by side on wide desktops and stacked on smaller screens.
+Pattern stress and Recent sessions remain below them. Left navigation, existing
+model data, chart controls and logger behavior are retained.
+
+For a future separately authorized release, retain the standard latest-image
+pull/up workflow. No direct server edits, migration, volume/key change or draft
+reset is needed. Verify the actual desktop/tablet/PWA at its normal zoom:
+compact summary and check-in state, readable axes/legends, responsive chart
+stacking, range/signal controls, themes and navigation. Use the next normal
+workout for live-data acceptance; do not create a production test workout.
+Physical-device and deployed-data acceptance remain separate from automation.

@@ -3018,32 +3018,47 @@ body.ai-open main {
   .host-workspace.ai-open main { padding:80px 16px 16px!important; }
 }
 [data-theme="dark"] .host-workspace .btn-primary,[data-theme="dark"] .host-workspace .checkin-prompt-btn { color:#10213a; }
-/* Row-aligned cards: readiness and fatigue lead at every viewport width. */
-.host-workspace #dashboard-readiness-card { order:1; }
+/* Chart-first dashboard; compact readiness remains a summary, not a chart peer. */
+.host-workspace #dashboard-readiness-card {
+  order:1; display:grid; grid-template-columns:minmax(80px,1fr) minmax(0,1fr);
+  grid-template-rows:auto auto auto auto; gap:4px 16px; align-items:center;
+}
+.host-workspace #dashboard-readiness-card .dashboard-card-title { grid-column:1; grid-row:1/3; margin:0; }
+.host-workspace #dashboard-readiness-card .readiness-score { grid-column:2; grid-row:1; font-size:40px; line-height:1.1; margin:0; }
+.host-workspace #dashboard-readiness-card .readiness-label { grid-column:2; grid-row:2; font-size:13px; }
+.host-workspace #dashboard-readiness-card .readiness-rec { grid-column:1/-1; grid-row:3; margin:12px 0 0; padding:12px 0 0; }
+.host-workspace #dashboard-readiness-card .readiness-score-breakdown { grid-column:1/-1; grid-row:4; }
 .host-workspace #today-readiness-trend-card { order:2; }
-.host-workspace #dashboard-pattern-card { order:3; }
-.host-workspace #dashboard-vf-card { order:4; }
-.host-workspace #dashboard-recent-card { order:5; }
-.host-workspace #today-pattern-fatigue-card { order:6; }
+.host-workspace #dashboard-vf-card { order:3; }
+.host-workspace #today-pattern-fatigue-card { order:4; }
+.host-workspace #dashboard-pattern-card { order:5; }
+.host-workspace #dashboard-recent-card { order:6; }
 @media(min-width:700px) {
   .host-workspace main { padding:88px 24px 24px; }
-  .host-workspace .dashboard-wrap {
-    grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px;
-    grid-template-rows:minmax(360px,auto) minmax(600px,auto) minmax(540px,auto);
+  .host-workspace .dashboard-wrap { grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
+  .host-workspace .dashboard-card { grid-column:1/-1; display:flex; flex-direction:column; padding:24px; }
+  .host-workspace #dashboard-readiness-card {
+    grid-template-columns:84px 90px minmax(0,1fr); grid-template-rows:auto auto;
+    column-gap:16px; padding:20px 24px;
   }
-  .host-workspace .dashboard-card { display:flex; flex-direction:column; padding:24px; }
+  .host-workspace #dashboard-readiness-card .dashboard-card-title { grid-row:1/-1; }
+  .host-workspace #dashboard-readiness-card .readiness-rec { grid-column:3; grid-row:1; border:0; padding:0; margin:0; }
+  .host-workspace #dashboard-readiness-card .readiness-score-breakdown { grid-column:3; grid-row:2; border:0; margin:0; padding:8px 0; }
+  .host-workspace #today-readiness-trend-card { min-height:380px; }
+  .host-workspace #dashboard-vf-card,.host-workspace #today-pattern-fatigue-card { min-height:480px; }
+  .host-workspace #dashboard-pattern-card,.host-workspace #dashboard-recent-card { min-height:560px; }
   .host-workspace .dashboard-card .today-chart-wrap,
   .host-workspace .dashboard-card .vf-chart-wrap {
-    flex:1; min-height:220px; height:auto; position:relative;
+    flex:1; min-height:240px; height:auto; position:relative;
   }
   .host-workspace .dashboard-card .today-chart-wrap canvas,
   .host-workspace .dashboard-card .vf-chart-wrap canvas {
     position:absolute; inset:0; width:100%!important; height:100%!important;
   }
-  .host-workspace .readiness-score { font-size:64px; margin-top:12px; }
-  .host-workspace .readiness-rec { margin-top:auto; }
   .host-workspace .today-chart-note { flex:none; margin-top:16px; }
-  .host-workspace .today-chart-legend { margin-bottom:12px; font-size:16px; font-weight:500; }
+  .host-workspace .today-chart-legend { margin-bottom:12px; font-size:18px; font-weight:500; }
+  .host-workspace .vf-range-row,.host-workspace #today-pattern-range,
+  .host-workspace #today-pattern-signal { align-self:flex-start; }
   .host-workspace .recent-session-item {
     flex:1; min-height:0; padding:8px 0; display:flex; flex-direction:column; justify-content:center;
   }
@@ -3051,6 +3066,17 @@ body.ai-open main {
     flex:1; display:flex; flex-direction:column; justify-content:space-between;
   }
   .host-workspace #today-joint-card { grid-column:1/-1; }
+}
+@media(min-width:1100px) {
+  .host-workspace #dashboard-pattern-card,.host-workspace #dashboard-recent-card { grid-column:auto; }
+}
+@media(min-width:1200px) {
+  .host-workspace #dashboard-readiness-card { grid-template-columns:100px 110px minmax(160px,1fr) minmax(300px,480px); column-gap:24px; }
+  .host-workspace #dashboard-readiness-card .readiness-rec { grid-row:1/-1; }
+  .host-workspace #dashboard-readiness-card .readiness-score-breakdown { grid-column:4; grid-row:1/-1; border-left:1px solid var(--border); padding:8px 0 8px 24px; }
+}
+@media(min-width:2000px) {
+  .host-workspace #dashboard-vf-card,.host-workspace #today-pattern-fatigue-card { grid-column:auto; }
 }
 @media(min-width:1100px) {
   .host-sidebar { display:block; position:fixed; inset:0 auto 0 0; width:224px; overflow-y:auto; z-index:101; }
@@ -3062,13 +3088,7 @@ body.ai-open main {
   .host-sidebar { width:240px; }
   .host-workspace #host-topbar { left:240px; width:calc(100% - 240px); padding:0 32px; }
   .host-workspace main { margin-left:240px; padding:96px 32px 32px; }
-  .host-workspace .dashboard-wrap {
-    grid-template-columns:repeat(3,minmax(0,1fr));
-    grid-template-rows:minmax(440px,auto) minmax(600px,auto);
-  }
-  .host-workspace #dashboard-recent-card { order:3; }
-  .host-workspace #dashboard-pattern-card { order:4; }
-  .host-workspace #dashboard-vf-card { order:5; }
+
 }
 @media(prefers-reduced-motion:reduce) {
   .host-workspace .pattern-gauge-fill,.host-workspace .nav-tab { transition:none; }
@@ -3206,22 +3226,22 @@ body.ai-open main {
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
-      <div class="dashboard-card" id="dashboard-pattern-card">
-        <div class="dashboard-card-title">Pattern stress</div>
-        <div class="loading-wrap"><span class="spinner"></span></div>
-      </div>
-
       <div class="dashboard-card" id="dashboard-vf-card">
         <div class="dashboard-card-title">Volume · Fatigue</div>
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
-      <div class="dashboard-card" id="dashboard-recent-card">
-        <div class="dashboard-card-title">Recent sessions</div>
+      <div class="dashboard-card" id="today-pattern-fatigue-card">
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
-      <div class="dashboard-card" id="today-pattern-fatigue-card">
+      <div class="dashboard-card" id="dashboard-pattern-card">
+        <div class="dashboard-card-title">Pattern stress</div>
+        <div class="loading-wrap"><span class="spinner"></span></div>
+      </div>
+
+      <div class="dashboard-card" id="dashboard-recent-card">
+        <div class="dashboard-card-title">Recent sessions</div>
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
