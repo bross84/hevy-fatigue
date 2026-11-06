@@ -35,6 +35,20 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
                 with page.expect_response(lambda r:r.url.endswith('/api/ai/conversations') and r.request.method=='GET'):
                     page.goto(URL+'/#ai')
                 expect(page.locator('#ai-training-review')).to_be_enabled()
+                expect(page.locator('#ai-model-select')).to_have_value('openai/gpt-6.1-terra')
+                expect(page.locator('#ai-model-price')).to_contain_text('input $1 / output $5')
+                # Removed presets and custom choices must survive without silent migration.
+                preserved='openai/gpt-4o-mini' if width==390 else 'my-provider/custom-model'
+                page.evaluate('(id)=>localStorage.setItem("ai_preferred_model",id)',preserved)
+                with page.expect_response(lambda r:r.url.endswith('/api/ai/conversations') and r.request.method=='GET'):
+                    page.reload()
+                expect(page.locator('#ai-training-review')).to_be_enabled()
+                expect(page.locator('#ai-model-select')).to_have_value('custom')
+                expect(page.locator('#ai-model-custom')).to_have_value(preserved)
+                expect(page.locator('#ai-model-price')).to_contain_text('preserved')
+                page.locator('#ai-model-select').select_option('qwen/qwen3.8-flash')
+                expect(page.locator('#ai-model-price')).to_contain_text('input $0.15 / output $0.47')
+                assert page.evaluate('localStorage.getItem("ai_preferred_model")')=='qwen/qwen3.8-flash'
                 page.locator('#ai-training-review').click()
                 try:
                     expect(page.locator('#ai-chat-messages')).to_contain_text('Recorded sessions: 12.')
@@ -60,6 +74,8 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
                 expect(page.locator('#ai-chat-messages')).to_contain_text('I want to focus on strength.')
                 recorded=page.request.get(URL+'/api/ai/conversations/'+identity).json()
                 assert recorded['evidence']==evidence and len(recorded['turns'])==2
+                assert all(t['model']=='qwen/qwen3.8-flash' for t in recorded['turns'])
+                expect(page.locator('#ai-model-select')).to_have_value('qwen/qwen3.8-flash')
                 page.locator('#ai-chat-input').fill('Please interrupt this response.')
                 page.locator('#ai-chat-send').click()
                 expect(page.locator('#ai-chat-status')).to_contain_text('Nothing was automatically retried.')

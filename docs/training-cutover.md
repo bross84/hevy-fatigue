@@ -485,3 +485,14 @@ review should include recent training and bounded previous conversation excerpts
 Verify no plan/workout inputs change. Interrupted responses should be labelled and
 not resent. Physical device, live-provider quality/cost and deployed-data acceptance
 remain separate checks; do not create test Hevy workouts for this feature.
+
+## AI model selector release follow-up (local, 2026-11-05)
+
+After separately authorized publication, use the unchanged latest pull/up workflow.
+This selector refresh has no schema or credential migration. On an existing device,
+confirm its saved model remains selected (as Custom model if no longer a preset).
+Select a budget preset, check its input/output price hint and reload to confirm
+selection persistence. The next review turn should record that exact ID. A new
+browser with no saved preference should default to GPT-6.1 Terra. Provider access
+and actual live costs remain separate checks; no production AI requests were used
+for verification. Existing review evidence/history and workout behavior are retained.

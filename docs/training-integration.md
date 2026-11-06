@@ -331,3 +331,16 @@ credentials or settings are copied into logger storage. AI failure does not bloc
 training. The UI strips executable markup, remote images and unknown reference
 links; supplied references remain clickable. This does not establish factual
 correctness of a model's prose. Review its claims against visible report fields.
+
+## AI model catalog follow-up (local, 2026-11-05)
+
+AI_MODEL_OPTIONS remains a curated static list in the vanilla host page; no new
+runtime catalog dependency or route is introduced. Presets now carry display name
+and base input/output price metadata, checked 2026-11-05 against OpenRouter's
+public catalog. All listed models expose text output and /api/v1/chat/completions.
+The model-price hint updates on both preset and custom changes. Removed/unknown
+saved IDs retain their exact value via the custom field rather than being migrated.
+The new-browser frontend default and backend legacy default are both
+openai/gpt-6.1-terra. Explicit model IDs still take precedence, and saved review
+turns continue recording the actual selected model. No routing or reasoning
+parameter changes, model benchmarks, credential requests or billable tests added.

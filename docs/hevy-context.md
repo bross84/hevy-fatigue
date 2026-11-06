@@ -396,3 +396,20 @@ history. A compact abstract-level reference pack is embedded in the coaching bri
 only supplied reference URLs become clickable in review answers. Text is sanitized,
 but model reasoning and numerical claims still need human review. No live literature
 search, personalized model training or automatic program editing is claimed.
+
+## AI model selector refresh (local, 2026-11-05)
+
+The AI dropdown now uses eight current text-chat IDs verified against the public
+OpenRouter /api/v1/models catalog on 2026-11-05. Budget choices: GPT-6 Luna,
+Claude Haiku 5.5, DeepSeek V4.1 Flash and Qwen3.8 Flash. Balanced choices:
+GPT-6.1 Terra and Gemini 3.8 Flash. Higher-cost choices: GPT-6.1 Sol and
+Claude Sonnet 5.5. These are price/positioning tiers, not measured training-coaching
+rankings. No Pro, batch-only, video/image-generation or experimental presets.
+
+The default for a new browser/unspecified legacy chat request is GPT-6.1 Terra;
+existing localStorage model IDs remain untouched, including removed presets, which
+appear as saved custom selections. The custom-ID input remains available. Selected
+presets show checked-date input/output USD per million tokens; history/reasoning
+and provider rates affect actual charges. No API call or automatic model switch
+is triggered by changing the selector. Keys, databases, review evidence, fatigue
+models, training prescriptions and logger weight controls remain unchanged.

@@ -3778,14 +3778,18 @@ let aiChatConfigured = false;
 let aiChatStreaming = false;
 let aiChatHandlersBound = false;
 
-const AI_DEFAULT_MODEL = 'openai/gpt-4o-mini';
+const AI_DEFAULT_MODEL = 'openai/gpt-6.1-terra';
+// OpenRouter public catalog, checked 2026-11-05. USD per million input/output tokens.
+// Price tiers guide selection; these models have not been ranked on training reviews.
 const AI_MODEL_OPTIONS = [
-  ['anthropic/claude-sonnet-4-5', 'claude-sonnet-4-5'],
-  ['anthropic/claude-haiku-4-5', 'claude-haiku-4-5'],
-  ['openai/gpt-4o', 'gpt-4o'],
-  ['openai/gpt-4o-mini', 'gpt-4o-mini'],
-  ['meta-llama/llama-3.3-70b-instruct', 'llama-3.3-70b'],
-  ['deepseek/deepseek-v3.2', 'deepseek-v3.2'],
+  ['openai/gpt-6.1-terra', 'GPT-6.1 Terra · Balanced', 1, 5],
+  ['openai/gpt-6-luna', 'GPT-6 Luna · Budget', 0.10, 0.50],
+  ['anthropic/claude-haiku-5.5', 'Claude Haiku 5.5 · Budget', 0.10, 0.50],
+  ['deepseek/deepseek-v4.1-flash', 'DeepSeek V4.1 Flash · Budget', 0.045, 0.50],
+  ['qwen/qwen3.8-flash', 'Qwen3.8 Flash · Budget', 0.15, 0.47],
+  ['google/gemini-3.8-flash', 'Gemini 3.8 Flash · Balanced', 0.825, 4.125],
+  ['openai/gpt-6.1-sol', 'GPT-6.1 Sol · Higher cost', 2, 10],
+  ['anthropic/claude-sonnet-5.5', 'Claude Sonnet 5.5 · Higher cost', 2, 10],
 ];
 let aiSelectedModel = localStorage.getItem('ai_preferred_model') || AI_DEFAULT_MODEL;
 
@@ -4319,12 +4323,22 @@ function _renderAIModelField(modelValue = AI_DEFAULT_MODEL) {
         `).join('')}
         <option value="custom" ${selectedValue === 'custom' ? 'selected' : ''}>Custom model…</option>
       </select>
-      <input id="ai-model-custom" class="ai-control" type="text" autocomplete="off" placeholder="e.g. anthropic/claude-3-opus" value="${escHtml(customValue)}" ${selectedValue !== 'custom' ? 'disabled' : ''} style="display: ${selectedValue === 'custom' ? 'block' : 'none'};">
+      <input id="ai-model-custom" class="ai-control" type="text" autocomplete="off" placeholder="e.g. openai/gpt-6.1-terra" value="${escHtml(customValue)}" ${selectedValue !== 'custom' ? 'disabled' : ''} style="display: ${selectedValue === 'custom' ? 'block' : 'none'};">
+      <div class="ai-chat-helper" id="ai-model-price" aria-live="polite"></div>
     </div>
   `;
 
   const select = document.getElementById('ai-model-select');
   const customInput = document.getElementById('ai-model-custom');
+  const showPrice = () => {
+    const choice = AI_MODEL_OPTIONS.find(([id]) => id === aiSelectedModel);
+    const el = document.getElementById('ai-model-price');
+    if (!el) return;
+    el.textContent = choice
+      ? `Listed input $${choice[2]} / output $${choice[3]} per 1M tokens, checked Nov 5, 2026. History and reasoning affect total cost; provider rates can vary.`
+      : 'Saved or custom model preserved. Check its current pricing on OpenRouter.';
+  };
+  showPrice();
   if (select && customInput) {
     select.addEventListener('change', () => {
       const isCustomSelected = select.value === 'custom';
@@ -4334,16 +4348,19 @@ function _renderAIModelField(modelValue = AI_DEFAULT_MODEL) {
         const preservedCustom = !AI_MODEL_OPTIONS.some(([value]) => value === aiSelectedModel) ? aiSelectedModel : '';
         customInput.value = preservedCustom;
         aiSelectedModel = customInput.value.trim();
+        showPrice();
         customInput.focus();
         return;
       }
       aiSelectedModel = select.value;
       localStorage.setItem('ai_preferred_model', aiSelectedModel);
+      showPrice();
     });
 
     customInput.addEventListener('input', () => {
       aiSelectedModel = customInput.value.trim();
       if (aiSelectedModel) localStorage.setItem('ai_preferred_model', aiSelectedModel);
+      showPrice();
     });
   }
 }
