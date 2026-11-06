@@ -434,3 +434,32 @@ fixed/manual weights. Use mocks for fault recovery; verify a normal save/review
 without producing a test Hevy workout. Preserve pending save identities before
 rollback; older images cannot parse new manual-basis review evidence in pending
 requests. Keep the current logger database rather than restoring a stale copy.
+
+## Provisional advice release follow-up (local, 2026-11-05)
+
+Use the existing latest pull/up workflow after authorized publication. This
+follow-up adds three logger-only advisory tables; existing databases, volumes,
+credentials/settings, models, frozen trials and source-selection boundaries are
+unchanged. Finish/export active drafts as usual. Legacy frozen requests remain
+valid without advisory links and must not receive replacement save identities.
+No real-account experiment or extra production test workout is part of release.
+
+Device acceptance: complete a daily check-in, load a fresh planned session, open
+its provisional advice and inspect evidence/date/uncertainty. Accept and Modify
+must only record intent; sets/reps/weights/program must stay unchanged until the
+user edits them. Dismiss collapses repeat similar advice; Not now can be reopened
+on the same record. Reload must retain the recorded decision. Source-off and LS
+on/off weight behavior must remain intact. Advice unavailability must not block
+ordinary logging. Refresh reads recorded decisions, not a fresh evaluation after
+changed inputs. Current evidence is immutable and labelled as such.
+
+During the next normal save, verify one Hevy workout and one journal completion,
+with exact actual dose separate from the chosen intent. Review/Recent should show
+matches/mismatches and only later date-only check-ins in the follow-up window.
+Use disposable mocks for interrupted decision responses, concurrent decisions,
+rejected-identity correction, failed local outcome commit and reconciliation.
+Linked outcome failure leaves local completion pending and must never cause a
+remote repost. Keep current databases and all pending identities on rollback;
+older images do not understand advisory links. Do not restore stale snapshots
+over newer workouts. Physical-device/deployed acceptance of this follow-up is
+pending; local implementation did not restart or deploy production services.

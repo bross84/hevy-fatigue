@@ -14,7 +14,7 @@ import httpx
 from fastapi import HTTPException
 
 from .database import get_db, get_rpe_percentage
-from . import mesocycles, set_log, training_max, soreness, fatigue_trial, stress_service, session_review
+from . import mesocycles, set_log, training_max, soreness, fatigue_trial, stress_service, session_review, session_advice
 from .workout_payload import build_hevy_workout
 from .hevy_client import WorkoutNotSent
 
@@ -104,6 +104,8 @@ def monitoring_status(workout_id, state):
 
 def prepare(entry):
     payload = entry.model_dump(mode='json')
+    if not payload.get('advisory_links'):
+        payload.pop('advisory_links',None)
     if payload.get('prescription') is None:
         payload.pop('prescription', None)
     # Keep pre-upgrade frozen requests byte-equivalent for identity/hash checks.
@@ -129,11 +131,15 @@ def prepare(entry):
         return client_id
     body, rows, completed, rejection = {}, [], None, None
     try:
+        with closing(get_db()) as conn:
+            session_advice.validate_links(conn,entry.advisory_links,entry.client_workout_id,entry.start_time)
         completed = mesocycles.validate_save(entry.planned_session, entry.start_time) if entry.planned_session else None
         body = build_hevy_workout(payload)
         rows = training_max.ts_rows_from_entry(payload, get_rpe_percentage)
     except mesocycles.PlanError as exc:
         rejection = (exc.status, str(exc))
+    except session_advice.AdviceError as exc:
+        rejection = (exc.status, exc.message)
     except ValueError as exc:
         rejection = (422, str(exc))
     if rejection and not entry.client_workout_id:
@@ -176,6 +182,7 @@ def finalize(client_id):
             remote_id = row['hevy_workout_id']
             set_log.record(set_log.rows_from_entry(payload, remote_id), connection=conn)
             session_review.record(payload, remote_id, conn)
+            session_advice.record_outcomes(payload, remote_id, conn)
             training_max.record(json.loads(row['ts_rows']), payload['start_time'], connection=conn)
             if payload.get('planned_session'):
                 mesocycles.complete(mesocycles.PlanLink(**payload['planned_session']), remote_id, payload['start_time'], connection=conn)

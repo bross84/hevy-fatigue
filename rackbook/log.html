@@ -5,6 +5,7 @@
   <script src="/training/static/save-recovery.js"></script>
   <script src="/training/static/draft-transfer.js"></script>
   <script src="/training/static/session-review.js"></script>
+  <script src="/training/static/session-advice.js"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -1709,6 +1710,12 @@
     const checkin = el("div", "movement-soreness");
     renderSoreness(ex, checkin); left.append(checkin);
     const trialBox = el("section"); renderTrial(ex, trialBox); left.append(trialBox);
+    if (typeof SessionAdvice !== 'undefined' && draft) {
+      const adviceBox=el('section'); left.append(adviceBox);
+      adviceBox.setAttribute('data-session-advice',ex.id);
+      adviceBox.setAttribute('aria-label','Session advice for '+ex.title);
+      SessionAdvice.mount(draft,ex,adviceBox,saveDraft,Boolean(draft.soreness?.[sorenessPatterns?.[ex.title]]?.pain));
+    }
     left.append(renderRefBar(ex));
     const stressBox = el("section", "stress");
     stressBox.setAttribute("aria-label", "Stress for " + ex.title);
@@ -1988,6 +1995,7 @@
     const soreness = Object.fromEntries(Object.entries(draft.soreness || {}).filter(([key]) => trained.has(key)));
     return { soreness: Object.keys(soreness).length ? soreness : null, title: draft.title.trim() || "Workout", weight_unit: unit, start_time: draft.startedAt, end_time: new Date().toISOString(), exercises,
       ...(draft.prescription ? { prescription:draft.prescription } : {}),
+      ...(draft.advisory_links?.length ? {advisory_links:draft.advisory_links} : {}),
       ...(draft.planned_session ? { planned_session: draft.planned_session } : {}) };
   }
 

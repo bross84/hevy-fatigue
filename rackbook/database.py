@@ -39,6 +39,21 @@ def init_db() -> None:
                 actual TEXT NOT NULL,
                 review TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS session_advisories (
+                id TEXT PRIMARY KEY, session_id TEXT NOT NULL, exercise_id TEXT NOT NULL,
+                exercise_template_id TEXT NOT NULL, workout_start TEXT NOT NULL, local_date TEXT NOT NULL,
+                created_at TEXT NOT NULL, request TEXT NOT NULL, snapshot TEXT NOT NULL,
+                UNIQUE(session_id, exercise_id)
+            );
+            CREATE TABLE IF NOT EXISTS advisory_decisions (
+                sequence INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE,
+                recommendation_id TEXT NOT NULL REFERENCES session_advisories(id),
+                recorded_at TEXT NOT NULL, request TEXT NOT NULL, record TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS advisory_outcomes (
+                recommendation_id TEXT PRIMARY KEY REFERENCES session_advisories(id),
+                hevy_workout_id TEXT NOT NULL, local_date TEXT NOT NULL, outcome TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS fatigue_trial_snapshots (
                 id TEXT PRIMARY KEY,
                 session_key TEXT NOT NULL,

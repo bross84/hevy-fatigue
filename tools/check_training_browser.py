@@ -28,6 +28,27 @@ with sync_playwright() as p:
     original_prescription=page.evaluate("JSON.parse(localStorage.getItem('training.logDraft')).prescription")
     assert original_prescription['source']=='plan'
     assert original_prescription['exercises'][0]['sets'][1]['reps']==5
+    advice_box=page.locator('[data-session-advice]').first
+    expect(advice_box.locator('summary').first).to_contain_text('Provisional session advice')
+    if advice_box.locator('details').first.get_attribute('open') is None:
+        advice_box.locator('summary').first.click()
+    original_sets=page.evaluate("JSON.parse(localStorage.getItem('training.logDraft')).exercises[0].sets.map(s=>[s.kg,s.reps,s.rpe])")
+    with page.expect_response(lambda r:r.url.endswith('/decisions') and r.request.method=='POST') as deferred:
+        advice_box.get_by_role('button',name='Not now',exact=True).click()
+    assert deferred.value.ok,deferred.value.text()
+    expect(advice_box.locator('summary').first).to_contain_text('not now')
+    advice_box.locator('summary').first.click()
+    advice_box.get_by_role('button',name='Modify',exact=True).click()
+    advice_box.get_by_role('spinbutton',name='Intended working sets for Squat (Barbell)',exact=True).fill('1')
+    with page.expect_response(lambda r:r.url.endswith('/decisions') and r.request.method=='POST') as modified:
+        advice_box.get_by_role('button',name='Record modification',exact=True).click()
+    assert modified.value.ok,modified.value.text()
+    modification=modified.value.json()['decision']
+    assert modification['action']=='modify' and modification['dose']['working_sets']==1
+    assert page.evaluate("JSON.parse(localStorage.getItem('training.logDraft')).exercises[0].sets.map(s=>[s.kg,s.reps,s.rpe])")==original_sets
+    if advice_box.locator('details').first.get_attribute('open') is None:
+        advice_box.locator('summary').first.click()
+    page.screenshot(path=str(out/'session-advice-phone.png'),full_page=True)
     page.evaluate('navigator.serviceWorker.ready')
     scopes=page.evaluate('(async()=> (await navigator.serviceWorker.getRegistrations()).map(r=>r.scope))()')
     assert scopes==[URL+'/training/'],scopes
@@ -120,6 +141,11 @@ with sync_playwright() as p:
     review=page.request.get(URL+'/training/session-reviews/'+saved_result['id']).json()
     assert review['available'],review
     assert review['prescription']==original_prescription
+    follow=review['advisory_outcomes'][0]
+    assert follow['decision']['id']==modification['id']
+    assert follow['intended']['working_sets']==1 and follow['actual']['working_sets']==2,follow
+    assert follow['matched_intended_sets'] is False
+    expect(page.locator('#sessionReview')).to_contain_text('Saved set count differs from recorded intent')
     evidence=review['review']['movements'][0]['sets']
     assert evidence[0]['rpe_source']=='entered' and evidence[1]['rpe_source']=='copied_target',evidence
     page.locator('#sessionReview summary').first.click()

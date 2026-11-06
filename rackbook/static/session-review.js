@@ -37,6 +37,20 @@ const SessionReviewUI = (() => {
       const data=await response.json();
       if(request!==requests.get(box) || !box.isConnected)return;
       box.replaceChildren(node('h2','Session review'));
+      if(data.advisory_outcomes?.length){
+        const follow=node('section');follow.append(node('h3','Recommendation follow-up'));
+        for(const o of data.advisory_outcomes){
+          follow.append(node('h4',o.title),node('p','Recorded decision: '+(o.decision?.action?.replaceAll('_',' ') || 'none')+
+            '. Saved workout: '+amount(o.actual.working_sets)+' working sets, '+amount(o.actual.total_reps)+' reps.'));
+          if(o.actual.decision_after_recorded_set)follow.append(node('p','The decision was recorded after a recorded set completion; it is not treated as prospective adherence.'));
+          if(o.actual.suggestion_after_recorded_set)follow.append(node('p','The suggestion was captured after a recorded set completion; these timestamps do not establish a prospective test.'));
+          if(o.intended)follow.append(node('p','Intended: '+o.intended.working_sets+' working sets'+(o.intended.reps!=null?', '+o.intended.reps+' reps':'')+(o.intended.target_rpe!=null?', RPE '+o.intended.target_rpe:'')+'.'));
+          if(o.matched_intended_sets!=null)follow.append(node('p',o.matched_intended_sets?'Saved set count matches recorded intent. This is not evidence that the advice caused an improvement.':'Saved set count differs from recorded intent; acceptance was not treated as execution.'));
+          if(o.matched_intended_reps!=null)follow.append(node('p',o.matched_intended_reps?'Recorded reps match your modified target.':'Recorded reps differ from your modified target.'));
+          if(o.matched_intended_rpe!=null)follow.append(node('p',o.matched_intended_rpe?'Entered effort ratings match your modified target.':'Entered effort ratings differ from your modified target.'));
+          follow.append(node('p',o.next_checkin?'Next daily check-in in the follow-up window ('+o.next_checkin.date+'): tiredness '+(o.next_checkin.tiredness ?? 'unknown')+'/4; poor recovery '+(o.next_checkin.perceived_recovery ?? 'unknown')+'/4.':'No later daily check-in is available in this follow-up window.'));
+        }box.append(follow);
+      }
       if(!data.available){box.append(node('p',data.reason));return;}
       const review=data.review;
       box.append(node('p',review.prescription_source==='ad_hoc'?'Ad hoc workout: no initial session plan to compare.':'Compared with the prescription captured when this workout was loaded.'));

@@ -541,3 +541,47 @@ preview servers were stopped after verification.
 Publication follow-up (2026-11-05): the user authorized commit/push, opening
 a PR and checking GitHub CI for this change. Merge/publication on main and
 server deployment remain separate actions.
+
+## Provisional session recommendations — 2026-11-05 (local only)
+
+The user authorized building session suggestions, four feedback actions and
+actual-outcome tracking without automatic programming changes. Existing unrelated
+local documentation edits were preserved. No commit, push, publication or server
+deployment occurred. All experiments used temporary databases and mocked Hevy.
+
+| Check | Result |
+| --- | --- |
+| Host/integration | 85 passed. Coverage includes frozen legacy hashes, exact accepted/modified intent versus different actual sets/reps/entered RPE, unchanged input programming, foreign-link rejection before remote I/O, decision locking after freeze, conflict protection, atomic outcome rollback/finalization and one remote post across retries. Advisory metadata is excluded from Hevy requests. |
+| Logging | 495 run, OK with one inherited expected failure. Fifteen new service tests cover immediate check-in-based tentative reductions, missing/stale/future data, history beyond seven workouts, read-only host queries, exact-local precedence, effort confirmation, capacity trends, manual-weight exclusions, immutable snapshots, append-only/idempotent/concurrent decisions, dismissal versus deferral, and later check-ins without rewriting captured evidence. |
+| JavaScript | All 28 files passed. Actual advisory controls exercise Accept/Modify/Dismiss/Not now, unchanged workout prescriptions, recorded modified intent, stable links, no automatic repost after errors and frozen-save behavior. Recovery correction drops links bound to the rejected UUID; failed storage preserves the original identity and links. Existing source-off/LS/TS/TM, low RPE, canonical units, keypad/timers and save confirmation assertions remain intact. |
+| Mocked browsers | Phone 390x844 and desktop 1280x900 passed. The browser records Not now then modified one-set intent, keeps the two-set workout intact, saves once and reports actual two sets differing from intent. Post-save review and Recent retain the linked decision and preserved prescription. Existing recovery/correction/unfinished-transfer flows passed. No unexpected JavaScript errors. |
+| Visual QA | Inspected expanded provisional advice/decision controls on phone and the existing review follow-up. Screenshots remain ignored under artifacts/phase1. |
+| Docker | No local build/start per the user's explicit preference. Container verification remains available in existing GitHub PR CI after authorized publication; no current container result is claimed. |
+| Physical device / deployed data | Not performed for this follow-up. No real Hevy account or production databases were used. |
+
+Initial Windows fixture cleanup failures were corrected by explicitly closing
+stdlib SQLite handles, without weakening behavioral assertions. A repeated
+browser run against an already-completed disposable fixture was reset to a fresh
+mock server rather than changing its expected behavior. Temporary previews were
+stopped after verification. No new unresolved application failure was accepted.
+
+The seven-workout finding: main.py applies .limit(7) only to the dashboard recent
+session list. /api/workouts/recent uses a separate count parameter (default 12).
+Full and incremental import loops already walk through page_count. No import
+history cap was changed. The advisory policy reads up to 90 days of stored local
+and imported exercise history, excludes current/future training, and uses recent
+rep-matched observations under its own explicitly provisional criteria. Missing
+imported history is labelled, not silently treated as an empty training history.
+
+Policy is provisional-session-v1. All thresholds are named product constants,
+not validated personalized limits. Feedback currently adapts repetition through
+dismissal and supplies later evidence; there is no automatic physiological-model
+training or causal effectiveness claim. Advice does not require the legacy
+12-marked-TS gate. Outcomes compare exact acknowledged intent with saved work;
+acceptance alone is never an outcome. Later daily check-ins are read-only view
+context and cannot regenerate historical trial/recommendation snapshots. All
+original host monitoring models, cutoffs and trial timing/records are preserved.
+
+Publication follow-up: the user authorized commit/push, opening a PR and
+checking GitHub CI for this feature. Main merge, image publication and server
+deployment remain separate actions.

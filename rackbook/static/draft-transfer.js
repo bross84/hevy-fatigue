@@ -9,6 +9,8 @@ const DraftTransfer = (() => {
   function inputNumber(x) {return typeof x==='string' && numeric(x);}
   function timestamp(x) {return string(x,100)&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(x)&&Number.isFinite(Date.parse(x));}
   function planLink(x) {assert(object(x)&&string(x.mesocycle_id,100)&&x.mesocycle_id.length>0&&string(x.session_id,100)&&x.session_id.length>0);}
+  function advisoryLinks(x){assert(Array.isArray(x)&&x.length<=100);const seen=new Set();
+    for(const link of x){assert(object(link)&&uuid.test(link.recommendation_id)&&!seen.has(link.recommendation_id)&&(link.decision_id==null||uuid.test(link.decision_id)));seen.add(link.recommendation_id);}}
   function optionalNumber(x,min,max=Infinity) {assert(x==null||(typeof x==='number'&&Number.isFinite(x)&&x>=min&&x<=max));}
   function evidence(x) {
     assert(object(x)&&string(x.set_id,200)&&x.set_id.length>0&&string(x.exercise_id,200)&&x.exercise_id.length>0);
@@ -36,6 +38,7 @@ const DraftTransfer = (() => {
     assert([undefined,null,'kg','lb'].includes(x.weight_unit));
     if(x.planned_session)planLink(x.planned_session);
     if(x.prescription!=null)prescription(x.prescription);
+    if(x.advisory_links!=null)advisoryLinks(x.advisory_links);
     for(const ex of x.exercises){
       assert(object(ex)&&string(ex.exercise_template_id,200)&&ex.exercise_template_id.length>0&&Array.isArray(ex.sets)&&ex.sets.length>0);
       assert([undefined,null,'kg','lb'].includes(ex.weight_unit));if(ex.notes!=null)assert(string(ex.notes));
@@ -59,6 +62,7 @@ const DraftTransfer = (() => {
     if(d.client_workout_id!==undefined)assert(uuid.test(d.client_workout_id));
     if(d.planned_session)planLink(d.planned_session);
     if(d.prescription!=null)prescription(d.prescription);
+    if(d.advisory_links!=null)advisoryLinks(d.advisory_links);
     for(const ex of d.exercises){
       assert(object(ex)&&string(ex.id,200)&&ex.id.length>0&&string(ex.template_id,200)&&ex.template_id.length>0&&string(ex.title,200)&&Array.isArray(ex.sets)&&ex.sets.length<=200);
       if(ex.notes!=null)assert(string(ex.notes));
