@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const page = fs.readFileSync('static/index.html', 'utf8');
 const diagnostic = fs.readFileSync('static/diagnostic.html', 'utf8');
 for (const [name, html] of [['dashboard', page], ['diagnostic', diagnostic]]) {
-  for (const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) new vm.Script(match[1], {filename:name});
+  for (const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)) new vm.Script(match[1], {filename:name});
 }
 function extract(source, name) {
   const start = source.indexOf(`function ${name}(`);
