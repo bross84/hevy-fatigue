@@ -811,3 +811,29 @@ Merge and production deployment remain separate actions.
 PR isolation check: exported only the staged tree to a disposable ignored directory.
 All 29 JavaScript files and the mocked phone/desktop workout browser flow passed
 without logger-layout assets, navigation, rails, loader or drag hooks.
+
+## Dashboard alignment and consistent exercise widths — 2026-11-06
+
+Local verification of the approved follow-up:
+
+- Host: 102 Python tests passed.
+- Logger: 495 Python tests passed, with the one inherited expected failure.
+- JavaScript: all three host checks and all 26 rackbook CJS checks passed.
+- Mocked dashboard browser: equal card widths, matching heights per row,
+  fatigue/readiness placement, card content containment, advisory spanning,
+  700/1100/1900px boundary behavior, themes, real shipped Chart.js rendering,
+  range changes, missing-data gaps, drawer focus/hashes and training links passed.
+  Viewports include 320–2560px; screenshots are in artifacts/dashboard-layout/.
+- Mocked logger browser: six movements/23 sets, equal card edges/widths capped
+  at 880px, compact weight inputs, mixed collapsed/expanded cards, 1100/1900px
+  boundaries, selection, notes, single loader ownership, real drag/reload,
+  preserved weights/UUID/timer and frozen-save protection passed.
+- Existing mocked phone workout/save, recovery and coaching browser checks passed.
+- Local Docker build passed. A network-disabled, read-only container with only
+  temporary /data, /training-data and /tmp passed two startup cycles, health,
+  revised HTML/CSS/JS assets and separate host/logger schema checks. Hevy writes
+  were disabled. No real account or real databases were used.
+
+Physical-device/PWA and deployed-data acceptance were not performed. Publication
+and merge are tracked in the associated PR; no production server update was
+performed by the coding agent.

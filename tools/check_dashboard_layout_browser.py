@@ -14,6 +14,28 @@ OUT = ROOT / 'artifacts/dashboard-layout'
 OUT.mkdir(parents=True, exist_ok=True)
 URL = 'http://127.0.0.1:18130'
 
+
+def check_card_geometry(page, width):
+    cards = page.locator('.dashboard-card').evaluate_all("""els => els.map(el => {
+      const r = el.getBoundingClientRect();
+      return {id:el.id,x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom};
+    })""")
+    by_id = {card['id']: card for card in cards}
+    ready, trend = by_id['dashboard-readiness-card'], by_id['today-readiness-trend-card']
+    assert max(c['width'] for c in cards)-min(c['width'] for c in cards) < 1, (width,cards)
+    if width >= 700:
+        assert abs(ready['y']-trend['y']) < 1, (width,cards)
+        for card in cards:
+            peers = [c for c in cards if abs(c['y']-card['y']) < 1]
+            assert max(c['height'] for c in peers)-min(c['height'] for c in peers) < 1
+        # Content must remain inside its card even when charts resize or labels wrap.
+        assert page.locator('.dashboard-card').evaluate_all("""els => els.every(el =>
+          el.scrollHeight <= el.clientHeight + 2 && el.scrollWidth <= el.clientWidth + 2)"""), width
+    else:
+        assert trend['y'] >= ready['bottom'], cards
+        assert trend['y'] < by_id['dashboard-pattern-card']['y'], cards
+
+
 with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
     server = subprocess.Popen(
         [sys.executable, '-X', 'utf8', '-m', 'uvicorn', 'tools.dashboard_preview:app',
@@ -53,6 +75,7 @@ with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
             page.wait_for_function('todayReadinessChart && _dashboardVfChart && todayPatternFatigueChart')
             assert page.locator('#dashboard-recent-card .recent-session-item').count() == 7
             assert page.evaluate("getComputedStyle(document.querySelector('.dashboard-wrap')).gridTemplateColumns.split(' ').length") == 3
+            check_card_geometry(page, 2560)
             expect(page.locator('#hostSidebar')).to_be_visible()
             assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
             expected = page.request.get(URL + '/api/readiness/combined-history?days=7').json()
@@ -65,18 +88,21 @@ with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
             page.screenshot(path=str(OUT/'dashboard-desktop-2560.png'),animations='disabled')
             page.get_by_role('button',name='8 Weeks',exact=True).last.click()
             expect(page.locator('#dashboard-vf-range-btns [data-dashboard-vf-range="8"]')).to_have_class('btn btn-secondary active')
-            page.wait_for_function('_dashboardVfChart && _dashboardVfChart.canvas.isConnected')
+            page.wait_for_function('_dashboardVfChart && _dashboardVfChart.canvas.isConnected && document.getElementById("dashboard-vf-note").textContent.length > 0')
             page.locator('#theme-toggle [data-theme-btn="light"]').click()
             expect(page.locator('html')).to_have_attribute('data-theme','light')
-            page.wait_for_function('todayReadinessChart && _dashboardVfChart')
+            page.wait_for_function('todayReadinessChart && _dashboardVfChart && _dashboardVfChart.canvas.isConnected && document.getElementById("dashboard-vf-note").textContent.length > 0')
             assert page.evaluate('todayReadinessChart.data.datasets[0].data') == expected_points
             page.screenshot(path=str(OUT/'dashboard-desktop-light.png'),animations='disabled')
             page.locator('#theme-toggle [data-theme-btn="dark"]').click()
 
-            for width, height, columns in [(1920,1080,3),(1500,1000,2),(1280,900,2),
+            for width, height, columns in [(1920,1080,3),(1900,1080,3),(1899,1080,2),(1500,1000,2),(1280,900,2),
+                                            (1100,900,2),(1099,900,2),(700,900,2),(699,900,1),
                                             (1024,768,2),(820,1180,2),(390,844,1),(320,700,1)]:
                 page.set_viewport_size({'width':width,'height':height})
                 page.wait_for_function('(n)=>getComputedStyle(document.querySelector(".dashboard-wrap")).gridTemplateColumns.split(" ").length===n',arg=columns)
+                page.wait_for_timeout(100)
+                check_card_geometry(page, width)
                 assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'), width
                 page.wait_for_function('todayReadinessChart.canvas.getBoundingClientRect().width <= todayReadinessChart.canvas.parentElement.clientWidth + 1')
                 if width < 1100:
@@ -87,8 +113,15 @@ with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
                     page.keyboard.press('Escape')
                     expect(page.locator('#hostMenu')).to_be_focused()
                     assert not page.evaluate("document.querySelector('main').inert")
-                if width in (820,390):
+                if width in (1500,820,390):
                     page.screenshot(path=str(OUT/f'dashboard-{width}.png'),full_page=True,animations='disabled')
+            page.set_viewport_size({'width':1500,'height':1000})
+            page.locator('#today-joint-card').evaluate("el=>{el.style.display='block';el.textContent='Mock joint advisory';}")
+            joint=page.locator('#today-joint-card').bounding_box()
+            grid=page.locator('.dashboard-wrap').bounding_box()
+            assert abs(joint['width']-grid['width']) < 1
+            page.locator('#today-joint-card').evaluate("el=>{el.style.display='none';el.textContent='';}")
+            page.set_viewport_size({'width':390,'height':844})
             page.locator('#hostMenu').click()
             page.locator('#hostSidebar [data-tab="settings"]').click()
             expect(page.locator('#tab-settings')).to_have_class('tab-content active')
@@ -116,7 +149,7 @@ with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
                 assert page.locator(f'#loggerNav a[href="{link}"]').count() == 1, link
             assert not errors, errors
             print(json.dumps({'real_chartjs':'passed','desktop':'2560x1440 three columns',
-                              'tablet_phone':'two/one columns','range_theme_gaps':'preserved',
+                              'tablet_phone':'two/one columns','range_theme_gaps':'preserved','equal_cards_top_row_fatigue':'passed',
                               'drawer_focus_hashes_checkin_training_links':'passed',
                               'browser_errors':errors,'physical_device':'not performed'}))
             browser.close()
