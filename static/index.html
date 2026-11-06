@@ -3338,8 +3338,14 @@ body.ai-open main {
       <label class="ai-settings-label" for="ai-model-select">Model</label>
       <div id="ai-model-field"></div>
     </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+      <button class="btn btn-primary" id="ai-training-review" type="button" onclick="startTrainingReview()">Review my training</button>
+      <select id="ai-conversation-select" aria-label="Saved training reviews" onchange="selectTrainingReview(this.value)" style="min-width:0;max-width:100%;"><option value="">No saved review selected</option></select>
+      <button class="btn" id="ai-review-reload" type="button" onclick="loadCoachingConversations()">Reload saved review</button>
+    </div>
+    <div class="ai-chat-helper" id="ai-evidence-date" style="margin-bottom:8px;">Training context is shared with your selected OpenRouter model when you send a message.</div>
     <div class="ai-chat-top">
-      <div class="ai-chat-helper">Uses your current readiness context from diagnostics snapshot.</div>
+      <div class="ai-chat-helper">Review six months of training, then discuss programming. Changes are proposals only.</div>
       <button class="ai-chat-context-toggle" id="ai-chat-context-toggle" type="button" onclick="toggleAIContextPreview()">show context</button>
     </div>
     <pre class="ai-chat-context-preview" id="ai-chat-context-preview">Loading readiness context...</pre>
@@ -3765,6 +3771,8 @@ let _dashboardVfCustomStart = null;
 let _dashboardVfCustomEnd = null;
 let aiSettingsLocked = false;
 let aiChatHistory = [];
+let aiConversation = null;
+let aiReviewLoading = false;
 let aiReadinessContext = null;
 let aiChatConfigured = false;
 let aiChatStreaming = false;
@@ -4371,7 +4379,9 @@ function _setAIChatConfiguredState(configured) {
   const notice = document.getElementById('ai-chat-unconfigured');
   const sendBtn = document.getElementById('ai-chat-send');
   if (notice) notice.style.display = aiChatConfigured ? 'none' : 'block';
-  if (sendBtn) sendBtn.disabled = !aiChatConfigured || aiChatStreaming;
+  if (sendBtn) sendBtn.disabled = !aiChatConfigured || aiChatStreaming || aiReviewLoading || !!aiConversation?.turns.some(t=>t.status==='pending');
+  const reviewBtn = document.getElementById('ai-training-review');
+  if (reviewBtn) reviewBtn.disabled = !aiChatConfigured || aiChatStreaming || aiReviewLoading;
 }
 
 function _aiFmtText(value) {
@@ -4503,6 +4513,72 @@ function _aiEscapeHtml(str) {
     .replace(/\n/g, '<br>');
 }
 
+function _aiMarkdown(content) {
+  const template = document.createElement('template');
+  template.innerHTML = marked.parse(content || '');
+  const allowed = new Set(['P','BR','STRONG','EM','UL','OL','LI','H1','H2','H3','H4','BLOCKQUOTE','PRE','CODE','HR','TABLE','THEAD','TBODY','TR','TH','TD','A']);
+  const references = new Set((aiConversation?.evidence?.references || []).map(r => r.url));
+  for (const el of [...template.content.querySelectorAll('*')]) {
+    if (!allowed.has(el.tagName)) { el.replaceWith(document.createTextNode(el.textContent)); continue; }
+    const href = el.getAttribute('href');
+    for (const attr of [...el.attributes]) el.removeAttribute(attr.name);
+    if (el.tagName === 'A' && href && /^https?:\/\//i.test(href) && (!aiConversation || references.has(href))) {
+      el.setAttribute('href', href); el.setAttribute('target', '_blank'); el.setAttribute('rel', 'noopener noreferrer');
+    } else if (el.tagName === 'A' && href) { el.append(document.createTextNode(' (unverified link)')); }
+  }
+  return template.innerHTML;
+}
+
+async function coachingJSON(path, options) {
+  const r = await fetch(path, options);
+  const data = await r.json();
+  if (!r.ok) throw Error(_extractApiErrorDetail(data.detail, 'Could not load training review.'));
+  return data;
+}
+
+function renderTrainingReview(view) {
+  aiConversation = view;
+  aiChatHistory = [];
+  _renderAIChatPlaceholder();
+  for (const turn of view.turns) {
+    _appendAIMessage('user', turn.message);
+    if (turn.response) _appendAIMessage('assistant', turn.response);
+    if (turn.status !== 'complete') _appendAIMessage('assistant', 'Recorded response status: '+turn.status+'. This message will not be automatically resent.');
+  }
+  const e = view.evidence;
+  document.getElementById('ai-evidence-date').textContent = 'Evidence captured '+new Date(e.captured_at).toLocaleString()+
+    ' · '+e.coverage.sessions+' sessions · '+e.window.start+' to '+e.window.end+'. Start a new review to include newer training. AI proposals may contain errors; check the evidence and references.';
+  setAIContextPreview(JSON.stringify(e, null, 2));
+  if (view.turns.some(t=>t.status==='pending')) _setAIChatStatus('A response is pending. Reload to check it; start a new review if it remains interrupted. No automatic resend.', true);
+}
+
+async function selectTrainingReview(id) {
+  if (!id || aiChatStreaming || aiReviewLoading) return;
+  aiReviewLoading = true; _setAIChatStreaming(false);
+  try { _setAIChatStatus(''); renderTrainingReview(await coachingJSON('/api/ai/conversations/'+encodeURIComponent(id))); }
+  catch(e) { _setAIChatStatus(e.message, true); }
+  finally { aiReviewLoading = false; _setAIChatStreaming(false); }
+}
+
+async function loadCoachingConversations() {
+  if (aiChatStreaming || aiReviewLoading) return;
+  aiReviewLoading = true; _setAIChatStreaming(false);
+  try {
+    const rows = await coachingJSON('/api/ai/conversations');
+    const select = document.getElementById('ai-conversation-select');
+    select.replaceChildren(new Option('Select a saved review', ''));
+    for (const row of rows) select.add(new Option(new Date(row.created_at).toLocaleString(), row.id));
+    const id = rows.some(r=>r.id===aiConversation?.id) ? aiConversation.id : rows[0]?.id;
+    if (id) { select.value = id; _setAIChatStatus(''); renderTrainingReview(await coachingJSON('/api/ai/conversations/'+encodeURIComponent(id))); }
+  } catch(e) { _setAIChatStatus(e.message, true); }
+  finally { aiReviewLoading = false; _setAIChatStreaming(false); }
+}
+
+async function startTrainingReview() {
+  if (aiChatStreaming || aiReviewLoading || !aiChatConfigured) return;
+  await sendAIMessage('Review my training. Assess the apparent emphasis, progress and uncertainty, whether a change is warranted, and a concrete proposed direction with rationale and alternatives. Ask a focused question if my goal or constraints are missing.', true);
+}
+
 function _appendAIMessage(role, content, streaming = false) {
   const container = document.getElementById('ai-chat-messages');
   if (!container) return null;
@@ -4511,7 +4587,7 @@ function _appendAIMessage(role, content, streaming = false) {
 
   const bubbleContent = role === 'user'
     ? _aiEscapeHtml(content)
-    : (streaming ? _aiEscapeHtml(content || '') : marked.parse(content || ''));
+    : (streaming ? _aiEscapeHtml(content || '') : _aiMarkdown(content));
 
   const wrapper = document.createElement('div');
   wrapper.className = `ai-chat-msg ${role}`;
@@ -4544,6 +4620,7 @@ async function loadAIContext() {
     if (!r.ok) throw new Error(_extractApiErrorDetail(d.detail, 'Could not load readiness context.'));
     aiReadinessContext = _buildAIContextPreviewFromSnapshot(d);
     setAIContextPreview(aiReadinessContext);
+    await loadCoachingConversations();
   } catch (e) {
     aiReadinessContext = null;
     setAIContextPreview('Could not load readiness context.');
@@ -4557,14 +4634,17 @@ function _setAIChatStreaming(active) {
   const sendBtn = document.getElementById('ai-chat-send');
   const clearBtn = document.getElementById('ai-chat-clear');
   if (input) input.disabled = aiChatStreaming;
-  if (sendBtn) sendBtn.disabled = !aiChatConfigured || aiChatStreaming;
+  if (sendBtn) sendBtn.disabled = !aiChatConfigured || aiChatStreaming || aiReviewLoading || !!aiConversation?.turns.some(t=>t.status==='pending');
+  const reviewBtn = document.getElementById('ai-training-review');
+  if (reviewBtn) reviewBtn.disabled = !aiChatConfigured || aiChatStreaming || aiReviewLoading;
   if (clearBtn) clearBtn.disabled = aiChatStreaming;
+  for (const id of ['ai-conversation-select','ai-review-reload']) { const el=document.getElementById(id); if(el) el.disabled=aiChatStreaming || aiReviewLoading; }
 }
 
-async function sendAIMessage() {
+async function sendAIMessage(reviewMessage = null, newReview = false) {
   const input = document.getElementById('ai-chat-input');
-  if (!input || aiChatStreaming || !aiChatConfigured) return;
-  const message = input.value.trim();
+  if (!input || aiChatStreaming || aiReviewLoading || !aiChatConfigured) return;
+  const message = reviewMessage || input.value.trim();
   const model = _getAIModelValue();
   if (!message) return;
   if (!model) {
@@ -4573,20 +4653,26 @@ async function sendAIMessage() {
     return;
   }
 
-  input.value = '';
-  input.style.height = 'auto';
+  if (!reviewMessage) { input.value = ''; input.style.height = 'auto'; }
   _setAIChatStreaming(true);
   _setAIChatStatus('Thinking...');
 
-  _appendAIMessage('user', message);
-  const bubbleEl = _appendAIMessage('assistant', '', true);
+  let bubbleEl = null;
   let assistantText = '';
 
   try {
-    const r = await fetch('/api/ai/chat', {
+    if (newReview || !aiConversation) {
+      const view = await coachingJSON('/api/ai/conversations', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:crypto.randomUUID()})});
+      renderTrainingReview(view);
+      const select = document.getElementById('ai-conversation-select');
+      select.add(new Option(new Date(view.created_at).toLocaleString(), view.id)); select.value = view.id;
+    }
+    _appendAIMessage('user', message);
+    bubbleEl = _appendAIMessage('assistant', '', true);
+    const r = await fetch('/api/ai/conversations/'+encodeURIComponent(aiConversation.id)+'/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, history: aiChatHistory, model }),
+      body: JSON.stringify({id:crypto.randomUUID(), message, model, expected_sequence:aiConversation.turns.length}),
     });
 
     if (!r.ok) {
@@ -4617,35 +4703,38 @@ async function sendAIMessage() {
         }
         try {
           const parsed = JSON.parse(data);
+          if (parsed.error) throw Error(parsed.error.message || 'AI response failed.');
           const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.text || '';
           if (!delta) continue;
           assistantText += delta;
-          if (bubbleEl) bubbleEl.innerHTML = marked.parse(assistantText);
+          if (bubbleEl) bubbleEl.innerHTML = _aiMarkdown(assistantText);
           const container = document.getElementById('ai-chat-messages');
           if (container) container.scrollTop = container.scrollHeight;
-        } catch (_) {
-          continue;
+        } catch (e) {
+          if (!(e instanceof SyntaxError)) throw e;
         }
       }
     }
+    if (!doneReceived) throw Error('Response interrupted. Reload the saved review before continuing.');
 
     if (!assistantText.trim()) {
       assistantText = 'No response content returned.';
     }
     if (bubbleEl) {
       bubbleEl.classList.remove('streaming');
-      bubbleEl.innerHTML = marked.parse(assistantText);
+      bubbleEl.innerHTML = _aiMarkdown(assistantText);
     }
 
-    aiChatHistory.push({ role: 'user', content: message });
-    aiChatHistory.push({ role: 'assistant', content: assistantText });
+    const recorded = await coachingJSON('/api/ai/conversations/'+encodeURIComponent(aiConversation.id));
+    renderTrainingReview(recorded);
+    if (recorded.turns.at(-1)?.status !== 'complete') throw Error('The response did not complete. Its recorded status is shown above.');
     _setAIChatStatus('');
   } catch (e) {
     if (bubbleEl) {
       bubbleEl.classList.remove('streaming');
       bubbleEl.innerHTML = `<span style="color:var(--danger)">Error: ${_aiEscapeHtml(e.message || 'Unknown error')}</span>`;
     }
-    _setAIChatStatus(e.message || 'Chat request failed.', true);
+    _setAIChatStatus((e.message || 'Chat request failed.')+' Reload the saved review before sending again. Nothing was automatically retried.', true);
   } finally {
     _setAIChatStreaming(false);
     if (input) input.focus();

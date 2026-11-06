@@ -292,3 +292,42 @@ and post-save review enrich the frozen training outcome with a read-only later
 check-in; the next check-in may be incomplete and is never treated as zero.
 Future feedback only associates a matched dose with the exact frozen decision,
 not a later unacknowledged decision event. No historical trial is regenerated.
+
+## AI coaching context and conversations (local, 2026-11-05)
+
+Host routes: GET/POST /api/ai/conversations; GET
+/api/ai/conversations/{conversation_id}; POST
+/api/ai/conversations/{conversation_id}/messages. Creation accepts a UUID and
+freezes the report once. Messages accept UUID, message, model and expected_sequence;
+server-side history is authoritative. The legacy /api/ai/chat remains compatible.
+No trainingUrl calls are needed for these host-owned routes; logger paths and
+network-only worker scope remain unchanged.
+
+coaching.py separates evidence and conversation logic from routes. Reports cover
+six calendar months, not seven displayed workouts: exact local records override
+imports by remote workout identity. Role/target/provenance gaps remain explicit.
+Full-window summaries precede limits of 12 recent sessions/preserved prescriptions,
+six raw exposures per movement, 10 saved plans (active first), 40 advisory decision
+rows, and excerpts from three prior reviews/four completed turns. Character limits
+remove older detail with notices, never silently change summary totals; oversized
+remaining summaries fail clearly rather than send a misleading partial assessment.
+Daily observations are date-only. Pretraining soreness is a distinct 0–3 input;
+raw trial input may be read, but predictions/completions are never regenerated.
+
+Host conversation tables remain separate from logger tables. Appends use optimistic
+sequence checking and a short SQLite BEGIN IMMEDIATE transaction, committed before
+provider I/O. Provider responses finalize through a separate short-lived host
+session. Status is complete only after the provider's final marker and successful
+persistence; partial/provider-error/failed-start attempts retain their own statuses.
+Duplicate message IDs, stale sequence and pending messages are rejected before
+provider calls. Lost responses require read-only reload; no automatic replay.
+Crash-left pending turns remain visible; start a new review if they cannot finish.
+New conversations include historical excerpts labelled as unverified prior claims,
+not evidence that suggestions were applied or effective. Stored evidence dates
+never advance silently during a follow-up.
+
+The existing key storage and selected OpenRouter model are reused. No additional
+credentials or settings are copied into logger storage. AI failure does not block
+training. The UI strips executable markup, remote images and unknown reference
+links; supplied references remain clickable. This does not establish factual
+correctness of a model's prose. Review its claims against visible report fields.

@@ -15,10 +15,11 @@ import os
 import threading
 
 from pattern_recovery import build_pattern_history
+import coaching
 
 from recommendations import build_history as build_recommendation_history, RATING_FIELDS
 
-from database import SessionLocal, DailyReadiness, WorkoutLog, WorkoutSession, ExerciseMapping, ExerciseCanonical, ExerciseConflict, AppSetting, init_db
+from database import SessionLocal, DailyReadiness, WorkoutLog, WorkoutSession, ExerciseMapping, ExerciseCanonical, ExerciseConflict, AppSetting, CoachingConversation, CoachingTurn, init_db
 
 from credentials import _encrypt, _decrypt, get_db_api_key as _get_db_api_key
 from rpe_table import get_set_central_stress, get_set_peripheral_stress, seed_rpe_table, calculate_e1rm
@@ -88,6 +89,17 @@ class AIChatRequest(BaseModel):
     message: str
     history: list[AIChatMessage] = []
     model: str = "openai/gpt-4o-mini"
+
+
+class CoachingCreate(BaseModel):
+    id: UUID
+
+
+class CoachingMessage(BaseModel):
+    id: UUID
+    message: str = Field(min_length=1, max_length=12000)
+    model: str = Field(min_length=1, max_length=200)
+    expected_sequence: int = Field(ge=0, le=coaching.MAX_TURNS)
 
 class TrainingStateThresholdsInput(BaseModel):
     tsb_threshold_underloaded: float = Field(8.0, ge=-50.0, le=50.0)
@@ -562,7 +574,7 @@ def _openai_compatible_messages(system_prompt: str, history: list[AIChatMessage]
     return out
 
 
-def _stream_openrouter(model: str, api_key: str, messages: list[dict]) -> StreamingResponse:
+def _stream_openrouter(model: str, api_key: str, messages: list[dict], on_finish=None) -> StreamingResponse:
     client = httpx.Client(timeout=httpx.Timeout(90.0, connect=20.0))
     request = client.build_request(
         "POST",
@@ -591,10 +603,13 @@ def _stream_openrouter(model: str, api_key: str, messages: list[dict]) -> Stream
         raise HTTPException(status_code=502, detail=f"OpenRouter error: {detail}")
 
     def _iter():
+        accumulated = ''
+        finalized = False
+        failed = False
         try:
             buffer = ""
             for chunk in response.iter_text():
-                buffer += chunk
+                buffer += chunk.replace('\r\n', '\n')
                 while "\n\n" in buffer:
                     event, buffer = buffer.split("\n\n", 1)
                     forwarded = False
@@ -603,14 +618,39 @@ def _stream_openrouter(model: str, api_key: str, messages: list[dict]) -> Stream
                             continue
                         raw = line[5:].strip()
                         if raw == "[DONE]":
+                            if on_finish:
+                                on_finish(accumulated, 'complete' if accumulated.strip() and not failed else 'failed')
+                                finalized = True
                             yield "data: [DONE]\n\n"
                             return
+                        if on_finish:
+                            try:
+                                event_data = json.loads(raw)
+                                if event_data.get('error'): failed = True
+                                for choice in event_data.get('choices', []):
+                                    accumulated += choice.get('delta', {}).get('content') or choice.get('text') or ''
+                                    if choice.get('finish_reason') in ('length','content_filter'): failed = True
+                                if len(accumulated)>coaching.MAX_REPLY_CHARS:
+                                    raise ValueError('Response exceeded the saved review limit.')
+                            except json.JSONDecodeError:
+                                failed = True
                         yield f"data: {raw}\n\n"
                         forwarded = True
                     if forwarded:
                         continue
+            if on_finish:
+                on_finish(accumulated, 'interrupted')
+                finalized = True
+                yield 'data: {"error":{"message":"Response interrupted. Reload the saved conversation before continuing."}}\n\n'
             yield "data: [DONE]\n\n"
+        except Exception:
+            yield 'data: {"error":{"message":"Response or persistence failed. Reload the saved conversation; no automatic resend."}}\n\n'
         finally:
+            if on_finish and not finalized:
+                try:
+                    on_finish(accumulated[:coaching.MAX_REPLY_CHARS], 'interrupted')
+                except Exception:
+                    pass  # A pending record remains visible; never claim that it was saved.
             response.close()
             client.close()
 
@@ -2509,6 +2549,67 @@ def ai_chat_proxy(data: AIChatRequest, db: Session = Depends(get_db)):
     history = data.history or []
     messages = _openai_compatible_messages(system_prompt, history, message)
     return _stream_openrouter(model, api_key, messages)
+
+
+@app.get('/api/ai/conversations')
+def coaching_list(db: Session = Depends(get_db)):
+    rows = db.query(CoachingConversation).order_by(CoachingConversation.created_at.desc()).limit(50).all()
+    return [dict(id=r.id,created_at=r.created_at) for r in rows]
+
+
+@app.post('/api/ai/conversations')
+def coaching_create(data: CoachingCreate, db: Session = Depends(get_db)):
+    identity = str(data.id)
+    if not db.get(CoachingConversation, identity):
+        try:
+            snapshot = _build_diagnostics_snapshot(db)
+            monitoring = {k:snapshot[k] for k in ('date','score_source','recommendation_v2','combined_score','training_load','joint_advisory')}
+            evidence = coaching.build_report(db,monitoring_context=monitoring)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        db.add(CoachingConversation(id=identity,created_at=evidence['captured_at'],evidence=coaching.encode(evidence)))
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            if not db.get(CoachingConversation, identity): raise
+    return coaching.conversation(db,identity)
+
+
+@app.get('/api/ai/conversations/{conversation_id}')
+def coaching_read(conversation_id: UUID, db: Session = Depends(get_db)):
+    try:
+        return coaching.conversation(db,str(conversation_id))
+    except LookupError as exc:
+        raise HTTPException(404,str(exc)) from exc
+
+
+@app.post('/api/ai/conversations/{conversation_id}/messages')
+def coaching_send(conversation_id: UUID, data: CoachingMessage, db: Session = Depends(get_db)):
+    api_key = _get_ai_api_key(db)
+    if not api_key: raise HTTPException(422,'AI settings are not configured.')
+    message, model = data.message.strip(), data.model.strip()
+    if not message or not model: raise HTTPException(422,'Message and model must not be blank.')
+    try:
+        view = coaching.conversation(db,str(conversation_id))
+        messages = coaching.messages(view,message)
+        coaching.begin_turn(db,str(conversation_id),str(data.id),message,model,data.expected_sequence)
+    except LookupError as exc:
+        raise HTTPException(404,str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(409,str(exc)) from exc
+
+    def finish(content, status):
+        # Separate short-lived session: provider streaming never holds a database transaction.
+        with SessionLocal() as saved:
+            turn = saved.get(CoachingTurn,str(data.id))
+            turn.response, turn.status = content, status
+            saved.commit()
+    try:
+        return _stream_openrouter(model,api_key,messages,on_finish=finish)
+    except Exception:
+        finish('', 'failed')
+        raise
 
 
 # ── Readiness history ─────────────────────────────────────────────────────────

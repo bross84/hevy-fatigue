@@ -463,3 +463,25 @@ remote repost. Keep current databases and all pending identities on rollback;
 older images do not understand advisory links. Do not restore stale snapshots
 over newer workouts. Physical-device/deployed acceptance of this follow-up is
 pending; local implementation did not restart or deploy production services.
+
+## AI training-review release follow-up (local, 2026-11-05)
+
+No deployment is part of implementation. After separately authorized release, use
+the existing latest-based pull/up workflow and retain both databases/key material.
+Startup adds only host coaching_conversations and coaching_turns tables; no logger
+migration or rewrite of existing workouts, plans, trials or settings is required.
+The old image can ignore the additive tables; preserve current databases and any
+pending workout-save identities during rollback. Never restore stale workout data
+merely to remove AI conversations. Conversation history and evidence are personal
+training data stored with the host database.
+
+On the deployed device, open AI, retain the existing model/key settings and choose
+Review my training. Confirm evidence date/window, known session counts, actual
+movement exposure intervals and unknown historical targets before assessing advice.
+Confirm it distinguishes an inferred phase from a recorded goal. Discuss a goal or
+proposed phase, reload, and reopen the saved review on another device. Both turns
+and original evidence date must survive without another provider request. A new
+review should include recent training and bounded previous conversation excerpts.
+Verify no plan/workout inputs change. Interrupted responses should be labelled and
+not resent. Physical device, live-provider quality/cost and deployed-data acceptance
+remain separate checks; do not create test Hevy workouts for this feature.
