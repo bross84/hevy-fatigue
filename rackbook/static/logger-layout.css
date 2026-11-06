@@ -1,0 +1,96 @@
+/* Compact desktop workspace; mobile set/keypad geometry remains with the logger.
+ * Design study: unslop by Damir Sokolovsky (@heydamir), CC BY 4.0. */
+.workout-log { --bg:#f4f5f6; --card:#fff; --text:#17212b; --muted:#596572; --line:#dbe0e4; --soft:#eef0f3; --accent:#2259ac; --accent-soft:#eaf0fa; }
+@media(prefers-color-scheme:dark) {
+  .workout-log { --bg:#14181d; --card:#1d232a; --text:#edf0f4; --muted:#a8b1bc; --line:#353d46; --soft:#252c34; --accent:#97baff; --accent-soft:#26364c; }
+}
+.logger-nav { display:none; background:var(--card); color:var(--text); border-right:1px solid var(--line); }
+.logger-nav-title { display:flex; align-items:center; justify-content:space-between; padding:16px 12px; font-weight:500; }
+.logger-nav nav { display:grid; gap:4px; padding:0 12px 24px; }
+.logger-nav .logger-nav-group { font-size:12px; color:var(--muted); margin:20px 12px 4px; }
+.logger-nav a { display:flex; align-items:center; min-height:44px; padding:8px 12px; border-radius:8px; color:var(--text); text-decoration:none; font-size:14px; }
+.logger-nav a:hover { background:var(--soft); }
+.logger-nav a[aria-current=page] { background:var(--accent-soft); color:var(--accent); font-weight:500; }
+.logger-nav a[aria-current=page]::after { content:'Current'; margin-left:auto; font-size:12px; font-weight:400; }
+.workout-log .logger-nav .app-nav { display:grid; }
+.workout-log .app-header { grid-template-columns:minmax(0,1fr) auto; }
+.workout-log .header-tools { display:flex; align-items:center; gap:12px; }
+.workout-log #loggerMenu { min-height:44px; }
+.logger-nav.is-open { display:block; position:fixed; inset:0 auto 0 0; width:min(300px,85vw); overflow-y:auto; z-index:21; }
+#loggerNavScrim { position:fixed; inset:0; background:var(--modal-scrim,rgba(0,0,0,.55)); border:0; border-radius:0; z-index:20; }
+.workout-log .page-title h1 { font-size:24px; font-weight:600; letter-spacing:-.02em; }
+.workout-log .eyebrow { font-size:12px; font-weight:400; letter-spacing:0; }
+.exercise-progress { color:var(--muted); font-size:12px; order:4; flex-basis:100%; }
+.logger-help { color:var(--muted); font-size:13px; margin:8px 0; }
+.logger-help summary { cursor:pointer; padding:8px 0; }
+.logger-tools,.logger-session { min-width:0; }
+.logger-session { display:none; }
+.logger-tool-card { margin-bottom:16px; }
+.logger-tool-card h2,.logger-outline-heading { font-size:16px; font-weight:500; margin:0 0 12px; letter-spacing:0; }
+.logger-tools-title { font-size:13px; color:var(--muted); margin:0 0 12px; }
+#loggerNotes { font:inherit; width:100%; min-height:120px; padding:12px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--text); resize:vertical; }
+.logger-notes-label { display:block; font-size:14px; font-weight:500; margin-bottom:12px; }
+#loggerPrevious { max-height:320px; overflow:auto; }
+#loggerPrevious table { width:100%; border-collapse:collapse; font-size:13px; }
+#loggerPrevious caption { text-align:left; padding-bottom:8px; }
+#loggerPrevious th,#loggerPrevious td { border-top:1px solid var(--line); padding:10px 0; text-align:left; font-weight:400; }
+#loggerPrevious td { text-align:right; font-variant-numeric:tabular-nums; }
+.logger-outline-item { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; text-align:left; background:transparent; border-color:transparent; margin:4px 0; }
+.logger-outline-item[aria-current=true] { background:var(--accent-soft); color:var(--accent); }
+.logger-outline-name { min-width:0; overflow-wrap:anywhere; }
+.logger-outline-count { color:var(--muted); font-size:12px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+#loggerProgress { color:var(--muted); font-size:13px; font-variant-numeric:tabular-nums; margin:0 0 12px; }
+@media(min-width:1100px) {
+  .logger-nav { display:block; position:fixed; inset:0 auto 0 0; width:224px; overflow-y:auto; z-index:3; }
+  #loggerCloseMenu,.workout-log #loggerMenu { display:none; }
+  .workout-log main { max-width:none; margin-left:224px; padding:24px 32px 120px; }
+  .workout-log .app-header { margin-bottom:24px; }
+  .workout-log .bar { left:224px; }
+  .workout-log #exercises .card { display:block; max-width:880px; padding:16px; margin-bottom:12px; box-shadow:none; border-radius:12px; }
+  .workout-log .exhead { margin-bottom:12px; }
+  .workout-log .exhead .ex-title { font-size:16px; font-weight:500; }
+  .workout-log .exleft { padding:0; margin:0 0 16px; }
+  .workout-log .tiles { flex-direction:row; max-width:360px; gap:8px; }
+  .workout-log .tile { min-height:60px; padding:8px; }
+  .workout-log .tile .tv { font-size:22px; font-weight:500; letter-spacing:0; }
+  .workout-log .tile .cap { font-size:11px; }
+  .workout-log .cols,.workout-log .set { grid-template-columns:32px 88px 80px 40px 56px 72px 72px 52px 52px 44px; gap:8px; }
+  .workout-log .cols { font-size:12px; }
+  .workout-log .cols,.workout-log .set,.workout-log .setwrap { max-width:768px; }
+  .workout-log .set { min-height:48px; }
+  .workout-log .set input,.workout-log .set .rpebtn { height:44px; min-height:44px; }
+  .workout-log .set .tick { min-height:44px; height:44px; width:44px; border-radius:8px; }
+  .workout-log .setbar { max-width:768px; }
+  .workout-log .exright { overflow-x:auto; }
+  .workout-log .workout-actions { max-width:880px; }
+  .workout-log .sheet { max-width:560px; }
+}
+@media(min-width:1900px) {
+  .logger-nav { width:240px; }
+  .workout-log main { margin-left:240px; padding:32px; }
+  .workout-log .app-header,#msg,#previewNotice,#start,#done,#workout { max-width:1640px; margin-left:auto; margin-right:auto; }
+  #loggerWorkspace { display:grid; grid-template-columns:minmax(0,880px) 336px 300px; gap:24px; align-items:start; }
+  #exercises { min-width:0; grid-column:1; }
+  .logger-tools { grid-column:2; }
+  .logger-session { display:block; grid-column:3; }
+  .logger-tools,.logger-session { position:sticky; top:24px; max-height:calc(100dvh - 48px); overflow-y:auto; }
+  .workout-log #workoutOverview { padding:16px; margin:0 0 16px; }
+  .workout-log #title { font-size:18px; font-weight:500; }
+  .workout-log #workoutOverview .hint { font-size:13px; }
+  .workout-log #exercises .card[data-selected=true] { border-color:var(--accent); }
+  .workout-log .logger-tool-card { padding:16px; border-radius:12px; box-shadow:none; }
+  .workout-log .logger-tools .loader { border:0; padding:0; margin:0; background:transparent; }
+  .workout-log .logger-tools .barfull { max-width:280px; margin:20px auto; }
+  .workout-log .logger-tools .readout { font-size:13px; }
+  .workout-log .logger-session .bar { position:relative; inset:auto; background:transparent; box-shadow:none; padding:16px 0 0; margin-top:16px; }
+  .workout-log .logger-session .bar>div { display:block; }
+  .workout-log .logger-session .rest { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+  .workout-log .logger-session .rest.active { display:flex; }
+  .workout-log .logger-session .resttime { flex-basis:100%; font-size:28px; }
+  .workout-log .logger-session #finish { width:100%; }
+  .workout-log .logger-session .workout-actions { display:grid; grid-template-columns:1fr; gap:8px; margin-top:16px; }
+  .workout-log .logger-session #discard { background:transparent; }
+  .workout-log.typing main,.workout-log.keypad-open main { padding-bottom:32px; }
+  .workout-log.typing .logger-session .bar,.workout-log.keypad-open .logger-session .bar { display:block; }
+}
+@media(prefers-reduced-motion:reduce) { .workout-log *, .workout-log *::before, .workout-log *::after { scroll-behavior:auto!important; } }

@@ -2953,9 +2953,99 @@ body.ai-open main {
   }
 }
 
+/* Approved dashboard workspace. Design study: unslop by Damir Sokolovsky
+   (@heydamir), CC BY 4.0. Existing chart/data behavior is unchanged. */
+[data-theme="dark"] {
+  --bg:#14181d; --card:#1d232a; --card-raised:#252c34;
+  --border:#353d46; --border-mid:#49515b; --text:#edf0f4; --muted:#a8b1bc;
+  --accent:#97baff; --accent-light:#97baff; --accent-sub:#26364c;
+}
+[data-theme="light"] {
+  --bg:#f4f5f6; --card:#fff; --card-raised:#eef0f3;
+  --border:#dbe0e4; --border-mid:#bdc6ce; --text:#17212b; --muted:#596572;
+  --accent:#2259ac; --accent-light:#2259ac; --accent-sub:#eaf0fa;
+}
+.host-workspace { --text-secondary:var(--muted); }
+.host-workspace #host-topbar { display:flex; height:64px; padding:0 16px; gap:12px; }
+.host-workspace #hostMenu,.host-workspace #hostCloseMenu { min-height:44px; padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); font:inherit; cursor:pointer; }
+.host-workspace .bottom-nav,.host-workspace .bottom-sheet,.host-workspace .bottom-sheet-scrim { display:none!important; }
+.host-workspace main { max-width:none; padding:88px 16px 24px; min-width:0; }
+.host-sidebar { display:none; background:var(--card); color:var(--text); border-right:1px solid var(--border); }
+.host-sidebar-title { display:flex; align-items:center; justify-content:space-between; padding:16px 12px; font-size:16px; font-weight:500; }
+.host-sidebar nav { display:grid; gap:4px; position:static; width:auto; height:auto; padding:0 12px 24px; background:transparent; border:0; }
+.host-sidebar .host-nav-group { color:var(--muted); font-size:12px; margin:20px 12px 4px; }
+.host-sidebar a,.host-sidebar button.nav-tab { display:flex; align-items:center; width:100%; min-height:44px; padding:8px 12px; gap:8px; color:var(--text); text-decoration:none; font-size:14px; font-weight:400; text-align:left; border-radius:8px; border:0; background:transparent; cursor:pointer; }
+.host-sidebar a:hover,.host-sidebar button.nav-tab:hover { background:var(--card-raised); }
+.host-sidebar button.nav-tab.active { background:var(--accent-sub); color:var(--accent); font-weight:500; }
+.host-sidebar button.nav-tab.active::after { content:'Current'; margin-left:auto; font-size:12px; font-weight:400; }
+.host-sidebar.is-open { display:block; position:fixed; inset:0 auto 0 0; width:min(300px,85vw); overflow-y:auto; z-index:201; }
+#hostNavScrim { position:fixed; inset:0; z-index:200; background:var(--modal-scrim); border:0; border-radius:0; }
+#hostNavScrim[hidden] { display:none; }
+.dashboard-heading { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:12px; margin:0 0 8px; }
+.dashboard-heading h1 { font-size:24px; font-weight:600; letter-spacing:-.02em; }
+.dashboard-heading time,.dashboard-subtitle { color:var(--muted); font-size:13px; }
+.dashboard-subtitle { margin:0 0 24px; }
+.host-workspace .dashboard-wrap { display:grid; grid-template-columns:minmax(0,1fr); padding:0; gap:16px; align-items:start; }
+.host-workspace .dashboard-sidebar,.host-workspace .dashboard-main,.host-workspace .dashboard-secondary { display:contents; position:static; }
+.host-workspace .dashboard-card { min-width:0; padding:16px; border-radius:12px; box-shadow:none; }
+.host-workspace .dashboard-card-title,.host-workspace .dashboard-card>.card-title { font-size:16px; font-weight:500; text-transform:none; letter-spacing:0; color:var(--text); margin-bottom:16px; }
+.host-workspace .readiness-score { color:var(--text); font-size:40px; font-weight:500; font-variant-numeric:tabular-nums; }
+.host-workspace .readiness-label,.host-workspace .readiness-rec { font-size:14px; }
+.host-workspace .pattern-gauge-name { font-size:13px; font-weight:500; text-transform:none; letter-spacing:0; width:auto; }
+.host-workspace .pattern-gauge-sub-label { font-size:12px; color:var(--muted); }
+.host-workspace .pattern-gauge-status { font-size:12px; width:80px; }
+.host-workspace .pattern-gauge-track { height:6px; border-radius:0; }
+.host-workspace .pattern-gauge-fill { border-radius:0; }
+.host-workspace .pattern-gauge-item { gap:8px; padding:12px 0; }
+.host-workspace .today-grid-note,.host-workspace .today-chart-note { font-size:13px; line-height:1.5; }
+.host-workspace .recent-session-item { padding:12px 0; }
+.host-workspace .recent-session-title { font-size:14px; }
+.host-workspace .recent-session-meta { font-size:12px; }
+.host-workspace .checkin-prompt-banner { background:var(--card); border-color:var(--border); margin:0 0 16px; }
+.host-workspace .checkin-prompt-text { color:var(--muted); }
+.host-workspace .checkin-prompt-btn { border-radius:8px; min-height:44px; }
+.host-workspace .today-chart-empty { padding:24px 8px; min-height:100px; }
+.host-workspace .dashboard-card .today-chart-wrap { height:260px; }
+.host-workspace .dashboard-card .vf-chart-wrap { height:260px; }
+.host-workspace .vf-range-row { flex-wrap:wrap; }
+.host-workspace .vf-range-row .btn,.host-workspace #today-pattern-fatigue-card button { min-height:44px; padding:8px 12px; }
+.host-workspace .btn-secondary.active,.host-workspace .btn-group:not(.theme-group) button.active { color:var(--bg); }
+.host-workspace .today-chart-bands-legend { flex-wrap:wrap; gap:8px 12px; }
+.host-workspace #today-joint-card { min-width:0; order:7; }
+.host-workspace.ai-open main { height:100dvh; padding-top:80px; padding-bottom:16px!important; }
+@media(max-width:767px) {
+  .host-workspace main { padding:88px 16px 24px!important; }
+  .host-workspace.ai-open main { padding:80px 16px 16px!important; }
+}
+[data-theme="dark"] .host-workspace .btn-primary,[data-theme="dark"] .host-workspace .checkin-prompt-btn { color:#10213a; }
+@media(min-width:700px) {
+  .host-workspace main { padding:88px 24px 24px; }
+  .host-workspace .dashboard-wrap { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #today-readiness-trend-card,#today-pattern-fatigue-card,#today-joint-card { grid-column:1/-1; }
+}
+@media(min-width:1100px) {
+  .host-sidebar { display:block; position:fixed; inset:0 auto 0 0; width:224px; overflow-y:auto; z-index:101; }
+  .host-workspace #hostCloseMenu,.host-workspace #hostMenu { display:none; }
+  .host-workspace #host-topbar { left:224px; width:calc(100% - 224px); padding:0 24px; }
+  .host-workspace main { margin-left:224px; padding:88px 24px 24px; }
+}
+@media(min-width:1900px) {
+  .host-sidebar { width:240px; }
+  .host-workspace #host-topbar { left:240px; width:calc(100% - 240px); padding:0 32px; }
+  .host-workspace main { margin-left:240px; padding:96px 32px 32px; }
+  .host-workspace .dashboard-wrap { grid-template-columns:320px minmax(0,1fr) 360px; gap:24px; }
+  .host-workspace .dashboard-sidebar,.host-workspace .dashboard-main,.host-workspace .dashboard-secondary { display:flex; flex-direction:column; gap:24px; min-width:0; }
+  .host-workspace .dashboard-sidebar { grid-column:1; grid-row:1; }
+  .host-workspace .dashboard-main { grid-column:2; grid-row:1; }
+  .host-workspace .dashboard-secondary { grid-column:3; grid-row:1; }
+  .host-workspace .dashboard-card .today-chart-wrap,.host-workspace .dashboard-card .vf-chart-wrap { height:300px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .host-workspace .pattern-gauge-fill,.host-workspace .nav-tab { transition:none; }
+}
 </style>
 </head>
-<body>
+<body class="host-workspace">
 
 <!-- Apply theme before first paint to avoid flash -->
 <script>
@@ -2968,30 +3058,43 @@ body.ai-open main {
 })();
 </script>
 
-<nav>
+<button id="hostNavScrim" type="button" aria-label="Close navigation" hidden></button>
+<aside id="hostSidebar" class="host-sidebar" aria-label="Application navigation">
+  <div class="host-sidebar-title"><span>Hevy-Fatigue</span><button id="hostCloseMenu" type="button">Close</button></div>
+  <nav aria-label="Pages">
+    <span class="host-nav-group">Overview</span>
+    <button class="nav-tab active" data-tab="dashboard" aria-current="page">Dashboard</button>
+    <span class="host-nav-group">Training</span>
+    <a href="/training/log">Log Workout</a>
+    <a href="/training/microcycles">Plans</a>
+    <a href="/training/recent">Recent</a>
+    <a href="/training/progress">Progress</a>
+    <a href="/training/stress">Stress</a>
+    <a href="/training/rpe-charts">RPE Charts</a>
+    <span class="host-nav-group">Monitoring</span>
+    <button class="nav-tab" data-tab="exercise-metrics">Exercises<span id="ex-conflict-badge" class="badge badge-conflict" style="display:none;margin-left:5px;"></span></button>
+    <button class="nav-tab" data-tab="workouts">Workouts<span id="wo-pending-badge" class="badge badge-conflict" style="display:none;margin-left:5px;"></span></button>
+    <button class="nav-tab" data-tab="log">Check-in History</button>
+    <button class="nav-tab" data-tab="exercises">Patterns</button>
+    <span class="host-nav-group">Tools</span>
+    <button class="nav-tab" data-tab="ai">AI Coach</button>
+    <a href="/static/docs.html">Docs</a>
+    <button class="nav-tab" data-tab="settings">Settings</button>
+  </nav>
+</aside>
+<nav id="host-topbar" aria-label="Application controls">
   <a class="logo" href="#" onclick="activateTab('dashboard'); return false;" title="Dashboard">
     <img class="logo-icon-dark" src="/resources/HF_LOGO_DARK.png" alt="Hevy Fatigue">
     <img class="logo-icon-light" src="/resources/HF_LOGO_LIGHT.png" alt="Hevy Fatigue">
   </a>
-  <div class="nav-tabs">
-    <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
-    <a class="nav-tab" href="/training/log">Log Workout</a>
-    <a class="nav-tab" href="/training/microcycles">Plans</a>
-    <button class="nav-tab" data-tab="exercise-metrics">Exercises<span id="ex-conflict-badge" class="badge badge-conflict" style="display:none;margin-left:5px;"></span></button>
-    <button class="nav-tab" data-tab="workouts">Workouts<span id="wo-pending-badge" class="badge badge-conflict" style="display:none;margin-left:5px;"></span></button>
-    <button class="nav-tab" data-tab="ai">AI Coach</button>
-    <button class="nav-tab" data-tab="log">Check-in History</button>
-    <button class="nav-tab" data-tab="exercises">Patterns</button>
-    <a href="/static/docs.html" class="nav-tab">Docs</a>
-    <button class="nav-tab" data-tab="settings">Settings</button>
-  </div>
   <div class="nav-right">
     <div class="btn-group theme-group" id="theme-toggle">
-      <button data-theme-btn="light" title="Light mode">☀ Light</button>
-      <button data-theme-btn="dark"  title="Dark mode">☾ Dark</button>
-      <button data-theme-btn="auto"  title="Follow system">⊙ Auto</button>
+      <button data-theme-btn="light" title="Light mode">Light</button>
+      <button data-theme-btn="dark"  title="Dark mode">Dark</button>
+      <button data-theme-btn="auto"  title="Follow system">Auto</button>
     </div>
   </div>
+  <button id="hostMenu" type="button" aria-controls="hostSidebar" aria-expanded="false">Menu</button>
 </nav>
 
 <!-- ── Bottom nav (mobile) ── -->
@@ -3054,6 +3157,8 @@ body.ai-open main {
 
 <!-- ══════════════ DASHBOARD ══════════════ -->
 <section id="tab-dashboard" class="tab-content active">
+  <div class="dashboard-heading"><h1>Dashboard</h1><time id="dashboardDate"></time></div>
+  <p class="dashboard-subtitle">Today’s check-in and recent training</p>
 
   <!-- Check-in prompt banner (shown when no check-in today) -->
   <div class="checkin-prompt-banner" id="checkin-prompt-banner" style="display:none;">
@@ -3074,16 +3179,20 @@ body.ai-open main {
 
       <!-- Pattern stress card -->
       <div class="dashboard-card" id="dashboard-pattern-card">
-        <div class="dashboard-card-title">Pattern Stress</div>
+        <div class="dashboard-card-title">Pattern stress</div>
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
+    </div>
+
+    <div class="dashboard-secondary">
       <!-- Recent sessions card -->
       <div class="dashboard-card" id="dashboard-recent-card">
-        <div class="dashboard-card-title">Recent Sessions</div>
+        <div class="dashboard-card-title">Recent sessions</div>
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
-
+      <!-- Visible only when the existing model reports a joint advisory. -->
+      <div id="today-joint-card" style="display:none;"></div>
     </div>
 
     <!-- Main chart stack -->
@@ -3107,9 +3216,6 @@ body.ai-open main {
 
     </div>
   </div>
-
-  <!-- Joint advisory (hidden by default, shown when joint scores are elevated) -->
-  <div id="today-joint-card" style="display:none;"></div>
 
 </section>
 
@@ -3795,6 +3901,42 @@ let aiSelectedModel = localStorage.getItem('ai_preferred_model') || AI_DEFAULT_M
 
 // ═══ Bottom nav + bottom sheet ═════════════════════════════════
 
+let hostNavPreviousOverflow = null;
+const hostDesktopNavigation = window.matchMedia('(min-width: 1100px)');
+function setHostMenuOpen(open, restoreFocus = true) {
+  const sidebar = document.getElementById('hostSidebar');
+  const menu = document.getElementById('hostMenu');
+  const wasOpen = menu.getAttribute('aria-expanded') === 'true';
+  sidebar.classList.toggle('is-open', open);
+  menu.setAttribute('aria-expanded', String(open));
+  document.getElementById('hostNavScrim').hidden = !open;
+  document.querySelector('main').inert = open;
+  document.getElementById('host-topbar').inert = open;
+  if (open) {
+    if (hostNavPreviousOverflow == null) hostNavPreviousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.getElementById('hostCloseMenu').focus();
+  } else {
+    if (hostNavPreviousOverflow != null) {
+      document.body.style.overflow = hostNavPreviousOverflow;
+      hostNavPreviousOverflow = null;
+    }
+    if (wasOpen && restoreFocus && !hostDesktopNavigation.matches) menu.focus();
+  }
+}
+document.getElementById('hostMenu').addEventListener('click', () => setHostMenuOpen(true));
+document.getElementById('hostCloseMenu').addEventListener('click', () => setHostMenuOpen(false));
+document.getElementById('hostNavScrim').addEventListener('click', () => setHostMenuOpen(false));
+document.getElementById('hostSidebar').addEventListener('click', event => {
+  if (event.target.closest('a')) setHostMenuOpen(false, false);
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && document.getElementById('hostMenu').getAttribute('aria-expanded') === 'true') setHostMenuOpen(false);
+});
+hostDesktopNavigation.addEventListener('change', () => {
+  if (hostDesktopNavigation.matches) setHostMenuOpen(false, false);
+});
+
 function setBottomSheetOpen(open) {
   document.body.classList.toggle('bottom-sheet-open', open);
 }
@@ -3842,9 +3984,14 @@ const tabIds = new Set(['dashboard','trend','workouts','exercise-metrics','exerc
 window.addEventListener('hashchange', () => activateTab(location.hash.slice(1)));
 function activateTab(tabName) {
   if (!tabIds.has(tabName)) return;
+  setHostMenuOpen(false);
   if (location.hash !== '#' + tabName) history.replaceState(null, '', '#' + tabName);
   setBottomSheetOpen(false);
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+  document.querySelectorAll('#hostSidebar .nav-tab').forEach(t => {
+    if (t.dataset.tab === tabName) t.setAttribute('aria-current', 'page');
+    else t.removeAttribute('aria-current');
+  });
   document.querySelectorAll('.bottom-nav-btn[data-tab]').forEach(b =>
     b.classList.toggle('active', b.dataset.tab === tabName)
   );
@@ -3887,6 +4034,9 @@ document.getElementById('theme-toggle').addEventListener('click', e => {
 
 // ═══ Init ════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async () => {
+  const dashboardDate = document.getElementById('dashboardDate');
+  dashboardDate.dateTime = todayStr();
+  dashboardDate.textContent = new Date().toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'});
   // Sync theme button active state
   const saved = localStorage.getItem('theme') || 'auto';
   document.querySelectorAll('[data-theme-btn]').forEach(b =>
@@ -6951,7 +7101,7 @@ function _renderTodayCards(data, pendingCount) {
     </div>`;
   }).join('');
   document.getElementById('dashboard-pattern-card').innerHTML = `
-    <div class="dashboard-card-title">Pattern Stress</div><div class="pattern-gauge-row">${gauges}</div>
+    <div class="dashboard-card-title">Pattern stress</div><div class="pattern-gauge-row">${gauges}</div>
     <div class="today-grid-note">Load uses training through yesterday and decays on rest days. Soreness shows your latest rating unchanged. Trend retains recent pattern fatigue as recovery improves. Missing or insufficient observations show —.</div>`;
 
   const jointCard = document.getElementById('today-joint-card');
@@ -7003,7 +7153,7 @@ function renderDashboardRecentSessions(payload) {
 
   const sessions = source.slice(0, 7);
   if (!sessions.length) {
-    card.innerHTML = '<div class="dashboard-card-title">Recent Sessions</div><div class="today-chart-empty">No recent sessions found.</div>';
+    card.innerHTML = '<div class="dashboard-card-title">Recent sessions</div><div class="today-chart-empty">No recent sessions found.</div>';
     return;
   }
 
@@ -7023,7 +7173,7 @@ function renderDashboardRecentSessions(payload) {
     `;
   }).join('');
 
-  card.innerHTML = `<div class="dashboard-card-title">Recent Sessions</div>${rows}`;
+  card.innerHTML = `<div class="dashboard-card-title">Recent sessions</div>${rows}`;
 }
 
 async function navigateToSession(hevy_workout_id) {
@@ -7237,7 +7387,7 @@ async function loadTrainingLoadCard() {
     }
     const patternCard = document.getElementById('dashboard-pattern-card');
     if (patternCard) {
-      patternCard.innerHTML = '<div class="dashboard-card-title">Pattern Stress</div><div class="today-chart-empty">Pattern data unavailable right now.</div>';
+      patternCard.innerHTML = '<div class="dashboard-card-title">Pattern stress</div><div class="today-chart-empty">Pattern data unavailable right now.</div>';
     }
     const jointCard = document.getElementById('today-joint-card'); if (jointCard) { jointCard.style.display = 'none'; jointCard.innerHTML = ''; }
   }
