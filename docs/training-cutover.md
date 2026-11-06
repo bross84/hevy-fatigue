@@ -554,3 +554,21 @@ review and inspect motivation_checkins for the saved answer/reason/note. Existin
 AI review evidence must not change silently. Motivation edited after a working set
 was marked complete is labelled as later context. No production test workout is
 needed; live-device/deployed-data acceptance remains pending.
+
+## Dashboard alignment follow-up acceptance (2026-11-06)
+
+This approved local UI follow-up replaces the uneven dashboard column stacks
+with equal-width cards aligned by row and moves Fatigue Trend to the first row
+beside Readiness. It also gives every desktop logger exercise card the same
+capped width without changing compact inputs or the left-hand navigation.
+
+After a separately authorized publication, use the normal latest pull/up workflow
+from the existing server Compose directory; this change needs no server edits,
+SSH work by the coding agent, database migration, key changes or storage reset.
+Retain current databases, keys, drafts and frozen save identities on rollback.
+
+On the actual tablet/PWA and desktop, check equal card edges, aligned row bottoms,
+Fatigue Trend placement, chart readability and menus at the real browser zoom.
+Check long exercise names and mixed expanded/collapsed logger cards, compact set
+inputs, keypad, timer return and rotation. Automation used disposable mock data;
+physical-device and deployed-data acceptance remain pending.

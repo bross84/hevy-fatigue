@@ -484,3 +484,20 @@ one reluctant day as proof of overtraining or a failed block. Only saved workout
 are observed; skipped/discarded workouts are not tracked. Older review evidence
 remains frozen; start a new review after saving to include new answers. No automatic
 programming changes, commits, pushes or deployments are part of this local work.
+
+## Dashboard alignment follow-up (2026-11-06)
+
+The approved follow-up supersedes the dashboard's independent unequal-width
+column stacks above. One grid now aligns equal-width cards by row: two columns
+from 700px, three from 1900px, and one on phones. Readiness and Fatigue Trend
+lead; desktop Recent sessions completes the first row, followed by Pattern
+stress, Volume/Fatigue and Per-Pattern Fatigue Trend. At two columns, Recent
+sessions moves to the third row. Row minimums match the reviewed mockup but
+expand for content; chart canvases resize within their cards. Joint advisories
+span the grid. Existing chart/model values, gaps, ranges and theme behavior stay
+with their existing renderers. Left navigation remains at its existing breakpoints.
+
+Logger exercise cards now explicitly fill a shared column capped at 880px with
+border-box sizing from 1100px. Expanded/collapsed cards share both edges, while
+80px weight columns and the existing compact set grid remain unchanged. On
+smaller screens the original touch/keypad layout is retained.

@@ -410,3 +410,19 @@ The assistant receives the recorded score/reason/note directly, separate from ra
 daily ratings and pre-movement soreness. No new endpoints or external fetches are
 required. Checks compare full monitoring snapshots before/after an answer to verify
 unchanged fatigue output. Save recovery and exact local RPE behavior remain intact.
+
+## Approved dashboard alignment and logger widths (2026-11-06)
+
+Implemented the follow-up mockup after user approval: equal dashboard columns,
+row-aligned cards and Fatigue Trend immediately beside Readiness on tablet and
+desktop (immediately after it on phones). Replaced the three DOM column wrappers
+with one ordered set of the existing cards; IDs, renderers, chart datasets and
+API requests are preserved. Desktop uses three equal columns, tablet/narrower
+desktop two, phone one. Minimum row sizes grow with wrapped content rather than
+clipping it. The advisory remains conditional and spans all columns.
+
+All logger exercise cards explicitly fill the same capped 880px column, including
+mixed expanded/collapsed movements. The left navigation, compact set inputs,
+loader ownership, timers, draft/save identity and training behavior are retained.
+Only layout files, associated browser acceptance checks and release documentation
+were updated in this follow-up. No database or schema migration is introduced.

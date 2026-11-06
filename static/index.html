@@ -2985,9 +2985,9 @@ body.ai-open main {
 .dashboard-heading h1 { font-size:24px; font-weight:600; letter-spacing:-.02em; }
 .dashboard-heading time,.dashboard-subtitle { color:var(--muted); font-size:13px; }
 .dashboard-subtitle { margin:0 0 24px; }
-.host-workspace .dashboard-wrap { display:grid; grid-template-columns:minmax(0,1fr); padding:0; gap:16px; align-items:start; }
+.host-workspace .dashboard-wrap { display:grid; grid-template-columns:minmax(0,1fr); padding:0; gap:16px; align-items:stretch; }
 .host-workspace .dashboard-sidebar,.host-workspace .dashboard-main,.host-workspace .dashboard-secondary { display:contents; position:static; }
-.host-workspace .dashboard-card { min-width:0; padding:16px; border-radius:12px; box-shadow:none; }
+.host-workspace .dashboard-card { min-width:0; padding:16px; border-radius:12px; box-shadow:none; box-sizing:border-box; margin:0; }
 .host-workspace .dashboard-card-title,.host-workspace .dashboard-card>.card-title { font-size:16px; font-weight:500; text-transform:none; letter-spacing:0; color:var(--text); margin-bottom:16px; }
 .host-workspace .readiness-score { color:var(--text); font-size:40px; font-weight:500; font-variant-numeric:tabular-nums; }
 .host-workspace .readiness-label,.host-workspace .readiness-rec { font-size:14px; }
@@ -3018,10 +3018,39 @@ body.ai-open main {
   .host-workspace.ai-open main { padding:80px 16px 16px!important; }
 }
 [data-theme="dark"] .host-workspace .btn-primary,[data-theme="dark"] .host-workspace .checkin-prompt-btn { color:#10213a; }
+/* Row-aligned cards: readiness and fatigue lead at every viewport width. */
+.host-workspace #dashboard-readiness-card { order:1; }
+.host-workspace #today-readiness-trend-card { order:2; }
+.host-workspace #dashboard-pattern-card { order:3; }
+.host-workspace #dashboard-vf-card { order:4; }
+.host-workspace #dashboard-recent-card { order:5; }
+.host-workspace #today-pattern-fatigue-card { order:6; }
 @media(min-width:700px) {
   .host-workspace main { padding:88px 24px 24px; }
-  .host-workspace .dashboard-wrap { grid-template-columns:repeat(2,minmax(0,1fr)); }
-  #today-readiness-trend-card,#today-pattern-fatigue-card,#today-joint-card { grid-column:1/-1; }
+  .host-workspace .dashboard-wrap {
+    grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px;
+    grid-template-rows:minmax(360px,auto) minmax(600px,auto) minmax(540px,auto);
+  }
+  .host-workspace .dashboard-card { display:flex; flex-direction:column; padding:24px; }
+  .host-workspace .dashboard-card .today-chart-wrap,
+  .host-workspace .dashboard-card .vf-chart-wrap {
+    flex:1; min-height:220px; height:auto; position:relative;
+  }
+  .host-workspace .dashboard-card .today-chart-wrap canvas,
+  .host-workspace .dashboard-card .vf-chart-wrap canvas {
+    position:absolute; inset:0; width:100%!important; height:100%!important;
+  }
+  .host-workspace .readiness-score { font-size:64px; margin-top:12px; }
+  .host-workspace .readiness-rec { margin-top:auto; }
+  .host-workspace .today-chart-note { flex:none; margin-top:16px; }
+  .host-workspace .today-chart-legend { margin-bottom:12px; font-size:16px; font-weight:500; }
+  .host-workspace .recent-session-item {
+    flex:1; min-height:0; padding:8px 0; display:flex; flex-direction:column; justify-content:center;
+  }
+  .host-workspace #dashboard-pattern-card .pattern-gauge-row {
+    flex:1; display:flex; flex-direction:column; justify-content:space-between;
+  }
+  .host-workspace #today-joint-card { grid-column:1/-1; }
 }
 @media(min-width:1100px) {
   .host-sidebar { display:block; position:fixed; inset:0 auto 0 0; width:224px; overflow-y:auto; z-index:101; }
@@ -3033,12 +3062,13 @@ body.ai-open main {
   .host-sidebar { width:240px; }
   .host-workspace #host-topbar { left:240px; width:calc(100% - 240px); padding:0 32px; }
   .host-workspace main { margin-left:240px; padding:96px 32px 32px; }
-  .host-workspace .dashboard-wrap { grid-template-columns:320px minmax(0,1fr) 360px; gap:24px; }
-  .host-workspace .dashboard-sidebar,.host-workspace .dashboard-main,.host-workspace .dashboard-secondary { display:flex; flex-direction:column; gap:24px; min-width:0; }
-  .host-workspace .dashboard-sidebar { grid-column:1; grid-row:1; }
-  .host-workspace .dashboard-main { grid-column:2; grid-row:1; }
-  .host-workspace .dashboard-secondary { grid-column:3; grid-row:1; }
-  .host-workspace .dashboard-card .today-chart-wrap,.host-workspace .dashboard-card .vf-chart-wrap { height:300px; }
+  .host-workspace .dashboard-wrap {
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    grid-template-rows:minmax(440px,auto) minmax(600px,auto);
+  }
+  .host-workspace #dashboard-recent-card { order:3; }
+  .host-workspace #dashboard-pattern-card { order:4; }
+  .host-workspace #dashboard-vf-card { order:5; }
 }
 @media(prefers-reduced-motion:reduce) {
   .host-workspace .pattern-gauge-fill,.host-workspace .nav-tab { transition:none; }
@@ -3167,54 +3197,36 @@ body.ai-open main {
   </div>
 
   <div class="dashboard-wrap">
-
-    <!-- Sidebar -->
-    <div class="dashboard-sidebar">
-
-      <!-- Readiness card -->
       <div class="dashboard-card" id="dashboard-readiness-card">
         <div class="dashboard-card-title">Readiness</div>
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
-      <!-- Pattern stress card -->
+      <div class="dashboard-card" id="today-readiness-trend-card">
+        <div class="loading-wrap"><span class="spinner"></span></div>
+      </div>
+
       <div class="dashboard-card" id="dashboard-pattern-card">
         <div class="dashboard-card-title">Pattern stress</div>
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
-    </div>
-
-    <div class="dashboard-secondary">
-      <!-- Recent sessions card -->
-      <div class="dashboard-card" id="dashboard-recent-card">
-        <div class="dashboard-card-title">Recent sessions</div>
-        <div class="loading-wrap"><span class="spinner"></span></div>
-      </div>
-      <!-- Visible only when the existing model reports a joint advisory. -->
-      <div id="today-joint-card" style="display:none;"></div>
-    </div>
-
-    <!-- Main chart stack -->
-    <div class="dashboard-main">
-
-      <!-- Vol-Fatigue correlation -->
       <div class="dashboard-card" id="dashboard-vf-card">
         <div class="dashboard-card-title">Volume · Fatigue</div>
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
-            <!-- 7-Day Readiness Trend -->
-      <div class="dashboard-card" id="today-readiness-trend-card">
+      <div class="dashboard-card" id="dashboard-recent-card">
+        <div class="dashboard-card-title">Recent sessions</div>
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
-      <!-- Per-pattern fatigue -->
       <div class="dashboard-card" id="today-pattern-fatigue-card">
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
-    </div>
+      <!-- Visible only when the existing model reports a joint advisory. -->
+      <div id="today-joint-card" style="display:none;"></div>
   </div>
 
 </section>

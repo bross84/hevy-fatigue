@@ -96,9 +96,20 @@ with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
 
             # Every breakpoint restores controls to their phone/tablet home;
             # no field, canonical weight, timer or UUID is reconstructed.
-            for width, height in [(1920,1080),(1500,1000),(1280,900),(1024,768),(820,1180),(390,844)]:
+            for width, height in [(1920,1080),(1900,1080),(1899,1080),(1500,1000),(1280,900),(1100,900),(1099,900),(1024,768),(820,1180),(390,844)]:
                 page.set_viewport_size({'width': width, 'height': height})
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), width
+                if width >= 1100:
+                    boxes = page.locator('#exercises > .card').evaluate_all("""els => els.map(el => {
+                      const r=el.getBoundingClientRect(); return {x:r.x,width:r.width};
+                    })""")
+                    assert len(boxes) == 6
+                    assert max(b['width'] for b in boxes)-min(b['width'] for b in boxes) < 1, (width,boxes)
+                    assert max(b['x'] for b in boxes)-min(b['x'] for b in boxes) < 1, (width,boxes)
+                    assert max(b['width'] for b in boxes) <= 880, (width,boxes)
+                    # Existing set grid keeps the weight column at 80px.
+                    assert page.locator('#exercises .set input').first.evaluate('(el)=>el.getBoundingClientRect().width') <= 80
+
                 if width < 1900:
                     expect(page.locator('#loggerTools')).to_be_hidden()
                     expect(page.locator('#exercises .loader')).to_have_count(6)
