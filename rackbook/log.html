@@ -7,6 +7,7 @@
   <script src="/training/static/session-review.js"></script>
   <script src="/training/static/session-advice.js"></script>
   <script src="/training/static/session-motivation.js"></script>
+  <script src="/training/static/logger-layout.js"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -394,13 +395,37 @@
     .workout-log.typing main { padding-bottom: 60vh; }
     .workout-log.keypad-open main { padding-bottom: calc(var(--keypad-height, 250px) + 32px); }
   </style>
+  <link rel="stylesheet" href="/training/static/logger-layout.css" />
 </head>
 <body class="workout-log">
+<button id="loggerNavScrim" type="button" aria-label="Close navigation" hidden></button>
+<aside id="loggerNav" class="logger-nav" aria-label="Application navigation">
+  <div class="logger-nav-title"><span>Hevy-Fatigue</span><button id="loggerCloseMenu" type="button">Close</button></div>
+  <nav class="app-nav" aria-label="Pages">
+    <span class="logger-nav-group">Overview</span>
+    <a href="/">Dashboard</a>
+    <span class="logger-nav-group">Training</span>
+    <a href="/training/log" aria-current="page">Log Workout</a>
+    <a href="/training/microcycles">Plans</a>
+    <a href="/training/recent">Recent</a>
+    <a href="/training/progress">Progress</a>
+    <a href="/training/stress">Stress</a>
+    <a href="/training/rpe-charts">RPE Charts</a>
+    <span class="logger-nav-group">Monitoring</span>
+    <a href="/#exercise-metrics">Exercises</a>
+    <a href="/#workouts">Workouts</a>
+    <a href="/#log">Check-in History</a>
+    <a href="/#exercises">Patterns</a>
+    <span class="logger-nav-group">Tools</span>
+    <a href="/#ai">AI Coach</a>
+    <a href="/static/docs.html">Docs</a>
+    <a href="/#settings">Settings</a>
+  </nav>
+</aside>
 <main>
   <header class="app-header">
     <div class="page-heading"><div class="page-title"><span class="eyebrow">Hevy-Fatigue</span><h1>Log Workout</h1></div></div>
-    <div class="header-tools"><span class="units" role="group" aria-label="Weight unit"><button id="unitKg" type="button">kg</button><button id="unitLb" type="button">lb</button></span></div>
-    <nav class="app-nav" aria-label="Pages"><a href="/">Today</a><a href="/training/log" aria-current="page">Log Workout</a><a href="/training/microcycles">Plans</a><a href="/training/recent">Recent</a><a href="/training/progress">Progress</a><a href="/training/stress">Stress</a><a href="/training/rpe-charts">RPE Charts</a><a href="/#settings">Settings</a></nav>
+    <div class="header-tools"><span class="units" role="group" aria-label="Weight unit"><button id="unitKg" type="button">kg</button><button id="unitLb" type="button">lb</button></span><button id="loggerMenu" type="button" aria-controls="loggerNav" aria-expanded="false">Menu</button></div>
   </header>
   <div id="msg"></div>
 
@@ -413,17 +438,27 @@
   </section>
 
   <section id="workout" hidden>
-    <div class="card">
+    <div id="workoutOverview" class="card">
       <input id="title" type="text" aria-label="Workout title" autocomplete="off" />
       <p id="clock" class="muted" style="margin:6px 0 0"></p>
-      <p class="hint">RPErx is the target; RPEact is what you performed. Tap ✓ after the set; if actual is blank, it uses the target. With LSe1RM on, actual RPE adjusts following weights; your completed weight stays fixed.</p>
+      <details class="logger-help"><summary>Rx = target · Actual = performed</summary><p class="hint">RPErx is the target; RPEact is what you performed. Tap ✓ after the set; if actual is blank, it uses the target. With LSe1RM on, actual RPE adjusts following weights; your completed weight stays fixed.</p></details>
       <div id="sessionSoreness" hidden></div>
       <div id="trialDaily" class="hint" hidden></div>
       <div id="sessionMotivation"></div>
       <div id="plannedOrigin" class="hint" hidden></div>
     </div>
+    <div id="loggerWorkspace">
     <div id="exercises"></div>
-    <div class="workout-actions">
+    <aside id="loggerTools" class="logger-tools" aria-label="Selected exercise tools" hidden>
+      <section class="card logger-tool-card"><h2>Plate loader</h2><p id="loggerToolsTitle" class="logger-tools-title"></p><div id="loggerLoader"></div></section>
+      <section class="card logger-tool-card"><h2>Previous performance</h2><div id="loggerPrevious"></div></section>
+      <section class="card logger-tool-card"><label for="loggerNotes" class="logger-notes-label">Exercise notes</label><textarea id="loggerNotes" rows="4" placeholder="Add a note for this exercise"></textarea></section>
+    </aside>
+    <aside id="loggerSession" class="logger-session" aria-label="Workout controls">
+      <section class="card logger-tool-card"><h2 class="logger-outline-heading">This workout</h2><p id="loggerProgress" aria-live="polite"></p><div id="loggerOutline"></div></section>
+    </aside>
+    </div>
+    <div id="workoutActions" class="workout-actions">
       <button id="addEx" type="button">Add exercise</button>
       <button id="discard" type="button">Discard workout</button>
     </div>
@@ -592,6 +627,7 @@
     try { localStorage.setItem(KEY, JSON.stringify(draft)); } catch (e) {}
     if (draft) draft.exercises.forEach((ex) => { refreshE1rm(ex); refreshLoader(ex); });
     if (draft) new Set(draft.exercises.map((ex) => ex.template_id)).forEach(queueStress);
+    if (typeof LoggerLayout !== 'undefined') LoggerLayout.update();
   }
   function saveMotivationDraft() {
     // Coaching context must not trigger trial capture, stress refresh or weight calculations.
@@ -736,6 +772,7 @@
   function show(name) {
     for (const id of ["start", "workout", "done"]) $(id).hidden = id !== name;
     $("bar").hidden = name !== "workout";
+    if (typeof LoggerLayout !== 'undefined' && name !== 'workout') LoggerLayout.update();
     if (name === "workout") keepAwake(); else if (wake) { wake.release(); wake = null; }
     window.scrollTo(0, 0);
   }
@@ -922,9 +959,11 @@
   function refreshCard(ex) {
     const old = cardEls.get(ex.id);
     if (!old || !old.isConnected) return;
+    if (typeof LoggerLayout !== 'undefined') LoggerLayout.release(ex.id);
     const fresh = renderExercise(ex);
     old.replaceWith(fresh);
     cardEls.set(ex.id, fresh);
+    if (typeof LoggerLayout !== 'undefined') LoggerLayout.update();
   }
 
   async function loadTs(ex) {
@@ -1321,6 +1360,7 @@
 
   function renderWorkout() {
     closeNumberPad();
+    if (typeof LoggerLayout !== 'undefined') LoggerLayout.release();
     const stay = !$("workout").hidden, y = window.scrollY;   // redrawing the workout you are already on keeps your place
     show("workout");
     $("title").value = draft.title;
@@ -1337,6 +1377,7 @@
     for (const ex of draft.exercises) { const card = renderExercise(ex); cardEls.set(ex.id, card); list.append(card); }
     for (const id of new Set(draft.exercises.map(ex => ex.template_id))) paintStress(id);
     tickClock();
+    if (typeof LoggerLayout !== 'undefined') LoggerLayout.update();
     if (stay) window.scrollTo(0, y);
   }
 
@@ -1476,7 +1517,8 @@
   }
   function renderLoader(ex) { const box = el("div", "loader"); fillLoader(ex, box); return box; }
   function refreshLoader(ex) {
-    const card = cardEls.get(ex.id), box = card && card.querySelector(".loader");
+    const card = cardEls.get(ex.id), box = (card && card.querySelector(".loader")) ||
+      (typeof LoggerLayout !== 'undefined' && LoggerLayout.loaderFor(ex.id));
     if (box) fillLoader(ex, box);
   }
   function pickLoadSet(ex) {
@@ -1573,8 +1615,15 @@
       const r = card.getBoundingClientRect(), mid = r.top + r.height / 2;
       const prev = card.previousElementSibling, next = card.nextElementSibling;
       const mid_of = (n) => { const b = n.getBoundingClientRect(); return b.top + b.height / 2; };
-      if (prev && mid < mid_of(prev)) { prev.before(card); place(); }
-      else if (next && mid > mid_of(next)) { next.after(card); place(); }
+      let moved = false;
+      if (prev && mid < mid_of(prev)) { prev.before(card); moved = true; }
+      else if (next && mid > mid_of(next)) { next.after(card); moved = true; }
+      if (moved) {
+        // Reparenting releases pointer capture in browsers; retain the same drag
+        // so pointerup still commits the displayed order to the draft.
+        try { grip.setPointerCapture(id); } catch (err) { /* optional pointer API */ }
+        place();
+      }
     };
     const tick = () => {   // scroll the page while the card is held near the top or bottom edge
       raf = 0;
@@ -1851,6 +1900,7 @@
     right.append(setbar);
     right.append(renderLoader(ex));
     updateCollapse();
+    if (typeof LoggerLayout !== 'undefined') LoggerLayout.decorate(card, ex);
     return card;
   }
 
@@ -2041,6 +2091,7 @@
     saving = true; $("finish").disabled = true; $("finish").textContent = "Saving…"; say("");
     try {
       entry = WorkoutSave.freeze(workoutBeingSaved, entry);
+      if (typeof LoggerLayout !== 'undefined') LoggerLayout.update();
       if (typeof SessionMotivation !== 'undefined') SessionMotivation.mount(workoutBeingSaved,$("sessionMotivation"),saveMotivationDraft);
       const saved = await api("/hevy/workouts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(entry) });
       if (draft !== workoutBeingSaved) return;
@@ -2302,6 +2353,10 @@
   });
 
   // ── Boot ────────────────────────────────────────────────────────────────────
+  if (typeof LoggerLayout !== 'undefined') LoggerLayout.init({
+    getDraft: () => draft, getCard: id => cardEls.get(id), save: saveDraft,
+    render: renderWorkout, unitFor, format: trim,
+  });
   window.addEventListener('pageshow',async event=>{
     if(!event.persisted)return;
     await loadTrialPreference();

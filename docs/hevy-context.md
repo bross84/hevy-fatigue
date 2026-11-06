@@ -414,6 +414,51 @@ and provider rates affect actual charges. No API call or automatic model switch
 is triggered by changing the selector. Keys, databases, review evidence, fatigue
 models, training prescriptions and logger weight controls remain unchanged.
 
+## Compact logger workspace (local, 2026-11-06)
+
+The approved logger design is implemented in `rackbook/log.html` with view-only
+`static/logger-layout.js` and `static/logger-layout.css`. Navigation stays on the
+left from 1100px; narrower screens use the same grouped links in a keyboard-
+dismissible drawer. From 1900px the workspace has compact set columns, selected
+exercise tools and a workout outline/control rail, capped at 1640px of content.
+The rails stay available while scrolling; phone/tablet retain the existing set,
+keypad and fixed timer/save controls. Dashboard/other pages are outside this pass.
+
+The outline opens a collapsed exercise only on explicit selection. Existing manual
+collapse/completion behavior is preserved; finishing all sets does not auto-collapse.
+Selection is transient and scoped by exercise instance ID, including duplicate
+template IDs. Notes edit existing `ex.notes`; frozen drafts disable the new editor.
+Previous performance reads the existing reference cache without additional APIs.
+The same live loader/timer nodes move between panes at breakpoints; ownership checks
+prevent duplicates after card replacement. Grip drags reacquire pointer capture
+after DOM moves so release persists the displayed order. UUIDs, frozen payloads,
+TS/TM, canonical completed weights and monitoring/trial rules are unchanged.
+
+Validation uses disposable previews only. See training-verification.md for the
+six-exercise/23-set regression and remaining physical-device checks. This is local
+implementation, not a commit, push, publication or production deployment.
+
+## Dashboard workspace (local, 2026-11-06)
+
+The approved dashboard layout is implemented entirely inside `static/index.html`,
+retaining the host's single-file vanilla-JavaScript boundary. It uses the logger's
+grouped left navigation and matching neutral/blue palette. Navigation is persistent
+from 1100px (224px rail, 240px from 1900px); phone/tablet use a drawer with focus,
+Escape/scrim dismissal and inert background content. Host buttons still use the
+existing allowlisted tab/hash activation; logging links remain under `/training`
+and Settings remains `/#settings`. The obsolete mobile bottom bar is hidden.
+
+At 1900px and above, independent columns place readiness/pattern stress on the
+left, the existing chart stack in the center and recent sessions/joint advisories
+on the right. Tablet is a two-column grid; phone is a single stack. Original card
+IDs, chart controls, dates, check-in form, theme preference, ranges, seven-session
+display limit, score sources and missing-data gaps are retained. No backend/model,
+history window, same-day cutoff, frozen trial or database changes belong to this
+UI pass. `tools/check_dashboard_layout_browser.py` checks actual shipped Chart.js
+against synthetic, temporary host records with mocked Hevy. No real account or
+deployed data is used; see training-verification.md for evidence and test-harness
+correction. Commit/push/publication/deployment are separate actions.
+
 ## Session motivation for coaching (local, 2026-11-06)
 
 The logger has one optional session-level pre-training question: Eager (0),

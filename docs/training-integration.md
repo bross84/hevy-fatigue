@@ -345,6 +345,46 @@ openai/gpt-6.1-terra. Explicit model IDs still take precedence, and saved review
 turns continue recording the actual selected model. No routing or reasoning
 parameter changes, model benchmarks, credential requests or billable tests added.
 
+## Logger workspace follow-up (local, 2026-11-06)
+
+`logger-layout.js` is a view controller over the existing logger. It receives draft,
+card and save/render callbacks; it owns no calculation, database or remote-save
+logic. Desktop uses instance-scoped selection, compact set inputs, previous cached
+performance, existing exercise notes and an outline. The real loader and timer/save
+controls are reparented, not cloned, and returned before redraw or narrower layouts.
+The wide layout starts at 1900px to leave room for the 768px set table and two tool
+rails. The grouped left navigation starts at 1100px; mobile retains touch geometry.
+All existing training links/assets remain under `/training`; host destinations use
+allowlisted hashes, including `/#settings`. No new frontend dependency is required.
+
+`tools/check_logger_layout_browser.py` starts/stops its own mocked temporary app
+on 127.0.0.1:18129. It loads six browser-local movements/23 sets, including repeated
+template IDs, and verifies notes, loader replacement/selection, canonical weights,
+Rx/actual completion, timer/UUID continuity across 390–2560px, real grip reordering
+and reload. No Hevy workout is created by that check. The existing save/recovery
+acceptance scripts still verify remote-mock publication and local finalization.
+The design study retains unslop attribution in the stylesheet (Damir Sokolovsky,
+@heydamir, CC BY 4.0). No release/deployment action is part of this follow-up.
+
+## Dashboard navigation/layout follow-up (local, 2026-11-06)
+
+The host's `static/index.html` now shares the logger's grouped left-navigation
+design while retaining native host tab/hash handlers. The dashboard has three
+independent columns at desktop widths >=1900px, a two-column tablet grid and a
+single phone stack. Existing canvas/card nodes stay owned by their original
+renderers; CSS changes their layout rather than copying or rebuilding charts.
+All six dashboard cards and conditional joint advisories remain. The current-date
+heading, sentence-case labels, calmer palette and 44px chart controls complete the
+approved visual pass. Host Settings/AI/history and training navigation remain
+accessible through the drawer or fixed rail; model and save logic are unchanged.
+
+The new `tools/dashboard_preview.py` imports `tools.preview_app` before database
+models and asserts that the SQLAlchemy bind matches the disposable DB_PATH.
+`tools/check_dashboard_layout_browser.py` starts/stops this fixture on port 18130,
+uses the shipped Chart.js in place of its matching CDN import, and verifies actual
+canvas rendering, gaps, range/theme controls, responsive navigation and logger
+links. No new runtime dependency, bundler, provider call or production action.
+
 ## Motivation check-in contract (local, 2026-11-06)
 
 WorkoutEntry adds optional motivation: strict integer level 0..4, optional reason

@@ -683,6 +683,86 @@ Publication follow-up: the user authorized committing/pushing the model selector
 refresh, opening a PR and checking GitHub CI. Merge and deployment remain separate
 actions; unrelated local deployment/documentation edits are excluded.
 
+## Approved dashboard layout — local verification, 2026-11-06
+
+Changed the host page/navigation only; logger/model/save behavior and unrelated
+edits were preserved. The preceding task supplied a passing baseline; this pass
+again verified 102 host tests, 495 logger tests (one inherited expected failure),
+and all 29 `tests/*.cjs`/`rackbook/tests/*.cjs` files without weakening assertions.
+
+Browser evidence:
+
+- `tools/check_dashboard_layout_browser.py`: actual shipped Chart.js, populated
+  temporary history with an intentional gap, exact API-to-chart smoothed values,
+  spanGaps=false, real ranges/themes, 2560x1440 three-column layout, tablet two
+  columns, phone one column, 320–2560px overflow checks, drawer focus/Escape/inert
+  restoration, persistent Settings hash, unchanged check-in prompt/form, and
+  matching host-to-logger navigation passed with no browser errors.
+- `tools/check_coaching_browser.py`: mocked saved reviews, follow-ups, model
+  selection, sanitization and interrupted-response recovery passed at 390/1280px.
+- Existing training/save/recovery and six-exercise logger browser tools passed,
+  including one mocked completed save/plan completion, frozen recovery, notes,
+  loader selection, reordering and responsive timer/UUID/weight preservation.
+- Local Docker build and isolated, network-disabled startup verification cover
+  the final page and existing `/training` assets/write guards. No image publication
+  or production container/volume/configuration change is part of this pass.
+
+Test-harness correction: the first dashboard fixture imported database models
+before setting temporary paths and created a local fixture file. A read-only audit
+found exactly its 30 generated check-ins, 10 mock sessions and 120 mock sets, zero
+nonfixture sessions/sets and no coaching conversations. It was preserved under
+ignored `artifacts/dashboard-layout/initial-fixture.db`, not left at the default
+DB path. The helper now imports the temporary preview first and asserts the actual
+SQLAlchemy bind matches DB_PATH before startup. Subsequent runs leave no root
+database and use only disposable synthetic data. No real Hevy/provider call was
+made. Old mobile bottom-nav CSS conflicts were corrected before final acceptance.
+
+Screenshots/logs are ignored artifacts under `artifacts/dashboard-layout/` and
+`artifacts/dashboard-*.log`. Physical tablet/PWA, deployed-data and real-account
+acceptance remain unperformed. No commit, push, publication or deployment by this
+task. Prior authorization/history below belongs to its respective follow-up.
+
+## Approved logger layout — local verification, 2026-11-06
+
+Implemented only the approved logger/workspace and its navigation, preserving the
+host dashboard and concurrent motivation work. Baseline: 97 host tests and 495
+logger tests passed (one inherited expected failure); all then-existing requested
+JS checks passed. A transient startup annotation error appeared while another chat
+was editing motivation; that chat corrected it before final verification. It is
+not recorded as a baseline logger failure. A repeated save-flow check against an
+already-consumed mock plan was rerun against fresh disposable preview databases.
+
+Final checks on the combined checkout:
+
+- `python -X utf8 -m unittest discover -s tests`: 102 passed.
+- `python -X utf8 -m unittest discover -s rackbook/tests -t .`: 495 passed,
+  including the inherited expected failure.
+- Every `tests/*.cjs` and `rackbook/tests/*.cjs`: 29 files passed, retaining
+  all existing behavioral assertions.
+- `python -X utf8 tools/check_training_browser.py`: phone/desktop keypad,
+  Rx/actual, weight-source toggles, timer/reload, one mocked remote save and one
+  plan completion passed; no imported logger browser errors.
+- `python -X utf8 tools/check_training_recovery_browser.py`: durable rejection,
+  explicit correction, model validation, reconciliation/finalization and editor
+  transfer passed; no browser errors.
+- `python -X utf8 tools/check_logger_layout_browser.py`: six movements/23 sets,
+  repeated template identities, 80px weight inputs at 2560x1440, simultaneous open
+  exercises, independent notes, card/loader replacement, responsive reparenting,
+  canonical weights, timer/UUID continuity, menu focus/Escape, real grip reorder
+  and reload passed across 390–2560px; no browser errors. The check exposed/fixed
+  lost pointer capture on DOM reorder and stale detached-loader ownership.
+- Local `docker build -t hevy-fatigue:logger-layout-local .` passed. An isolated
+  `--network none --read-only` run with temporary `/tmp`, `/data` and
+  `/training-data` verified repeated startup, new logger assets, separate schemas,
+  `/training/` worker scope, write rejection and zero save journals. No production
+  container, volume, account, credential or database was used.
+
+Logs/screenshots are local ignored artifacts under `artifacts/`, including
+`logger-layout/logger-desktop-2560.png`. Host charts in browser acceptance have
+their external CDNs intentionally blocked; this does not verify those charts.
+Physical tablet/PWA/alarms/wake-lock and deployed-data checks remain unperformed.
+No commit, push, image publication, deployment or production restart occurred.
+
 ## Session motivation check-in — local verification, 2026-11-06
 
 Completed the optional session-level motivation question/reason/note and AI review

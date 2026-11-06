@@ -497,6 +497,46 @@ browser with no saved preference should default to GPT-6.1 Terra. Provider acces
 and actual live costs remain separate checks; no production AI requests were used
 for verification. Existing review evidence/history and workout behavior are retained.
 
+## Dashboard release acceptance (local, 2026-11-06)
+
+After a separately authorized release, verify the host at 2560x1440: the left
+navigation matches Log Workout; readiness/pattern stress, central charts and recent
+sessions occupy independent columns. Verify tablet two-column and phone one-column
+layouts, drawer close/Escape, Settings/AI/history hashes, and host-to-training links.
+Check Light/Dark/Auto, tonnage/RPE load/set-count and chart ranges without losing
+the actual data. Confirm missing check-ins remain gaps/unknown and joint warnings
+remain visible when the existing model supplies them. The original check-in form
+and its automatic prompt remain unchanged.
+
+Test physical PWA safe areas, touch controls, rotation, chart interaction and a
+normal check-in separately; automated desktop-browser evidence does not satisfy
+device acceptance. No storage/schema migration or draft clearing is required.
+Rollback restores the prior host page while retaining both databases, keys,
+training UUIDs and frozen save payloads. No production restart, publication or
+deployment is authorized by this local implementation.
+
+## Compact logger release acceptance (local, 2026-11-06)
+
+Implementation/testing is local only. Do not publish, deploy or restart production
+as part of this change. After separately authorized release, confirm the new
+`/training/static/logger-layout.js` and `.css` are served with the logger; the
+network-only `/training/` worker requires no cache/storage migration. Keep existing
+drafts/localStorage intact, especially UUIDs and frozen/uncertain saves.
+
+On the 2560x1440 desktop, verify left navigation, compact set columns, exercise
+outline and selected loader/history/notes. Open multiple exercises, select two
+instances of the same movement, edit a note, drag an exercise and reload. Confirm
+order, notes and the same save identity survive. At tablet/phone widths, verify
+the original controls return once, with no duplicate/missing loaders. Check drawer
+close/Escape, touch keypad and Next, units, TS/TM, Rx/actual, and timer continuation
+after rotating/resizing/returning to the PWA. These physical-device checks remain
+pending; browser automation is separate evidence. Use the next normal workout for
+real-save acceptance, never a test Hevy workout.
+
+There is no logger schema migration in this UI pass. If reverting its code, retain
+both databases, keys and existing drafts/frozen save payloads; follow the existing
+post-write rollback rules rather than clearing storage or reposting an attempt.
+
 ## Motivation check-in release follow-up (local, 2026-11-06)
 
 After separately authorized release, keep the latest pull/up update workflow.
