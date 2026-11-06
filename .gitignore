@@ -3,3 +3,7 @@
 __pycache__/
 .venv/
 .claude/
+# Private offline history exports and replay reports
+data/analysis/
+*.log
+artifacts/

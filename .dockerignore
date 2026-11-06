@@ -5,3 +5,8 @@ __pycache__/
 .git/
 .claude/
 *.pyc
+data/analysis/
+*.log
+artifacts/
+# Operator configuration/checks are tracked separately from application images.
+deploy/

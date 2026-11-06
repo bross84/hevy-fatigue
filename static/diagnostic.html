@@ -657,6 +657,10 @@ async function fetchSessionsList(days) {
       `;
     }
 
+    function escHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
     function _fmtNumber(value, decimals = 2) {
       if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
       return Number(value).toFixed(decimals);
@@ -686,7 +690,7 @@ async function fetchSessionsList(days) {
       const objScore = combined?.objective_score;
       const combinedScore = combined?.combined_score;
       const noCheckinNote = !snapshot?.checkin_exists
-        ? '<div class="placeholder" style="margin-bottom:1rem;">No check-in recorded today. Subjective input fields are unavailable; engine is using neutral fallback for subjective score.</div>'
+        ? '<div class="placeholder" style="margin-bottom:1rem;">No check-in recorded today. Subjective input fields are unavailable; Continue Training as Normal. Insufficient data to recommend a change.</div>'
         : '';
 
       const checkinRaw = subj?.raw || {};
@@ -696,8 +700,11 @@ async function fetchSessionsList(days) {
       const jointStateLower = joint?.state?.lower || {};
 
       const scoreRows = `
-        <div class="detail-row"><span class="detail-label">Subjective</span><span class="detail-value">((0.45 × ${_fmtNumber((checkinRaw?.tiredness ?? 0) / 4, 2)}) + (0.30 × ${_fmtNumber((checkinRaw?.perceived_recovery ?? 0) / 4, 2)}) + (0.25 × ${_fmtNumber((sorenessTotal ?? 0) / 16, 2)})) × 10 = ${_fmtNumber(subj?.subjective_score_from_checkin, 2)}</span></div>
-        <div class="detail-row"><span class="detail-label">Objective</span><span class="detail-value">(${_fmtNumber(obj?.ratio, 3)} × 5.00) = ${_fmtNumber(obj?.objective_score, 2)}</span></div>
+        <div class="detail-row"><span class="detail-label">Recommendation</span><span class="detail-value">${escHtml(snapshot?.recommendation_v2?.training_state_label || 'Continue Training as Normal')}</span></div>
+        <div class="detail-row"><span class="detail-label">Context</span><span class="detail-value">${escHtml(snapshot?.recommendation_v2?.training_state_detail || '')}</span></div>
+        <div class="detail-row"><span class="detail-label">Fatigue Trend</span><span class="detail-value">${_fmtNumber(snapshot?.recommendation_v2?.smoothed_score, 2)}</span></div>
+        <div class="detail-row"><span class="detail-label">Subjective</span><span class="detail-value">((0.45 × ${_fmtNumber((checkinRaw?.tiredness ?? 0) / 4, 2)}) + (0.30 × ${_fmtNumber((checkinRaw?.perceived_recovery ?? 0) / 4, 2)}) + (0.25 × ${_fmtNumber((sorenessTotal ?? 0) / 16, 2)})) × 20 = ${_fmtNumber(subj?.subjective_score_from_checkin, 2)}</span></div>
+        <div class="detail-row"><span class="detail-label">Objective</span><span class="detail-value">(${_fmtNumber(obj?.ratio, 3)} × 10.00) = ${_fmtNumber(obj?.objective_score, 2)}</span></div>
         <div class="detail-row"><span class="detail-label">Combined</span><span class="detail-value">(0.80 × ${_fmtNumber(subjScore, 2)}) + (0.20 × ${_fmtNumber(objScore, 2)}) = ${_fmtNumber(combinedScore, 2)}</span></div>
       `;
 

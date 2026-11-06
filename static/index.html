@@ -370,6 +370,32 @@ main { max-width: 1200px; margin: 0 auto; padding: 74px 24px 20px; }
   padding-top: 10px;
   border-top: 1px solid var(--border);
 }
+.readiness-score-breakdown {
+  display:flex;
+  justify-content: space-between;
+  border-top: 0.5px solid var(--border);
+  margin-top: 12px;
+  padding-top: 10px;
+}
+.readiness-breakdown-item {
+  flex: 1;
+  text-align: center;
+}
+.readiness-breakdown-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+.readiness-breakdown-value {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+}
+.readiness-breakdown-divider {
+  width: 0.5px;
+  background: var(--border);
+  align-self: stretch;
+}
 .recent-session-item {
   padding: 8px 0;
   border-bottom: 1px solid var(--border);
@@ -561,6 +587,44 @@ main { max-width: 1200px; margin: 0 auto; padding: 74px 24px 20px; }
   color: var(--muted);
   line-height: 1.5;
 }
+.today-chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.today-chart-legend-swatch {
+  display: inline-block;
+  width: 24px;
+  height: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.today-chart-legend-label {
+  line-height: 1;
+}
+.today-chart-bands-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.today-band-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.today-band-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 0px;
+}
 .today-chart-empty {
   min-height: 180px;
   display: flex;
@@ -620,8 +684,8 @@ main { max-width: 1200px; margin: 0 auto; padding: 74px 24px 20px; }
 }
 .pattern-gauge-item {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 4px;
   padding: 9px 0;
   border-bottom: 0.5px solid var(--border);
 }
@@ -668,6 +732,9 @@ main { max-width: 1200px; margin: 0 auto; padding: 74px 24px 20px; }
 .pattern-gauge-status-elevated { color: var(--warn); }
 .pattern-gauge-status-stressed { color: var(--danger); }
 .pattern-gauge-status-pending  { color: var(--muted); }
+.pattern-gauge-sub-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.pattern-gauge-sub-row:last-child { margin-bottom: 0; }
+.pattern-gauge-sub-label { font-size: 10px; color: var(--text-secondary); width: 54px; flex-shrink: 0; text-align: right; }
 .today-grid-note {
   margin-top: 10px;
   font-size: 12px;
@@ -1329,6 +1396,98 @@ tbody tr:hover td { background: var(--row-hover); }
 }
 .modal-overlay.active { display: flex; }
 
+.modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.32);
+}
+.modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.modal-subtitle {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+.pattern-examples {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 14px;
+  line-height: 1.6;
+}
+.ex-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+.ex-list {
+  color: var(--muted);
+}
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.preset-btn {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.preset-btn:hover { background: var(--accent-sub); color: var(--accent); border-color: var(--accent); }
+.slider-num-row {
+  display: grid;
+  grid-template-columns: 1fr 52px 16px;
+  align-items: center;
+  gap: 8px;
+}
+.slider-num-row input[type="range"] { width: 100%; min-width: 0; }
+.pct-num-input {
+  width: 52px;
+  text-align: right;
+  padding: 4px 6px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+}
+.pct-sym { font-size: 12px; color: var(--muted); }
+.split-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 10px 0 14px;
+  background: var(--border);
+}
+.split-seg { height: 100%; transition: width .15s; }
+.split-quad { background: var(--quad); }
+.split-post { background: var(--posterior); }
+.split-push { background: var(--push); }
+.split-pull { background: var(--pull); }
+
 /* === EXERCISE METRICS TAB === */
 .exm-header {
   position: sticky;
@@ -1500,6 +1659,32 @@ tbody tr:hover td { background: var(--row-hover); }
   font-size: 12px;
 }
 
+.verif-detail {
+  margin: 6px 0 10px 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.verif-detail-meta {
+  margin-bottom: 5px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+.verif-sep { opacity: 0.35; }
+.verif-exercise-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.verif-exercise-list li {
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
+}
+
 .session-log-toolbar {
   display: flex;
   justify-content: space-between;
@@ -1557,7 +1742,10 @@ tbody tr:hover td { background: var(--row-hover); }
   line-height: 1;
 }
 
-.session-badge-strength,
+.session-badge-strength {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+}
 .session-badge-hypertrophy {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
   color: var(--accent);
@@ -2765,9 +2953,99 @@ body.ai-open main {
   }
 }
 
+/* Approved dashboard workspace. Design study: unslop by Damir Sokolovsky
+   (@heydamir), CC BY 4.0. Existing chart/data behavior is unchanged. */
+[data-theme="dark"] {
+  --bg:#14181d; --card:#1d232a; --card-raised:#252c34;
+  --border:#353d46; --border-mid:#49515b; --text:#edf0f4; --muted:#a8b1bc;
+  --accent:#97baff; --accent-light:#97baff; --accent-sub:#26364c;
+}
+[data-theme="light"] {
+  --bg:#f4f5f6; --card:#fff; --card-raised:#eef0f3;
+  --border:#dbe0e4; --border-mid:#bdc6ce; --text:#17212b; --muted:#596572;
+  --accent:#2259ac; --accent-light:#2259ac; --accent-sub:#eaf0fa;
+}
+.host-workspace { --text-secondary:var(--muted); }
+.host-workspace #host-topbar { display:flex; height:64px; padding:0 16px; gap:12px; }
+.host-workspace #hostMenu,.host-workspace #hostCloseMenu { min-height:44px; padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); font:inherit; cursor:pointer; }
+.host-workspace .bottom-nav,.host-workspace .bottom-sheet,.host-workspace .bottom-sheet-scrim { display:none!important; }
+.host-workspace main { max-width:none; padding:88px 16px 24px; min-width:0; }
+.host-sidebar { display:none; background:var(--card); color:var(--text); border-right:1px solid var(--border); }
+.host-sidebar-title { display:flex; align-items:center; justify-content:space-between; padding:16px 12px; font-size:16px; font-weight:500; }
+.host-sidebar nav { display:grid; gap:4px; position:static; width:auto; height:auto; padding:0 12px 24px; background:transparent; border:0; }
+.host-sidebar .host-nav-group { color:var(--muted); font-size:12px; margin:20px 12px 4px; }
+.host-sidebar a,.host-sidebar button.nav-tab { display:flex; align-items:center; width:100%; min-height:44px; padding:8px 12px; gap:8px; color:var(--text); text-decoration:none; font-size:14px; font-weight:400; text-align:left; border-radius:8px; border:0; background:transparent; cursor:pointer; }
+.host-sidebar a:hover,.host-sidebar button.nav-tab:hover { background:var(--card-raised); }
+.host-sidebar button.nav-tab.active { background:var(--accent-sub); color:var(--accent); font-weight:500; }
+.host-sidebar button.nav-tab.active::after { content:'Current'; margin-left:auto; font-size:12px; font-weight:400; }
+.host-sidebar.is-open { display:block; position:fixed; inset:0 auto 0 0; width:min(300px,85vw); overflow-y:auto; z-index:201; }
+#hostNavScrim { position:fixed; inset:0; z-index:200; background:var(--modal-scrim); border:0; border-radius:0; }
+#hostNavScrim[hidden] { display:none; }
+.dashboard-heading { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:12px; margin:0 0 8px; }
+.dashboard-heading h1 { font-size:24px; font-weight:600; letter-spacing:-.02em; }
+.dashboard-heading time,.dashboard-subtitle { color:var(--muted); font-size:13px; }
+.dashboard-subtitle { margin:0 0 24px; }
+.host-workspace .dashboard-wrap { display:grid; grid-template-columns:minmax(0,1fr); padding:0; gap:16px; align-items:start; }
+.host-workspace .dashboard-sidebar,.host-workspace .dashboard-main,.host-workspace .dashboard-secondary { display:contents; position:static; }
+.host-workspace .dashboard-card { min-width:0; padding:16px; border-radius:12px; box-shadow:none; }
+.host-workspace .dashboard-card-title,.host-workspace .dashboard-card>.card-title { font-size:16px; font-weight:500; text-transform:none; letter-spacing:0; color:var(--text); margin-bottom:16px; }
+.host-workspace .readiness-score { color:var(--text); font-size:40px; font-weight:500; font-variant-numeric:tabular-nums; }
+.host-workspace .readiness-label,.host-workspace .readiness-rec { font-size:14px; }
+.host-workspace .pattern-gauge-name { font-size:13px; font-weight:500; text-transform:none; letter-spacing:0; width:auto; }
+.host-workspace .pattern-gauge-sub-label { font-size:12px; color:var(--muted); }
+.host-workspace .pattern-gauge-status { font-size:12px; width:80px; }
+.host-workspace .pattern-gauge-track { height:6px; border-radius:0; }
+.host-workspace .pattern-gauge-fill { border-radius:0; }
+.host-workspace .pattern-gauge-item { gap:8px; padding:12px 0; }
+.host-workspace .today-grid-note,.host-workspace .today-chart-note { font-size:13px; line-height:1.5; }
+.host-workspace .recent-session-item { padding:12px 0; }
+.host-workspace .recent-session-title { font-size:14px; }
+.host-workspace .recent-session-meta { font-size:12px; }
+.host-workspace .checkin-prompt-banner { background:var(--card); border-color:var(--border); margin:0 0 16px; }
+.host-workspace .checkin-prompt-text { color:var(--muted); }
+.host-workspace .checkin-prompt-btn { border-radius:8px; min-height:44px; }
+.host-workspace .today-chart-empty { padding:24px 8px; min-height:100px; }
+.host-workspace .dashboard-card .today-chart-wrap { height:260px; }
+.host-workspace .dashboard-card .vf-chart-wrap { height:260px; }
+.host-workspace .vf-range-row { flex-wrap:wrap; }
+.host-workspace .vf-range-row .btn,.host-workspace #today-pattern-fatigue-card button { min-height:44px; padding:8px 12px; }
+.host-workspace .btn-secondary.active,.host-workspace .btn-group:not(.theme-group) button.active { color:var(--bg); }
+.host-workspace .today-chart-bands-legend { flex-wrap:wrap; gap:8px 12px; }
+.host-workspace #today-joint-card { min-width:0; order:7; }
+.host-workspace.ai-open main { height:100dvh; padding-top:80px; padding-bottom:16px!important; }
+@media(max-width:767px) {
+  .host-workspace main { padding:88px 16px 24px!important; }
+  .host-workspace.ai-open main { padding:80px 16px 16px!important; }
+}
+[data-theme="dark"] .host-workspace .btn-primary,[data-theme="dark"] .host-workspace .checkin-prompt-btn { color:#10213a; }
+@media(min-width:700px) {
+  .host-workspace main { padding:88px 24px 24px; }
+  .host-workspace .dashboard-wrap { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #today-readiness-trend-card,#today-pattern-fatigue-card,#today-joint-card { grid-column:1/-1; }
+}
+@media(min-width:1100px) {
+  .host-sidebar { display:block; position:fixed; inset:0 auto 0 0; width:224px; overflow-y:auto; z-index:101; }
+  .host-workspace #hostCloseMenu,.host-workspace #hostMenu { display:none; }
+  .host-workspace #host-topbar { left:224px; width:calc(100% - 224px); padding:0 24px; }
+  .host-workspace main { margin-left:224px; padding:88px 24px 24px; }
+}
+@media(min-width:1900px) {
+  .host-sidebar { width:240px; }
+  .host-workspace #host-topbar { left:240px; width:calc(100% - 240px); padding:0 32px; }
+  .host-workspace main { margin-left:240px; padding:96px 32px 32px; }
+  .host-workspace .dashboard-wrap { grid-template-columns:320px minmax(0,1fr) 360px; gap:24px; }
+  .host-workspace .dashboard-sidebar,.host-workspace .dashboard-main,.host-workspace .dashboard-secondary { display:flex; flex-direction:column; gap:24px; min-width:0; }
+  .host-workspace .dashboard-sidebar { grid-column:1; grid-row:1; }
+  .host-workspace .dashboard-main { grid-column:2; grid-row:1; }
+  .host-workspace .dashboard-secondary { grid-column:3; grid-row:1; }
+  .host-workspace .dashboard-card .today-chart-wrap,.host-workspace .dashboard-card .vf-chart-wrap { height:300px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .host-workspace .pattern-gauge-fill,.host-workspace .nav-tab { transition:none; }
+}
 </style>
 </head>
-<body>
+<body class="host-workspace">
 
 <!-- Apply theme before first paint to avoid flash -->
 <script>
@@ -2780,28 +3058,43 @@ body.ai-open main {
 })();
 </script>
 
-<nav>
+<button id="hostNavScrim" type="button" aria-label="Close navigation" hidden></button>
+<aside id="hostSidebar" class="host-sidebar" aria-label="Application navigation">
+  <div class="host-sidebar-title"><span>Hevy-Fatigue</span><button id="hostCloseMenu" type="button">Close</button></div>
+  <nav aria-label="Pages">
+    <span class="host-nav-group">Overview</span>
+    <button class="nav-tab active" data-tab="dashboard" aria-current="page">Dashboard</button>
+    <span class="host-nav-group">Training</span>
+    <a href="/training/log">Log Workout</a>
+    <a href="/training/microcycles">Plans</a>
+    <a href="/training/recent">Recent</a>
+    <a href="/training/progress">Progress</a>
+    <a href="/training/stress">Stress</a>
+    <a href="/training/rpe-charts">RPE Charts</a>
+    <span class="host-nav-group">Monitoring</span>
+    <button class="nav-tab" data-tab="exercise-metrics">Exercises<span id="ex-conflict-badge" class="badge badge-conflict" style="display:none;margin-left:5px;"></span></button>
+    <button class="nav-tab" data-tab="workouts">Workouts<span id="wo-pending-badge" class="badge badge-conflict" style="display:none;margin-left:5px;"></span></button>
+    <button class="nav-tab" data-tab="log">Check-in History</button>
+    <button class="nav-tab" data-tab="exercises">Patterns</button>
+    <span class="host-nav-group">Tools</span>
+    <button class="nav-tab" data-tab="ai">AI Coach</button>
+    <a href="/static/docs.html">Docs</a>
+    <button class="nav-tab" data-tab="settings">Settings</button>
+  </nav>
+</aside>
+<nav id="host-topbar" aria-label="Application controls">
   <a class="logo" href="#" onclick="activateTab('dashboard'); return false;" title="Dashboard">
     <img class="logo-icon-dark" src="/resources/HF_LOGO_DARK.png" alt="Hevy Fatigue">
     <img class="logo-icon-light" src="/resources/HF_LOGO_LIGHT.png" alt="Hevy Fatigue">
   </a>
-  <div class="nav-tabs">
-    <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
-    <button class="nav-tab" data-tab="exercise-metrics">Exercises</button>
-    <button class="nav-tab" data-tab="workouts">Workouts</button>
-    <button class="nav-tab" data-tab="ai">AI Coach</button>
-    <button class="nav-tab" data-tab="log">Log</button>
-    <button class="nav-tab" data-tab="exercises">Patterns<span id="ex-conflict-badge" class="badge badge-conflict" style="display:none;margin-left:5px;"></span></button>
-    <a href="/static/docs.html" class="nav-tab">Docs</a>
-    <button class="nav-tab" data-tab="settings">Settings</button>
-  </div>
   <div class="nav-right">
     <div class="btn-group theme-group" id="theme-toggle">
-      <button data-theme-btn="light" title="Light mode">☀ Light</button>
-      <button data-theme-btn="dark"  title="Dark mode">☾ Dark</button>
-      <button data-theme-btn="auto"  title="Follow system">⊙ Auto</button>
+      <button data-theme-btn="light" title="Light mode">Light</button>
+      <button data-theme-btn="dark"  title="Dark mode">Dark</button>
+      <button data-theme-btn="auto"  title="Follow system">Auto</button>
     </div>
   </div>
+  <button id="hostMenu" type="button" aria-controls="hostSidebar" aria-expanded="false">Menu</button>
 </nav>
 
 <!-- ── Bottom nav (mobile) ── -->
@@ -2814,12 +3107,12 @@ body.ai-open main {
     <button class="bottom-nav-btn" data-tab="exercise-metrics">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
   <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 3v5M6 3v5m14.5-4v1.5m0 0V7m0-1.5H22M3.5 4v1.5m0 0V7m0-1.5H2m16 0H6m4 0V10m4-4.5V10m4.952 6H5.062m9.194-6h-4.05c-1.007 0-1.38.144-1.934.992l-3.013 4.612c-.186.284-.259.51-.259.854C5 18.611 5.873 19 7.847 19h8.25C18.133 19 19 18.616 19 16.408c0-.306-.057-.51-.204-.773l-2.537-4.53c-.534-.953-.918-1.105-2.003-1.105M16 19v2m-8-2v2"/></svg>
-      Exercises
+      Exercises<span id="ex-conflict-badge-mobile" class="badge badge-conflict" style="display:none;margin-left:4px;font-size:10px;"></span>
     </button>
     <button class="bottom-nav-btn" data-tab="workouts">
       <svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 20 20">
     <path fill="currentColor" d="M1 4c0-1.1.9-2 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V4zm2 2v12h14V6H3zm2-6h2v2H5V0zm8 0h2v2h-2V0zM5 9h2v2H5V9zm0 4h2v2H5v-2zm4-4h2v2H9V9zm0 4h2v2H9v-2zm4-4h2v2h-2V9zm0 4h2v2h-2v-2z"/></svg>
-      Workouts
+      Workouts<span id="wo-pending-badge-mobile" class="badge badge-conflict" style="display:none;margin-left:5px;"></span>
     </button>
     <button class="bottom-nav-btn" data-tab="ai">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
@@ -2839,13 +3132,15 @@ body.ai-open main {
   <div class="bottom-sheet-handle"></div>
   <div class="bottom-sheet-title">More</div>
   <div class="bottom-sheet-items">
+    <a class="bottom-sheet-item" href="/training/log">Log Workout</a>
+    <a class="bottom-sheet-item" href="/training/microcycles">Plans</a>
     <button class="bottom-sheet-item" data-tab="log">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-      Log
+      Check-in History
     </button>
     <button class="bottom-sheet-item" data-tab="exercises">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      Patterns<span id="ex-conflict-badge-mobile" class="badge" style="display:none;margin-left:5px;"></span>
+      Patterns
     </button>
     <a class="bottom-sheet-item" href="/static/docs.html">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -2862,6 +3157,8 @@ body.ai-open main {
 
 <!-- ══════════════ DASHBOARD ══════════════ -->
 <section id="tab-dashboard" class="tab-content active">
+  <div class="dashboard-heading"><h1>Dashboard</h1><time id="dashboardDate"></time></div>
+  <p class="dashboard-subtitle">Today’s check-in and recent training</p>
 
   <!-- Check-in prompt banner (shown when no check-in today) -->
   <div class="checkin-prompt-banner" id="checkin-prompt-banner" style="display:none;">
@@ -2882,16 +3179,20 @@ body.ai-open main {
 
       <!-- Pattern stress card -->
       <div class="dashboard-card" id="dashboard-pattern-card">
-        <div class="dashboard-card-title">Pattern Stress</div>
+        <div class="dashboard-card-title">Pattern stress</div>
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
+    </div>
+
+    <div class="dashboard-secondary">
       <!-- Recent sessions card -->
       <div class="dashboard-card" id="dashboard-recent-card">
-        <div class="dashboard-card-title">Recent Sessions</div>
+        <div class="dashboard-card-title">Recent sessions</div>
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
-
+      <!-- Visible only when the existing model reports a joint advisory. -->
+      <div id="today-joint-card" style="display:none;"></div>
     </div>
 
     <!-- Main chart stack -->
@@ -2903,6 +3204,11 @@ body.ai-open main {
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
+            <!-- 7-Day Readiness Trend -->
+      <div class="dashboard-card" id="today-readiness-trend-card">
+        <div class="loading-wrap"><span class="spinner"></span></div>
+      </div>
+
       <!-- Per-pattern fatigue -->
       <div class="dashboard-card" id="today-pattern-fatigue-card">
         <div class="loading-wrap"><span class="spinner"></span></div>
@@ -2910,9 +3216,6 @@ body.ai-open main {
 
     </div>
   </div>
-
-  <!-- Joint advisory (hidden by default, shown when joint scores are elevated) -->
-  <div id="today-joint-card" style="display:none;"></div>
 
 </section>
 
@@ -3033,25 +3336,6 @@ body.ai-open main {
 
 <!-- ══════════════ EXERCISE METRICS TAB ══════════════ -->
 <section id="tab-exercise-metrics" class="tab-content">
-  <div class="exm-header">
-    <input type="text" id="exm-search" placeholder="Search exercises by name…" autocomplete="off">
-    <div class="exm-filters">
-      <button class="exm-filter-btn active" data-filter="all">All</button>
-      <button class="exm-filter-btn" data-filter="active">Active (8 wks)</button>
-    </div>
-    <div class="exm-summary" id="exm-summary"><!-- populated by JS --></div>
-  </div>
-  <div id="exm-list"><!-- exercise cards populated by JS --></div>
-
-  <!-- Detail view (hidden by default) -->
-  <div id="exm-detail" class="exm-detail-view" style="display:none;">
-    <button id="exm-back-btn" class="exm-back-btn">← Back to Exercises</button>
-    <div id="exm-detail-content"><!-- populated by JS --></div>
-  </div>
-</section>
-
-<!-- ══════════════ EXERCISES TAB ══════════════ -->
-<section id="tab-exercises" class="tab-content">
   <div class="card" id="ex-conflict-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
       <div class="card-title" style="margin-bottom:0;">Exercise Names — Needs Review</div>
@@ -3085,7 +3369,25 @@ body.ai-open main {
       </div>
     </div>
   </div>
+  <div class="exm-header">
+    <input type="text" id="exm-search" placeholder="Search exercises by name…" autocomplete="off">
+    <div class="exm-filters">
+      <button class="exm-filter-btn active" data-filter="all">All</button>
+      <button class="exm-filter-btn" data-filter="active">Active (8 wks)</button>
+    </div>
+    <div class="exm-summary" id="exm-summary"><!-- populated by JS --></div>
+  </div>
+  <div id="exm-list"><!-- exercise cards populated by JS --></div>
 
+  <!-- Detail view (hidden by default) -->
+  <div id="exm-detail" class="exm-detail-view" style="display:none;">
+    <button id="exm-back-btn" class="exm-back-btn">← Back to Exercises</button>
+    <div id="exm-detail-content"><!-- populated by JS --></div>
+  </div>
+</section>
+
+<!-- ══════════════ EXERCISES TAB ══════════════ -->
+<section id="tab-exercises" class="tab-content">
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
       <div class="card-title" style="margin-bottom:0;">Exercise Movement Mappings</div>
@@ -3142,8 +3444,14 @@ body.ai-open main {
       <label class="ai-settings-label" for="ai-model-select">Model</label>
       <div id="ai-model-field"></div>
     </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+      <button class="btn btn-primary" id="ai-training-review" type="button" onclick="startTrainingReview()">Review my training</button>
+      <select id="ai-conversation-select" aria-label="Saved training reviews" onchange="selectTrainingReview(this.value)" style="min-width:0;max-width:100%;"><option value="">No saved review selected</option></select>
+      <button class="btn" id="ai-review-reload" type="button" onclick="loadCoachingConversations()">Reload saved review</button>
+    </div>
+    <div class="ai-chat-helper" id="ai-evidence-date" style="margin-bottom:8px;">Training context is shared with your selected OpenRouter model when you send a message.</div>
     <div class="ai-chat-top">
-      <div class="ai-chat-helper">Uses your current readiness context from diagnostics snapshot.</div>
+      <div class="ai-chat-helper">Review six months of training, then discuss programming. Changes are proposals only.</div>
       <button class="ai-chat-context-toggle" id="ai-chat-context-toggle" type="button" onclick="toggleAIContextPreview()">show context</button>
     </div>
     <pre class="ai-chat-context-preview" id="ai-chat-context-preview">Loading readiness context...</pre>
@@ -3173,6 +3481,7 @@ body.ai-open main {
 
 <!-- ══════════════ SETTINGS TAB ══════════════ -->
 <section id="tab-settings" class="tab-content">
+<p><a href="/training/legacy#settings">Training settings and performance model trial</a></p>
   <div class="card settings-card settings-card-api">
     <div class="card-title">Settings</div>
 
@@ -3568,23 +3877,65 @@ let _dashboardVfCustomStart = null;
 let _dashboardVfCustomEnd = null;
 let aiSettingsLocked = false;
 let aiChatHistory = [];
+let aiConversation = null;
+let aiReviewLoading = false;
 let aiReadinessContext = null;
 let aiChatConfigured = false;
 let aiChatStreaming = false;
 let aiChatHandlersBound = false;
 
-const AI_DEFAULT_MODEL = 'openai/gpt-4o-mini';
+const AI_DEFAULT_MODEL = 'openai/gpt-6.1-terra';
+// OpenRouter public catalog, checked 2026-11-05. USD per million input/output tokens.
+// Price tiers guide selection; these models have not been ranked on training reviews.
 const AI_MODEL_OPTIONS = [
-  ['anthropic/claude-sonnet-4-5', 'claude-sonnet-4-5'],
-  ['anthropic/claude-haiku-4-5', 'claude-haiku-4-5'],
-  ['openai/gpt-4o', 'gpt-4o'],
-  ['openai/gpt-4o-mini', 'gpt-4o-mini'],
-  ['meta-llama/llama-3.3-70b-instruct', 'llama-3.3-70b'],
-  ['deepseek/deepseek-v3.2', 'deepseek-v3.2'],
+  ['openai/gpt-6.1-terra', 'GPT-6.1 Terra · Balanced', 1, 5],
+  ['openai/gpt-6-luna', 'GPT-6 Luna · Budget', 0.10, 0.50],
+  ['anthropic/claude-haiku-5.5', 'Claude Haiku 5.5 · Budget', 0.10, 0.50],
+  ['deepseek/deepseek-v4.1-flash', 'DeepSeek V4.1 Flash · Budget', 0.045, 0.50],
+  ['qwen/qwen3.8-flash', 'Qwen3.8 Flash · Budget', 0.15, 0.47],
+  ['google/gemini-3.8-flash', 'Gemini 3.8 Flash · Balanced', 0.825, 4.125],
+  ['openai/gpt-6.1-sol', 'GPT-6.1 Sol · Higher cost', 2, 10],
+  ['anthropic/claude-sonnet-5.5', 'Claude Sonnet 5.5 · Higher cost', 2, 10],
 ];
 let aiSelectedModel = localStorage.getItem('ai_preferred_model') || AI_DEFAULT_MODEL;
 
 // ═══ Bottom nav + bottom sheet ═════════════════════════════════
+
+let hostNavPreviousOverflow = null;
+const hostDesktopNavigation = window.matchMedia('(min-width: 1100px)');
+function setHostMenuOpen(open, restoreFocus = true) {
+  const sidebar = document.getElementById('hostSidebar');
+  const menu = document.getElementById('hostMenu');
+  const wasOpen = menu.getAttribute('aria-expanded') === 'true';
+  sidebar.classList.toggle('is-open', open);
+  menu.setAttribute('aria-expanded', String(open));
+  document.getElementById('hostNavScrim').hidden = !open;
+  document.querySelector('main').inert = open;
+  document.getElementById('host-topbar').inert = open;
+  if (open) {
+    if (hostNavPreviousOverflow == null) hostNavPreviousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.getElementById('hostCloseMenu').focus();
+  } else {
+    if (hostNavPreviousOverflow != null) {
+      document.body.style.overflow = hostNavPreviousOverflow;
+      hostNavPreviousOverflow = null;
+    }
+    if (wasOpen && restoreFocus && !hostDesktopNavigation.matches) menu.focus();
+  }
+}
+document.getElementById('hostMenu').addEventListener('click', () => setHostMenuOpen(true));
+document.getElementById('hostCloseMenu').addEventListener('click', () => setHostMenuOpen(false));
+document.getElementById('hostNavScrim').addEventListener('click', () => setHostMenuOpen(false));
+document.getElementById('hostSidebar').addEventListener('click', event => {
+  if (event.target.closest('a')) setHostMenuOpen(false, false);
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && document.getElementById('hostMenu').getAttribute('aria-expanded') === 'true') setHostMenuOpen(false);
+});
+hostDesktopNavigation.addEventListener('change', () => {
+  if (hostDesktopNavigation.matches) setHostMenuOpen(false, false);
+});
 
 function setBottomSheetOpen(open) {
   document.body.classList.toggle('bottom-sheet-open', open);
@@ -3629,9 +3980,18 @@ document.querySelectorAll('.bottom-sheet-item[data-tab]').forEach(item => {
   });
 });
 
+const tabIds = new Set(['dashboard','trend','workouts','exercise-metrics','exercises','log','settings','ai']);
+window.addEventListener('hashchange', () => activateTab(location.hash.slice(1)));
 function activateTab(tabName) {
+  if (!tabIds.has(tabName)) return;
+  setHostMenuOpen(false);
+  if (location.hash !== '#' + tabName) history.replaceState(null, '', '#' + tabName);
   setBottomSheetOpen(false);
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+  document.querySelectorAll('#hostSidebar .nav-tab').forEach(t => {
+    if (t.dataset.tab === tabName) t.setAttribute('aria-current', 'page');
+    else t.removeAttribute('aria-current');
+  });
   document.querySelectorAll('.bottom-nav-btn[data-tab]').forEach(b =>
     b.classList.toggle('active', b.dataset.tab === tabName)
   );
@@ -3640,8 +4000,8 @@ function activateTab(tabName) {
   document.body.classList.toggle('ai-open', tabName === 'ai');
   if (tabName === 'dashboard') { loadTrainingLoadCard(); checkTodayReadiness(); }
   if (tabName === 'trend')                               activateTrendTab();
-  if (tabName === 'exercises')                           { loadExerciseConflicts(); if (exercises.length === 0) loadExercises(); }
-  if (tabName === 'exercise-metrics')                    loadExerciseMetrics('all');
+  if (tabName === 'exercises')                           { if (exercises.length === 0) loadExercises(); }
+if (tabName === 'exercise-metrics')                    { loadExerciseConflicts(); loadExerciseMetrics('all'); }
   if (tabName === 'workouts'  && !workoutsLoaded)        loadWorkouts();
   if (tabName === 'ai')                                   loadAISettings().then(() => loadAIContext());
   if (tabName === 'log'       && !logLoaded)             loadLog();
@@ -3674,6 +4034,9 @@ document.getElementById('theme-toggle').addEventListener('click', e => {
 
 // ═══ Init ════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async () => {
+  const dashboardDate = document.getElementById('dashboardDate');
+  dashboardDate.dateTime = todayStr();
+  dashboardDate.textContent = new Date().toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'});
   // Sync theme button active state
   const saved = localStorage.getItem('theme') || 'auto';
   document.querySelectorAll('[data-theme-btn]').forEach(b =>
@@ -3695,6 +4058,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   _initAIChatHandlers();
   checkTodayReadiness(true);
   loadTrainingLoadCard();
+  _updateWoPendingBadge();
+  if (tabIds.has(location.hash.slice(1))) activateTab(location.hash.slice(1));
 });
 
 function initTrendRangeSelector() {
@@ -4108,12 +4473,22 @@ function _renderAIModelField(modelValue = AI_DEFAULT_MODEL) {
         `).join('')}
         <option value="custom" ${selectedValue === 'custom' ? 'selected' : ''}>Custom model…</option>
       </select>
-      <input id="ai-model-custom" class="ai-control" type="text" autocomplete="off" placeholder="e.g. anthropic/claude-3-opus" value="${escHtml(customValue)}" ${selectedValue !== 'custom' ? 'disabled' : ''} style="display: ${selectedValue === 'custom' ? 'block' : 'none'};">
+      <input id="ai-model-custom" class="ai-control" type="text" autocomplete="off" placeholder="e.g. openai/gpt-6.1-terra" value="${escHtml(customValue)}" ${selectedValue !== 'custom' ? 'disabled' : ''} style="display: ${selectedValue === 'custom' ? 'block' : 'none'};">
+      <div class="ai-chat-helper" id="ai-model-price" aria-live="polite"></div>
     </div>
   `;
 
   const select = document.getElementById('ai-model-select');
   const customInput = document.getElementById('ai-model-custom');
+  const showPrice = () => {
+    const choice = AI_MODEL_OPTIONS.find(([id]) => id === aiSelectedModel);
+    const el = document.getElementById('ai-model-price');
+    if (!el) return;
+    el.textContent = choice
+      ? `Listed input $${choice[2]} / output $${choice[3]} per 1M tokens, checked Nov 5, 2026. History and reasoning affect total cost; provider rates can vary.`
+      : 'Saved or custom model preserved. Check its current pricing on OpenRouter.';
+  };
+  showPrice();
   if (select && customInput) {
     select.addEventListener('change', () => {
       const isCustomSelected = select.value === 'custom';
@@ -4123,16 +4498,19 @@ function _renderAIModelField(modelValue = AI_DEFAULT_MODEL) {
         const preservedCustom = !AI_MODEL_OPTIONS.some(([value]) => value === aiSelectedModel) ? aiSelectedModel : '';
         customInput.value = preservedCustom;
         aiSelectedModel = customInput.value.trim();
+        showPrice();
         customInput.focus();
         return;
       }
       aiSelectedModel = select.value;
       localStorage.setItem('ai_preferred_model', aiSelectedModel);
+      showPrice();
     });
 
     customInput.addEventListener('input', () => {
       aiSelectedModel = customInput.value.trim();
       if (aiSelectedModel) localStorage.setItem('ai_preferred_model', aiSelectedModel);
+      showPrice();
     });
   }
 }
@@ -4168,7 +4546,9 @@ function _setAIChatConfiguredState(configured) {
   const notice = document.getElementById('ai-chat-unconfigured');
   const sendBtn = document.getElementById('ai-chat-send');
   if (notice) notice.style.display = aiChatConfigured ? 'none' : 'block';
-  if (sendBtn) sendBtn.disabled = !aiChatConfigured || aiChatStreaming;
+  if (sendBtn) sendBtn.disabled = !aiChatConfigured || aiChatStreaming || aiReviewLoading || !!aiConversation?.turns.some(t=>t.status==='pending');
+  const reviewBtn = document.getElementById('ai-training-review');
+  if (reviewBtn) reviewBtn.disabled = !aiChatConfigured || aiChatStreaming || aiReviewLoading;
 }
 
 function _aiFmtText(value) {
@@ -4300,6 +4680,72 @@ function _aiEscapeHtml(str) {
     .replace(/\n/g, '<br>');
 }
 
+function _aiMarkdown(content) {
+  const template = document.createElement('template');
+  template.innerHTML = marked.parse(content || '');
+  const allowed = new Set(['P','BR','STRONG','EM','UL','OL','LI','H1','H2','H3','H4','BLOCKQUOTE','PRE','CODE','HR','TABLE','THEAD','TBODY','TR','TH','TD','A']);
+  const references = new Set((aiConversation?.evidence?.references || []).map(r => r.url));
+  for (const el of [...template.content.querySelectorAll('*')]) {
+    if (!allowed.has(el.tagName)) { el.replaceWith(document.createTextNode(el.textContent)); continue; }
+    const href = el.getAttribute('href');
+    for (const attr of [...el.attributes]) el.removeAttribute(attr.name);
+    if (el.tagName === 'A' && href && /^https?:\/\//i.test(href) && (!aiConversation || references.has(href))) {
+      el.setAttribute('href', href); el.setAttribute('target', '_blank'); el.setAttribute('rel', 'noopener noreferrer');
+    } else if (el.tagName === 'A' && href) { el.append(document.createTextNode(' (unverified link)')); }
+  }
+  return template.innerHTML;
+}
+
+async function coachingJSON(path, options) {
+  const r = await fetch(path, options);
+  const data = await r.json();
+  if (!r.ok) throw Error(_extractApiErrorDetail(data.detail, 'Could not load training review.'));
+  return data;
+}
+
+function renderTrainingReview(view) {
+  aiConversation = view;
+  aiChatHistory = [];
+  _renderAIChatPlaceholder();
+  for (const turn of view.turns) {
+    _appendAIMessage('user', turn.message);
+    if (turn.response) _appendAIMessage('assistant', turn.response);
+    if (turn.status !== 'complete') _appendAIMessage('assistant', 'Recorded response status: '+turn.status+'. This message will not be automatically resent.');
+  }
+  const e = view.evidence;
+  document.getElementById('ai-evidence-date').textContent = 'Evidence captured '+new Date(e.captured_at).toLocaleString()+
+    ' · '+e.coverage.sessions+' sessions · '+e.window.start+' to '+e.window.end+'. Start a new review to include newer training. AI proposals may contain errors; check the evidence and references.';
+  setAIContextPreview(JSON.stringify(e, null, 2));
+  if (view.turns.some(t=>t.status==='pending')) _setAIChatStatus('A response is pending. Reload to check it; start a new review if it remains interrupted. No automatic resend.', true);
+}
+
+async function selectTrainingReview(id) {
+  if (!id || aiChatStreaming || aiReviewLoading) return;
+  aiReviewLoading = true; _setAIChatStreaming(false);
+  try { _setAIChatStatus(''); renderTrainingReview(await coachingJSON('/api/ai/conversations/'+encodeURIComponent(id))); }
+  catch(e) { _setAIChatStatus(e.message, true); }
+  finally { aiReviewLoading = false; _setAIChatStreaming(false); }
+}
+
+async function loadCoachingConversations() {
+  if (aiChatStreaming || aiReviewLoading) return;
+  aiReviewLoading = true; _setAIChatStreaming(false);
+  try {
+    const rows = await coachingJSON('/api/ai/conversations');
+    const select = document.getElementById('ai-conversation-select');
+    select.replaceChildren(new Option('Select a saved review', ''));
+    for (const row of rows) select.add(new Option(new Date(row.created_at).toLocaleString(), row.id));
+    const id = rows.some(r=>r.id===aiConversation?.id) ? aiConversation.id : rows[0]?.id;
+    if (id) { select.value = id; _setAIChatStatus(''); renderTrainingReview(await coachingJSON('/api/ai/conversations/'+encodeURIComponent(id))); }
+  } catch(e) { _setAIChatStatus(e.message, true); }
+  finally { aiReviewLoading = false; _setAIChatStreaming(false); }
+}
+
+async function startTrainingReview() {
+  if (aiChatStreaming || aiReviewLoading || !aiChatConfigured) return;
+  await sendAIMessage('Review my training. Assess the apparent emphasis, progress and uncertainty, whether a change is warranted, and a concrete proposed direction with rationale and alternatives. Ask a focused question if my goal or constraints are missing.', true);
+}
+
 function _appendAIMessage(role, content, streaming = false) {
   const container = document.getElementById('ai-chat-messages');
   if (!container) return null;
@@ -4308,7 +4754,7 @@ function _appendAIMessage(role, content, streaming = false) {
 
   const bubbleContent = role === 'user'
     ? _aiEscapeHtml(content)
-    : (streaming ? _aiEscapeHtml(content || '') : marked.parse(content || ''));
+    : (streaming ? _aiEscapeHtml(content || '') : _aiMarkdown(content));
 
   const wrapper = document.createElement('div');
   wrapper.className = `ai-chat-msg ${role}`;
@@ -4341,6 +4787,7 @@ async function loadAIContext() {
     if (!r.ok) throw new Error(_extractApiErrorDetail(d.detail, 'Could not load readiness context.'));
     aiReadinessContext = _buildAIContextPreviewFromSnapshot(d);
     setAIContextPreview(aiReadinessContext);
+    await loadCoachingConversations();
   } catch (e) {
     aiReadinessContext = null;
     setAIContextPreview('Could not load readiness context.');
@@ -4354,14 +4801,17 @@ function _setAIChatStreaming(active) {
   const sendBtn = document.getElementById('ai-chat-send');
   const clearBtn = document.getElementById('ai-chat-clear');
   if (input) input.disabled = aiChatStreaming;
-  if (sendBtn) sendBtn.disabled = !aiChatConfigured || aiChatStreaming;
+  if (sendBtn) sendBtn.disabled = !aiChatConfigured || aiChatStreaming || aiReviewLoading || !!aiConversation?.turns.some(t=>t.status==='pending');
+  const reviewBtn = document.getElementById('ai-training-review');
+  if (reviewBtn) reviewBtn.disabled = !aiChatConfigured || aiChatStreaming || aiReviewLoading;
   if (clearBtn) clearBtn.disabled = aiChatStreaming;
+  for (const id of ['ai-conversation-select','ai-review-reload']) { const el=document.getElementById(id); if(el) el.disabled=aiChatStreaming || aiReviewLoading; }
 }
 
-async function sendAIMessage() {
+async function sendAIMessage(reviewMessage = null, newReview = false) {
   const input = document.getElementById('ai-chat-input');
-  if (!input || aiChatStreaming || !aiChatConfigured) return;
-  const message = input.value.trim();
+  if (!input || aiChatStreaming || aiReviewLoading || !aiChatConfigured) return;
+  const message = reviewMessage || input.value.trim();
   const model = _getAIModelValue();
   if (!message) return;
   if (!model) {
@@ -4370,20 +4820,26 @@ async function sendAIMessage() {
     return;
   }
 
-  input.value = '';
-  input.style.height = 'auto';
+  if (!reviewMessage) { input.value = ''; input.style.height = 'auto'; }
   _setAIChatStreaming(true);
   _setAIChatStatus('Thinking...');
 
-  _appendAIMessage('user', message);
-  const bubbleEl = _appendAIMessage('assistant', '', true);
+  let bubbleEl = null;
   let assistantText = '';
 
   try {
-    const r = await fetch('/api/ai/chat', {
+    if (newReview || !aiConversation) {
+      const view = await coachingJSON('/api/ai/conversations', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:crypto.randomUUID()})});
+      renderTrainingReview(view);
+      const select = document.getElementById('ai-conversation-select');
+      select.add(new Option(new Date(view.created_at).toLocaleString(), view.id)); select.value = view.id;
+    }
+    _appendAIMessage('user', message);
+    bubbleEl = _appendAIMessage('assistant', '', true);
+    const r = await fetch('/api/ai/conversations/'+encodeURIComponent(aiConversation.id)+'/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, history: aiChatHistory, model }),
+      body: JSON.stringify({id:crypto.randomUUID(), message, model, expected_sequence:aiConversation.turns.length}),
     });
 
     if (!r.ok) {
@@ -4414,35 +4870,38 @@ async function sendAIMessage() {
         }
         try {
           const parsed = JSON.parse(data);
+          if (parsed.error) throw Error(parsed.error.message || 'AI response failed.');
           const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.text || '';
           if (!delta) continue;
           assistantText += delta;
-          if (bubbleEl) bubbleEl.innerHTML = marked.parse(assistantText);
+          if (bubbleEl) bubbleEl.innerHTML = _aiMarkdown(assistantText);
           const container = document.getElementById('ai-chat-messages');
           if (container) container.scrollTop = container.scrollHeight;
-        } catch (_) {
-          continue;
+        } catch (e) {
+          if (!(e instanceof SyntaxError)) throw e;
         }
       }
     }
+    if (!doneReceived) throw Error('Response interrupted. Reload the saved review before continuing.');
 
     if (!assistantText.trim()) {
       assistantText = 'No response content returned.';
     }
     if (bubbleEl) {
       bubbleEl.classList.remove('streaming');
-      bubbleEl.innerHTML = marked.parse(assistantText);
+      bubbleEl.innerHTML = _aiMarkdown(assistantText);
     }
 
-    aiChatHistory.push({ role: 'user', content: message });
-    aiChatHistory.push({ role: 'assistant', content: assistantText });
+    const recorded = await coachingJSON('/api/ai/conversations/'+encodeURIComponent(aiConversation.id));
+    renderTrainingReview(recorded);
+    if (recorded.turns.at(-1)?.status !== 'complete') throw Error('The response did not complete. Its recorded status is shown above.');
     _setAIChatStatus('');
   } catch (e) {
     if (bubbleEl) {
       bubbleEl.classList.remove('streaming');
       bubbleEl.innerHTML = `<span style="color:var(--danger)">Error: ${_aiEscapeHtml(e.message || 'Unknown error')}</span>`;
     }
-    _setAIChatStatus(e.message || 'Chat request failed.', true);
+    _setAIChatStatus((e.message || 'Chat request failed.')+' Reload the saved review before sending again. Nothing was automatically retried.', true);
   } finally {
     _setAIChatStreaming(false);
     if (input) input.focus();
@@ -4882,15 +5341,15 @@ async function loadLog() {
     count.textContent = `${entries.length} entr${entries.length === 1 ? 'y' : 'ies'}`;
 
     function _sparkline(values, width = 56, height = 18) {
-      const nums = (values || []).map(v => +v).filter(v => Number.isFinite(v));
+      const nums = (values || []).filter(v => v != null).map(Number).filter(Number.isFinite);
       if (!nums.length) return '';
       if (nums.length === 1) {
-        const y = height - ((nums[0] / 10) * height);
+        const y = height - ((nums[0] / 20) * height);
         return `<svg class="sparkline" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none"><line x1="0" y1="${y.toFixed(2)}" x2="${width}" y2="${y.toFixed(2)}" stroke="var(--accent)" stroke-width="1.8" /></svg>`;
       }
       const pts = nums.map((v, idx) => {
         const x = (idx / (nums.length - 1)) * width;
-        const y = height - ((Math.max(0, Math.min(10, v)) / 10) * height);
+        const y = height - ((Math.max(0, Math.min(20, v)) / 20) * height);
         return `${x.toFixed(2)},${y.toFixed(2)}`;
       }).join(' ');
       return `<svg class="sparkline" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none"><polyline fill="none" stroke="var(--accent)" stroke-width="1.8" points="${pts}" /></svg>`;
@@ -4909,7 +5368,7 @@ async function loadLog() {
       <tbody>
       ${entries.map((e, i) => {
         const rec = REC_META[e.recommendation_adjusted] || REC_META.continue;
-        const fatigueVal = Number.isFinite(+e.fatigue_score) ? (+e.fatigue_score).toFixed(1) : '—';
+        const fatigueVal = e.fatigue_score != null && Number.isFinite(+e.fatigue_score) ? (+e.fatigue_score).toFixed(1) : '—';
         const trendWindow = entries.slice(i, i + 7).map(x => x.fatigue_score).reverse();
         return `<tr>
         <td style="white-space:nowrap;">${e.date}</td>
@@ -5334,6 +5793,22 @@ function _sessionBadgeClass(modalityOrStatus) {
     return `session-badge session-badge-${key}`;
   }
   return 'session-badge';
+}
+
+function _fmtVerifDate(isoDate) {
+  if (!isoDate) return '';
+  try {
+    return new Date(isoDate + 'T00:00:00').toLocaleDateString('en-US', {
+      weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+    });
+  } catch {
+    return isoDate;
+  }
+}
+
+function _fmtVerifModality(modality, srpe) {
+  const label = { strength: 'ST', hypertrophy: 'HYP', conditioning: 'CON', cardio: 'CAR' }[String(modality).toLowerCase()] || modality;
+  return srpe != null ? `${label} · sRPE ${srpe}` : label;
 }
 
 function _sessionFilterMatches(session) {
@@ -5832,8 +6307,9 @@ async function loadSessionVerificationQueue() {
       return `<div class="verify-item" data-session-id="${escHtml(String(s.hevy_workout_id))}">
         <div class="verify-head">
           <div class="verify-title">${title}</div>
-          <div class="verify-meta">${s.workout_date} · confidence ${(Number(s.modality_confidence || 0) * 100).toFixed(0)}%</div>
+          <div class="verify-meta">${_fmtVerifDate(s.workout_date)}${s.duration_minutes != null ? ' · ' + Math.round(Number(s.duration_minutes)) + ' min' : ''}${s.modality ? ' · ' + _fmtVerifModality(s.modality, s.srpe) : ''} · confidence ${(Number(s.modality_confidence || 0) * 100).toFixed(0)}%</div>
         </div>
+        <div id="verif-detail-${escHtml(String(s.hevy_workout_id))}" class="verif-detail"><div class="verif-detail-meta">Loading exercises…</div></div>
         <div class="verify-fields">
           <div class="verify-field">
             <label>Modality</label>
@@ -5867,6 +6343,28 @@ async function loadSessionVerificationQueue() {
         modalitySelect.addEventListener('change', () => _toggleSessionSrpe(card));
       }
       _toggleSessionSrpe(card);
+    });
+
+    sessions.forEach(s => {
+      const detailEl = document.getElementById(`verif-detail-${s.hevy_workout_id}`);
+      if (!detailEl) return;
+      fetch(`/api/workout-sessions/${encodeURIComponent(s.hevy_workout_id)}/exercises`)
+        .then(r => r.ok ? r.json() : Promise.reject())
+        .then(exercises => {
+          if (!exercises.length) {
+            detailEl.innerHTML = '<div class="verif-detail-meta">No exercises logged.</div>';
+            return;
+          }
+          detailEl.innerHTML = `
+            <div class="verif-detail-meta">Exercises</div>
+            <ul class="verif-exercise-list">
+              ${exercises.map(e => `<li>${escHtml(e.title)} — ${e.set_count} set${e.set_count !== 1 ? 's' : ''}</li>`).join('')}
+            </ul>
+          `;
+        })
+        .catch(() => {
+          detailEl.innerHTML = '<div class="verif-detail-meta">Could not load exercises.</div>';
+        });
     });
   } catch (e) {
     wrap.innerHTML = `<div style="color:var(--danger)">Failed to load session verification queue: ${escHtml(e.message || '')}</div>`;
@@ -5925,6 +6423,7 @@ async function verifySessionFromCard(btn) {
     statusEl.textContent = 'Verified.';
     await loadSessionVerificationQueue();
     await loadSessionLog();
+    _updateWoPendingBadge();
   } catch (e) {
     statusEl.style.color = 'var(--danger)';
     statusEl.textContent = e.message || 'Verification failed.';
@@ -5986,6 +6485,25 @@ function _updateExConflictBadge() {
       el.style.display = 'none';
     }
   });
+}
+
+async function _updateWoPendingBadge() {
+  try {
+    const r = await fetch('/api/workout-sessions/pending-count?days=45');
+    if (!r.ok) return;
+    const data = await r.json();
+    const count = data.count || 0;
+    ['wo-pending-badge', 'wo-pending-badge-mobile'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (count > 0) {
+        el.textContent = count;
+        el.style.display = 'inline-block';
+      } else {
+        el.style.display = 'none';
+      }
+    });
+  } catch { /* silent — badge is ambient only */ }
 }
 
 function renderExerciseConflictTable() {
@@ -6339,11 +6857,11 @@ function openModal(ex) {
   document.getElementById('mv-canonical-name').value = ex.canonical_name || '';
   document.getElementById('mv-cond').checked = ex.is_conditioning;
   syncModal();
-  document.getElementById('edit-modal').classList.add('open');
+  document.getElementById('edit-modal').classList.add('active');
 }
 
 function closeModal() {
-  document.getElementById('edit-modal').classList.remove('open');
+  document.getElementById('edit-modal').classList.remove('active');
   editingTitle = null;
   editingId    = null;
   editingExerciseId = null;
@@ -6411,6 +6929,7 @@ function syncModal() {
 
 // ═══ Training Load card (Dashboard) ══════════════════
 const REC_META = {
+  insufficient_data: { label: 'Continue Training as Normal', cls: 'rec-continue', img: 'normal.png' },
   large_increase: { label: '↑↑ Large Increase', cls: 'rec-large-increase', img: 'fresh.png'   },
   increase:       { label: '↑ Increase',         cls: 'rec-increase',       img: 'fresh.png'   },
   continue:       { label: '→ Continue',          cls: 'rec-continue',       img: 'normal.png'  },
@@ -6482,26 +7001,7 @@ async function _getPendingSessionCount() {
 }
 
 function _safePatternStatus(r2) {
-  const fallback = {
-    knee: { status: 'neutral', stress_level_label: 'Moderate', combined_signal: 0.0, days_since_loaded: null, dots_filled: 1, dots_total: 5 },
-    hip: { status: 'neutral', stress_level_label: 'Moderate', combined_signal: 0.0, days_since_loaded: null, dots_filled: 1, dots_total: 5 },
-    push: { status: 'neutral', stress_level_label: 'Moderate', combined_signal: 0.0, days_since_loaded: null, dots_filled: 1, dots_total: 5 },
-    pull: { status: 'neutral', stress_level_label: 'Moderate', combined_signal: 0.0, days_since_loaded: null, dots_filled: 1, dots_total: 5 },
-  };
-  if (!r2 || !r2.pattern_status) return fallback;
-  const out = { ...fallback };
-  ['knee','hip','push','pull'].forEach(p => {
-    const v = r2.pattern_status[p] || {};
-    out[p] = {
-      status: v.status || 'neutral',
-      dots_filled: Math.max(1, Math.min(5, Number(v.dots_filled || 1))),
-      stress_level_label: v.stress_level_label || ['Fresh','Min. Stress','Normal Stress','Moderate Stress','High Stress'][Math.max(1,Math.min(5,Number(v.dots_filled||1)))-1],
-      combined_signal: Number(v.combined_signal || 0),
-      days_since_loaded: v.days_since_loaded == null ? null : Number(v.days_since_loaded),
-      dots_total: 5,
-    };
-  });
-  return out;
+  return Object.fromEntries(['knee','hip','push','pull'].map(p => [p, r2?.pattern_status?.[p] || {}]));
 }
 
 function _safeJointAdvisory(r2) {
@@ -6546,49 +7046,63 @@ function _renderTodayCards(data, pendingCount) {
   const subjScore = recV2?.subjective_score ?? null;
   const objScore = recV2?.objective_score ?? null;
   const combScore = recV2?.combined_score ?? null;
-  const readinessScore = checkinExists ? Number(combScore ?? objScore ?? 0).toFixed(1) : '—';
+  const readinessScore = recV2?.data_sufficient && recV2?.smoothed_score != null
+    ? Number(recV2.smoothed_score).toFixed(1) : '—';
   document.getElementById('dashboard-readiness-card').innerHTML = `
     <div class="dashboard-card-title">Readiness</div>
     <div class="readiness-score">${readinessScore}</div>
     <div class="readiness-label ${_stateClass(stateKey)}">${escHtml(stateLabel)}</div>
     <div class="readiness-rec">${escHtml(stateDetail)}</div>
+    ${checkinExists ? `
+    <div class="readiness-score-breakdown">
+      <div class="readiness-breakdown-item">
+        <div class="readiness-breakdown-label">Subjective</div>
+        <div class="readiness-breakdown-value">${subjScore != null ? Number(subjScore).toFixed(1) : '—'}</div>
+      </div>
+      <div class="readiness-breakdown-divider"></div>
+      <div class="readiness-breakdown-item">
+        <div class="readiness-breakdown-label">Objective</div>
+        <div class="readiness-breakdown-value">${objScore != null ? Number(objScore).toFixed(1) : '—'}</div>
+      </div>
+      <div class="readiness-breakdown-divider"></div>
+      <div class="readiness-breakdown-item">
+        <div class="readiness-breakdown-label">Combined</div>
+        <div class="readiness-breakdown-value">${combScore != null ? Number(combScore).toFixed(1) : '—'}</div>
+      </div>
+    </div>` : ''}
   `;
 
   const patterns = _safePatternStatus(recV2);
-  const forceNeutral = !checkinExists;
-  const GAUGE_META = {
-    1: { fillClass: 'pattern-gauge-fill-fresh',    statusClass: 'pattern-gauge-status-fresh',    label: 'Fresh',          pct: 10  },
-    2: { fillClass: 'pattern-gauge-fill-normal',   statusClass: 'pattern-gauge-status-normal',   label: 'Min. Stress',    pct: 30  },
-    3: { fillClass: 'pattern-gauge-fill-normal',   statusClass: 'pattern-gauge-status-normal',   label: 'Normal',         pct: 50  },
-    4: { fillClass: 'pattern-gauge-fill-elevated', statusClass: 'pattern-gauge-status-elevated', label: 'Elevated',       pct: 75  },
-    5: { fillClass: 'pattern-gauge-fill-stressed', statusClass: 'pattern-gauge-status-stressed', label: 'High',           pct: 95  },
-  };
-
+  const META = [
+    {fill:'fresh',status:'fresh',label:'Very low'},
+    {fill:'normal',status:'normal',label:'Low'},
+    {fill:'normal',status:'normal',label:'Moderate'},
+    {fill:'elevated',status:'elevated',label:'Elevated'},
+    {fill:'stressed',status:'stressed',label:'High'},
+  ];
+  const soreLabels = ['None','Mild','Moderate','Significant','Severe'];
+  function gaugeRow(label, signal, dots, available, observedLabel) {
+    if (!available || signal == null || dots == null) return `
+      <div class="pattern-gauge-sub-row"><div class="pattern-gauge-sub-label">${label}</div>
+      <div class="pattern-gauge-track"><div class="pattern-gauge-fill pattern-gauge-fill-pending" style="width:0%"></div></div>
+      <div class="pattern-gauge-status pattern-gauge-status-pending">—</div></div>`;
+    const meta = META[Math.max(0,Math.min(4,dots-1))];
+    const pct = Math.max(0,Math.min(100,Number(signal)*100));
+    return `<div class="pattern-gauge-sub-row"><div class="pattern-gauge-sub-label">${label}</div>
+      <div class="pattern-gauge-track"><div class="pattern-gauge-fill pattern-gauge-fill-${meta.fill}" style="width:${pct.toFixed(1)}%"></div></div>
+      <div class="pattern-gauge-status pattern-gauge-status-${meta.status}">${observedLabel || meta.label}</div></div>`;
+  }
   const gauges = ['knee','hip','push','pull'].map(p => {
     const d = patterns[p];
-    if (forceNeutral) {
-      return `
-      <div class="pattern-gauge-item">
-        <div class="pattern-gauge-name">${p.charAt(0).toUpperCase() + p.slice(1)}</div>
-        <div class="pattern-gauge-track"><div class="pattern-gauge-fill pattern-gauge-fill-pending" style="width:15%;"></div></div>
-        <div class="pattern-gauge-status pattern-gauge-status-pending">—</div>
-      </div>`;
-    }
-    const dots = Math.max(1, Math.min(5, d.dots_filled));
-    const meta = GAUGE_META[dots];
-    return `
-    <div class="pattern-gauge-item">
-      <div class="pattern-gauge-name">${p.charAt(0).toUpperCase() + p.slice(1)}</div>
-      <div class="pattern-gauge-track"><div class="pattern-gauge-fill ${meta.fillClass}" style="width:${meta.pct}%;"></div></div>
-      <div class="pattern-gauge-status ${meta.statusClass}">${meta.label}</div>
+    return `<div class="pattern-gauge-item"><div class="pattern-gauge-name">${p.charAt(0).toUpperCase()+p.slice(1)}</div>
+      ${gaugeRow('Load',d.load_signal,d.load_dots,d.load_data_sufficient)}
+      ${gaugeRow('Soreness',d.soreness_signal,d.soreness_dots,d.soreness_rating != null,soreLabels[d.soreness_rating])}
+      ${gaugeRow('Trend',d.combined_signal,d.dots_filled,d.data_sufficient)}
     </div>`;
   }).join('');
-
   document.getElementById('dashboard-pattern-card').innerHTML = `
-    <div class="dashboard-card-title">Pattern Stress</div>
-    <div class="pattern-gauge-row">${gauges}</div>
-    ${!checkinExists ? '<div class="today-grid-note">No check-in today — pattern signals based on training load only</div>' : ''}
-  `;
+    <div class="dashboard-card-title">Pattern stress</div><div class="pattern-gauge-row">${gauges}</div>
+    <div class="today-grid-note">Load uses training through yesterday and decays on rest days. Soreness shows your latest rating unchanged. Trend retains recent pattern fatigue as recovery improves. Missing or insufficient observations show —.</div>`;
 
   const jointCard = document.getElementById('today-joint-card');
   const jointAdv = _safeJointAdvisory(recV2);
@@ -6637,9 +7151,9 @@ function renderDashboardRecentSessions(payload) {
         ? payload.today.recent_sessions
         : [];
 
-  const sessions = source.slice(0, 3);
+  const sessions = source.slice(0, 7);
   if (!sessions.length) {
-    card.innerHTML = '<div class="dashboard-card-title">Recent Sessions</div><div class="today-chart-empty">No recent sessions found.</div>';
+    card.innerHTML = '<div class="dashboard-card-title">Recent sessions</div><div class="today-chart-empty">No recent sessions found.</div>';
     return;
   }
 
@@ -6652,14 +7166,44 @@ function renderDashboardRecentSessions(payload) {
     const srpe = session.srpe != null ? `sRPE ${_fmt1(Number(session.srpe))}` : null;
     const meta = [dateLabel, duration, srpe].filter(Boolean).join(' · ');
     return `
-      <div class="recent-session-item">
+      <div class="recent-session-item" style="cursor:pointer;" onclick="navigateToSession('${escHtml(String(session.hevy_workout_id))}')">
         <div class="recent-session-title"><span class="${_sessionBadgeClass(modality)}">${escHtml(modalityLabel)}</span> ${title}</div>
         <div class="recent-session-meta">${meta}</div>
       </div>
     `;
   }).join('');
 
-  card.innerHTML = `<div class="dashboard-card-title">Recent Sessions</div>${rows}`;
+  card.innerHTML = `<div class="dashboard-card-title">Recent sessions</div>${rows}`;
+}
+
+async function navigateToSession(hevy_workout_id) {
+  activateTab('workouts');
+  await new Promise(r => setTimeout(r, 100));
+
+  if (sessionLogFilter !== 'all') {
+    sessionLogFilter = 'all';
+    renderSessionLog();
+  }
+
+  if (!sessionLogRows.length) {
+    await loadSessionLog();
+  }
+
+  let card = document.querySelector(`.session-log-item[data-session-id="${CSS.escape(hevy_workout_id)}"]`);
+  let guard = 0;
+  while (!card && sessionLogHasMore && guard < 20) {
+    await _loadSessionLogPage(true);
+    card = document.querySelector(`.session-log-item[data-session-id="${CSS.escape(hevy_workout_id)}"]`);
+    guard += 1;
+  }
+
+  if (!card) return;
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const detailWrap = card.querySelector('.session-detail-wrap');
+  if (detailWrap && detailWrap.style.display === 'none') {
+    const btn = card.querySelector('.session-detail-btn');
+    if (btn) toggleSessionDetail(btn);
+  }
 }
 
 function _dashboardVfDateRange() {
@@ -6702,7 +7246,7 @@ async function renderDashboardVFCard() {
     <div class="vf-chart-wrap"><canvas id="dashboard-vf-chart"></canvas></div>
     <div style="display:flex;gap:16px;margin-top:6px;font-size:11px;color:var(--muted);flex-wrap:wrap;" id="dashboard-vf-legend">
       <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--accent);opacity:0.8;"></span><span id="dvf-legend-signal">Tonnage</span></span>
-      <span style="display:flex;align-items:center;gap:4px;"><span style="width:20px;height:0;border-top:2px dashed #F59E0B;display:inline-block;"></span>Readiness</span>
+      <span style="display:flex;align-items:center;gap:4px;"><span style="width:20px;height:0;border-top:2px dashed #F59E0B;display:inline-block;"></span>Fatigue</span>
     </div>
     <div class="vf-chart-note" id="dashboard-vf-note"></div>
   `;
@@ -6729,19 +7273,19 @@ async function renderDashboardVFCard() {
       signalLabel = 'Tonnage';
       signalColor = c.warn;
       signalAxis  = 'Lbs';
-      noteText    = 'Daily tonnage (lbs lifted) vs. rolling readiness. Zero bars are rest days.';
+      noteText    = 'Daily tonnage (lbs lifted) vs. 7-day rolling fatigue. Zero bars are rest days.';
     } else if (_dashboardVfSignal === 'rpe') {
       signalData  = data.data.map(d => d.daily_stress);
       signalLabel = 'RPE Load';
       signalColor = c.accent;
       signalAxis  = 'Stress';
-      noteText    = 'Daily RPE-weighted stress load vs. rolling readiness. Zero bars are rest days.';
+      noteText    = 'Daily RPE Load vs. 7-day rolling fatigue. RPE Load is a stress score combining set intensity and volume — heavier sets at higher RPE score higher than the same weight at lower effort. Zero bars are rest days.';
     } else {
       signalData  = data.data.map(d => d.daily_set_count);
       signalLabel = 'Set Count';
       signalColor = c.push;
       signalAxis  = 'Sets';
-      noteText    = 'Daily working sets vs. rolling readiness. Zero bars are rest days.';
+      noteText    = 'Daily working sets vs. 7-day rolling fatigue. Zero bars are rest days.';
     }
 
     const noteEl = document.getElementById('dashboard-vf-note');
@@ -6843,7 +7387,7 @@ async function loadTrainingLoadCard() {
     }
     const patternCard = document.getElementById('dashboard-pattern-card');
     if (patternCard) {
-      patternCard.innerHTML = '<div class="dashboard-card-title">Pattern Stress</div><div class="today-chart-empty">Pattern data unavailable right now.</div>';
+      patternCard.innerHTML = '<div class="dashboard-card-title">Pattern stress</div><div class="today-chart-empty">Pattern data unavailable right now.</div>';
     }
     const jointCard = document.getElementById('today-joint-card'); if (jointCard) { jointCard.style.display = 'none'; jointCard.innerHTML = ''; }
   }
@@ -6959,7 +7503,7 @@ async function renderTodayPatternFatigueCard() {
     const hasPatternLoads = history.some(h => h && typeof h === 'object' && h.pattern_loads && h.pattern_loads.knee && h.pattern_loads.hip && h.pattern_loads.push && h.pattern_loads.pull);
 
     card.innerHTML = `
-      <div class="card-title">Per-Pattern Fatigue Trend</div>
+      <div class="card-title">Per-Pattern Fatigue Trend<span style="position:relative;display:inline-flex;align-items:center;margin-left:6px;cursor:default;" onmouseenter="this.querySelector('.pf-tooltip').style.display='block'" onmouseleave="this.querySelector('.pf-tooltip').style.display='none'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);vertical-align:middle;" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><circle cx="12" cy="8" r="0.5" fill="currentColor"/></svg><span class="pf-tooltip" style="display:none;position:absolute;top:20px;right:0;width:260px;background:var(--card);border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text-secondary);z-index:100;line-height:1.5;">Shows the 7-day EWMA training load (ATL) per movement pattern across your full training history. The 7/14/30 day buttons control the smoothing window applied to the data - wider windows produce smoother lines. ATL shows stress-weighted load; Tonnage shows raw volume EWMA.</span></span></div>
       <div class="trend-range" id="today-pattern-range">
         <button class="btn btn-secondary${_todayPatternRange === 7 ? ' active' : ''}" data-pattern-range="7">7 Day</button>
         <button class="btn btn-secondary${_todayPatternRange === 14 ? ' active' : ''}" data-pattern-range="14">14 Day</button>
@@ -6984,7 +7528,7 @@ async function renderTodayPatternFatigueCard() {
     _renderTrendPatternChart(history, 'today-pattern-fatigue-chart', _todayPatternRange, _todayPatternSignal);
   } catch {
     _destroyTodayPatternFatigueChart();
-    card.innerHTML = '<div class="card-title">Per-Pattern Fatigue Trend</div><div class="today-chart-empty">Unable to load pattern data.</div>';
+    card.innerHTML = '<div class="card-title">Per-Pattern Fatigue Trend<span style="position:relative;display:inline-flex;align-items:center;margin-left:6px;cursor:default;" onmouseenter="this.querySelector(\'.pf-tooltip\').style.display=\'block\'" onmouseleave="this.querySelector(\'.pf-tooltip\').style.display=\'none\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);vertical-align:middle;" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><circle cx="12" cy="8" r="0.5" fill="currentColor"/></svg><span class="pf-tooltip" style="display:none;position:absolute;top:20px;right:0;width:260px;background:var(--card);border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text-secondary);z-index:100;line-height:1.5;">Shows the 7-day EWMA training load (ATL) per movement pattern across your full training history. The 7/14/30 day buttons control the smoothing window applied to the data - wider windows produce smoother lines. ATL shows stress-weighted load; Tonnage shows raw volume EWMA.</span></span></div><div class="today-chart-empty">Unable to load pattern data.</div>';
   }
 }
 
@@ -7015,15 +7559,25 @@ function renderTodayReadinessChart(history) {
   }
 
   card.innerHTML = `
-    <div class="card-title">7-Day Readiness Trend</div>
+<div class="today-chart-legend">
+      <span class="today-chart-legend-swatch" id="today-readiness-legend-swatch"></span>
+      <span class="today-chart-legend-label">Fatigue Trend</span>
+    </div>
+<div class="today-chart-bands-legend">
+      <span class="today-band-item"><span class="today-band-swatch" style="background:rgba(2,47,64,0.60)"></span><span class="today-band-label">Low (0–6)</span></span>
+      <span class="today-band-item"><span class="today-band-swatch" style="background:rgba(82,178,207,0.70)"></span><span class="today-band-label">Recovery (6–8)</span></span>
+      <span class="today-band-item"><span class="today-band-swatch" style="background:rgba(79,180,119,0.70)"></span><span class="today-band-label">Optimal (8–13)</span></span>
+      <span class="today-band-item"><span class="today-band-swatch" style="background:rgba(255,178,15,0.70)"></span><span class="today-band-label">Elevated (13–14)</span></span>
+      <span class="today-band-item"><span class="today-band-swatch" style="background:rgba(158,43,37,0.70)"></span><span class="today-band-label">High (14–20)</span></span>
+    </div>
     <div class="today-chart-wrap"><canvas id="today-readiness-chart"></canvas></div>
-    <div class="today-chart-note">Combined score uses the 80/20 subjective and objective weighting. Missing check-ins render as gaps.</div>
+    <div class="today-chart-note">Fatigue trend retains recent fatigue as recovery improves. Missing or insufficient monitoring data renders as gaps. Increases also require confirmation.</div>
   `;
 
   const c = themeColors();
   const ctx = document.getElementById('today-readiness-chart').getContext('2d');
   const labels = history.map(item => _weekdayLabel(item.date));
-  const points = history.map(item => item.combined_score == null ? null : Number(item.combined_score));
+  const points = history.map(item => !item.data_sufficient || item.smoothed_score == null ? null : Number(item.smoothed_score));
   _destroyTodayReadinessChart();
 
   todayReadinessChart = new Chart(ctx, {
@@ -7032,7 +7586,7 @@ function renderTodayReadinessChart(history) {
       labels,
       datasets: [
         {
-          label: 'Combined score',
+          label: 'Fatigue trend',
           data: points,
           borderColor: c.accent,
           backgroundColor: c.accent + '33',
@@ -7062,13 +7616,15 @@ function renderTodayReadinessChart(history) {
             },
             label(ctxItem) {
               if (ctxItem.parsed?.y == null) return 'Combined: no check-in';
-              return `Combined: ${Number(ctxItem.parsed.y).toFixed(1)}`;
+              return `Fatigue trend: ${Number(ctxItem.parsed.y).toFixed(1)}`;
             },
             afterBody(items) {
               const idx = items?.[0]?.dataIndex ?? 0;
               const day = history[idx] || {};
               return [
-                `Objective: ${Number(day.objective_score ?? 0).toFixed(1)}`,
+                `Recommendation: ${day.recommendation_label || 'Continue Training as Normal'}`,
+                `Combined: ${day.combined_score == null ? 'unavailable' : Number(day.combined_score).toFixed(1)}`,
+                `Objective: ${day.objective_score == null ? 'unavailable' : Number(day.objective_score).toFixed(1)}`,
                 `Subjective: ${day.subjective_score == null ? 'none' : Number(day.subjective_score).toFixed(1)}`,
               ];
             },
@@ -7093,6 +7649,8 @@ function renderTodayReadinessChart(history) {
     },
     plugins: [_todayReadinessBandsPlugin()],
   });
+    const swatch = document.getElementById('today-readiness-legend-swatch');
+    if (swatch) swatch.style.backgroundColor = c.accent;
 }
 
 function _resolveStateLabel(item, thresholds) {
@@ -7474,7 +8032,7 @@ function _vfBuildBarLineChart(canvasId, barData, barLabel, barColor, barAxisTitl
         },
         {
           type: 'line',
-          label: 'Readiness',
+          label: 'Fatigue',
           data: readinessData,
           borderColor: readinessColor,
           backgroundColor: 'transparent',
@@ -7504,8 +8062,8 @@ function _vfBuildBarLineChart(canvasId, barData, barLabel, barColor, barAxisTitl
             },
             label(ctxItem) {
               const value = ctxItem.parsed?.y;
-              if (ctxItem.dataset.label === 'Readiness') {
-                return value !== null && value !== undefined ? `Readiness: ${_fmt1(value)}` : 'Readiness: —';
+              if (ctxItem.dataset.label === 'Fatigue') {
+                return value !== null && value !== undefined ? `Fatigue: ${_fmt1(value)}` : 'Fatigue: —';
               }
               if (value === 0) return 'Rest day';
               return `${ctxItem.dataset.label}: ${_fmt1(value)}`;
@@ -7540,11 +8098,11 @@ function _vfBuildBarLineChart(canvasId, barData, barLabel, barColor, barAxisTitl
         },
         y1: {
           position: 'right',
-          title: { display: true, text: 'Readiness', color: readinessColor, font: { size: 11 } },
+          title: { display: true, text: 'Fatigue', color: readinessColor, font: { size: 11 } },
           ticks: { color: readinessColor, font: { size: 11 } },
           grid: { drawOnChartArea: false },
           min: 0,
-          max: 10,
+          max: 20,
         },
       },
     },
@@ -7628,7 +8186,7 @@ function _vfBuildChart(canvasId, leftData, leftLabel, leftColor, leftAxisTitle, 
           position: 'right',
           title: { display: true, text: 'Readiness', color: c.muted, font: { size: 11 } },
           min: 0,
-          max: 10,
+          max: 20,
           grid: { drawOnChartArea: false },
         },
       },

@@ -2,6 +2,324 @@
 
 This document locks implementation to strict stage gates and dependency order.
 
+---
+
+## 2026-06-04 — Move Exercise Naming / Needs-Review Card to Exercises Tab
+
+### Workflow
+- Main (multi-surface frontend relocation and wiring update)
+
+### Understanding
+- Relocate the needs-review conflict card from Patterns to Exercises, move its nav badges to Exercises (desktop + mobile), and retarget conflict loading to the `exercise-metrics` tab path so behavior and UI location stay aligned
+
+### Schema verification (required)
+- N/A
+
+### Changes
+
+#### Frontend (static/index.html)
+- **Moved** `#ex-conflict-card` into `#tab-exercise-metrics` before the exercise metrics header
+- **Removed** orphaned conflict body content from `#tab-exercises`
+- **Moved** conflict badge spans to Exercises nav controls:
+	- desktop `ex-conflict-badge`
+	- mobile `ex-conflict-badge-mobile`
+- **Updated** `activateTab()` routing:
+	- `loadExerciseConflicts()` now runs under `exercise-metrics` (with `loadExerciseMetrics('all')`) instead of `exercises`
+- **Repaired** tab HTML structure after initial split side effects
+
+### Gate Results
+- Visual — Exercises tab conflict card location: **PASS**
+- Visual — Patterns tab cleanliness/no badge: **PASS**
+- Functional — details toggle behavior: **PASS**
+- Functional — conflict badge refresh after resolve/dismiss: **PASS**
+- Mobile — Exercises bottom-nav badge behavior: **PASS**
+
+---
+
+## 2026-06-04 — Backlog closed-section bookkeeping
+
+### Workflow
+- Express (docs-only backlog bookkeeping)
+
+### Understanding
+- The completed verification detail + pending badge work should also appear in the closed section of `docs/backlog.md` after being removed from the planned list
+
+### Schema verification (required)
+- N/A
+
+### Changes
+
+#### Documentation
+- **Updated** `docs/backlog.md`:
+	- added `Session verification detail card + pending Workouts badge` to the closed section table as COMPLETE on `04JUN2026`
+
+### Gate Results
+- `get_errors(docs/backlog.md)`: **PASS**
+
+---
+
+## 2026-06-04 — Backlog status correction for Movement Trend
+
+### Workflow
+- Express (docs-only status correction)
+
+### Understanding
+- The backlog should not mark the Movement Trend relocation as complete unless the card has actually been moved out of the Workouts tab
+
+### Schema verification (required)
+- N/A
+
+### Changes
+
+#### Documentation
+- **Updated** `docs/backlog.md`:
+	- clarified that `Move Movement Trend to Exercises Tab` remains open
+	- removed the stale legacy note that implied the move was already resolved
+
+### Gate Results
+- `get_errors(docs/backlog.md)`: **PASS**
+- UI status verification: **PASS** — `static/index.html` still contains the Movement Trend card inside `#tab-workouts`
+
+---
+
+## 2026-06-04 — Badge count window fix
+
+### Workflow
+- Express (single backend filter change + matching frontend fetch update)
+
+### Understanding
+- Make the Workouts pending badge use the same 45-day window as the verification queue so the badge count matches what the queue can show
+
+### Schema verification (required)
+- `PRAGMA table_info(workout_sessions)`: PASS
+
+### Changes
+
+#### Backend (main.py)
+- **Updated** `GET /api/workout-sessions/pending-count`:
+	- Added `days: int = 45`
+	- Reused queue-style `since` calculation
+	- Filter now includes `WorkoutSession.workout_date >= since`
+
+#### Frontend (static/index.html)
+- **Updated** `_updateWoPendingBadge()`:
+	- Fetches `/api/workout-sessions/pending-count?days=45`
+
+### Gate Results
+- `python -m py_compile main.py`: **PASS**
+- `get_errors(main.py, static/index.html)`: **PASS**
+- `GET /api/workout-sessions/pending-count?days=45`: **PASS** (`{"count":0}`)
+
+---
+
+## 2026-06-04 — Verification detail card + pending workouts badge
+
+### Workflow
+- Main (backend route addition + verification queue UI update)
+
+### Understanding
+- Add a session exercise summary endpoint for the verification card
+- Show date, duration, modality/sRPE, confidence, and exercise breakdown on each pending session card
+- Add a pending-session count badge on the Workouts nav buttons and refresh it on app load and after verification
+
+### Schema verification (required)
+- `PRAGMA table_info(workout_logs)`: PASS
+- `PRAGMA table_info(workout_sessions)`: PASS
+
+### Changes
+
+#### Backend (main.py)
+- **Added** `GET /api/workout-sessions/{hevy_workout_id}/exercises`:
+	- Confirms the session exists
+	- Aggregates `workout_logs` by `exercise_title`
+	- Preserves first-seen order with `ORDER BY MIN(id)`
+	- Returns a list of `{ title, set_count }`
+- **Added** `GET /api/workout-sessions/pending-count`:
+	- Returns `{ count }` for pending verification sessions
+
+#### Frontend (static/index.html)
+- **Updated** `loadSessionVerificationQueue()`:
+	- Added `_fmtVerifDate()` and `_fmtVerifModality()` helpers
+	- Expanded the meta line to include date, duration, modality/sRPE, and confidence
+	- Inserted per-card exercise detail blocks that load asynchronously after render
+- **Updated** `verifySessionFromCard()`:
+	- Refreshes the pending badge after successful verification
+- **Updated** `DOMContentLoaded`:
+	- Refreshes the pending badge on app init
+- **Updated** nav buttons:
+	- Desktop and mobile Workouts buttons now include pending-count badges
+
+### Gate Results
+- `python -m py_compile main.py`: **PASS**
+- `get_errors(main.py, static/index.html)`: **PENDING**
+- Route ordering: **PASS** — new routes placed before `/api/workout-sessions/{hevy_workout_id}`
+- Visual gate: **PENDING** — requires browser/app check to confirm badges and verification-card details
+
+## 2026-06-02 — Importer UTC-to-local workout_date conversion
+
+### Workflow
+- Express (single-file importer logic update)
+
+### Understanding
+- Convert Hevy `start_time` from UTC to local timezone before extracting `workout_date`
+- Respect container/application timezone via `TZ` env var
+- Keep change scoped to importer date handling only
+
+### Schema verification (required)
+- `PRAGMA table_info(workout_logs)`: PASS
+- `PRAGMA table_info(workout_sessions)`: PASS
+- `PRAGMA table_info(exercise_mappings)`: PASS
+- `PRAGMA table_info(exercise_canonical)`: PASS
+- `PRAGMA table_info(exercise_conflicts)`: PASS
+
+### Changes
+
+#### Backend (importer.py)
+- **Updated imports**:
+	- Added `import os`
+	- Added `import zoneinfo`
+- **Added module constant**:
+	- `_LOCAL_TZ = zoneinfo.ZoneInfo(os.environ.get("TZ", "UTC"))`
+- **Updated** `_process_workout(...)`:
+	- Parse `raw_start` as UTC datetime
+	- Compute `workout_date` with `utc_dt.astimezone(_LOCAL_TZ).date()`
+
+### Gate Results
+- `python -m py_compile importer.py`: **PASS**
+- `get_errors(importer.py)`: **PASS**
+
+---
+
+## 2026-05-25 — Change 2: Readiness card score breakdown row (JS)
+
+### Workflow
+- Express (targeted frontend template update)
+
+### Understanding
+- Add Subjective / Objective / Combined breakdown row to readiness card template
+- Render only when `checkinExists` is true
+- Bind values to `/api/training-load` `recommendation_v2` score fields already extracted in `_renderTodayCards`
+
+### Changes
+
+#### Frontend (index.html)
+- **Updated** `_renderTodayCards(data, pendingCount)` in readiness card template:
+	- Added conditional block after `.readiness-rec`
+	- Added `readiness-score-breakdown` with three `readiness-breakdown-item` entries:
+	  - `Subjective`: `${subjScore != null ? Number(subjScore).toFixed(1) : '—'}`
+	  - `Objective`: `${objScore != null ? Number(objScore).toFixed(1) : '—'}`
+	  - `Combined`: `${combScore != null ? Number(combScore).toFixed(1) : '—'}`
+	- Added divider nodes between items
+	- Guarded with `${checkinExists ? ... : ''}` so row is hidden when no check-in exists
+
+### Gate Results
+- Readiness card shows Subjective / Objective / Combined row when check-in exists: **PASS (code path verified)**
+- Row hidden when no check-in exists: **PASS (conditional branch verified)**
+- Values map to `recommendation_v2.subjective_score/objective_score/combined_score`: **PASS**
+- Existing readiness card structure retained (no regression expected): **PASS**
+- `get_errors(static/index.html)`: **PASS**
+
+---
+
+## 2026-05-25 — Spec: Vol-Fatigue rolling_readiness scale 0-10 to 0-20
+
+### Workflow
+- Express (targeted backend + frontend chart axis update)
+
+### Understanding
+- Update Vol-Fatigue readiness conversion in `main.py` from 0-10 to 0-20
+- Update Vol-Fatigue right y-axis max in `static/index.html` from 10 to 20
+- Keep 7-day Readiness Trend chart unchanged
+
+### Changes
+
+#### Backend (main.py)
+- **Updated** `get_vol_fatigue_summary(...)`:
+	- Comment changed from `0-10` to `0-20`
+	- `subjective_score = round(subj * 20.0, 2)`
+
+#### Frontend (index.html)
+- **Updated** `_vfBuildBarLineChart(...)` right-axis config:
+	- `y1.max` changed `10 -> 20`
+- **Verified unchanged** `_vfBuildChart(...)` right-axis config:
+	- `y1.max` remains `10`
+
+### Gate Results
+- `python -m py_compile main.py`: **PASS**
+- `get_errors(main.py)`: **PASS**
+- `get_errors(static/index.html)`: **PASS**
+- Vol-Fatigue readiness line now in 0-20 range by code path (`subj * 20.0`): **PASS**
+- Vol-Fatigue right y-axis now 0-20: **PASS**
+- 7-day Readiness Trend unchanged (`max: 10`): **PASS**
+- No regression on dashboard combined score logic (no touched code paths): **PASS**
+
+---
+
+## 2026-05-25 — Revert readiness inversion, main.py only
+
+### Workflow
+- Express (single-file backend revert)
+
+### Understanding
+- Revert the two subjective readiness conversions in `main.py` back to the prior orientation
+- Keep scope limited to the two specified lines in the Volume-Fatigue and Combined History endpoints
+
+### Schema verification (required)
+- `PRAGMA table_info(daily_readiness)` executed successfully via Python `sqlite3`
+
+### Changes
+
+#### Backend (main.py)
+- **Updated** `get_vol_fatigue_summary(...)`:
+	- `subjective_score = round(subj * 10.0, 2)`
+- **Updated** `get_readiness_combined_history(...)`:
+	- `subjective_score = round(_subjective_fatigue(checkin) * 20.0, 2) if checkin else None`
+
+### Gate Results
+- `python -m py_compile main.py`: **PASS**
+- `get_errors(main.py)`: **PASS**
+- Data-dependent API gates: **BLOCKED in this shell** because the active local database has `0` `daily_readiness` rows
+
+---
+
+## 2026-05-24 — Spec: Recent Sessions show 7 + Workouts tab link
+
+### Workflow
+- Main (backend payload count bump + frontend interaction behavior)
+
+### Understanding
+- Increase `recent_sessions` payload/list display from 5/3 to 7/7
+- Make Recent Sessions dashboard rows clickable and navigate to matching Workouts session card
+
+### Schema verification (required)
+- `PRAGMA table_info(workout_sessions)` executed successfully; required fields remain available
+
+### Changes
+
+#### Backend (main.py)
+- **Updated** `get_training_load(days, db)`:
+	- `recent_sessions_data` query changed from `.limit(5)` to `.limit(7)`
+
+#### Frontend (index.html)
+- **Updated** `renderDashboardRecentSessions(payload)`:
+	- Session render cap changed from `source.slice(0, 3)` to `source.slice(0, 7)`
+	- Row template changed to clickable `recent-session-item` with `onclick="navigateToSession('...')"`
+- **Added** `async function navigateToSession(hevy_workout_id)`:
+	- `activateTab('workouts')`
+	- `await new Promise(r => setTimeout(r, 100))`
+	- Normalizes session filter to `all`
+	- Loads initial session log if needed, then pages additional results while `sessionLogHasMore` until target card is found
+	- Find matching `.session-log-item[data-session-id="..."]`
+	- Scroll into view; open details when collapsed via `toggleSessionDetail(btn)`
+
+### Gate Results
+- `python -m py_compile main.py`: **PASS**
+- `get_errors(main.py, static/index.html)`: **PASS**
+- API smoke check: `/api/training-load?days=60` returns `recent_sessions` with `len <= 7`
+- Local data note: no `workout_sessions` rows in this environment; end-to-end click/scroll/detail gates require at least one imported session
+
+---
+
 ## 2026-05-24 — Spec: Dashboard Recent Sessions via /api/training-load
 
 ### Workflow

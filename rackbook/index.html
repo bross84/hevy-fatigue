@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <script src="/training/static/training.js"></script>
+  <script src="/training/static/draft-transfer.js"></script>
+  <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hevy-Fatigue</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #1a1a1a;
+      --bg-elev: #222428;
+      --bg-soft: #2b2e34;
+      --bg-mute: #23252a;
+      --text: #eef1f5;
+      --muted: #a7afbc;
+      --border: #383c45;
+      --accent: #6fd3b2;
+      --ok: #4ecf7d;
+      --error: #ff7f7f;
+      --radius: 12px;
+      --shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+      --font: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+
+    html[data-theme="light"] {
+      color-scheme: light;
+      --bg: #f3f5f7;
+      --bg-elev: #ffffff;
+      --bg-soft: #f9fafc;
+      --bg-mute: #f1f3f7;
+      --text: #171d25;
+      --muted: #5f6878;
+      --border: #d9dee7;
+      --accent: #0f8968;
+      --ok: #1f8b4b;
+      --error: #c73636;
+      --shadow: 0 10px 24px rgba(15, 25, 45, 0.1);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(circle at 100% 0%, rgba(111, 211, 178, 0.14), transparent 42%),
+        radial-gradient(circle at 0% 100%, rgba(111, 211, 178, 0.08), transparent 48%),
+        var(--bg);
+    }
+
+    button, input, select, textarea { font: inherit; }
+
+    .app {
+      width: min(1220px, 100% - 1.25rem);
+      margin: 1rem auto 2rem;
+      display: grid;
+      gap: 0.8rem;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.75rem 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-elev);
+      box-shadow: var(--shadow);
+    }
+
+    .brand { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }
+    .dot {
+      width: 0.62rem;
+      height: 0.62rem;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent), #a4ebd4);
+      box-shadow: 0 0 0 4px rgba(111, 211, 178, 0.18);
+      flex-shrink: 0;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 0.98rem;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .theme-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .theme-select,
+    .field input,
+    .field textarea,
+    .field select {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-soft);
+      color: var(--text);
+      padding: 0.42rem 0.54rem;
+      font-size: 0.86rem;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0.45rem;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.4rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-elev);
+      box-shadow: var(--shadow);
+    }
+
+    .tab {
+      flex: 1;
+      min-height: 44px;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--muted);
+      padding: 0.52rem 0.68rem;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.86rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .tab[aria-selected="true"] {
+      color: var(--text);
+      border-color: rgba(111, 211, 178, 0.45);
+      background: rgba(111, 211, 178, 0.15);
+    }
+
+    .views {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-elev);
+      box-shadow: var(--shadow);
+      min-height: 72vh;
+      overflow: hidden;
+    }
+
+    .view { display: none; padding: 0.9rem; }
+    .view.active { display: block; }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: var(--bg-soft);
+      padding: 0.85rem;
+    }
+
+    .panel + .panel { margin-top: 0.7rem; }
+    .panel h2 { margin: 0 0 0.3rem; font-size: 0.96rem; }
+    .panel p { margin: 0; font-size: 0.84rem; color: var(--muted); line-height: 1.45; }
+
+    .row {
+      margin-top: 0.7rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .field { display: grid; gap: 0.32rem; min-width: 180px; flex: 1; }
+    .field label { font-size: 0.79rem; color: var(--muted); }
+
+    .btn {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-elev);
+      color: var(--text);
+      padding: 0.45rem 0.62rem;
+      font-size: 0.83rem;
+      cursor: pointer;
+    }
+
+    .btn.primary { background: rgba(111, 211, 178, 0.2); border-color: rgba(111, 211, 178, 0.42); }
+    .btn:disabled { opacity: 0.58; cursor: wait; }
+
+    .status { margin-top: 0.5rem; min-height: 1rem; font-size: 0.81rem; color: var(--muted); }
+    .status.ok { color: var(--ok); }
+    .status.error { color: var(--error); }
+    .hint { margin-top: 0.46rem; font-size: 0.8rem; color: var(--muted); }
+
+    .mono {
+      font-family: Consolas, "SFMono-Regular", Menlo, Monaco, monospace;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-mute);
+      color: var(--text);
+      padding: 0.18rem 0.42rem;
+      font-size: 0.8rem;
+    }
+
+    .unit-toggle {
+      margin-top: 0.66rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      display: inline-flex;
+    }
+
+    .unit-toggle button {
+      border: 0;
+      border-right: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      padding: 0.45rem 0.66rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .unit-toggle button:last-child { border-right: 0; }
+    .unit-toggle button.active { color: var(--text); background: rgba(111, 211, 178, 0.18); }
+
+    .program-row {
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--bg-soft);
+      padding: 0.52rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.45rem;
+      font-size: 0.84rem;
+      cursor: pointer;
+    }
+
+    .programs-layout {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 0.75rem;
+      align-items: start;
+    }
+
+    @media (max-width: 680px) {
+      .programs-layout { grid-template-columns: 1fr; }
+    }
+
+    .programs-panel {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.75rem;
+    }
+
+    .program-row {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.38rem 0.45rem;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background 0.1s;
+      margin-bottom: 0.2rem;
+    }
+    .program-row:hover { background: var(--bg-soft); }
+    .program-row.selected { background: rgba(111, 211, 178, 0.12); border-color: var(--accent); }
+    .program-row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem; }
+
+    .btn-icon {
+      padding: 0.15rem 0.38rem;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      color: var(--muted);
+      border-radius: 4px;
+      font-size: 0.78rem;
+      line-height: 1.4;
+      flex-shrink: 0;
+      transition: color 0.1s, background 0.1s;
+    }
+    .btn-icon:hover { color: var(--error); background: rgba(255,127,127,0.12); }
+
+    .autocomplete-dropdown {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      box-shadow: var(--shadow);
+      max-height: 220px;
+      overflow-y: auto;
+      z-index: 20;
+    }
+    .autocomplete-item {
+      padding: 0.38rem 0.65rem;
+      cursor: pointer;
+      font-size: 0.84rem;
+    }
+    .autocomplete-item:hover, .autocomplete-item.ac-focused { background: var(--bg-soft); }
+
+    .sheet {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 0.78rem;
+    }
+
+    .sheet th,
+    .sheet td {
+      border-bottom: 1px solid var(--border);
+      padding: 0.35rem 0.42rem;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .sheet th {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      background: var(--bg-mute);
+    }
+
+    .sheet tr:last-child td { border-bottom: 0; }
+
+    .fallback {
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      background: var(--bg-soft);
+      color: var(--muted);
+      font-size: 0.82rem;
+      padding: 0.75rem;
+    }
+
+    @media (max-width: 680px) {
+      .view { padding: 0.7rem; }
+      .theme-wrap span { display: none; }
+      .tabs {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .tab {
+        width: 100%;
+        min-height: 44px;
+        padding: 0.52rem 0.35rem;
+      }
+      .sheet { font-size: 0.75rem; }
+      .sheet th, .sheet td { padding: 0.3rem 0.32rem; }
+    }
+
+    /* ── Workout tab ─────────────────────────────────────── */
+    .wo-sticky-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--bg-elev);
+      border-bottom: 1px solid var(--border);
+      padding: 0.6rem 0.9rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .wo-sticky-header .wo-title {
+      flex: 1;
+      min-width: 0;
+      font-size: 0.85rem;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .wo-slot-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg-soft);
+      margin: 0.65rem;
+      overflow: hidden;
+    }
+    .wo-summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+    }
+    .wo-summary-table th, .wo-summary-table td {
+      padding: 0.38rem 0.5rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .wo-summary-table th {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      background: var(--bg-mute);
+    }
+
+    /* ── Workout session card layout ─────────────────────────────────────── */
+    input[type=number] { -moz-appearance: textfield; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { display: none; }
+
+    .wo-set-row { display: grid; grid-template-columns: 28px 1fr 52px 56px 52px 36px; gap: 6px; padding: 9px 12px; border-bottom: 0.5px solid var(--border); align-items: center; }
+    .wo-set-badge { width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; cursor: pointer; flex-shrink: 0; }
+    .wo-check-btn { width: 32px; height: 32px; border-radius: 8px; border: 0.5px solid var(--border); background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--muted); }
+    .wo-check-btn.done { background: rgba(78,207,125,0.18); border-color: rgba(78,207,125,0.4); color: var(--ok); }
+    .wo-bottom-sheet { background: var(--bg-elev); border-radius: 16px 16px 0 0; padding: 16px; border-top: 0.5px solid var(--border); width: 100%; }
+    .wo-sheet-option { padding: 14px 16px; border-bottom: 0.5px solid var(--border); cursor: pointer; font-size: 15px; display: flex; align-items: center; gap: 12px; }
+    .wo-sheet-option:last-child { border-bottom: none; }
+    .wo-card-input { border: 1px solid var(--border); border-radius: 6px; background: var(--bg-elev); color: var(--text); padding: 2px 4px; }
+
+    .page-heading { display:flex; align-items:center; gap:8px; min-width:0; }
+    .page-back { flex-shrink:0; min-height:44px; padding:4px 8px; border:0; border-radius:8px; background:transparent; color:var(--accent,currentColor); font:inherit; font-size:14px; cursor:pointer; white-space:nowrap; }
+    .page-back:disabled { opacity:.4; cursor:default; }
+    .page-back:focus-visible { outline:2px solid var(--accent,currentColor); outline-offset:2px; }
+  </style>
+  <style id="rackbook-theme">
+    :root {
+      --bg: #111923; --bg-elev: #1a2533; --bg-soft: #243246; --bg-mute: #202d3d;
+      --text: #e8eef8; --muted: #a5b4c9; --border: #344358; --accent: #95baff;
+      --radius: 16px; --shadow: 0 4px 20px rgba(0,0,0,.12);
+    }
+    html[data-theme="light"] {
+      --bg: #f3f5f8; --bg-elev: #ffffff; --bg-soft: #f7f9fc; --bg-mute: #edf1f7;
+      --text: #17243a; --muted: #59687c; --border: #dce3ec; --accent: #2459b8;
+      --shadow: 0 2px 5px rgba(23,36,58,.025), 0 10px 28px rgba(23,36,58,.035);
+    }
+    body { background: var(--bg); -webkit-font-smoothing: antialiased; }
+    .topbar, .panel { border-radius: 16px; }
+    .btn.primary { background: var(--accent); color: var(--bg); border-color: transparent; }
+    .tab[aria-selected="true"] { background: var(--bg-soft); color: var(--accent); border-color: var(--accent); }
+    .dot { background: var(--accent); box-shadow: none; }
+    h1, h2 { letter-spacing: -.025em; }
+    :where(button, a, input, select):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  </style>
+<style>
+    .trial-optin-row { display:flex; align-items:center; flex-wrap:wrap; gap:16px 24px; }
+    .trial-optin-copy { flex:1 1 300px; min-width:0; }
+    .trial-optin-heading { display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
+    .trial-optin-heading h2 { margin:0; }
+    .trial-optin-state { border:1px solid var(--accent); border-radius:999px; padding:2px 10px; font-size:13px; }
+    #trialEnabled { min-height:48px; min-width:190px; }
+    #trialHistory summary { cursor:pointer; min-height:44px; padding:10px 0; }
+    @media(max-width:599px) { #trialEnabled { width:100%; } }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="dot" aria-hidden="true"></span>
+        <div class="page-heading"><button id="pageBack" class="page-back" type="button" aria-label="Go back">← Back</button><h1>Hevy-Fatigue</h1></div>
+      </div>
+      <div class="theme-wrap">
+        <span>Theme</span>
+        <select id="themeSelect" class="theme-select" aria-label="Theme">
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </header>
+
+    <nav class="app-nav" aria-label="Pages" style="display:flex;flex-wrap:wrap;gap:16px;padding:16px 0">
+      <a href="/">Today</a><a href="/training/log">Log Workout</a><a href="/training/microcycles">Plans</a><a href="/training/progress">Progress</a><a href="/training/rpe-charts">RPE Charts</a><a href="/training/recent">Recent</a><a href="/training/stress">Stress</a><a href="/#settings">Settings</a>
+    </nav>
+    <main class="views">
+      <section id="view-settings" class="view active" aria-live="polite">
+    <section id="trialOptin" class="panel trial-optin" aria-labelledby="trialOptinTitle">
+      <div class="trial-optin-row">
+        <div class="trial-optin-copy">
+          <div class="trial-optin-heading"><h2 id="trialOptinTitle">Performance model trial</h2><span id="trialSettingState" class="trial-optin-state">Optional</span></div>
+          <p id="trialOptinDescription">Enter your pre-workout scores and planned sets. The trial records automatically before lifting; see the result after saving.</p>
+        </div>
+        <button id="trialEnabled" class="btn primary" type="button" aria-pressed="false" aria-describedby="trialOptinDescription trialSettingStatus" disabled>Enable model trial</button>
+      </div>
+      <p id="trialSettingStatus" class="hint" role="status">Loading trial setting…</p>
+      <p><a href="/training/trial">View model trial dashboard →</a></p>
+      <details id="trialHistory" hidden><summary>Model trial history</summary><div></div></details>
+    </section>
+
+        <div class="panel">
+          <h2>Hevy API Key</h2><p><a href="/#settings">Manage the shared Hevy credential in Settings</a></p>
+          <p>Connect your Hevy account key for exercise sync and workout write-back.</p>
+
+          <div id="apiKeySummary" class="hint"></div>
+
+          <div class="row" style="display:none">
+            <div class="field">
+              <label hidden for="apiKeyInput">API key</label>
+              <input id="apiKeyInput" disabled type="text" autocomplete="off" placeholder="Paste Hevy API key" />
+            </div>
+            <button id="saveApiKeyBtn" class="btn primary" type="button">Save Key</button>
+            <button id="replaceApiKeyBtn" class="btn" type="button" hidden>Replace Key</button>
+          </div>
+          <div id="apiKeyStatus" class="status"></div>
+        </div>
+
+        <div class="panel">
+          <h2>Exercise Cache</h2>
+          <p>Sync exercise templates from Hevy to enable fast exercise selection and write-back mapping.</p>
+
+          <div class="row">
+            <div class="hint">Cached exercises: <span id="exerciseCount" class="mono">--</span></div>
+            <button id="syncExercisesBtn" class="btn primary" type="button">Sync Exercises</button>
+          </div>
+          <div class="hint">Last sync: <span id="exerciseLastSync" class="mono">--</span></div>
+          <div id="exerciseStatus" class="status"></div>
+        </div>
+
+        <div class="panel">
+          <h2>Unit Preference</h2>
+          <p>All loads show primary unit first and secondary conversion in brackets.</p>
+          <div class="unit-toggle">
+            <button id="unitKgBtn" type="button">kg primary</button>
+            <button id="unitLbsBtn" type="button">lbs primary</button>
+          </div>
+          <div id="unitStatus" class="status"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    const STORAGE_KEYS = { theme: "training.theme", unitPref: "training.unit" };
+
+    const state = {
+      theme: "system",
+      unitPref: "kg",
+      exercises: []
+    };
+
+    const refs = {
+      themeSelect: document.getElementById("themeSelect"),
+      apiKeySummary: document.getElementById("apiKeySummary"),
+      apiKeyInput: document.getElementById("apiKeyInput"),
+      saveApiKeyBtn: document.getElementById("saveApiKeyBtn"),
+      replaceApiKeyBtn: document.getElementById("replaceApiKeyBtn"),
+      apiKeyStatus: document.getElementById("apiKeyStatus"),
+      exerciseCount: document.getElementById("exerciseCount"),
+      exerciseLastSync: document.getElementById("exerciseLastSync"),
+      syncExercisesBtn: document.getElementById("syncExercisesBtn"),
+      exerciseStatus: document.getElementById("exerciseStatus"),
+      unitKgBtn: document.getElementById("unitKgBtn"),
+      unitLbsBtn: document.getElementById("unitLbsBtn"),
+      unitStatus: document.getElementById("unitStatus")
+    };
+
+    function setStatus(el, message, tone = "") {
+      if (!el) return;
+      el.textContent = message || "";
+      el.className = `status${tone ? ` ${tone}` : ""}`;
+    }
+
+    function applyUnitPreference(pref) {
+      state.unitPref = pref === "lbs" ? "lbs" : "kg";
+      localStorage.setItem(STORAGE_KEYS.unitPref, state.unitPref);
+      refs.unitKgBtn.classList.toggle("active", state.unitPref === "kg");
+      refs.unitLbsBtn.classList.toggle("active", state.unitPref === "lbs");
+      setStatus(refs.unitStatus, `Unit preference saved: ${state.unitPref.toUpperCase()} primary`, "ok");
+    }
+
+    function applyTheme(theme) {
+      const root = document.documentElement;
+      state.theme = theme;
+      if (theme === "system") {
+        const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        root.setAttribute("data-theme", isDark ? "dark" : "light");
+      } else {
+        root.setAttribute("data-theme", theme);
+      }
+      localStorage.setItem(STORAGE_KEYS.theme, theme);
+      refs.themeSelect.value = theme;
+    }
+
+    function loadTheme() {
+      const stored = localStorage.getItem(STORAGE_KEYS.theme);
+      applyTheme(stored || "system");
+    }
+
+    function loadUnitPreference() {
+      const pref = localStorage.getItem(STORAGE_KEYS.unitPref) || "kg";
+      state.unitPref = pref === "lbs" ? "lbs" : "kg";
+      refs.unitKgBtn.classList.toggle("active", state.unitPref === "kg");
+      refs.unitLbsBtn.classList.toggle("active", state.unitPref === "lbs");
+      setStatus(refs.unitStatus, `Using ${state.unitPref.toUpperCase()} as primary`, "");
+    }
+
+    async function fetchJson(url, options = {}) {
+      const response = await fetch(trainingUrl(url), {
+        headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+        ...options
+      });
+
+      // a 204 (such as saving the API key) can carry a JSON content type with no body at all
+      const hasJson = response.headers.get("content-type")?.includes("application/json");
+      const text = hasJson ? await response.text() : "";
+      const body = text ? JSON.parse(text) : null;
+
+      if (!response.ok) {
+        const rawDetail = body?.detail;
+        const detail = Array.isArray(rawDetail)
+          ? rawDetail.map(e => `Line ${e.line}: ${e.message}`).join('\n')
+          : (rawDetail || `Request failed (${response.status})`);
+        throw new Error(detail);
+      }
+      return body;
+    }
+
+    function formatTimestamp(value) {
+      if (!value) return "--";
+      const date = new Date(value);
+      if (Number.isNaN(date.valueOf())) return value;
+      return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date);
+    }
+
+    async function loadSettings() {
+      setStatus(refs.apiKeyStatus, "");
+      try {
+        const data = await fetchJson("/settings", { method: "GET" });
+        if (data.hevy_api_key_set) {
+          refs.apiKeySummary.textContent = `Saved key: ${data.hevy_api_key_preview || "···"}`;
+          refs.apiKeyInput.placeholder = "Enter new key to replace";
+          refs.replaceApiKeyBtn.hidden = false;
+        } else {
+          refs.apiKeySummary.textContent = "No key saved yet.";
+          refs.apiKeyInput.placeholder = "Paste Hevy API key";
+          refs.replaceApiKeyBtn.hidden = true;
+        }
+      } catch (error) {
+        setStatus(refs.apiKeyStatus, error.message, "error");
+      }
+    }
+
+    async function saveApiKey() {
+      const apiKey = refs.apiKeyInput.value.trim();
+      if (!apiKey) {
+        setStatus(refs.apiKeyStatus, "API key cannot be empty.", "error");
+        return;
+      }
+
+      refs.saveApiKeyBtn.disabled = true;
+      setStatus(refs.apiKeyStatus, "Saving key...");
+
+      try {
+        await fetchJson("/settings/api-key", { method: "POST", body: JSON.stringify({ api_key: apiKey }) });
+        refs.apiKeyInput.value = "";
+        setStatus(refs.apiKeyStatus, "API key saved.", "ok");
+        await loadSettings();
+      } catch (error) {
+        setStatus(refs.apiKeyStatus, error.message, "error");
+      } finally {
+        refs.saveApiKeyBtn.disabled = false;
+      }
+    }
+
+    async function loadExerciseCache() {
+      setStatus(refs.exerciseStatus, "");
+      try {
+        const exercises = await fetchJson("/exercises", { method: "GET" });
+        state.exercises = Array.isArray(exercises) ? exercises : [];
+        refs.exerciseCount.textContent = String(state.exercises.length);
+
+        let lastSync = null;
+        for (const row of state.exercises) {
+          if (!row.cached_at) continue;
+          if (!lastSync || row.cached_at > lastSync) lastSync = row.cached_at;
+        }
+        refs.exerciseLastSync.textContent = formatTimestamp(lastSync);
+      } catch (error) {
+        setStatus(refs.exerciseStatus, error.message, "error");
+      }
+    }
+
+    async function syncExercises() {
+      refs.syncExercisesBtn.disabled = true;
+      setStatus(refs.exerciseStatus, "Syncing exercises...");
+      try {
+        const result = await fetchJson("/exercises/sync", { method: "POST" });
+        setStatus(refs.exerciseStatus, `Sync complete. Cached ${result.cached ?? 0} exercises.`, "ok");
+        await loadExerciseCache();
+      } catch (error) {
+        setStatus(refs.exerciseStatus, error.message, "error");
+      } finally {
+        refs.syncExercisesBtn.disabled = false;
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function escapeAttr(value) {
+      return escapeHtml(value).replaceAll("`", "&#96;");
+    }
+
+    function initEvents() {
+      refs.themeSelect.addEventListener("change", (event) => {
+        applyTheme(event.target.value);
+      });
+
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+        if (state.theme === "system") applyTheme("system");
+      });
+
+      refs.saveApiKeyBtn.addEventListener("click", saveApiKey);
+      refs.replaceApiKeyBtn.addEventListener("click", () => refs.apiKeyInput.focus());
+      refs.syncExercisesBtn.addEventListener("click", syncExercises);
+
+      refs.unitKgBtn.addEventListener("click", () => applyUnitPreference("kg"));
+      refs.unitLbsBtn.addEventListener("click", () => applyUnitPreference("lbs"));
+    }
+
+    async function init() {
+      loadTheme();
+      loadUnitPreference();
+      initEvents();
+      await loadSettings();
+      await loadExerciseCache();
+    }
+
+    init();
+  </script>
+
+<script id="trial-settings">
+  const trialSettingRefs = Object.fromEntries(['trialEnabled','trialSettingState','trialSettingStatus','trialHistory'].map(id=>[id,document.getElementById(id)]));
+  let trialSettingEnabled=false, trialSettingLoaded=false;
+  async function trialSettingsApi(url,options={}) {
+    const response=await fetch(trainingUrl(url),options);
+    if(!response.ok)throw Error('Request failed ('+response.status+').');
+    return response.json();
+  }
+  function renderTrialSetting() {
+    const button=trialSettingRefs.trialEnabled;
+    button.textContent=trialSettingEnabled?'Turn off trial':'Enable model trial';
+    button.className=trialSettingEnabled?'btn':'btn primary';
+    button.setAttribute('aria-pressed',String(trialSettingEnabled));
+    button.disabled=!trialSettingLoaded;
+    trialSettingRefs.trialSettingState.textContent=trialSettingEnabled?'On':'Off · Optional';
+    trialSettingRefs.trialSettingStatus.textContent=trialSettingEnabled?'On · Trial controls appear in your workouts. Results stay hidden until saving.':'Off · Enable to show trial controls in your workouts.';
+  }
+  async function loadTrialSetting() {
+    try {
+      const data=await trialSettingsApi('/fatigue-trial/settings');
+      trialSettingEnabled=data.enabled;trialSettingLoaded=true;renderTrialSetting();
+    } catch(err) { trialSettingRefs.trialSettingState.textContent='Unavailable';trialSettingRefs.trialSettingStatus.textContent='Could not load trial setting. Reload to retry. '+err.message; }
+  }
+  async function toggleTrialSetting() {
+    if(trialSettingRefs.trialEnabled.disabled||!trialSettingLoaded)return;
+    trialSettingRefs.trialEnabled.disabled=true;
+    trialSettingRefs.trialSettingStatus.textContent='Saving trial setting…';
+    try {
+      const data=await trialSettingsApi('/fatigue-trial/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:!trialSettingEnabled})});
+      trialSettingEnabled=data.enabled;renderTrialSetting();
+    } catch(err) { renderTrialSetting();trialSettingRefs.trialSettingStatus.textContent='Could not save trial setting: '+err.message; }
+  }
+  async function loadTrialHistory() {
+    const details=trialSettingRefs.trialHistory,box=details.querySelector('div');
+    const line=text=>{const p=document.createElement('p');p.className='hint';p.textContent=text;box.append(p);};
+    try {
+      const data=await trialSettingsApi('/fatigue-trial/dashboard');box.replaceChildren();
+      const completed=data.entries.filter(r=>r.status==='completed');
+      for(const r of completed.slice(-10).reverse())line(r.workout_start.slice(0,10)+' · '+r.title+' · Expected: '+r.prediction.replaceAll('_',' ')+'; observed: '+r.observed.replaceAll('_',' '));
+      if(!completed.length)line('No saved trial workouts yet.');
+      const pending=data.entries.filter(r=>r.status==='recorded').length;
+      if(pending)line(pending+' snapshots have no saved workout (open or discarded drafts). They do not count toward comparisons.');
+      for(const c of data.cohorts)line(c.title+' · '+c.eligible_predictions+'/12 eligible predictions · '+(c.review_at?'Review '+c.review_at.slice(0,10):'Awaiting first saved trial workout')+' · '+c.status);
+    } catch(err) { box.replaceChildren();line('History unavailable. Open the dashboard or reload to retry.'); }
+    details.hidden=false;
+  }
+  trialSettingRefs.trialEnabled.addEventListener('click',toggleTrialSetting);
+  loadTrialSetting();
+  loadTrialHistory();
+</script>
+<script id="page-navigation">
+  (() => {
+    const back=document.getElementById("pageBack");
+    let hasPrevious=false;
+    try { hasPrevious=history.length>1 && new URL(document.referrer).origin===location.origin; } catch (_) {}
+    back.disabled=!hasPrevious && (location.pathname===trainingUrl("/log") || location.pathname===trainingUrl("/"));
+    back.addEventListener("click", () => {
+      if(hasPrevious)history.back();
+      else location.assign(trainingUrl("/log"));
+    });
+  })();
+</script>
+</body>
+</html>

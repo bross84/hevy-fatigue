@@ -1,0 +1,69 @@
+# Production configuration retaining the existing CasaOS deployment and storage.
+# Updates: docker compose pull && docker compose up -d
+name: hevy-fatigue
+
+services:
+  hevy-fatigue:
+    image: ghcr.io/bross84/hevy-fatigue:latest
+    container_name: hevy-fatigue
+    command: null
+    entrypoint: null
+    restart: unless-stopped
+    environment:
+      DB_PATH: /data/hevy_fatigue.db
+      FERNET_KEY_PATH: /data/app.key
+      HEVY_FATIGUE_DB_PATH: /data/hevy_fatigue.db
+      HEVY_WRITES_ENABLED: "1"
+      RACKBOOK_DB_PATH: /training-data/rackbook.db
+      RACKBOOK_READ_ONLY_PREVIEW: "0"
+      TZ: America/New_York
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/sync/status')\" || exit 1"]
+      timeout: 10s
+      interval: 30s
+      retries: 3
+      start_period: 15s
+    labels:
+      icon: https://media1.tenor.com/m/nGoTpl9GA30AAAAC/doom-doom-hurt.gif
+    networks:
+      hevy-net: null
+    ports:
+      - mode: ingress
+        target: 8000
+        published: "8125"
+        protocol: tcp
+    volumes:
+      - type: volume
+        source: hevy-data
+        target: /data
+        volume: {}
+      - type: volume
+        source: training-data
+        target: /training-data
+        volume: {}
+
+networks:
+  hevy-net:
+    name: hevy-fatigue_hevy-net
+    ipam: {}
+    external: true
+
+volumes:
+  hevy-data:
+    name: hevy-fatigue_hevy-data
+    external: true
+  training-data:
+    name: hevy-fatigue_training-data
+    external: true
+
+x-casaos:
+  author: self
+  category: self
+  hostname: ""
+  icon: https://media1.tenor.com/m/nGoTpl9GA30AAAAC/doom-doom-hurt.gif
+  index: /
+  is_uncontrolled: false
+  port_map: "8125"
+  scheme: http
+  title:
+    custom: hevy-fatigue

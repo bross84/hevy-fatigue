@@ -6,6 +6,8 @@ from hevy_client import HevyClient
 from rpe_table import calculate_e1rm, seed_rpe_table
 from exercise_classifier import classify_exercise, ensure_exercise_mapped
 from datetime import datetime, timezone
+import os
+import zoneinfo
 from sqlalchemy import func
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
@@ -36,6 +38,7 @@ _SRPE_TITLE_TAG_PATTERN = re.compile(r"@(?P<value>\d+(?:\.\d+)?)")
 _IMPORT_CONTEXT_KEY = "importer_sync_context"
 _LAST_SYNC_SETTING_KEY = "last_sync"
 _AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT = 0.87
+_LOCAL_TZ = zoneinfo.ZoneInfo(os.environ.get("TZ", "UTC"))
 
 
 def _extract_srpe_from_title(workout_title):
@@ -252,19 +255,8 @@ def _get_client_api_key(db) -> str | None:
     if api_key:
         return api_key
 
-    raw = _get_setting_value(db, "hevy_api_key")
-    if not raw:
-        return None
-
-    raw = raw.strip()
-    if not raw:
-        return None
-
-    # API-layer sync calls inject the decrypted key through db.info.
-    # When the DB still contains legacy plaintext, preserve that fallback.
-    if raw.startswith("gAAAA"):
-        return None
-    return raw
+    from credentials import get_db_api_key
+    return get_db_api_key(db)
 
 
 def load_canonical_map(db) -> dict[str, str]:
@@ -320,7 +312,8 @@ def _process_workout(db, workout, canonical_map):
         stats["skipped_workouts_missing_date"] += 1
         return
     try:
-        workout_date = datetime.fromisoformat(raw_date.replace('Z', '+00:00')).date()
+        utc_dt = datetime.fromisoformat(raw_date.replace('Z', '+00:00'))
+        workout_date = utc_dt.astimezone(_LOCAL_TZ).date()
     except ValueError:
         stats["skipped_workouts_missing_date"] += 1
         return
@@ -423,7 +416,9 @@ def _process_workout(db, workout, canonical_map):
             },
         )
     db.execute(session_stmt)
-
+    db.query(WorkoutLog).filter(WorkoutLog.workout_id == workout_id).delete(
+        synchronize_session=False
+    )
     for exercise in exercises:
         exercise_id = exercise.get('exercise_template_id')
         title = _resolve_canonical_title(
@@ -710,12 +705,10 @@ def incremental_sync(db, last_sync: str, canonical_map):
                 workout_id = event.get("id")
                 if workout_id is None:
                     continue
-                db.query(WorkoutLog).filter(WorkoutLog.workout_id == workout_id).delete(
-                    synchronize_session=False,
-                )
                 db.query(WorkoutSession).filter(
                     WorkoutSession.hevy_workout_id == workout_id
                 ).delete(synchronize_session=False)
+                db.query(WorkoutLog).filter(WorkoutLog.workout_id == workout_id).delete(synchronize_session=False)
             elif event_type == "updated":
                 workout = event.get("workout")
                 if workout:
