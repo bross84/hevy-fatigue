@@ -22,18 +22,22 @@ def check_card_geometry(page, width):
     })""")
     by_id = {card['id']: card for card in cards}
     ready, trend = by_id['dashboard-readiness-card'], by_id['today-readiness-trend-card']
-    assert max(c['width'] for c in cards)-min(c['width'] for c in cards) < 1, (width,cards)
+    vf, pattern = by_id['dashboard-vf-card'], by_id['today-pattern-fatigue-card']
+    assert abs(ready['width']-trend['width']) < 1, (width,cards)
+    assert trend['y'] >= ready['bottom'], (width,cards)
+    assert min(vf['y'],pattern['y']) >= trend['bottom'], (width,cards)
+    for ident in ('dashboard-pattern-card','dashboard-recent-card'):
+        assert by_id[ident]['y'] >= max(vf['bottom'],pattern['bottom']), (width,cards)
     if width >= 700:
-        assert abs(ready['y']-trend['y']) < 1, (width,cards)
-        for card in cards:
-            peers = [c for c in cards if abs(c['y']-card['y']) < 1]
-            assert max(c['height'] for c in peers)-min(c['height'] for c in peers) < 1
-        # Content must remain inside its card even when charts resize or labels wrap.
+        assert ready['height'] < 180 and trend['height'] >= 380, (width,cards)
         assert page.locator('.dashboard-card').evaluate_all("""els => els.every(el =>
           el.scrollHeight <= el.clientHeight + 2 && el.scrollWidth <= el.clientWidth + 2)"""), width
+    if width >= 2000:
+        assert abs(vf['y']-pattern['y']) < 1 and abs(vf['height']-pattern['height']) < 1, cards
+        assert abs(vf['width']-pattern['width']) < 1 and vf['width'] >= 800, cards
     else:
-        assert trend['y'] >= ready['bottom'], cards
-        assert trend['y'] < by_id['dashboard-pattern-card']['y'], cards
+        assert pattern['y'] >= vf['bottom'], (width,cards)
+        assert abs(vf['width']-trend['width']) < 1, (width,cards)
 
 
 with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
@@ -74,7 +78,7 @@ with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
             page.locator('#checkin-modal-close').click()
             page.wait_for_function('todayReadinessChart && _dashboardVfChart && todayPatternFatigueChart')
             assert page.locator('#dashboard-recent-card .recent-session-item').count() == 7
-            assert page.evaluate("getComputedStyle(document.querySelector('.dashboard-wrap')).gridTemplateColumns.split(' ').length") == 3
+            assert page.evaluate("getComputedStyle(document.querySelector('.dashboard-wrap')).gridTemplateColumns.split(' ').length") == 2
             check_card_geometry(page, 2560)
             expect(page.locator('#hostSidebar')).to_be_visible()
             assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
@@ -96,7 +100,25 @@ with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
             page.screenshot(path=str(OUT/'dashboard-desktop-light.png'),animations='disabled')
             page.locator('#theme-toggle [data-theme-btn="dark"]').click()
 
-            for width, height, columns in [(1920,1080,3),(1900,1080,3),(1899,1080,2),(1500,1000,2),(1280,900,2),
+            # Exercise the actual renderer with a populated, synthetic summary as well
+            # as the initial missing-check-in state. No model calculation is replaced.
+            page.wait_for_function('_dashboardVfChart && _dashboardVfChart.canvas.isConnected && document.getElementById("dashboard-vf-note").textContent.length > 0')
+            # Keep the browser-only fixture in the cached payload so a pending
+            # theme refresh reads the same summary instead of replacing it.
+            page.evaluate("""async () => {
+              const payload=await ensureTrainingLoadPayload();
+              payload.today={...payload.today,checkin_exists:true,
+                recommendation_v2:{data_sufficient:true,smoothed_score:6,
+                  training_state_label:'Increase',training_state:'increase',
+                  training_state_detail:'Below baseline - good time to add volume or intensity',
+                  subjective_score:2.6,objective_score:9.7,combined_score:4}};
+              await loadTrainingLoadCard();
+            }""")
+            page.wait_for_function('_dashboardVfChart && _dashboardVfChart.canvas.isConnected && document.getElementById("dashboard-vf-note").textContent.length > 0')
+            expect(page.locator('.readiness-breakdown-item')).to_have_count(3)
+            check_card_geometry(page, 2560)
+            page.screenshot(path=str(OUT/'dashboard-chart-focus-2560.png'),animations='disabled')
+            for width, height, columns in [(2000,1200,2),(1999,1200,2),(1920,1080,2),(1900,1080,2),(1899,1080,2),(1500,1000,2),(1280,900,2),(1200,900,2),(1199,900,2),
                                             (1100,900,2),(1099,900,2),(700,900,2),(699,900,1),
                                             (1024,768,2),(820,1180,2),(390,844,1),(320,700,1)]:
                 page.set_viewport_size({'width':width,'height':height})
@@ -148,8 +170,8 @@ with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
             for link in host_links:
                 assert page.locator(f'#loggerNav a[href="{link}"]').count() == 1, link
             assert not errors, errors
-            print(json.dumps({'real_chartjs':'passed','desktop':'2560x1440 three columns',
-                              'tablet_phone':'two/one columns','range_theme_gaps':'preserved','equal_cards_top_row_fatigue':'passed',
+            print(json.dumps({'real_chartjs':'passed','desktop':'2560x1440 chart-focused two columns',
+                              'tablet_phone':'two/one columns','range_theme_gaps':'preserved','compact_readiness_wide_charts':'passed',
                               'drawer_focus_hashes_checkin_training_links':'passed',
                               'browser_errors':errors,'physical_device':'not performed'}))
             browser.close()
