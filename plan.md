@@ -1,8 +1,331 @@
 # Hevy Fatigue - Local Plan Snapshot
 
-Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load)
+# 2026-06-06
 
-## Latest Update (2026-05-24 — Spec: Dashboard Recent Sessions via /api/training-load)
+## Latest Update (7-Day Readiness Trend — add combined score + band legend)
+
+- Workflow selected: Express
+- Files changed: `static/index.html`
+
+### Summary
+- The 7-Day Readiness Trend chart had no legend, leaving the line and the five readiness-zone background bands unlabeled. Added an HTML legend row showing a colored swatch for the Combined Score line, and a second row of swatch+label pairs for each band zone.
+
+### Changes
+
+#### static/index.html
+- **Updated** card `innerHTML` template: added `.today-chart-legend` row (Combined Score swatch) and `.today-chart-bands-legend` row (five band swatches with labels: Low 0–6, Recovery 6–8, Optimal 8–13, Elevated 13–14, High 14–20)
+- **Added** swatch color assignment after `new Chart(...)`: `document.getElementById('today-readiness-legend-swatch').style.backgroundColor = c.accent`
+- **Added** CSS: `.today-chart-legend`, `.today-chart-legend-swatch`, `.today-chart-legend-label`, `.today-chart-bands-legend`, `.today-band-item`, `.today-band-swatch`
+- Chart.js `legend: { display: false }` left unchanged — HTML legend replaces it
+
+### Gate Results
+- Visual — Combined Score swatch and label visible above chart: **PASS**
+- Visual — Five band swatches align correctly with labels: **PASS**
+- Visual — Chart and note text unchanged: **PASS**
+
+## Latest Update (Volume·Fatigue chart — relabel rolling readiness to Fatigue)
+
+- Workflow selected: Express
+- Files changed: `static/index.html`
+
+### Summary
+- Rolling readiness displayed in the Volume·Fatigue chart was mislabeled as "Readiness," creating three different numbers all called "Readiness" visible simultaneously on the Today tab. Rolling readiness is a trailing fatigue indicator, not a point-in-time readiness score. Relabeled to "Fatigue" throughout the chart.
+
+### Changes
+
+#### static/index.html
+- **Updated** legend HTML (line 6987): `Readiness` → `Fatigue`
+- **Updated** note text for Tonnage view (line 7014): `vs. 7-day rolling readiness` → `vs. 7-day rolling fatigue`
+- **Updated** note text for RPE Load view (line 7020): `vs. 7-day rolling readiness` → `vs. 7-day rolling fatigue`
+- **Updated** note text for Set Count view (line 7026): `vs. 7-day rolling readiness` → `vs. 7-day rolling fatigue`
+- **Updated** dataset label in `_vfBuildBarLineChart` (line 7759): `'Readiness'` → `'Fatigue'`
+- **Updated** tooltip condition (line 7789): `=== 'Readiness'` → `=== 'Fatigue'`
+- **Updated** right Y-axis title (line 7825): `text: 'Readiness'` → `text: 'Fatigue'`
+
+### Gate Results
+- Visual — Volume·Fatigue chart legend shows "Fatigue" not "Readiness": **PASS**
+- Visual — Right Y-axis labeled "Fatigue": **PASS**
+- Visual — Main Readiness card and 7-Day Readiness Trend card unchanged: **PASS**
+
+# 2026-06-04
+
+## Latest Update (Move Exercise Naming / Needs-Review Card to Exercises Tab)
+
+- Workflow selected: Main
+- Files changed: `static/index.html`
+
+### Summary
+- Moved the Exercise Names — Needs Review card from the Patterns tab (`#tab-exercises`) to the Exercises tab (`#tab-exercise-metrics`)
+- Moved the conflict nav badge from the Patterns nav buttons to the Exercises nav buttons (desktop + mobile)
+- Rewired `activateTab()` so `loadExerciseConflicts()` fires on `exercise-metrics` instead of `exercises`
+- Required a structural HTML repair pass after the initial move split the card across two tab sections
+
+### Changes
+
+#### static/index.html
+- **Moved** `#ex-conflict-card` block (title, toggle button, body, override form) into `#tab-exercise-metrics` as the first child, before `<div class="exm-header">`
+- **Removed** orphaned `#ex-conflict-body` from `#tab-exercises`
+- **Updated** desktop nav: `ex-conflict-badge` span moved from Patterns button to Exercises button
+- **Updated** bottom nav: `ex-conflict-badge-mobile` span moved from Patterns bottom-sheet item to Exercises bottom-nav button
+- **Updated** `activateTab()`: `loadExerciseConflicts()` moved from `exercises` branch to `exercise-metrics` branch alongside `loadExerciseMetrics()`
+
+### Gate Results
+- Visual — Exercises tab: conflict card renders above exercise list as a distinct card: **PASS**
+- Visual — Patterns tab: no orphaned content, no badge: **PASS**
+- Functional — Details toggle expands/collapses body: **PASS**
+- Functional — Badge updates after conflict resolve/dismiss: **PASS**
+- Mobile — bottom nav Exercises button shows badge when conflicts exist: **PASS**
+
+## Latest Update (Backlog closed-section bookkeeping)
+
+- Workflow selected: Express
+- Files changed: `docs/backlog.md`
+
+### Summary
+- Added the completed verification detail + pending badge work to the closed section of the backlog so the removed planning item is also recorded as done
+
+### Changes
+
+#### docs/backlog.md
+- **Updated** the `Design Decisions / Closed / Won't Fix` table:
+	- added `Session verification detail card + pending Workouts badge` as COMPLETE on `04JUN2026`
+
+### Gate Results
+- `get_errors(docs/backlog.md)`: **PASS**
+
+## Latest Update (Backlog status correction for Movement Trend)
+
+- Workflow selected: Express
+- Files changed: `docs/backlog.md`
+
+### Summary
+- Corrected backlog state for the Movement Trend relocation item after verifying the UI still renders the card under the Workouts tab
+
+### Changes
+
+#### docs/backlog.md
+- **Updated** the `Move Movement Trend to Exercises Tab` item:
+	- clarified that it remains open until the card is actually moved
+- **Removed** the stale legacy note under `Canonical Name Notification` that implied the Movement Trend move had already been handled
+
+### Gate Results
+- `get_errors(docs/backlog.md)`: **PASS**
+- UI status verification: **PASS** — `static/index.html` still defines the Movement Trend card under `#tab-workouts`
+
+## Latest Update (Badge count window fix)
+
+- Workflow selected: Express
+- Files changed: `main.py`, `static/index.html`
+
+### Summary
+- Aligned the pending-session badge count with the same 45-day date window used by the verification queue
+
+### Changes
+
+#### main.py
+- **Updated** `GET /api/workout-sessions/pending-count`:
+	- Added `days` query parameter with default `45`
+	- Applied `workout_date >= since` filter using the same window logic as the queue
+
+#### static/index.html
+- **Updated** `_updateWoPendingBadge()`:
+	- Badge fetch now calls `/api/workout-sessions/pending-count?days=45`
+
+### Gate Results
+- `python -m py_compile main.py`: **PASS**
+- `get_errors(main.py, static/index.html)`: **PASS**
+- `GET /api/workout-sessions/pending-count?days=45`: **PASS** (`{"count":0}` in local test DB)
+
+## Latest Update (Verification detail card + pending workouts badge)
+
+- Workflow selected: Main
+- Files changed: `main.py`, `static/index.html`, `docs/backlog.md`
+
+### Summary
+- Added a verification-card exercise summary endpoint for pending sessions
+- Added per-card exercise detail loading to the Workouts verification queue
+- Added ambient pending-session badges to the Workouts nav buttons and refreshed them on load / after verification
+
+### Changes
+
+#### main.py
+- **Added** `GET /api/workout-sessions/{hevy_workout_id}/exercises`:
+	- Verifies the session exists before querying
+	- Aggregates `workout_logs` by `exercise_title`
+	- Orders by `MIN(id)` to preserve first-seen exercise order
+	- Returns `{ title, set_count }` objects
+- **Added** `GET /api/workout-sessions/pending-count`:
+	- Returns the count of `WorkoutSession` rows with `verification_status == "pending"`
+
+#### static/index.html
+- **Updated** verification card template in `loadSessionVerificationQueue()`:
+	- Meta line now shows formatted date, duration, modality/sRPE, and confidence
+	- Added `verif-detail-*` block that loads exercise summaries after render
+- **Added** helpers:
+	- `_fmtVerifDate()`
+	- `_fmtVerifModality()`
+- **Added** `_updateWoPendingBadge()` and call sites:
+	- `DOMContentLoaded`
+	- after successful `verifySessionFromCard()` completion
+- **Updated** nav buttons:
+	- Desktop Workouts button badge
+	- Mobile Workouts button badge
+
+### Gate Results
+- `python -m py_compile main.py`: **PASS**
+- `get_errors(main.py, static/index.html)`: **PENDING**
+- Route-order check: **PASS** — new routes inserted between `/pending` and `/{hevy_workout_id}`
+- Schema verification: **PASS** — `PRAGMA table_info(workout_logs)` and `PRAGMA table_info(workout_sessions)` confirmed needed columns
+
+# 2026-06-02
+
+## Latest Update (Importer UTC-to-local workout_date conversion)
+
+- Workflow selected: Express
+- Files changed: `importer.py`
+
+### Summary
+- Converted Hevy `start_time` parsing for `workout_date` from direct UTC `.date()` extraction to local-time date extraction using module-level timezone config.
+- Timezone source is now environment-driven via `TZ` (fallback `UTC`).
+
+### Changes
+
+#### importer.py
+- **Updated imports**:
+	- Added `os` and `zoneinfo`
+- **Added module constant**:
+	- `_LOCAL_TZ = zoneinfo.ZoneInfo(os.environ.get("TZ", "UTC"))`
+- **Updated** `_process_workout(...)` date extraction:
+	- Before: `datetime.fromisoformat(...).date()` (UTC date)
+	- After: parse UTC datetime then `astimezone(_LOCAL_TZ).date()` (local date)
+
+### Gate Results
+- `python -m py_compile importer.py`: **PASS**
+- `read/problems` (`get_errors(importer.py)`): **PASS**
+
+# 2026-05-25
+
+## Latest Update (Change 2: Readiness card score breakdown row)
+
+- Workflow selected: Express
+- Files changed: `static/index.html`
+
+### Summary
+- Added a conditional readiness score breakdown row to the dashboard readiness card template
+- Row renders only when a check-in exists and shows Subjective, Objective, and Combined values
+
+### Changes
+
+#### static/index.html
+- **Updated** `_renderTodayCards(data, pendingCount)` readiness card template (`dashboard-readiness-card`):
+	- Inserted conditional block after `.readiness-rec`:
+	  - `readiness-score-breakdown`
+	  - `readiness-breakdown-item` for `Subjective`, `Objective`, and `Combined`
+	  - values bound to `recommendation_v2` fields already assigned in scope:
+	    - `subjScore` (`recommendation_v2.subjective_score`)
+	    - `objScore` (`recommendation_v2.objective_score`)
+	    - `combScore` (`recommendation_v2.combined_score`)
+	- Guard condition: `${checkinExists ? ... : ''}`
+
+### Gate Results
+- Readiness card shows Subjective / Objective / Combined row when check-in exists: **PASS (template guard + insertion verified)**
+- Row is hidden when no check-in exists: **PASS (conditional empty string branch)**
+- Values match `/api/training-load` `recommendation_v2` fields: **PASS (direct field binding verified)**
+- No regression on existing card layout: **PASS (existing title/score/label/rec elements preserved; CSS classes already present)**
+- `get_errors(static/index.html)`: **PASS**
+
+## Latest Update (Spec: Vol-Fatigue rolling_readiness scale 0-10 to 0-20)
+
+- Workflow selected: Express
+- Files changed: `main.py`, `static/index.html`
+
+### Summary
+- Updated Vol-Fatigue readiness mapping in backend from 0-10 to 0-20
+- Updated Vol-Fatigue chart right y-axis max from 10 to 20
+- Kept 7-day Readiness Trend chart axis unchanged
+
+### Changes
+
+#### main.py
+- **Updated** `get_vol_fatigue_summary(...)`:
+	- Comment changed to `# Build readiness lookup (subjective_score on 0-20 scale)`
+	- `subjective_score` changed from `round(subj * 10.0, 2)` to `round(subj * 20.0, 2)`
+
+#### static/index.html
+- **Updated** `_vfBuildBarLineChart(...)` right y-axis (`y1`):
+	- `max` changed from `10` to `20`
+- **Unchanged** `_vfBuildChart(...)` right y-axis (`y1`) remains `max: 10` (7-day Readiness Trend unchanged)
+
+### Gate Results
+- `python -m py_compile main.py`: **PASS**
+- `get_errors(main.py, static/index.html)`: **PASS**
+- Vol-Fatigue readiness mapping path now emits values based on 0-20 subjective scale: **PASS (code path verified)**
+- Vol-Fatigue right y-axis now shows 0-20: **PASS (config verified)**
+- 7-day Readiness Trend chart unchanged (`y1 max: 10`): **PASS (config verified)**
+- Dashboard combined score path unchanged: **PASS (no code changes in combined-score logic)**
+
+## Latest Update (Revert readiness inversion, main.py only)
+
+- Workflow selected: Express
+- Files changed: `main.py`
+
+### Summary
+- Reverted the two subjective readiness conversions in `main.py` back to the original orientation
+- Higher subjective scores now once again mean more fatigue in both affected endpoints
+
+### Changes
+
+#### main.py
+- **Updated** `get_vol_fatigue_summary(...)`:
+	- `subjective_score` changed from `(1.0 - subj) * 10.0` back to `subj * 10.0`
+- **Updated** `get_readiness_combined_history(...)`:
+	- `subjective_score` changed from `(1.0 - _subjective_fatigue(checkin)) * 20.0` back to `_subjective_fatigue(checkin) * 20.0`
+
+### Gate Results
+- `python -m py_compile main.py`: **PASS**
+- `get_errors(main.py)`: **PASS**
+- Schema check: `PRAGMA table_info(daily_readiness)` via Python `sqlite3`: **PASS**
+- Data-dependent API gates: **BLOCKED in this shell** because the active local database has `0` `daily_readiness` rows, so endpoint assertions tied to real check-ins and chart bands could not be executed here
+
+# 2026-05-24
+
+## Latest Update (Spec: Recent Sessions show 7 + Workouts tab link)
+
+- Workflow selected: Main
+- Files changed: `main.py`, `static/index.html`
+
+### Summary
+- Increased backend `recent_sessions` payload cap from 5 to 7 in `get_training_load`
+- Increased dashboard card render count from 3 to 7
+- Made each dashboard recent-session row clickable; click now switches to Workouts tab, scrolls to matching session card, and opens details when collapsed
+
+### Changes
+
+#### main.py
+- **Updated** `get_training_load(days, db)`:
+	- `recent_sessions_data` query limit changed from `5` to `7`
+
+#### static/index.html
+- **Updated** `renderDashboardRecentSessions(payload)`:
+	- Session display cap changed from `source.slice(0, 3)` to `source.slice(0, 7)`
+	- Replaced row template with clickable items:
+		- Adds inline `onclick="navigateToSession('...')"`
+		- Preserves title, modality badge, and date/duration/sRPE metadata
+- **Added** `navigateToSession(hevy_workout_id)`:
+	- Activates `workouts` tab
+	- Waits 100ms for DOM render
+	- Resets Workouts filter to `all` so target session can be found
+	- Loads session log if empty, then auto-loads additional pages while `sessionLogHasMore` until the target appears
+	- Locates `.session-log-item[data-session-id="..."]`
+	- Scrolls card into view and opens details if currently hidden
+
+### Gate Results
+- `python -m py_compile main.py`: **PASS**
+- `get_errors(main.py, static/index.html)`: **PASS**
+- API smoke test: `GET /api/training-load?days=60` returns `recent_sessions` list with `len <= 7`
+- Local data note: `workout_sessions` table has `0` rows in this environment, so click-to-scroll/open UX gates require seeded/imported sessions to validate fully
+
+## Latest Update (Spec: Dashboard Recent Sessions via /api/training-load)
 
 - Workflow selected: Main
 - Files changed: `main.py`, `static/index.html`
@@ -31,7 +354,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - API smoke test: `GET /api/training-load?days=60` returns `recent_sessions` key
 - Local data note: `workout_sessions` table contains `0` rows in this environment, so `recent_sessions` is currently an empty list and the "at least one item" gate requires seeded/imported session data
 
-## Latest Update (2026-05-24 — Fix 1 + Fix 2: Dashboard Recent Sessions + Pattern Breakdown)
+## Latest Update (Fix 1 + Fix 2: Dashboard Recent Sessions + Pattern Breakdown)
 
 - Workflow selected: Main
 - Files changed: `static/index.html`, `main.py`
@@ -75,7 +398,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
   - /api/workout-sessions response for a HYP session includes pattern_summary with at least one key
   - Existing ATL/CTL/TSB values on the card are unchanged for sessions where pattern_summary is empty
 
-## Latest Update (2026-05-24 — Mobile Exercises HTTP 404 + AI input size follow-up)
+## Latest Update (Mobile Exercises HTTP 404 + AI input size follow-up)
 
 - Workflow selected: Debug
 - Files changed: `static/index.html` only
@@ -102,7 +425,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - JS brace audit: 1817 open / 1817 close: PASS
 - Problems check (`static/index.html`, `main.py`): no errors
 
-## Latest Update (2026-05-24 — Mobile Exercises card clipping and AI chat input UI)
+## Latest Update (Mobile Exercises card clipping and AI chat input UI)
 
 - Workflow selected: Express
 - Files changed: `static/index.html` only
@@ -128,7 +451,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - JS brace audit: 1811 open / 1811 close: PASS
 - Problems check (`static/index.html`, `main.py`): no errors
 
-## Latest Update (2026-05-24 — Per-Pattern Fatigue chart range/smoothing behavior)
+## Latest Update (Per-Pattern Fatigue chart range/smoothing behavior)
 
 - Workflow selected: Express
 - Files changed: `static/index.html` only
@@ -152,7 +475,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - EWMA smoothing: `_trendRollingAvg(..., windowDays)` confirmed
 - X-axis boundaries: min/max logic removed from x-axis config
 
-## Latest Update (2026-05-24 — Spec Task B: Per-Pattern Tonnage EWMA + ATL/Tonnage Toggle)
+## Latest Update (Spec Task B: Per-Pattern Tonnage EWMA + ATL/Tonnage Toggle)
 
 - Workflow selected: Main
 - Files changed: `static/index.html`, `plan.md`, `docs/stage-gated-plan.md`
@@ -175,7 +498,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - Script tag balance: 4/4: PASS
 - JS audit checks: module state, `data-pattern-signal`, and `ton_atl` references present
 
-## Latest Update (2026-05-24 — Spec Task A: Per-Pattern Fatigue Trend window control)
+## Latest Update (Spec Task A: Per-Pattern Fatigue Trend window control)
 
 - Workflow selected: Main
 - Files changed: `static/index.html` only
@@ -198,7 +521,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - Script tag balance: 4/4: PASS
 - Problems check (`static/index.html`, `main.py`): no errors
 
-## Latest Update (2026-05-24 — Dashboard Pattern card gauge-row refactor)
+## Latest Update (Dashboard Pattern card gauge-row refactor)
 
 - Workflow selected: Main
 - Files changed: `static/index.html` only
@@ -232,7 +555,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - Problems check (`static/index.html`): no errors
 - Old grid class family absent (`today-pattern-grid`, `today-dot*`, `today-pattern-name/days/level`)
 
-## Latest Update (2026-05-24 — Fatigue tab bar+line conversion + dashboard card removal)
+## Latest Update (Fatigue tab bar+line conversion + dashboard card removal)
 
 - Workflow selected: Main
 - Files changed: `static/index.html` only
@@ -260,7 +583,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - `/api/volfatigue/summary`: daily fields present on every row; rest-day zero sample verified
 - Non-zero training-day sample not verifiable in local DB because current workspace DB contains no workout sessions/workout logs
 
-## Latest Update (2026-05-24 — Dashboard VF uses daily values + bar/line chart)
+## Latest Update (Dashboard VF uses daily values + bar/line chart)
 
 - Workflow selected: Main
 - Files changed: `static/index.html` only
@@ -282,7 +605,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - JS brace audit: 1792 open / 1792 close: PASS
 - Script tag balance: 4/4: PASS
 
-## Latest Update (2026-05-24 — Frontend _vfBuildBarLineChart helper)
+## Latest Update (Frontend _vfBuildBarLineChart helper)
 
 - Workflow selected: Express
 - Files changed: `static/index.html` only
@@ -300,7 +623,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - JS brace audit: 1792 open / 1792 close: PASS
 - Script tag balance: 4/4: PASS
 
-## Latest Update (2026-05-24 — Backend daily signal fields for /api/volfatigue/summary)
+## Latest Update (Backend daily signal fields for /api/volfatigue/summary)
 
 - Workflow selected: Express
 - Files changed: `main.py` only
@@ -326,7 +649,9 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - `python -m py_compile main.py`: PASS
 - Problems check (`main.py`): no errors
 
-## Latest Update (2026-05-23 — VF custom range button-state sync)
+# 2026-05-23
+
+## Latest Update (VF custom range button-state sync)
 
 - Workflow selected: Express
 - Files changed: `static/index.html` only
@@ -362,7 +687,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - JS brace audit: 1757 open / 1757 close: PASS
 - Problems check (`static/index.html`): no errors
 
-## Latest Update (2026-05-23 — Range slicing + calendar icon + VF contrast)
+## Latest Update (Range slicing + calendar icon + VF contrast)
 
 - Workflow selected: Main
 - Files changed: `static/index.html` only
@@ -383,7 +708,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - JS brace audit: 1752 open / 1752 close: PASS
 - Problems check (`static/index.html`): no errors
 
-## Latest Update (2026-05-23 — VF catch/listeners/CSS active-state hotfix)
+## Latest Update (VF catch/listeners/CSS active-state hotfix)
 
 - Workflow selected: Main
 - Files changed: `static/index.html` only
@@ -416,7 +741,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - Verified no in-function VF `addEventListener` calls remain
 - Verified delegated handlers and catch-shell behavior strings present
 
-## Latest Update (2026-05-23 — Fixes 1/2/3: Y-Axis Float, Range Delegation, Mobile Padding)
+## Latest Update (Fixes 1/2/3: Y-Axis Float, Range Delegation, Mobile Padding)
 
 - Workflow selected: Main
 - Files changed: `static/index.html` only
@@ -437,7 +762,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - JS brace audit: 1749 open / 1749 close: PASS
 - Script tags: 4/4: PASS
 
-## Latest Update (2026-05-23 — Issues 1/2/3: VF Signal Toggle, Duplicate Listeners, Mobile Padding)
+## Latest Update (Issues 1/2/3: VF Signal Toggle, Duplicate Listeners, Mobile Padding)
 
 - Workflow selected: Main
 - Files changed: `static/index.html` only
@@ -461,7 +786,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - JS brace audit: 1748 open / 1748 close: PASS
 - Script tags: 4/4: PASS
 
-## Latest Update (2026-05-23 — Design System C2: Nav Restructure)
+## Latest Update (Design System C2: Nav Restructure)
 
 - Workflow selected: Main
 - Files changed: `static/index.html` only
@@ -481,7 +806,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - `tab-dashboard` reference in `applyTheme()` confirmed unchanged
 - py_compile: PASS; brace audit: 1678/1678; script tags: 4/4
 
-## Previous Update (2026-05-23 — Design System C1: Replace color palette)
+## Previous Update (Design System C1: Replace color palette)
 
 - Workflow selected: Express
 - Files changed: `static/index.html` only
@@ -493,7 +818,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - `tab-dashboard` reference in `applyTheme()` confirmed unchanged
 - py_compile: PASS
 
-## Previous Update (2026-05-23, Tasks 2 & 3 — Vol-Fatigue 3-chart expansion + Today card range selectors)
+## Previous Update (Tasks 2 & 3 — Vol-Fatigue 3-chart expansion + Today card range selectors)
 
 - Workflow selected: Main
 - No schema changes; index.html only (besides plan files)
@@ -527,7 +852,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - No residual references to old `vf-chart-card` ID or `_vfChart` single-instance
 - py_compile: N/A (JS-only changes)
 
-## Previous Update (2026-05-23, Task 1 — Backend /api/volfatigue/summary five fixes)
+## Previous Update (Task 1 — Backend /api/volfatigue/summary five fixes)
 
 - Workflow selected: Express
 - Schema verification completed with PRAGMA table_info on workout_sessions, workout_logs, daily_readiness
@@ -578,7 +903,9 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 	- No schema changes
 	- Out-of-scope files untouched in this task
 
-## Latest Update (2026-05-22, Spec B Tasks 4 & 5 — Vol-Fatigue Correlation JavaScript + Destroy)
+# 2026-05-22
+
+## Latest Update (Spec B Tasks 4 & 5 — Vol-Fatigue Correlation JavaScript + Destroy)
 
 - **Task 4 — JavaScript**: Implemented complete `// ═══ Vol-Fatigue Correlation Tab ════` section (lines 6668–6845)
 - **Module state**: `_vfChart` (Chart.js instance), `_vfActiveRange` (default 4 weeks), `_vfCustomStart`/`_vfCustomEnd` (ISO date strings)
@@ -598,7 +925,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - **Task 5 — Destroy**: Added `_vfDestroyChart();` call to `_destroyTrendCharts()` (line 6447)
 - **Validation**: Syntax balanced (1653 braces, 4 script tags); Python syntax OK
 
-## Latest Update (2026-05-22, Spec B Task 3 — Vol-Fatigue Correlation CSS Spacing Fix)
+## Latest Update (Spec B Task 3 — Vol-Fatigue Correlation CSS Spacing Fix)
 - **.vf-card**: Styled as card container matching .today-card pattern — var(--card) background, var(--border) border, border-radius: 10px, padding: 14px
 - **.vf-range-row**: Flexbox button group — display: flex, flex-wrap: wrap, gap: 8px, margin-top: 8px
 - **.vf-custom-range**: Flexbox date input container — align-items: center, gap: 8px, margin-top: 12px, flex-wrap: wrap
@@ -610,7 +937,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - **CSS Variables**: All rules use only var(--card), var(--border), var(--muted) tokens — no hardcoded hex values
 - **Validation**: HTML/JS syntax balanced (1603 braces, 4 script tags); CSS section properly placed before </style>
 
-## Latest Update (2026-05-22, Spec B Task 2 — Vol-Fatigue Correlation Frontend HTML)
+## Latest Update (Spec B Task 2 — Vol-Fatigue Correlation Frontend HTML)
 
 - **Task 2**: Populated `<div id="trend-wrap"></div>` with complete Vol-Fatigue Correlation UI structure
 - **Block Selector Card** (#vf-range-card): "Block Window" title with four preset buttons (4/8/12 Weeks, Custom) plus hidden custom date range inputs
@@ -622,7 +949,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - **Structure**: 3-card layout within trend-wrap: range selector at top, chart in middle, empty state overlay (display:none)
 - **Validation**: HTML/JS syntax balanced (1594 braces, 4 script tags); all key elements verified present
 
-## Latest Update (2026-05-22, Spec B Task 1 — Vol-Fatigue Correlation Backend Endpoint)
+## Latest Update (Spec B Task 1 — Vol-Fatigue Correlation Backend Endpoint)
 
 - **Task 1**: Implemented `GET /api/volfatigue/summary` endpoint in main.py
 - **Query Parameters**: `start_date` (ISO format, default: 28 days ago), `end_date` (ISO format, default: today)
@@ -635,7 +962,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - **Placement**: Added after `/api/diagnostics/snapshot` endpoint, uses existing SQLAlchemy session pattern and `Depends(get_db)`.
 - **Validation**: Compiled successfully with `python -m py_compile main.py`
 
-## Latest Update (2026-05-22, Spec A Tasks 6 & 7 — Trend Tab Clear + CSS Cleanup)
+## Latest Update (Spec A Tasks 6 & 7 — Trend Tab Clear + CSS Cleanup)
 
 - **Task 6**: Cleared the Trend tab HTML completely, leaving only `<section id="tab-trend"><div id="trend-wrap"></div></section>`. Removed all chart cards, time range buttons, canvases, and empty state elements.
 - **Task 6**: Gutted `renderTrendView()` function to a no-op stub with comment reserving it for future Vol-Fatigue Correlation feature. All existing event listeners continue to call the stub without errors.
@@ -644,13 +971,13 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - **Task 7**: Preserved `.trend-chart-wrap` CSS class since it's used by the Movement Trend chart in the Workouts tab.
 - **Spec A fully complete** — All tasks 1-7 (reorder, remove, add cards, wire, destroy, clear Trend tab, CSS cleanup) implemented end-to-end.
 
-## Latest Update (2026-05-22, Spec A Tasks 4 & 5 — Card Wiring + Destroy Logic)
+## Latest Update (Spec A Tasks 4 & 5 — Card Wiring + Destroy Logic)
 
 - **Task 4**: Updated `loadTrainingLoadCard()` to call `renderTodayTrainingLoadCard()` and `renderTodayPatternFatigueCard()` after the readiness chart render (lines 6122-6123). Both functions reuse the cached training load payload via `ensureTrainingLoadPayload()` — no additional network requests.
 - **Task 5**: Updated `_destroyTrendCharts()` to also destroy the new Today page chart instances (`todayTrainingLoadChart` and `todayPatternFatigueChart`). This ensures proper cleanup when the Trend tab rerenders or when the app re-initializes.
 - Both tasks complete; Spec A (Tasks 1-5) fully implemented.
 
-## Latest Update (2026-05-22, Spec A Task 3 — Today Page New Chart Cards)
+## Latest Update (Spec A Task 3 — Today Page New Chart Cards)
 
 - Added two new card HTML elements to `#today-wrap` in `static/index.html`: `#today-training-load-card` and `#today-pattern-fatigue-card`.
 - Updated `_renderTrendMainChart(history, thresholds)` signature to accept optional `canvasId` parameter with default `'trend-main-chart'`.
@@ -663,7 +990,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - Updated `loadTrainingLoadCard()` to call both new render functions after rendering readiness chart.
 - Final DOM order: checkin → state → pattern → readiness-trend → training-load → pattern-fatigue → joint.
 
-## Latest Update (2026-05-22, Spec A Task 1 — Today Page Card Reorder + Metrics Removal)
+## Latest Update (Spec A Task 1 — Today Page Card Reorder + Metrics Removal)
 
 - Reordered cards within `#today-wrap` in `static/index.html`: moved `#today-pattern-card` up before `#today-readiness-trend-card` to match new layout spec.
 - Removed `#today-metrics-card` HTML element entirely from the DOM.
@@ -671,7 +998,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - Final DOM order (Task 1 complete): `#today-checkin-card` → `#today-state-card` → `#today-pattern-card` → `#today-readiness-trend-card` → `#today-joint-card`.
 - Task 2 (Trend tab content) and Task 3 (new cards) pending.
 
-## Latest Update (2026-05-22, Settings Mobile Layout Fix)
+## Latest Update (Settings Mobile Layout Fix)
 
 - Updated the Settings tab layout CSS in `static/index.html` so the four Settings cards render as a fixed two-column grid instead of expanding to three columns on wider screens.
 - Added `min-width: 0` handling to settings cards, key rows, and AI settings fields so the AI key row no longer widens the grid on narrow viewports.
@@ -679,18 +1006,20 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - Kept the narrow-width key-row wrapping so the API-key toggle buttons drop below the input instead of forcing overflow.
 - Validation: editor diagnostics report no errors in `static/index.html`.
 
-## Latest Update (2026-05-21, Docs Weighting Visibility Clarification)
+# 2026-05-21
+
+## Latest Update (Docs Weighting Visibility Clarification)
 
 - Updated `static/docs.html` to add a dedicated user-facing weighting breakdown table under the check-in formula section.
 - Added explicit percentage and max-point contributions for tiredness (45%, 9.0), perceived recovery (30%, 6.0), and soreness composite (25%, 5.0).
 - Added explicit note that each individual soreness field contributes equally within the soreness composite (up to 1.25 points each).
 
-## Latest Update (2026-05-21, Backlog Closure — Docs Schema Bug)
+## Latest Update (Backlog Closure — Docs Schema Bug)
 
 - Updated `docs/backlog.md` to mark the docs schema mismatch as completed.
 - Removed the `21MAY2026` docs schema item from Open Bugs and added it to the closed/completed decisions table with completion details.
 
-## Latest Update (2026-05-21, Docs Accuracy Corrective Pass)
+## Latest Update (Docs Accuracy Corrective Pass)
 
 - Updated `static/docs.html` check-in schema section to match the live backend fields and scale: `tiredness`, `perceived_recovery`, four pattern soreness fields, and `joint_upper/joint_lower` on a 0-4 input range.
 - Replaced the stale 1-10 inversion formula with the implemented subjective-fatigue calculation used in `main.py` (`0.45*t + 0.30*r + 0.25*s`, scaled to 0-20).
@@ -698,40 +1027,44 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - Updated the joint advisory section to describe current 0-4 scoring and the implemented advisory/warning levels.
 - Validation target: static diagnostics clean for `static/docs.html`; no structure-breaking HTML edits.
 
-## Latest Update (2026-05-20, Exercise Metrics Tooltip Raw Date Source)
+# 2026-05-20
+
+## Latest Update (Exercise Metrics Tooltip Raw Date Source)
 
 - Updated `static/index.html` chart builders (`_exmBuildLineChart` and `_exmBuildBarChart`) to use object dataset points in Chart.js: `data: points.map(p => ({ x: p.date, y: p.value }))`.
 - Changed tooltip title callback to use `items[0].raw.x` (raw dataset date) and format it as `MMM D, YYYY`, with safe fallback to label when raw date is unavailable.
 - Kept x-axis display labels user-friendly by formatting stored raw date labels with a tick callback (`_dateLabel(this.getLabelForValue(value))`).
 - This single shared-builder change covers all three exercise metrics charts: max weight, avg volume/set, and session volume.
 
-## Latest Update (2026-05-20, Exercise Metrics Tooltip Year Formatting)
+## Latest Update (Exercise Metrics Tooltip Year Formatting)
 
 - Updated exercise metrics chart builders in `static/index.html` (`_exmBuildLineChart` and `_exmBuildBarChart`) to override Chart.js tooltip title formatting with full date including year.
 - Added tooltip title callback using `new Date(items[0].label + 'T00:00:00')` and `toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })`.
 - This applies to all three exercise detail charts (max weight, avg volume/set, session volume) through the shared builders.
 - Validation: inline JS extraction + `node --check` passed; static diagnostics report no errors in `static/index.html`.
 
-## Latest Update (2026-05-20, Exercise Metrics Card Onclick Quote Fix)
+## Latest Update (Exercise Metrics Card Onclick Quote Fix)
 
 - Updated `filterAndRenderExerciseList()` card markup in `static/index.html` so `onclick` passes `exercise_id` with single quotes inside the attribute: `loadExerciseDetail('${ex.exercise_id}')`.
 - This prevents HTML attribute parsing breakage caused by nested double quotes and restores click-through behavior for exercise detail cards.
 - Validation: inline JS extraction + `node --check` passed; static diagnostics report no errors in `static/index.html`.
 
-## Latest Update (2026-05-20, Documentation Refresh)
+## Latest Update (Documentation Refresh)
 
 - Updated `static/docs.html` to reflect the current source values and UI structure for check-in scoring, stress pathways, movement pattern dots, fatigue display, readiness trend, AI assistant, and exercise metrics.
 - Added the new pending-state, exercise metrics, readiness trend, and AI assistant sections, plus the corresponding sidebar links.
 - Kept the changes scope-limited to documentation and validated the file for structural correctness.
 
-## Latest Update (2026-05-19, Exercise Metrics Feature — Phase 5: CSS)
+## 2026-05-19
+
+## Latest Update (Exercise Metrics Feature — Phase 5: CSS)
 
 - Added a clearly marked `/* === EXERCISE METRICS TAB === */` stylesheet section in `static/index.html`.
 - Aligned the exercise metrics styles to the requested `exm-*` selectors: header, search, filter buttons, summary, list cards, detail view, back button, stats row, PR pills, window toggle, and chart grid.
 - Kept all color usage on theme variables / `color-mix(...)`; no hardcoded hex values were introduced in the new section.
 - Updated the detail-view markup/classes to use the new selector names so the CSS applies cleanly.
 
-## Latest Update (2026-05-19, Exercise Metrics Feature — Phase 4: Frontend Detail View)
+## Latest Update (Exercise Metrics Feature — Phase 4: Frontend Detail View)
 
 - Added CSS for `.exm-detail-header/title/last`, `.exm-detail-sesscount`, `.exm-stats-row`, `.exm-top-sets-section/table`, `.exm-pr-section/list/item/label/value`, `.exm-window-toggle/btn`, `.exm-chart-grid`, `.exm-chart-wrap/full/canvas-wrap`; with `@media (max-width:900px)` stack override.
 - Added `exmCharts` object and `_exmCurrentExerciseId` module-level state.
@@ -740,7 +1073,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - Added `_exmWindowClick(days)` to re-call detail with new window.
 - Updated back-button listener to call `_exmDestroyCharts()` before hiding detail.
 
-## Previous Update (2026-05-19, Exercise Metrics Feature — Phases 1, 2 & 3)
+## Previous Update (Exercise Metrics Feature — Phases 1, 2 & 3)
 
 - Fixed Phase 1 bug: `data-tab` on new nav buttons corrected from `tab-exercise-metrics` → `exercise-metrics` so `activateTab` resolves `id="tab-exercise-metrics"` correctly.
 - Added CSS block for `.exm-header`, `#exm-search`, `.exm-filter-btn`, `.exm-summary`, `#exm-list`, `.exm-card`, `.exm-card-left/.title/.meta`, `.exm-chevron`, `.exm-detail-view`, `#exm-back-btn`.
@@ -753,7 +1086,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - Search input fires `filterAndRenderExerciseList` on `input` event.
 - `loadExerciseDetail(exerciseId)` stub: hides list+header, shows detail panel. Back button reverses.
 
-## Previous Update (2026-05-19, Exercise Metrics Feature — Phases 1 & 2)
+## Previous Update (Exercise Metrics Feature — Phases 1 & 2)
 
 - Phase 1 — Nav & scaffold (`static/index.html`):
 	- Renamed existing `data-tab="exercises"` button label from "Exercises" → "Patterns" in both desktop `.nav-tabs` and mobile `.mobile-drawer-nav`. `data-tab` and badge spans unchanged.
@@ -766,7 +1099,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 	- Detail mode: returns personal records (Brzycki 1RM, best set volume, max weight), top 3 best sets, and three chart series (max_weight_over_time, avg_volume_per_set, session_volume) with optional `window_days` filter.
 	- All queries use raw SQLAlchemy `text(...)`. `py_compile` passed.
 
-## Previous Maintenance Update (2026-05-19, Training Load Performance Phases 1-3)
+## Previous Maintenance Update (Training Load Performance Phases 1-3)
 
 - Implemented Phase 1 in `main.py` to eliminate duplicate stress-score recomputation during `GET /api/training-load`:
 	- `_compute_training_load(...)` now returns precomputed `stress_by_date` and `pattern_stress_by_date` maps.
@@ -784,7 +1117,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 	- `GET /api/training-load?days=180` returned `200` with history and pattern payloads.
 	- function-scope verification confirmed `calculate_stress_scores(...)` no longer calls app-settings helper lookups.
 
-## Latest Maintenance Update (2026-05-19, AGENTS Constraint-Overload Reduction)
+## Latest Maintenance Update (AGENTS Constraint-Overload Reduction)
 
 - Updated `AGENTS.md` to reduce instruction cognitive load without changing policy intent.
 - Added a front-loaded quick checklist with grouped must-do actions (scope, pre-implementation, verification, DB safety, architecture guards, reporting).
@@ -794,7 +1127,9 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 	- no tool allowance changes
 	- no architecture/safety rule relaxations
 
-## Latest Maintenance Update (2026-05-16, Sticky AI Model Selection via localStorage)
+# 2026-05-16
+
+## Latest Maintenance Update (Sticky AI Model Selection via localStorage)
 
 - Updated AI model preference persistence in `static/index.html` using browser `localStorage` only (no backend changes).
 - Changed module-level initialization to hydrate `aiSelectedModel` from `localStorage.getItem('ai_preferred_model')` with fallback to `AI_DEFAULT_MODEL`.
@@ -802,7 +1137,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - Updated custom model input handler to persist non-empty custom model values to the same `ai_preferred_model` key.
 - Preserved existing `theme` persistence behavior and key usage (`theme`) with no overlap.
 
-## Latest Maintenance Update (2026-05-16, No-Check-In Pending State + Null Subjective)
+## Latest Maintenance Update (No-Check-In Pending State + Null Subjective)
 
 - Updated backend subjective fallback handling in `main.py` so no-check-in state returns `recommendation_v2.subjective_score = null` instead of `10.0`.
 - Updated `_build_recommendation_v2(...)` signature to accept `subjective_score: float | None = None`.
@@ -817,7 +1152,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 	- explainer copy switches to check-in prompt when subjective is unavailable
 - Explicit non-change preserved: "No check-in today - pattern signals based on training load only" footer note remains in place.
 
-## Latest Maintenance Update (2026-05-16, Pattern Cell Dot-Band Colors + Label Size)
+## Latest Maintenance Update (Pattern Cell Dot-Band Colors + Label Size)
 
 - Updated pattern-cell visual state classes in `static/index.html`:
 	- replaced `today-pattern-available` with `today-pattern-fresh` (accent)
@@ -832,7 +1167,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - Updated pattern card call site to pass `d.dots_filled` into `_patternCellClass(...)`.
 - Increased `.today-pattern-level` typography to `font-size: 15px` and `font-weight: 700`.
 
-## Latest Maintenance Update (2026-05-16, Pattern Stress Dots TSB Signal)
+## Latest Maintenance Update (Pattern Stress Dots TSB Signal)
 
 - Replaced pattern stress-dot load helper in `main.py` from ATL/CTL ratio logic to per-pattern TSB-driven logic.
 - Renamed helper from `_pattern_load_signal(atl, ctl)` to `_pattern_tsb_signal(tsb, ctl)`.
@@ -845,7 +1180,9 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 	- no new database queries
 	- no changes to `_dots_filled()`, `_stress_level_label()`, or the 70/30 combined signal split
 
-## Latest Maintenance Update (2026-05-15, Scoring Scale 0-20 Migration)
+# 2026-05-15	
+
+## Latest Maintenance Update (Scoring Scale 0-20 Migration)
 
 - Migrated readiness scoring scale in `main.py` from 0-10 to 0-20 by updating multiplier call sites that consume `_subjective_fatigue()` output.
 - Updated fatigue threshold defaults in `_CALIBRATION_DEFAULTS`:
@@ -865,7 +1202,9 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - Validation status:
 	- static diagnostics report no errors in `main.py` and `static/index.html`
 
-## Latest Maintenance Update (2026-05-14, Critical Bug-Hunt Skill Added)
+# 2026-05-14
+
+## Latest Maintenance Update (Critical Bug-Hunt Skill Added)
 
 - Added a new workspace skill at `.github/skills/critical-bug-hunt/SKILL.md`.
 - Skill captures a reusable high-severity bug-finding workflow focused on concrete-trigger correctness failures:
@@ -881,7 +1220,9 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 	- fixed bug report with impact, root cause, fix, and validation
 	- no-critical-bugs-found summary
 
-## Latest Maintenance Update (2026-05-09, Canonical Mapping Sync + Startup Mapping Migration)
+# 2026-05-09
+
+## Latest Maintenance Update (Canonical Mapping Sync + Startup Mapping Migration)
 
 - Updated canonical save flows in `main.py` so when a canonical title is saved (direct canonical API and conflict resolve API), the canonical title is synchronized into `exercise_mappings`.
 - New canonical-to-mapping sync behavior:
@@ -893,7 +1234,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - Validation status:
 	- `python -m py_compile main.py database.py` passes
 
-## Latest Maintenance Update (2026-05-09, Canonical Sync Root-Cause + Movement Trend ID Join + Backfill)
+## Latest Maintenance Update (Canonical Sync Root-Cause + Movement Trend ID Join + Backfill)
 
 - Updated `importer.py` pre-write canonical resolution to re-check `exercise_canonical` by `exercise_id` during sync processing, addressing stale map timing within long import runs without adding any post-write rewrite path.
 - Updated movement analytics APIs in `main.py`:
@@ -907,88 +1248,92 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 	- static/file diagnostics report no syntax errors in edited files
 	- live gate scripts are blocked until local API is running at `http://127.0.0.1:8000`
 
-## Latest Maintenance Update (2026-05-08, AI Tab Overflow Height Handoff)
+# 2026-05-08
+
+## Latest Maintenance Update (AI Tab Overflow Height Handoff)
 
 - Updated `static/index.html` so `body.ai-open` now sets both `overflow: hidden` and `height: 100vh`.
 - Added `body.ai-open main` constraints (`padding: 0`, `overflow: hidden`, `height: calc(100vh - 54px)`, flex column, full width behavior) to prevent page-level scroll conflict while AI tab is open.
 - Updated `.tab-content#tab-ai.active` to `flex: 1`, `height: 100%`, and `overflow: hidden`, removing previous `calc(100vh - 54px)` dependency.
 - Updated mobile AI override to use `height: 100%` for `.tab-content#tab-ai.active`.
 
-## Latest Maintenance Update (2026-05-07, AI Tab Body Overflow Lock)
+# 2026-05-07
+
+## Latest Maintenance Update (AI Tab Body Overflow Lock)
 
 - Added `body.ai-open { overflow: hidden; }` in `static/index.html` to lock page scroll while AI tab is active.
 - Updated AI tab activation path in `activateTab(tabName)` to toggle `document.body.classList` with `ai-open` for AI vs non-AI tabs.
 - Kept `tab-content#tab-ai.active` height/overflow rule intact and scoped changes to requested CSS/JS only.
 
-## Latest Maintenance Update (2026-05-07, AI Chat Full Height Sticky Layout)
+## Latest Maintenance Update (AI Chat Full Height Sticky Layout)
 
 - Replaced `static/index.html` AI tab active layout with a full-height column (`height: calc(100vh - 54px)`) and hidden overflow.
 - Replaced AI chat card and message area rules to a full-height scrollable layout with sticky input row and no legacy fixed message-area heights.
 - Updated user/assistant message-role rules to the requested subtle right bubble for user and no-bubble full-width assistant style.
 - Updated `@media (max-width: 900px)` AI overrides to only enforce tab height and `ai-chat-messages { min-height: 0; }`.
 
-## Latest Maintenance Update (2026-05-07, AI Chat Surface Token Alignment)
+## Latest Maintenance Update (AI Chat Surface Token Alignment)
 
 - Updated `static/index.html` AI chat message area surface to `var(--bg)` and explicitly removed box shadow while keeping border removed.
 - Updated model selector/input controls in `#ai-model-field` to use `background: var(--card)` and `color: var(--text)`.
 - Updated `.ai-chat-input` to use `background: var(--card)` and `color: var(--text)`.
 
-## Latest Maintenance Update (2026-05-07, AI Chat Card Shell Removal)
+## Latest Maintenance Update (AI Chat Card Shell Removal)
 
 - Updated `static/index.html` so `#tab-ai .ai-chat-card` uses a transparent shell (`background: transparent !important; border: none !important; box-shadow: none;`) with centered `max-width: 760px` layout and `padding: 0 16px`.
 - Added compact inline model control styling for `#tab-ai #ai-model-field select` and `#tab-ai #ai-model-field input` (auto width, 160px minimum, compact padding).
 - Scope remained CSS-only with no HTML or JS changes.
 
-## Latest Maintenance Update (2026-05-07, AI Chat Plain Text Stack)
+## Latest Maintenance Update (AI Chat Plain Text Stack)
 
 - Updated `static/index.html` AI chat message presentation to plain stacked text (no bubble background, radius, or per-bubble border styling).
 - Removed row-style alignment wrappers by switching message containers to block layout and text alignment by role.
 - Set `#tab-ai .ai-chat-card` to a centered 760px column and adjusted message pane sizing/background to the requested standard chat column style.
 
-## Latest Maintenance Update (2026-05-07, AI Chat Standard UI Revert)
+## Latest Maintenance Update (AI Chat Standard UI Revert)
 
 - Reverted `static/index.html` AI chat window from terminal styling to a standard modern chat UI using theme tokens (`var(--card)`, `var(--border)`, `var(--bg)`).
 - Removed terminal artifacts: `$`/`>` prefixes, cursor animation, hardcoded dark colors, and the `ai-chat-clear` button element/CSS.
 - Applied requested message bubble layout, input sizing, model-label typography, scrollbar styling, and three-dot typing indicator styling.
 
-## Latest Maintenance Update (2026-05-07, AI Terminal Bar Removal)
+## Latest Maintenance Update (AI Terminal Bar Removal)
 
 - Removed the `terminal-bar` element and its three colored dot children from the AI chat card in `static/index.html`.
 - Deleted the `.terminal-bar` and `.terminal-dot*` CSS rules from `static/index.html`.
 - Kept all other HTML and CSS unchanged.
 
-## Latest Maintenance Update (2026-05-07, AI Chat UX Alignment Pass)
+## Latest Maintenance Update (AI Chat UX Alignment Pass)
 
 - Updated `static/index.html` so AI chat messages are constrained to `max-width: 75%`, with user messages right-aligned and assistant messages left-aligned.
 - Preserved terminal-style differentiation with `>` and `$` prefixes and role-specific text colors.
 - Added an `#ai-typing-indicator` element and CSS visibility/animation hooks for in-flight response feedback.
 - Updated AI chat textarea placeholder copy and enforced touch/iOS-safe input/button sizing.
 
-## Latest Maintenance Update (2026-05-07, Settings Grid Equal Height)
+## Latest Maintenance Update (Settings Grid Equal Height)
 
 - Updated `static/index.html` so `#tab-settings.active` stretches grid items instead of aligning them to the start.
 - Added `height: 100%` to `#tab-settings .settings-card` so each settings card fills its grid cell height.
 - Scope remained CSS-only and limited to the settings grid equal-height behavior.
 
-## Latest Maintenance Update (2026-05-07, Settings Grid 2x2 Layout)
+## Latest Maintenance Update (Settings Grid 2x2 Layout)
 
 - Updated `static/index.html` so `#tab-settings.active` uses a 2x2 named-area layout: `api`, `sync`, `diagnostics`, and `ai`.
 - Added the missing `#tab-settings .ai-settings-card { grid-area: ai; }` assignment.
 - Removed the full-width AI settings card override so the named grid-area controls placement.
 
-## Latest Maintenance Update (2026-05-07, AI Chat Terminal Restyle)
+## Latest Maintenance Update (AI Chat Terminal Restyle)
 
 - Restyled the AI chat card in `static/index.html` to read as a terminal window with a scoped dark shell, title bar, and monospace title treatment.
 - Added a new `terminal-bar` element with red, yellow, and green dots immediately before the existing `AI Chat` title.
 - Flattened user and assistant message bubbles into terminal-style lines with `>` and `$` prefixes while preserving existing AI chat behavior.
 
-## Latest Maintenance Update (2026-05-07, Mobile Drawer Docs Link)
+## Latest Maintenance Update (Mobile Drawer Docs Link)
 
 - Added `Docs` link to the mobile drawer in `static/index.html`.
 - Placed the link after the last existing mobile nav tab (`Settings`) and pointed it to `/static/docs.html`.
 - Scope intentionally limited to mobile drawer markup only.
 
-## Latest Maintenance Update (2026-05-07, AI/Settings/Mobile UI Stabilization)
+## Latest Maintenance Update (AI/Settings/Mobile UI Stabilization)
 
 - Updated `static/index.html` to keep top navigation persistently visible on mobile:
 	- set mobile nav to fixed positioning at the top
@@ -1006,7 +1351,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - Validation:
 	- static diagnostics report no errors in `static/index.html`
 
-## Latest Maintenance Update (2026-05-07, Docs CSS Variables and Importer List Styling Fix)
+## Latest Maintenance Update (Docs CSS Variables and Importer List Styling Fix)
 
 - Updated `static/docs.html` `:root` wiki override mappings to define missing variables used by existing styles:
 	- `--text-primary: var(--text)`
@@ -1021,7 +1366,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 	- `05` (modalities), `05b` (title tagging), `05c` (importer), `06` (movement patterns)
 - Validation: static diagnostics report no errors in `static/docs.html`.
 
-## Latest Maintenance Update (2026-05-07, Diagnostics Page Outlined in Docs)
+## Latest Maintenance Update (Diagnostics Page Outlined in Docs)
 
 - Added a dedicated `Diagnostics page` section to `static/docs.html` (`id="diagnostics"`) to clearly document purpose and usage.
 - Added a new Notes sidebar link to `#diagnostics` for quick wiki-style navigation.
@@ -1038,7 +1383,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 	- diagnostics sidebar link and section anchor both present in `static/docs.html`
 	- static diagnostics report no errors in `static/docs.html`
 
-## Latest Maintenance Update (2026-05-07, Remove Divergences from RTS TRAC Section)
+## Latest Maintenance Update (Remove Divergences from RTS TRAC Section)
 
 - Removed the entire `Divergences from RTS TRAC` section from `static/docs.html`.
 - Removed the corresponding sidebar TOC link to `#divergences` in the Notes group.
@@ -1050,7 +1395,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 	- no remaining `divergences` references in `static/docs.html`
 	- static diagnostics report no errors in `static/docs.html`
 
-## Latest Maintenance Update (2026-05-07, Docs Wiki Sidebar Restoration)
+## Latest Maintenance Update (Docs Wiki Sidebar Restoration)
 
 - Reworked `static/docs.html` to restore wiki-style section navigation while retaining index theme colors.
 - Added a fixed left sidebar Table of Contents on desktop and a slide-in mobile drawer on small screens.
@@ -1067,7 +1412,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - Added section-aware sidebar highlighting via `IntersectionObserver` and smooth-scroll behavior for TOC links.
 - Kept index-compatible visual theme tokens (`--bg`, `--card`, `--border`, `--text`, `--accent`, etc.) while preserving docs-specific layout.
 
-## Latest Maintenance Update (2026-05-07, Docs Page Navbar Integration)
+## Latest Maintenance Update (Docs Page Navbar Integration)
 
 - Added "Docs" link to the navbar in `static/index.html` 
   - Added as an external link in the nav-tabs section, styled to match existing nav elements
@@ -1085,30 +1430,9 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
   - Updated mobile responsiveness for new navbar layout
   - Simplified JavaScript: removed sidebar nav link tracking, kept only smooth scroll for anchor links
 
-## Latest Maintenance Update (2026-05-03, Backlog source-of-truth established)
+# 2026-05-06
 
-- Removed the Diagnostics page AI Assistant section from `static/diagnostic.html`.
-- Deleted AI section HTML controls and containers:
-	- model selector
-	- context preview toggle and preview area
-	- chat message window
-	- input row, send/clear controls, and status line
-- Removed AI-only JavaScript from `static/diagnostic.html`:
-	- `OPENROUTER_API_KEY` and `OPENROUTER_URL`
-	- `chatHistory` and `readinessContext`
-	- `buildSystemPrompt()`, `sendMessage()`, `clearChat()`, `appendMessage()`, `escapeHtml()`, `setStatus()`, `setContextPreview()`, and `toggleContextPreview()`
-	- removed readiness-context assignment from `loadAndRender()`
-	- removed AI input listeners from `DOMContentLoaded`
-- Removed AI-only CSS selectors (`.ai-*`) from `static/diagnostic.html`.
-- Removed `marked.js` CDN script tag from `static/diagnostic.html` because no markdown parsing remains in that file.
-- Preserved non-AI diagnostics functionality and controls:
-	- Engine Snapshot render path remains intact
-	- Pattern Sensitivity and Session Processing cards remain unchanged
-- Validation:
-	- static diagnostics report no errors in `static/diagnostic.html`
-	- no `OPENROUTER_API_KEY`, `marked`, or removed AI function/id references remain in `static/diagnostic.html`
-
-## Latest Maintenance Update (2026-05-06, AI Prompt Recent Session Detail Rewrite)
+## Latest Maintenance Update (AI Prompt Recent Session Detail Rewrite)
 
 - Replaced the recent-session section in `_build_ai_system_prompt()` in `main.py` with direct database queries over `WorkoutSession` and `WorkoutLog`.
 - The AI system prompt now includes only the last 3 sessions ordered by `workout_date DESC, start_time DESC` instead of a snapshot-derived 7-day window.
@@ -1128,7 +1452,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - Validation:
 	- `python -m py_compile main.py` passes
 
-## Latest Maintenance Update (2026-05-06, AI Prompt Scale Reference)
+## Latest Maintenance Update (AI Prompt Scale Reference)
 
 - Updated `_build_ai_system_prompt()` in `main.py` to include a `SCALE REFERENCE (critical for correct interpretation):` section immediately after the prompt header/date block.
 - Revised the scale guidance to emphasize subjective-input semantics:
@@ -1139,7 +1463,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - Validation:
 	- `python -m py_compile main.py` passes
 
-## Latest Maintenance Update (2026-05-06, AI Chat Raw JSON SSE Alignment)
+## Latest Maintenance Update (AI Chat Raw JSON SSE Alignment)
 
 - Updated AI chat streaming contract between `main.py` and `static/index.html` to preserve upstream OpenRouter JSON SSE payloads instead of flattening deltas into plain-text proxy chunks.
 - Changed `_stream_openrouter(...)` in `main.py` to forward upstream `data:` payloads unchanged:
@@ -1157,7 +1481,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 	- `python -m py_compile main.py` passes
 	- editor diagnostics report no errors in `main.py` or `static/index.html`
 
-## Latest Maintenance Update (2026-05-06, Session-Scoped AI Model Selection)
+## Latest Maintenance Update (Session-Scoped AI Model Selection)
 
 - Moved AI model selection out of persisted settings and into the AI chat UI in `static/index.html`:
 	- AI tab now renders a model dropdown above the context preview with six preset OpenRouter models plus `Custom model…`
@@ -1180,8 +1504,9 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 	- `python -m py_compile main.py` passes
 	- editor diagnostics report no errors in `main.py` or `static/index.html`
 	- isolated API smoke checks confirmed `PUT /api/settings/ai` succeeds with only `api_key`, `GET /api/settings/ai` returns no `model` field, chat requests pass through the selected request model, and only `ai_api_key` is persisted
+# 2026-05-05
 
-## Latest Maintenance Update (2026-05-05, OpenRouter-Only AI Simplification)
+## Latest Maintenance Update (OpenRouter-Only AI Simplification)
 
 - Simplified backend AI integration in `main.py` to OpenRouter-only:
 	- removed provider field from `AISettingsInput`
@@ -1206,7 +1531,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 	- static diagnostics: no errors in `main.py` and `static/index.html`
 	- `python -m py_compile main.py` passes
 
-## Latest Maintenance Update (2026-05-05, Stage 5 Frontend: AI Chat Card)
+## Latest Maintenance Update (Stage 5 Frontend: AI Chat Card)
 
 - Added AI chat card UI in `#tab-ai` inside `static/index.html` with:
 	- collapsed context preview (`show context` / `hide context`) using monospace pre-wrapped display
@@ -1240,7 +1565,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 	- inline JS brace counts balanced (`open=close` for both inline script blocks)
 	- marked.js CDN reference confirmed in `static/index.html`
 
-## Latest Maintenance Update (2026-05-05, Stage 4 Fix: Move AI Settings To Settings Tab)
+## Latest Maintenance Update (Stage 4 Fix: Move AI Settings To Settings Tab)
 
 - Moved the full AI settings card markup (provider/model/API key + save/change controls) from `#tab-ai` to `#tab-settings` in `static/index.html`.
 - Left `#tab-ai` in the DOM but empty to reserve it for Stage 5 chat UI.
@@ -1254,7 +1579,9 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 	- static diagnostics on `static/index.html` pass (no errors)
 	- markup checks confirm AI card is now inside Settings tab and AI tab is empty
 
-## Latest Maintenance Update (2026-05-04, Stage 4 Frontend: AI Settings Card)
+# 2026-05-04
+
+## Latest Maintenance Update (Stage 4 Frontend: AI Settings Card)
 
 - Updated `static/index.html` navigation to add `AI` as the fifth tab in both desktop and mobile tab lists.
 - Added new `#tab-ai` panel in `static/index.html` with an AI settings card containing:
@@ -1283,7 +1610,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 	- static diagnostics for `static/index.html` report no errors
 	- existing tab activation branches preserved with added `ai` activation load hook
 
-## Latest Maintenance Update (2026-05-04, Stage 3 Backend: AI Chat Proxy Endpoint)
+## Latest Maintenance Update (Stage 3 Backend: AI Chat Proxy Endpoint)
 
 - Added `AIChatMessage` and `AIChatRequest` models in `main.py`.
 - Added `POST /api/ai/chat` in `main.py`:
@@ -1309,7 +1636,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 		- Anthropic stream yields at least one `data:` chunk and ends with `[DONE]`
 		- history payload propagation verified with follow-up context response
 
-## Latest Maintenance Update (2026-05-04, Stage 2 Backend: System Prompt Builder)
+## Latest Maintenance Update (Stage 2 Backend: System Prompt Builder)
 
 - Refactored diagnostics snapshot logic into shared helper `_build_diagnostics_snapshot(db)` in `main.py`.
 - Updated `GET /api/diagnostics/snapshot` in `main.py` to return `_build_diagnostics_snapshot(db)` so route output remains unchanged while enabling internal reuse.
@@ -1332,7 +1659,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 		- with no check-in today: output contains `No check-in recorded for today` and does not contain literal `None`
 		- with no sessions in last 7 days: output contains `No sessions in the last 7 days`
 
-## Latest Maintenance Update (2026-05-04, Stage 1 Backend: Encrypted AI Settings Storage)
+## Latest Maintenance Update (Stage 1 Backend: Encrypted AI Settings Storage)
 
 - Added `AISettingsInput` in `main.py` with fields `provider`, `api_key`, and `model` for AI settings payloads.
 - Added `_get_ai_settings(db)` helper in `main.py`:
@@ -1359,13 +1686,15 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 		- post-save `GET /api/settings/ai` returns correct provider/model, raw key absent
 		- DB `app_settings.ai_api_key` stored encrypted (Fernet token prefix `gAAA`, not plaintext)
 
-## Latest Maintenance Update (2026-05-03, Backlog Source-of-Truth)
+<h1> 2026-05-03 </h1>
+
+## Latest Maintenance Update (Backlog Source-of-Truth)
 
 - Added `backlog.md` in project root with release blockers, bookmarked items, low-priority items, and recently completed context.
 - Outstanding work tracking now uses `backlog.md` as the source of truth.
 - `plan.md` open-items section is retained as historical context only.
 
-## Latest Maintenance Update (2026-05-03, Initial Import Verification-State Preservation)
+## Latest Maintenance Update (Initial Import Verification-State Preservation)
 
 - Updated `initial_import()` in `importer.py` to preserve manual verification fields across full reimport wipes.
 - Before deleting `workout_sessions`, importer now snapshots existing rows into a dict keyed by `hevy_workout_id` containing:
@@ -1378,7 +1707,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - No changes made to `_process_workout()`.
 - Validation: `python -m py_compile importer.py` passed.
 
-## Latest Maintenance Update (2026-05-03, Exercises Tab Cleanup)
+## Latest Maintenance Update (Exercises Tab Cleanup)
 
 - Removed `Exercise Name Overrides` card and all associated frontend JS/state from `static/index.html`.
 - Removed `Rename Exercise` card and all associated frontend JS/state from `static/index.html`.
@@ -1398,7 +1727,7 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 	- `GET /api/movements/search` now also returns `items` with `{ exercise_id, title }` while preserving existing `results` title list for back-compat.
 - Validation: static diagnostics on `static/index.html` passed (no errors).
 
-## Latest Maintenance Update (2026-05-03, Sync Cooldown Removal)
+## Latest Maintenance Update (Sync Cooldown Removal)
 
 - Removed sync cooldown enforcement from `POST /api/sync` in `main.py`.
 - Removed `_SYNC_COOLDOWN_SECONDS` and the cooldown response path (`status="cooldown"`, `retry_after_seconds`).
@@ -1419,14 +1748,14 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - Final output includes per-gate PASS/FAIL (or SKIP), summary counts, and non-zero exit on failures.
 - Validation: `python -m py_compile incremental_sync_gate.py` passed.
 
-## Latest Maintenance Update (2026-05-03, Incremental Sync Migration + API)
+## Latest Maintenance Update (Incremental Sync Migration + API)
 
 - Added one-time startup migration in `database.py:init_db()` guarded by `app_settings.migration_incremental_sync_v1`.
 - On first startup after deploy (flag missing), migration deletes `app_settings.last_sync` to force a fresh `initial_import`, then writes the migration flag so subsequent restarts skip it.
 - Added `GET /api/sync/last-sync` in `main.py` (before static mounts), returning `{ "last_sync": <value|null> }` from `app_settings`.
 - Validation: `python -m py_compile database.py` and `python -m py_compile main.py` passed.
 
-## Latest Maintenance Update (2026-05-03, Importer Sync Refactor)
+## Latest Maintenance Update (Importer Sync Refactor)
 
 - Refactored `importer.py` into a two-mode sync flow with extracted `_process_workout(db, workout, canonical_map)` logic shared by:
 	- `initial_import(db, canonical_map)` for full `GET /v1/workouts` pagination
@@ -1445,12 +1774,35 @@ Last updated: 2026-05-24 (Spec: Dashboard Recent Sessions via /api/training-load
 - Updated importer callers in `main.py`, `canonical_gate.py`, and `conflict_gate.py` to use the new `import_hevy_data(db)` entrypoint.
 - Validation: `python -m py_compile importer.py` and `python -m py_compile main.py canonical_gate.py conflict_gate.py` passed.
 
-## Latest Maintenance Update (2026-05-03)
+## Latest Maintenance Update
 
 - Added `HevyClient.get_workout_events(since, page=1, page_size=10)` in `hevy_client.py` for `GET /v1/workouts/events`.
 - Method builds the events URL inline, uses `self.session.get(..., timeout=30)`, clamps `page_size` to the API max of `10`, and returns `{ page, page_count, events: [] }` for `404` responses.
 - Method now raises explicit client-side errors for unauthorized, HTTP, JSON decode, connection, timeout, and unexpected failure paths without expanding the repo to a new config/error abstraction.
 - Validation: `python -m py_compile hevy_client.py` passed.
+
+## Latest Maintenance Update (Backlog source-of-truth established)
+
+- Removed the Diagnostics page AI Assistant section from `static/diagnostic.html`.
+- Deleted AI section HTML controls and containers:
+	- model selector
+	- context preview toggle and preview area
+	- chat message window
+	- input row, send/clear controls, and status line
+- Removed AI-only JavaScript from `static/diagnostic.html`:
+	- `OPENROUTER_API_KEY` and `OPENROUTER_URL`
+	- `chatHistory` and `readinessContext`
+	- `buildSystemPrompt()`, `sendMessage()`, `clearChat()`, `appendMessage()`, `escapeHtml()`, `setStatus()`, `setContextPreview()`, and `toggleContextPreview()`
+	- removed readiness-context assignment from `loadAndRender()`
+	- removed AI input listeners from `DOMContentLoaded`
+- Removed AI-only CSS selectors (`.ai-*`) from `static/diagnostic.html`.
+- Removed `marked.js` CDN script tag from `static/diagnostic.html` because no markdown parsing remains in that file.
+- Preserved non-AI diagnostics functionality and controls:
+	- Engine Snapshot render path remains intact
+	- Pattern Sensitivity and Session Processing cards remain unchanged
+- Validation:
+	- static diagnostics report no errors in `static/diagnostic.html`
+	- no `OPENROUTER_API_KEY`, `marked`, or removed AI function/id references remain in `static/diagnostic.html`
 
 ## 1) Current Product State
 

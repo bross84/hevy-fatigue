@@ -1,0 +1,2389 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script src="/training/static/training.js"></script>
+  <script src="/training/static/save-recovery.js"></script>
+  <script src="/training/static/draft-transfer.js"></script>
+  <script src="/training/static/session-review.js"></script>
+  <script src="/training/static/session-advice.js"></script>
+  <script src="/training/static/session-motivation.js"></script>
+  <script src="/training/static/logger-layout.js"></script>
+  <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="manifest" href="/training/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/training/static/apple-touch-icon.png" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f5f8" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#111923" />
+  <title>Log Workout</title>
+  <style>
+    :root {
+      --bg: #f6f5f1; --card: #ffffff; --text: #1d1d1b; --muted: #6b6a64; --line: #e3e1d9;
+      --accent: #1f5fbf; --chip: #eef0f4; --done: #e4f2e4; --done-line: #9ccc9c;
+      --danger: #a32d2d; --danger-bg: #fcebeb; --ok: #1d6b2f; --ok-bg: #e4f2e4; --warn-bg: #fbf0d9; --warn: #7a5200;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #161614; --card: #21211e; --text: #ecebe5; --muted: #a09f97; --line: #34332f;
+        --accent: #7fb0ff; --chip: #2b2c30; --done: #1f3a24; --done-line: #3f7a4a;
+        --danger: #f09595; --danger-bg: #3a1f1f; --ok: #8fd19e; --ok-bg: #1f3a24; --warn-bg: #3a3118; --warn: #e8c66a;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 560px; margin: 0 auto; padding: 12px; padding-bottom: 190px; }
+    header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin: 6px 0 12px; }
+    .hright { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; }
+    .units { display: inline-flex; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+    .units button { min-height: 30px; padding: 0 12px; border: 0; border-radius: 0; background: transparent; color: var(--muted); font-size: 13px; }
+    .units button.on { background: var(--accent); color: var(--card); }
+    h1 { font-size: 22px; font-weight: 500; margin: 0; }
+    a { color: var(--accent); }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin: 0 0 12px; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .stress { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 13px; }
+    .stress h3, .stress .stress-extra { display: none; }
+    .stress[aria-busy="true"] .stress-grid { opacity: .6; }
+    .stress-grid { display: flex; align-items: baseline; gap: 8px; }
+    .stress-grid span { color: var(--muted); margin-right: 8px; }
+    .stress-grid strong { font-size: 16px; font-variant-numeric: tabular-nums; }
+    .stress p { margin: 6px 0 0; overflow-wrap: anywhere; }
+    .stress details { margin-top: 8px; color: var(--muted); font-size: 12px; }
+    .stress summary { cursor: pointer; min-height: 32px; display: list-item; padding: 6px 0; }
+    .stress[data-status="elevated"] .stress-window, .stress[data-status="much_higher"] .stress-window { color: #b57216; }
+    button, select, input {
+      font: inherit; color: var(--text); min-height: 44px; border-radius: 10px; border: 1px solid var(--line);
+      background: var(--card);
+    }
+    button { padding: 10px 14px; cursor: pointer; }
+    button.primary { background: var(--accent); color: #fff; border-color: transparent; font-weight: 500; }
+    button.wide { width: 100%; }
+    #plannedStart label {display:grid;gap:6px;margin:12px 0;font-size:13px;color:var(--muted)}
+    #plannedStart select {width:100%;min-width:0}
+    #plannedStart button + button {margin-top:8px}
+    button.link { border: none; background: none; color: var(--muted); min-height: 36px; padding: 6px 4px; font-size: 14px; }
+    button:disabled { opacity: .55; }
+    input[type=text] { width: 100%; padding: 8px 10px; background: var(--bg); }
+    .pick { display: block; width: 100%; text-align: left; margin: 0 0 8px; }
+    .pick small { display: block; color: var(--muted); }
+    .ex-title { font-size: 17px; font-weight: 500; margin: 0 0 2px; }
+    .exhead { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
+    .exhead .ex-title { margin: 0; order: 1; flex: 1 1 auto; }
+    .grip { order: 0; width: 28px; min-height: 36px; padding: 0; border: 0; background: transparent; color: var(--muted); font-size: 18px; line-height: 1; cursor: grab; touch-action: none; }   /* touch-action: none so a drag on the handle never scrolls the page */
+    .card.lifted { position: relative; z-index: 5; box-shadow: 0 8px 24px rgba(0,0,0,.35); opacity: .96; }
+    .chip { order: 3; min-height: 32px; padding: 3px 12px; border-radius: 16px; font-size: 13px; color: var(--muted); }
+    .more { order: 2; margin-left: auto; width: 36px; min-height: 36px; padding: 0; font-size: 20px; line-height: 1; color: var(--muted); }
+    .cols, .set { display: grid; grid-template-columns: 20px 36px minmax(38px,1fr) 28px minmax(30px,1fr) 34px 34px 30px 30px 26px; gap: 2px; align-items: center; }
+    .cols { font-size: 11px; color: var(--muted); text-align: center; margin: 0 0 2px; padding: 0 4px; }   /* the same side inset as a set row (border and padding), so the labels sit over their boxes */
+    .set { margin: 0 0 2px; padding: 0 4px; border-radius: 8px; }
+    .set.done { background: var(--done); }
+    .set input, .set select { width: 100%; text-align: center; padding: 0 2px; min-height: 34px; height: 34px; font-size: 16px; font-weight: 500; border: 0; background: var(--chip); border-radius: 8px; }
+    .set input:focus { outline: none; box-shadow: 0 0 0 1.5px var(--accent); }
+    .set.done input { background: transparent; }
+    .set button { min-height: 34px; height: 34px; padding: 0; border: 0; background: transparent; }
+    .set .kind { font-size: 14px; font-weight: 500; color: var(--muted); }
+    .set .kind.ts { color: var(--accent); font-weight: 500; }
+    .set .refcol { text-align: center; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .set .setE1 { text-align: center; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .set.done .setE1 { color: var(--text); font-weight: 500; }   /* a logged set's e1RM is firm; before the tick it only echoes the plan */
+    .set .prev { text-align: center; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+    .set .kind.w { color: var(--warn); }
+    .set .kind.f { color: var(--danger); }
+    .set .kind.d { color: var(--ok); }
+    .set .tick { width: 26px; min-height: 26px; height: 26px; border-radius: 50%; font-size: 13px; border: 1px solid var(--line); color: var(--muted); justify-self: center; }
+    .set.done .tick { background: var(--done-line); color: #fff; border-color: transparent; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .refbar { margin: 0 0 8px; }
+    .tiles { display: flex; gap: 6px; align-items: stretch; }
+    .tile { flex: 1; min-width: 0; background: var(--chip); border: 1.5px solid transparent; border-radius: 10px; padding: 4px 8px; cursor: pointer; display: flex; flex-direction: column; }
+    .tile .tl { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 2px; white-space: nowrap; }
+    .tile .tv { font-size: 20px; font-weight: 500; line-height: 1.2; font-variant-numeric: tabular-nums; }
+    .tile { position: relative; }
+    .tile .cap { position: absolute; bottom: 6px; right: 8px; font-size: 10px; color: var(--muted); line-height: 1.1; }
+    .tiles .tile, .tiles .pill { flex: 1; min-width: 0; min-height: 56px; justify-content: center; }
+    .tile.on { border-color: var(--accent); background: transparent; }
+    .tile.on .tv { color: var(--accent); }
+    .tile .pctin { width: 34px; min-height: 0; height: 20px; padding: 0 2px; font-size: 11px; text-align: center; border-radius: 6px; background: var(--bg); }
+    .pill { align-self: stretch; display: flex; align-items: center; justify-content: center; padding: 4px 8px; min-height: 36px; border-radius: 10px; font-size: 12px; color: var(--muted); }
+    .pill.on { color: var(--accent); border-color: var(--accent); }
+    /* the RPE box is the same box as the weight and reps boxes */
+    .set .rpebtn { width: 100%; height: 34px; min-height: 34px; background: var(--chip); border-radius: 8px; text-align: center; font-size: 16px; font-weight: 500; color: var(--text); }
+    .set .rpebtn.none { color: var(--muted); font-weight: 400; }
+    .rpegauge { display: none; }
+    .rpebtn.none .rpegauge { display: inline-block; width: 21px; height: 21px; vertical-align: middle; }
+    .set.done .rpebtn { background: transparent; }
+    .rpecontrol { min-width: 0; }
+    .set .rpeinput, .rpearrow { display: none; }
+    @media (min-width: 601px) and (hover: hover) and (pointer: fine) {
+      .cols, .set { grid-template-columns: 20px 42px minmax(38px,1fr) 28px minmax(30px,1fr) 60px 60px 30px 36px 26px; }
+      .rpecontrol { display: flex; align-items: center; border-radius: 8px; background: var(--chip); }
+      .set.done .rpecontrol { background: transparent; }
+      .set .rpeinput { display: block; min-width: 0; flex: 1; }
+      .set .rpeinput[aria-invalid="true"] { box-shadow: inset 0 0 0 1.5px var(--danger); }
+      .set .rpebtn { width: 18px; flex: 0 0 18px; color: var(--muted); }
+      .rpevalue { display: none; }
+      .rpebtn.none .rpegauge { display: none; }
+      .rpearrow { display: inline; }
+    }
+    .scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); z-index: 10; display: flex; align-items: flex-end; justify-content: center; }
+    .sheet { background: var(--card); border-radius: 16px 16px 0 0; padding: 14px 14px calc(14px + env(safe-area-inset-bottom)); width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
+    .sheet h2 { font-size: 17px; font-weight: 500; margin: 0 0 2px; }
+    .sheetgrid { display: grid; gap: 8px; margin: 12px 0 4px; }
+    .sheetgrid button { min-height: 52px; padding: 0; font-size: 18px; font-variant-numeric: tabular-nums; }
+    .sheetgrid button.on { background: var(--accent); color: var(--bg); border-color: transparent; font-weight: 500; }
+    .sheetgrid.list button { text-align: left; padding: 8px 14px; font-size: 17px; }
+    .sheetgrid.list button.danger { color: var(--danger); }
+    /* swipe a set left to reveal Delete */
+    .setwrap { position: relative; overflow: hidden; border-radius: 8px; margin: 0 0 8px; }
+    .setwrap .set { margin: 0; position: relative; touch-action: pan-y; transition: transform .18s ease; }
+    .setwrap .set:not(.done) { background: var(--card); }
+    .setwrap.dragging .set { transition: none; }
+    .delbtn { position: absolute; top: 0; bottom: 0; right: 0; width: 76px; min-height: 0; padding: 0; border: 0; border-radius: 8px; background: #c0392b; color: #fff; font-size: 14px; font-weight: 500; opacity: 0; pointer-events: none; }
+    .setwrap.dragging .delbtn, .setwrap.open .delbtn { opacity: 1; pointer-events: auto; }
+    /* the plate loader */
+    .loader { margin-top: 8px; padding: 8px 10px 10px; border: 1px solid var(--line); border-radius: 10px; }
+    .loadhead { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .loadhead button { min-height: 30px; padding: 0 10px; border-radius: 15px; font-size: 13px; border: 1px solid var(--line); background: var(--card); color: var(--muted); }
+    .loadhead .loadwhich { margin-right: auto; color: var(--text); font-weight: 500; }
+    .loadhead .static { font-size: 13px; color: var(--muted); }
+    .barfull { display: flex; align-items: center; justify-content: space-between; height: 64px; margin: 6px 0 2px; }
+    .barfull .shaft { flex: 1; height: 12px; background: #888; margin: 0 5px; }
+    .barfull .side { display: flex; align-items: center; }
+    .pl { display: inline-block; width: 12px; height: 52px; border-radius: 2px; margin: 0 1px; }
+    .p25 { background: #FF2D00; } .p20 { background: #004CFF; } .p15 { background: #FFF12B; } .p10 { background: #16CC00; }
+    .p5 { background: #ffffff; box-shadow: inset 0 0 0 1px #888; } .p2 { background: #000000; box-shadow: inset 0 0 0 1px #666; } .p1 { background: #9e9e9e; }
+    .readout { text-align: center; font-size: 15px; line-height: 1.5; }
+    .readout b { font-weight: 600; }
+    .readout .short { color: var(--danger); font-size: 13px; }
+    .loadnote { margin: 8px 0 0; text-align: center; font-size: 13px; color: var(--muted); }
+    .setbar { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 2px; }
+    .addset { width: 100%; min-height: 34px; border: 0; background: var(--chip); color: var(--text); font-size: 14px; font-weight: 500; }
+    .sheetgrid.list small { display: block; font-size: 13px; opacity: .75; font-weight: 400; }
+    .sec { font-size: 13px; font-weight: 500; color: var(--muted); margin: 14px 0 6px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+    .sq { aspect-ratio: 1 / 1; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;
+          text-align: left; padding: 9px; min-height: 0; border-radius: 12px; background: var(--card); border: 1px solid var(--line); overflow: hidden; }
+    .sq .t { font-size: 13px; line-height: 1.25; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+    .sq .m { font-size: 11px; color: var(--muted); }
+    .sq.recent { border-color: var(--accent); }
+    .hint { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+    .msg { border-radius: 10px; padding: 10px 12px; margin: 0 0 12px; font-size: 15px; }
+    .msg.error { background: var(--danger-bg); color: var(--danger); }
+    .msg.ok { background: var(--ok-bg); color: var(--ok); }
+    .bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--bg); border-top: 1px solid var(--line); padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
+    .bar > div { max-width: 560px; margin: 0 auto; }
+    .rest { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
+    .rest button { min-height: 44px; padding: 0 14px; }
+    .restdef { flex: 1; text-align: left; color: var(--muted); }
+    .resttime { flex: 1; font-size: 26px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; }
+    .restprog { display: none; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--chip); }
+    .bar.restactive .restprog { display: block; }
+    .restprog i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .25s linear; }
+    .rest.active { display: grid; grid-template-columns: 1fr 1fr 1.4fr; }
+    .rest.active .resttime { grid-column: 1 / -1; text-align: center; font-size: 36px; }
+    .rest.active #restMain { background: var(--accent); color: var(--card); border-color: transparent; font-weight: 500; }
+    .rest.done .resttime { color: var(--accent); animation: restflash 1s steps(1, end) infinite; }
+    @keyframes restflash { 50% { opacity: .3; } }
+    .overlay { position: fixed; inset: 0; background: var(--bg); z-index: 5; overflow-y: auto; padding: 12px; }
+    .overlay > div { max-width: 560px; margin: 0 auto; }
+    /* Wide screens (a tablet on its side): each exercise is one band, the e1RM, TM and buttons on the left and the
+       sets on the right, so a whole exercise fits on screen without scrolling. */
+    @media (min-width: 900px) {
+      main { max-width: 1000px; padding-bottom: 96px; }
+      .bar > div { display: flex; align-items: center; gap: 12px; }
+      .rest { flex: 1; margin: 0; }
+      .rest.active { display: flex; }
+      .rest.active .resttime { flex: 1; text-align: left; font-size: 28px; }
+      .rest.active button { flex: none; min-width: 72px; }
+      #finish { width: 320px; flex: none; }
+      #exercises .card { display: grid; grid-template-columns: 190px minmax(0, 1fr); column-gap: 16px; align-items: start; }
+      .exhead { grid-column: 1 / -1; }
+      .exhead .ex-title { flex: none; order: 0; }
+      .chip { order: 1; }
+      .more { order: 2; }
+      .exleft { padding-top: 19px; }   /* lines the tiles up with the first set row, under the column labels */
+      .tiles { flex-direction: column; }
+      .tile { flex: none; }
+      .cols, .set { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+      #addEx { display: block; max-width: 560px; margin: 12px auto 0; }
+      #recent { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      #recent .pick { margin: 0; }
+      .bar > div, .overlay > div { max-width: 1000px; }
+      .grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+    }
+    /* while you type, the on-screen keyboard covers much of the screen: give the page room to scroll above it and hide the bottom bar */
+    body.typing .bar { display: none; }
+    body.typing main { padding-bottom: 60vh; }
+    body.keypad-open .bar { display: none; }
+    body.keypad-open main { padding-bottom: calc(var(--keypad-height, 250px) + 32px); }
+    .numberpad { position: fixed; bottom: 0; left: 0; right: 0; z-index: 9; background: var(--card); border-top: 1px solid var(--line); box-shadow: 0 -4px 20px rgba(0,0,0,.12); padding: 6px 12px calc(8px + env(safe-area-inset-bottom)); }
+    .numberpad > div { max-width: 520px; margin: auto; }
+    .padheading { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; font-size: 13px; }
+    .padheading span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .padheading strong { flex-shrink: 0; }
+    .padkeys { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(80px, 1fr); gap: 4px; }
+    .padkeys button { height: 44px; min-height: 44px; padding: 0; border: 0; background: var(--chip); font-size: 22px; touch-action: manipulation; user-select: none; }
+    .padkeys button[data-pad-key="0"] { grid-column: span 2; }
+    .padkeys button.pad-action { font-size: 15px; color: var(--accent); }
+    .padkeys button:disabled { opacity: .3; }
+    .padkeys button:active { filter: brightness(.9); }
+    .padkeys button.primary { background: var(--accent); color: var(--card); }
+    [hidden] { display: none !important; }
+
+    .page-heading { display:flex; align-items:center; gap:8px; min-width:0; }
+    .page-back { flex-shrink:0; min-height:44px; padding:4px 8px; border:0; border-radius:8px; background:transparent; color:var(--accent,currentColor); font:inherit; font-size:14px; cursor:pointer; white-space:nowrap; }
+    .page-back:disabled { opacity:.4; cursor:default; }
+    .page-back:focus-visible { outline:2px solid var(--accent,currentColor); outline-offset:2px; }
+    .trial-panel { border:1px solid var(--accent); border-radius:12px; padding:14px; margin:12px 0; background:var(--accent-soft); }
+    .trial-panel summary { cursor:pointer; min-height:32px; }
+    .trial-panel textarea, .trial-panel select { display:block; width:100%; margin:8px 0; }
+    .trial-panel textarea { min-height:80px; }
+  </style>
+  <style id="rackbook-theme">
+
+    /* Rackbook visual system: kept inline so every page remains self-contained. */
+    :root {
+      color-scheme: light;
+      --bg: #f3f5f8; --card: #ffffff; --text: #17243a; --muted: #59687c;
+      --line: #dce3ec; --accent: #2459b8; --chip: #edf1f7; --soft: #f7f9fc;
+      --accent-soft: #edf3ff; --done: #edf7f1; --done-line: #28784b;
+      --shadow: 0 2px 5px rgba(23,36,58,.025), 0 10px 28px rgba(23,36,58,.035);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --bg: #111923; --card: #1a2533; --text: #e8eef8; --muted: #a5b4c9;
+        --line: #344358; --accent: #95baff; --chip: #243246; --soft: #202d3d;
+        --accent-soft: #243b5b; --done: #20392f; --done-line: #3f825f;
+        --shadow: 0 4px 20px rgba(0,0,0,.12);
+      }
+    }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+    main { max-width: 1120px; padding: 24px; margin: 0 auto; }
+    .app-header { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 16px; margin: 0 0 24px; }
+    .page-heading { gap: 12px; }
+    .page-title { min-width: 0; }
+    .eyebrow { display: block; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .18em; margin: 0 0 3px; }
+    .page-title h1 { font-size: 26px; font-weight: 700; letter-spacing: -.035em; line-height: 1.2; margin: 0; }
+    .app-header .page-back { width: auto; padding: 0 10px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); font-size: 13px; }
+    .header-tools { justify-self: end; }
+    .app-header .app-nav { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; padding: 5px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; white-space: normal; }
+    .app-header .app-nav a { display: flex; align-items: center; justify-content: center; flex: 1 0 auto; min-height: 40px; padding: 6px 14px; margin: 0; border-radius: 9px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 550; }
+    .app-header .app-nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 650; }
+    .card { border-radius: 16px; border-color: var(--line); box-shadow: var(--shadow); margin-bottom: 16px; }
+    h2, h3, .wk-title, .ex-title { letter-spacing: -.02em; font-weight: 650; }
+    button, input, select { transition: border-color .12s ease, background-color .12s ease, box-shadow .12s ease; }
+    button { font-weight: 550; }
+    button.primary { font-weight: 650; color: var(--card); }
+    button:disabled { cursor: default; }
+    :where(button, a, input, select, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    input, select { accent-color: var(--accent); }
+    .lifts { gap: 6px; padding: 5px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); margin-bottom: 20px; }
+    .lifts button { border-color: transparent; background: transparent; min-height: 44px; font-weight: 600; }
+    .lifts button.on, .lifts button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+    .movement-card { padding: 18px; background: var(--card); border-radius: 16px; box-shadow: var(--shadow); }
+    .movement-card[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+    .card-score { font-size: 30px; font-weight: 700; letter-spacing: -.04em; margin: 8px 0; }
+    .metrics { gap: 16px; }
+    .metric { padding: 12px; border-radius: 12px; background: var(--soft); }
+    .metric strong { font-size: 28px; font-weight: 700; letter-spacing: -.03em; }
+    .controls { gap: 12px; padding: 14px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 16px; }
+    .controls label { font-size: 13px; color: var(--muted); font-weight: 550; }
+    .controls select { color: var(--text); background: var(--soft); }
+    th { font-weight: 600; }
+    .wk-head { flex-wrap: wrap; gap: 4px 12px; }
+    .wk-meta { margin-top: 6px; }
+    .intro { line-height: 1.65; }
+    @media (hover: hover) {
+      .app-header .app-nav a:hover { background: var(--soft); color: var(--text); }
+      button:not(:disabled):hover { border-color: var(--accent); }
+    }
+    @media (max-width: 599px) {
+      main { padding: 16px 12px; }
+      .app-header { gap: 12px; margin-bottom: 18px; }
+      .page-heading { gap: 8px; }
+      .page-title h1 { font-size: 23px; }
+      .app-header .app-nav a { flex: 1 0 28%; padding: 6px 8px; min-height: 44px; font-size: 13px; }
+      .card { border-radius: 14px; }
+      .metric { padding: 10px 8px; }
+      .metric strong { font-size: 23px; }
+      .controls { padding: 12px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
+    }
+
+    .workout-log main { padding-bottom: 190px; }
+    .workout-log .card { padding: 16px; }
+    #workout > .card { padding: 16px 18px; }
+    #title { background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 0 0 10px; font-size: 19px; font-weight: 650; letter-spacing: -.02em; }
+    #clock { font-size: 12px; }
+    .workout-log .hint { line-height: 1.55; }
+
+    .exhead { padding-bottom: 12px; border-bottom: 1px solid var(--line); margin-bottom: 14px; gap: 8px; }
+    .exhead .ex-title { font-size: 18px; font-weight: 650; }
+    .exhead .chip { background: var(--soft); border-color: var(--line); min-height: 36px; }
+    .exhead .more { border: 1px solid var(--line); border-radius: 10px; }
+    .workout-log .tile { border-color: transparent; background: var(--soft); padding: 8px 10px; }
+    .workout-log .tile.on { border-color: var(--accent); background: var(--accent-soft); }
+    .workout-log .tile .tv { font-size: 24px; font-weight: 700; letter-spacing: -.035em; }
+    .workout-log .pill { background: var(--soft); border-color: transparent; }
+    .workout-log .pill.on { border-color: var(--accent); background: var(--accent-soft); }
+    .workout-log .cols { margin-bottom: 6px; font-weight: 550; }
+    .workout-log .setwrap { margin-bottom: 6px; }
+    .workout-log .set { min-height: 42px; }
+    .workout-log .set input { min-width: 0; padding: 0 3px; }
+    .workout-log .set input, .workout-log .set .rpebtn { height: 40px; min-height: 40px; }
+    .workout-log .set .tick { color: var(--muted); border-color: var(--line); }
+    .workout-log .set.done .tick { background: var(--done-line); color: #fff; }
+    .workout-log .set .setE1 { font-weight: 550; }
+    .workout-log .addset { background: var(--soft); border: 1px dashed var(--line); min-height: 42px; }
+    .workout-log .loader { background: var(--soft); border-color: var(--line); border-radius: 12px; padding: 10px 12px; margin-top: 12px; }
+    .workout-log .loadhead button { min-height: 34px; }
+    .workout-log .barfull { height: 56px; }
+    .workout-log .stress { font-size: 13px; padding-top: 10px; margin-top: 12px; }
+    .workout-log .stress-grid strong { font-size: 13px; font-weight: 650; }
+    .workout-log .stress-window { display: none; }
+    .workout-log .stress-grid strong { color: var(--muted); }
+    .workout-log .stress[data-status="usual"] .stress-grid strong { color: var(--ok); }
+    .workout-log .stress[data-status="elevated"] .stress-grid strong, .workout-log .stress[data-status="much_higher"] .stress-grid strong { color: var(--danger); }
+    .workout-log .stress[data-status="below_usual"] .stress-grid strong { color: var(--warn); }
+    .set-stress { text-align: center; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .set.done .set-stress { color: var(--text); font-weight: 600; }
+    .stress-total { display: none; }
+    .stress-total .total-label { grid-column: 1 / 8; text-align: right; padding-right: 8px; }
+    .stress-total strong { text-align: center; font-size: 14px; }
+    .stress-total[data-status="usual"] strong { color: var(--ok); }
+    .stress-total[data-status="elevated"] strong, .stress-total[data-status="much_higher"] strong { color: var(--danger); }
+    .stress-total[data-status="below_usual"] strong { color: var(--warn); }
+    .workout-log .exright { min-width: 0; overflow-x: auto; }
+    @media (max-width: 599px) {
+      .workout-log .cols, .workout-log .set { min-width: 332px; }
+      .workout-log .cols span:nth-child(6), .workout-log .cols span:nth-child(7) { font-size: 10px; }
+    }
+    .workout-log .exleft { margin-bottom: 12px; }
+    .workout-log .bar { background: var(--card); box-shadow: 0 -4px 24px rgba(23,36,58,.05); z-index: 4; }
+    .workout-log .bar > div { max-width: 1072px; }
+    .workout-log #finish { min-height: 48px; border-radius: 12px; }
+    .workout-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%; margin: 16px 0 0; }
+    .workout-log #addEx { border: 1px dashed var(--line); background: transparent; color: var(--accent); min-height: 48px; width: 100%; max-width: none; margin: 0; }
+    .workout-log #discard { background: var(--danger-bg); color: var(--danger); border: 1px solid transparent; min-height: 48px; width: 100%; border-radius: 10px; font-size: 14px; }
+    .workout-log .sheet { box-shadow: 0 -8px 48px rgba(0,0,0,.12); border: 1px solid var(--line); border-radius: 20px 20px 0 0; }
+    .workout-log .numberpad { background: var(--card); }
+    .workout-log .padkeys button { border-radius: 10px; font-weight: 550; }
+    .workout-log .padkeys button.pad-action { font-weight: 600; }
+    @media (min-width: 600px) {
+      .workout-log .cols, .workout-log .set { grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; }
+      .workout-log .set .tick { width: 32px; height: 32px; }
+    }
+    @media (min-width: 900px) {
+      .workout-log main { padding-bottom: 110px; }
+      .workout-log #exercises .card { grid-template-columns: 180px minmax(0,1fr); column-gap: 24px; padding: 20px; }
+      .workout-log .exleft { padding-top: 24px; margin-bottom: 0; }
+      .workout-log .tile { min-height: 62px; }
+    }
+    @media (pointer: coarse) {
+      .workout-log .set input, .workout-log .set .rpebtn { height: 44px; min-height: 44px; }
+      .workout-log .set { min-height: 48px; }
+      .workout-log .chip, .workout-log .more, .workout-log .loadhead button { min-height: 44px; }
+    }
+    @media (max-width: 599px) {
+      .workout-log .card { padding: 12px; }
+      .workout-log #workout > .card { padding: 12px 14px; }
+      .workout-log .exhead .ex-title { font-size: 16px; }
+    }
+    .workout-log.typing main { padding-bottom: 60vh; }
+    .workout-log.keypad-open main { padding-bottom: calc(var(--keypad-height, 250px) + 32px); }
+  </style>
+  <link rel="stylesheet" href="/training/static/logger-layout.css" />
+</head>
+<body class="workout-log">
+<button id="loggerNavScrim" type="button" aria-label="Close navigation" hidden></button>
+<aside id="loggerNav" class="logger-nav" aria-label="Application navigation">
+  <div class="logger-nav-title"><span>Hevy-Fatigue</span><button id="loggerCloseMenu" type="button">Close</button></div>
+  <nav class="app-nav" aria-label="Pages">
+    <span class="logger-nav-group">Overview</span>
+    <a href="/">Dashboard</a>
+    <span class="logger-nav-group">Training</span>
+    <a href="/training/log" aria-current="page">Log Workout</a>
+    <a href="/training/microcycles">Plans</a>
+    <a href="/training/recent">Recent</a>
+    <a href="/training/progress">Progress</a>
+    <a href="/training/stress">Stress</a>
+    <a href="/training/rpe-charts">RPE Charts</a>
+    <span class="logger-nav-group">Monitoring</span>
+    <a href="/#exercise-metrics">Exercises</a>
+    <a href="/#workouts">Workouts</a>
+    <a href="/#log">Check-in History</a>
+    <a href="/#exercises">Patterns</a>
+    <span class="logger-nav-group">Tools</span>
+    <a href="/#ai">AI Coach</a>
+    <a href="/static/docs.html">Docs</a>
+    <a href="/#settings">Settings</a>
+  </nav>
+</aside>
+<main>
+  <header class="app-header">
+    <div class="page-heading"><div class="page-title"><span class="eyebrow">Hevy-Fatigue</span><h1>Log Workout</h1></div></div>
+    <div class="header-tools"><span class="units" role="group" aria-label="Weight unit"><button id="unitKg" type="button">kg</button><button id="unitLb" type="button">lb</button></span><button id="loggerMenu" type="button" aria-controls="loggerNav" aria-expanded="false">Menu</button></div>
+  </header>
+  <div id="msg"></div>
+
+  <p id="previewNotice" class="hint" hidden>Local preview · Saving to Hevy is disabled here.</p>
+  <section id="start" hidden>
+    <section id="plannedStart" class="card" hidden></section>
+    <button id="empty" class="wide" type="button" style="margin-bottom:12px">Start an empty workout</button>
+    <p class="muted" style="margin:0 0 8px">Or copy a recent workout. Its exercises and sets come across as a starting point.</p>
+    <div id="recent"></div>
+  </section>
+
+  <section id="workout" hidden>
+    <div id="workoutOverview" class="card">
+      <input id="title" type="text" aria-label="Workout title" autocomplete="off" />
+      <p id="clock" class="muted" style="margin:6px 0 0"></p>
+      <details class="logger-help"><summary>Rx = target · Actual = performed</summary><p class="hint">RPErx is the target; RPEact is what you performed. Tap ✓ after the set; if actual is blank, it uses the target. With LSe1RM on, actual RPE adjusts following weights; your completed weight stays fixed.</p></details>
+      <div id="sessionSoreness" hidden></div>
+      <div id="trialDaily" class="hint" hidden></div>
+      <div id="sessionMotivation"></div>
+      <div id="plannedOrigin" class="hint" hidden></div>
+    </div>
+    <div id="loggerWorkspace">
+    <div id="exercises"></div>
+    <aside id="loggerTools" class="logger-tools" aria-label="Selected exercise tools" hidden>
+      <section class="card logger-tool-card"><h2>Plate loader</h2><p id="loggerToolsTitle" class="logger-tools-title"></p><div id="loggerLoader"></div></section>
+      <section class="card logger-tool-card"><h2>Previous performance</h2><div id="loggerPrevious"></div></section>
+      <section class="card logger-tool-card"><label for="loggerNotes" class="logger-notes-label">Exercise notes</label><textarea id="loggerNotes" rows="4" placeholder="Add a note for this exercise"></textarea></section>
+    </aside>
+    <aside id="loggerSession" class="logger-session" aria-label="Workout controls">
+      <section class="card logger-tool-card"><h2 class="logger-outline-heading">This workout</h2><p id="loggerProgress" aria-live="polite"></p><div id="loggerOutline"></div></section>
+    </aside>
+    </div>
+    <div id="workoutActions" class="workout-actions">
+      <button id="addEx" type="button">Add exercise</button>
+      <button id="discard" type="button">Discard workout</button>
+    </div>
+  </section>
+
+  <section id="done" hidden>
+    <div class="msg ok">Saved to Hevy.</div>
+    <div id="trialResults"></div>
+    <section id="sessionReview" class="card" aria-live="polite"></section>
+    <button id="again" class="wide" type="button" style="margin-bottom:8px">Log another workout</button>
+    <p style="text-align:center"><a href="/training/recent">See it in Recent workouts</a></p>
+  </section>
+</main>
+
+<div id="bar" class="bar" hidden>
+<div id="restProg" class="restprog"><i></i></div>
+<div>
+  <div id="rest" class="rest">
+    <button id="restPick" class="restdef" type="button" aria-label="Choose the rest time"></button>
+    <span id="restTime" class="resttime" hidden></span>
+    <button id="restMinus" type="button" hidden aria-label="15 seconds less">−15</button>
+    <button id="restPlus" type="button" hidden aria-label="15 seconds more">+15</button>
+    <button id="restMain" type="button"></button>
+  </div>
+  <button id="finish" class="primary wide" type="button">Finish and save to Hevy</button>
+</div></div>
+
+<div id="picker" class="overlay" hidden>
+  <div>
+    <div class="row" style="margin-bottom:8px">
+      <input id="search" type="text" placeholder="Search exercises" autocomplete="off" style="flex:1" />
+      <button id="closePicker" type="button">Cancel</button>
+    </div>
+    <p id="syncnote" class="hint" hidden>Updating your exercise list from Hevy…</p>
+    <div id="results"></div>
+  </div>
+</div>
+
+<section id="numberpad" class="numberpad" aria-label="Workout number pad" hidden>
+  <div>
+    <div class="padheading"><strong id="padField"></strong><span id="padContext"></span></div>
+    <div class="padkeys">
+      <button type="button" data-pad-key="1">1</button><button type="button" data-pad-key="2">2</button><button type="button" data-pad-key="3">3</button><button type="button" class="pad-action" data-pad-key="backspace" aria-label="Backspace">⌫</button>
+      <button type="button" data-pad-key="4">4</button><button type="button" data-pad-key="5">5</button><button type="button" data-pad-key="6">6</button><button type="button" class="pad-action" data-pad-key="clear">Clear</button>
+      <button type="button" data-pad-key="7">7</button><button type="button" data-pad-key="8">8</button><button type="button" data-pad-key="9">9</button><button type="button" class="pad-action" data-pad-key="next">Next</button>
+      <button type="button" data-pad-key="." aria-label="Decimal point">.</button><button type="button" data-pad-key="0">0</button><button type="button" class="pad-action primary" data-pad-key="done">Done</button>
+    </div>
+  </div>
+</section>
+
+<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register(trainingUrl("/sw.js")).catch(function () {});</script>
+<script>
+  const RPES = [4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
+  const KIND = { normal: "", warmup: "W", failure: "F", dropset: "D" };
+  // The button in front of each set opens a sheet listing these. "ts" is a normal set that also sets the movement's TM
+  // once the workout is saved; only one set per movement can be the TS.
+  const KIND_ORDER = ["normal", "warmup", "ts", "failure", "dropset"];
+  const KIND_TEXT = {
+    normal: ["Set", "A normal working set"],
+    warmup: ["Warm-up", "Not counted as a working set"],
+    ts: ["TS", "Sets your TM when you save the workout"],
+    failure: ["Failure", "Taken to failure"],
+    dropset: ["Drop set", "Weight dropped, straight after the last set"],
+  };
+  // Desktop supports typing; touch keeps the full-size picker button.
+  function showRpe(control, v) { control.show(v); }
+  function rpeControl(value, onChange, name = "RPE") {
+    const control = el("div", "rpecontrol");
+    const input = el("input", "rpeinput");
+    input.type = "text"; input.inputMode = "decimal"; input.placeholder = "–";
+    input.setAttribute("aria-label", name); input.title = name + " 4–10, in steps of 0.5; leave blank if unrated";
+    const picker = el("button", "rpebtn"); picker.type = "button";
+    picker.setAttribute("aria-label", "Choose RPE"); picker.setAttribute("aria-haspopup", "dialog");
+    picker.title = "Open RPE picker";
+    const label = el("span", "rpevalue"), arrow = el("span", "rpearrow", "▾");
+    const gauge = el("span", "rpegauge"); gauge.setAttribute("aria-hidden", "true");
+    gauge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 17a9 9 0 0 1 18 0"/><path d="m13.5 14.5 4-4"/><circle cx="12" cy="16" r="2"/></svg>';
+    picker.append(label, gauge, arrow);
+    let committed = "";
+    control.show = (v) => {
+      committed = v || ""; input.value = committed;
+      input.setCustomValidity(""); input.removeAttribute("aria-invalid");
+      label.textContent = committed; picker.classList.toggle("none", !committed);
+      picker.setAttribute("aria-label", committed ? name + " " + committed + ". Change " + name : "Choose " + name);
+    };
+    input.addEventListener("input", () => {
+      const raw = input.value.trim().replace(",", ".");
+      const valid = raw === "" || (/^\d+(?:\.\d*)?$/.test(raw) && RPES.includes(Number(raw)));
+      input.setCustomValidity(valid ? "" : "Enter an RPE from 4 to 10 in steps of 0.5, or leave it blank.");
+      if (!valid) { input.setAttribute("aria-invalid", "true"); return; }
+      input.removeAttribute("aria-invalid");
+      committed = raw === "" ? "" : String(Number(raw));
+      label.textContent = committed; picker.classList.toggle("none", !committed);
+      picker.setAttribute("aria-label", committed ? name + " " + committed + ". Change " + name : "Choose " + name);
+      onChange(committed);
+    });
+    input.addEventListener("blur", () => { if (input.checkValidity()) input.value = committed; });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); if (input.reportValidity()) input.blur(); }
+      if (e.key === "Escape") { e.preventDefault(); control.show(committed); input.blur(); }
+    });
+    picker.addEventListener("click", () => pickRpe(committed, (v) => {
+      control.show(v); onChange(v); picker.focus();
+    }));
+    control.append(input, picker); control.show(value);
+    control.reportValidity = () => input.reportValidity();
+    return control;
+  }
+  // A bottom sheet of big buttons. items: [{ v, label, desc, on }]; picking one closes the sheet and calls onPick(v).
+  function openSheet(title, hint, items, cols, onPick) {
+    const scrim = el("div", "scrim");
+    const sheet = el("div", "sheet");
+    sheet.setAttribute("role", "dialog"); sheet.setAttribute("aria-label", title);
+    sheet.append(el("h2", null, title));
+    if (hint) sheet.append(el("p", "muted", hint));
+    const grid = el("div", "sheetgrid" + (cols === 1 ? " list" : ""));
+    grid.style.gridTemplateColumns = "repeat(" + cols + ", 1fr)";
+    const onKey = (e) => { if (e.key === "Escape") close(); };
+    const close = () => { scrim.remove(); document.removeEventListener("keydown", onKey); };
+    for (const it of items) {
+      const b = el("button", ((it.on ? "on " : "") + (it.cls || "")).trim() || null, it.label);
+      b.type = "button";
+      if (it.desc) b.append(el("small", null, it.desc));
+      b.addEventListener("click", () => { close(); onPick(it.v); });
+      grid.append(b);
+    }
+    sheet.append(grid);
+    scrim.append(sheet);
+    scrim.addEventListener("click", (e) => { if (e.target === scrim) close(); });
+    document.addEventListener("keydown", onKey);
+    document.body.append(scrim);
+  }
+  function pickRpe(current, onPick) {
+    const items = RPES.map((v) => ({ v: String(v), label: String(v), on: String(v) === String(current) }));
+    items.push({ v: "", label: "Clear", on: false });
+    openSheet("RPE", "10 none left · 9 one left · 8 two left · 7 three left", items, 5, onPick);
+  }
+  function pickKind(current, onPick) {
+    const items = KIND_ORDER.map((v) => ({ v, label: KIND_TEXT[v][0], desc: KIND_TEXT[v][1], on: v === current }));
+    openSheet("Set type", "", items, 1, onPick);
+  }
+  function kindOf(s) { return s.type === "normal" && s.ts ? "ts" : s.type; }
+  function setKind(ex, s, kind) {
+    s.ts = kind === "ts";
+    s.type = kind === "ts" ? "normal" : kind;
+    if (s.ts) ex.sets.forEach((other) => { if (other !== s) other.ts = false; });
+  }
+  const KEY = "training.logDraft";
+  const $ = (id) => document.getElementById(id);
+  let draft = null, recentPage = null, catalog = null, saving = false;
+  const LB_PER_KG = 2.20462262185;
+  let unit = "kg";   // the unit you lift in; the other one is shown beside it as a reference. Kept on this device.
+  try { if (localStorage.getItem("training.unit") === "lb") unit = "lb"; } catch (e) {}
+  let rpeTable = new Map(), refs = {};
+  const primaryInputs = new WeakMap(), refCells = new WeakMap(), refTimers = {}, cardEls = new Map();
+  const stressStates = new Map(); // transient results, never written into the workout or localStorage
+
+  function el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+  function uid() { return (crypto.randomUUID && crypto.randomUUID()) || String(Date.now()) + Math.random(); }
+  function trim(n) { return String(Number(Number(n).toFixed(2))); }
+
+  function loadDraft() { try { return JSON.parse(localStorage.getItem(KEY)); } catch (e) { return null; } }
+  function saveDraft() {
+    if (draft && !draft.client_workout_id) draft.client_workout_id = trainingUUID();
+    queueTrialRecording();
+    try { localStorage.setItem(KEY, JSON.stringify(draft)); } catch (e) {}
+    if (draft) draft.exercises.forEach((ex) => { refreshE1rm(ex); refreshLoader(ex); });
+    if (draft) new Set(draft.exercises.map((ex) => ex.template_id)).forEach(queueStress);
+    if (typeof LoggerLayout !== 'undefined') LoggerLayout.update();
+  }
+  function saveMotivationDraft() {
+    // Coaching context must not trigger trial capture, stress refresh or weight calculations.
+    if (!draft || draft.frozenSave) return;
+    try { localStorage.setItem(KEY,JSON.stringify(draft)); }
+    catch (_) { say('Could not preserve the motivation answer on this device. Keep this page open until the workout is saved.'); }
+  }
+  function clearDraft() {
+    draft = null; try { localStorage.removeItem(KEY); } catch (e) {} restStop();
+    for (const state of stressStates.values()) clearTimeout(state.timer);
+    stressStates.clear();
+  }
+
+  // All entered sets preview the session; only checked sets enter rolling totals/history.
+  function stressBody(templateId) {
+    const sets = [], preview_sets = [];
+    for (const ex of draft.exercises.filter((e) => e.template_id === templateId)) {
+      for (const s of ex.sets) {
+        const kg = num(s.kg), reps = Number(s.reps), logged = s.done ? (s.arpe ?? s.rpe) : s.rpe;
+        const entry = { type: s.type, weight_kg: Number.isFinite(kg) && kg >= 0 ? kg : null,
+          reps: String(s.reps).trim() && Number.isInteger(reps) && reps >= 0 ? reps : null,
+          rpe: logged ? Number(logged) : null };
+        preview_sets.push(entry);
+        if (s.done) sets.push(entry);
+      }
+    }
+    return { sets, preview_sets, session_start: draft.startedAt };
+  }
+
+  function paintStress(templateId) {
+    if (!draft) return;
+    for (const ex of draft.exercises.filter((e) => e.template_id === templateId)) {
+      const card = cardEls.get(ex.id), box = card && card.querySelector(".stress");
+      if (box) fillStress(box, templateId);
+    }
+    paintSetStress(templateId);
+  }
+
+  const setStressCells = new Map();
+  function paintSetStress(templateId) {
+    const state = stressStates.get(templateId), data = state && !state.pending && !state.error ? state.result : null;
+    let index = 0;
+    for (const ex of draft.exercises.filter(e => e.template_id === templateId)) {
+      for (const s of ex.sets) {
+        const cell = setStressCells.get(s), score = data && data.preview_set_scores[index++];
+        if (!cell) continue;
+        cell.textContent = s.type === "warmup" ? "—" : data ? (score ? score.total.toFixed(2) : "—") : state && state.pending ? "…" : "—";
+        cell.title = s.type === "warmup" ? "Warm-ups do not count toward stress" : score ?
+          (s.done ? "Checked set" : "Preview; check ✓ to confirm") + (score.estimated_sets ? " · Blank RPE estimated @5" : "") : "Enter a weight and reps to preview stress";
+      }
+      const card = cardEls.get(ex.id), total = card && card.querySelector(".stress-total");
+      if (total) {
+        total.dataset.status = data ? (data.preview_status || data.status) : "no_sets";
+        total.querySelector("strong").textContent = data ? (data.preview || data.session).total.toFixed(2) : state && state.pending ? "…" : "—";
+        const comparison = data ? stressComparison(data) : "Stress preview unavailable or updating";
+        total.title = data ? comparison + " · Checked stress " + data.session.total.toFixed(2) + "; unchecked sets are not saved. Total uses unrounded scores." : comparison;
+        total.querySelector("strong").setAttribute("aria-label", "Total stress " + total.querySelector("strong").textContent + ". " + comparison);
+      }
+    }
+  }
+
+  function stressComparison(data) {
+    const labels = { usual: "Within usual range", below_usual: "Below usual range", elevated: "Above usual range", much_higher: "Above usual range", no_baseline: "Building history", no_sets: "No scored sets" };
+    const label = labels[data.preview_status || data.status];
+    return label + (data.window.median == null ? "" : " · Session window " + data.window.lower.toFixed(2) + "–" + data.window.upper.toFixed(2));
+  }
+
+  function queueStress(templateId) {
+    if (!draft || !templateId) return;
+    const body = stressBody(templateId), key = JSON.stringify(body);
+    let state = stressStates.get(templateId);
+    if (!state) { state = { key: null, version: 0 }; stressStates.set(templateId, state); }
+    if (state.key === key && (state.pending || Date.now() - state.updated < 60000)) return;
+    state.key = key; state.pending = true; state.error = null;
+    const version = ++state.version, startedAt = draft.startedAt;
+    clearTimeout(state.timer); paintStress(templateId);
+    state.timer = setTimeout(async () => {
+      try {
+        const result = await api("/movement-stress/" + encodeURIComponent(templateId), {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: key,
+        });
+        if (!draft || draft.startedAt !== startedAt || state.version !== version || stressStates.get(templateId) !== state) return;
+        state.result = result; state.error = null;
+      } catch (err) {
+        if (!draft || draft.startedAt !== startedAt || state.version !== version || stressStates.get(templateId) !== state) return;
+        state.error = err.message;
+      }
+      state.pending = false; state.updated = Date.now(); paintStress(templateId);
+    }, 250);
+  }
+
+  function fillStress(box, templateId) {
+    const state = stressStates.get(templateId);
+    box.setAttribute("aria-busy", String(!state || !!state.pending));
+    // Keep the rendered summary (and its height) while recalculating.
+    if (state && state.pending && state.result && box.querySelector(".stress-grid")) return;
+    box.replaceChildren();
+    box.append(el("h3", null, "Movement stress"));
+    if (state && state.error) {
+      box.append(el("p", "muted", "Stress unavailable: " + state.error));
+      const retry = el("button", "link", "Retry stress"); retry.type = "button";
+      retry.addEventListener("click", () => { state.key = null; queueStress(templateId); });
+      box.append(retry); return;
+    }
+    if (!state || state.pending || !state.result) {
+      box.append(el("p", "muted", "Updating stress…")); return;
+    }
+    const d = state.result, fmt = (v) => v.toFixed(2);
+    const preview = d.preview || d.session, status = d.preview_status || d.status;
+    box.dataset.status = status;
+    const grid = el("div", "stress-grid");
+    for (const [label, value] of [["Session stress", preview.total], ["7 days", d.rolling_7.total], ["28 days", d.rolling_28.total]]) {
+      const cell = el("div", label === "Session stress" ? null : "stress-extra");
+      cell.append(el("span", null, label), el("strong", null, fmt(value))); grid.append(cell);
+    }
+    grid.title = stressComparison(d) + " · Live preview; checked stress " + fmt(d.session.total) + " · " + preview.estimated_sets + " sets estimated @5";
+    grid.setAttribute("aria-label", "Session stress " + fmt(preview.total) + ". " + stressComparison(d));
+    box.append(grid);
+    box.append(el("p", "muted stress-extra", "Peripheral " + fmt(d.session.peripheral) + " · Central " + fmt(d.session.central)));
+    const labels = { no_sets: "No completed working sets", no_baseline: "Building history", below_usual: "Below usual", usual: "Usual range", elevated: "Elevated", much_higher: "Much higher than usual" };
+    const w = d.window;
+    box.append(el("p", "stress-window", w.median == null ? "Session window: building history" :
+      "Session window " + fmt(w.lower) + "–" + fmt(w.upper) + (status === "no_sets" ? "" : " · " + labels[status]) + (w.provisional ? " · Provisional" : "")));
+    box.append(el("p", "muted", "Preview · " + d.session.sets + "/" + preview.sets + " sets checked"));
+    if (w.median == null && d.status === "no_sets") box.append(el("p", "muted stress-extra", labels[d.status]));
+    box.append(el("p", "muted stress-extra", w.sessions + " prior sessions / " + w.days + " days" + (w.provisional ? " · Provisional" : "") +
+      (d.days_since_last == null ? "" : " · Last trained " + d.days_since_last + "d ago")));
+    const estimated = d.rolling_28.estimated_sets;
+    if (estimated || d.session.estimated_sets || w.estimated_sessions) box.append(el("p", "muted stress-extra",
+      d.session.estimated_sets + " session sets estimated @5 · " + estimated + " in 28 days · " + w.estimated_sessions + " baseline sessions include estimates"));
+    if (d.session.skipped_sets || d.rolling_28.skipped_sets) box.append(el("p", "muted stress-extra", "Incomplete: " + d.session.skipped_sets + " session sets and " + d.rolling_28.skipped_sets + " sets in 28 days could not be scored."));
+    const details = el("details", "stress-extra"), summary = el("summary", null, "About these numbers");
+    details.append(summary, el("p", null, "Session stress previews all entered working sets. Only checked sets enter rolling totals and saved history. Rolling totals include checked sets once, dated when the session started. Blank RPEs are estimated @5. Session windows use 80–120% of the median prior session; elevated is above 120%, much higher above 150%. These describe workload, not recovery limits. Stress uses a separate default curve and does not change planned weights."));
+    box.append(details);
+  }
+
+  function say(text, kind) {
+    const box = $("msg"); box.replaceChildren();
+    if (text) box.append(el("div", "msg " + (kind || "error"), text));
+  }
+
+  function show(name) {
+    for (const id of ["start", "workout", "done"]) $(id).hidden = id !== name;
+    $("bar").hidden = name !== "workout";
+    if (typeof LoggerLayout !== 'undefined' && name !== 'workout') LoggerLayout.update();
+    if (name === "workout") keepAwake(); else if (wake) { wake.release(); wake = null; }
+    window.scrollTo(0, 0);
+  }
+
+  async function api(path, options) {
+    const res = await fetch(trainingUrl(path), options);
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const d = body.detail;
+      const text = Array.isArray(d) ? d.map((x) => x.msg).join("; ") : d;
+      const err = new Error(text || "Something went wrong (" + res.status + ").");
+      err.status = res.status;
+      err.validationRejected = res.status === 422 && Array.isArray(d);
+      throw err;
+    }
+    return body;
+  }
+
+  // ── Auto weight: base number x RPE table percentage ─────────────────────────
+  // Weights always fill in from RPE. Per movement two things are chosen: the base (e1RM or TM, both worked
+  // out from the movement's last session in Hevy) and whether the last set's e1RM (LSe1RM) feeds the next set.
+  function pctFor(rpe, reps) { return rpeTable.get(rpe + "|" + reps); }
+  // Weights are kept in kg (s.kg, what Hevy stores) and shown in the unit you lift in, the other as a reference.
+  const lbOfKg = (kg) => kg * LB_PER_KG;
+  const num = (v) => { const n = parseFloat(String(v).replace(",", ".")); return n > 0 ? n : NaN; };
+  const unitFor = (ref) => ref?.weightUnit === "kg" || ref?.weightUnit === "lb" ? ref.weightUnit : unit;
+  const stepOf = (ref) => (unitFor(ref) === "lb" ? ref.stepLb : ref.stepKg);
+  // A planned weight, in kg: the e1RM-derived pounds rounded to the movement's step in the unit you lift in.
+  function plannedKg(rawLb, ref) {
+    const unit = unitFor(ref);
+    if (unit === "lb") return Math.round(rawLb / ref.stepLb) * ref.stepLb / LB_PER_KG;
+    return Math.round(rawLb / LB_PER_KG / ref.stepKg) * ref.stepKg;
+  }
+  const primaryText = (s, ex) => {
+    const unit = unitFor(ex?.ref);
+    const kg = num(s.kg);
+    if (isNaN(kg)) return "";
+    return unit === "lb" ? trim(Math.round(lbOfKg(kg) * 10) / 10) : trim(Math.round(kg * 100) / 100);
+  };
+  const refText = (s, ex) => {
+    const unit = unitFor(ex?.ref);
+    const kg = num(s.kg);
+    if (isNaN(kg)) return "";
+    return unit === "lb" ? trim(Math.round(kg * 10) / 10) : trim(Math.round(lbOfKg(kg)));
+  };
+  function showWeight(s, ex) {
+    const input = primaryInputs.get(s), cell = refCells.get(s);
+    if (input && document.activeElement !== input) input.value = primaryText(s, ex);
+    if (cell) cell.textContent = refText(s, ex);
+  }
+  function defaultRef() { return { basis: "e1rm", autoWeights: true, ls: true, tmPct: 0.95, stepKg: 2.5, stepLb: 5, barKg: 20, chainKg: 0, restSec: null, weightUnit: null, state: null, ts: null }; }
+  function refFromServer(id) {
+    const r = refs[id];
+    if (!r) return defaultRef();
+    return { basis: r.basis, autoWeights: r.auto_weights !== false, ls: r.ls, tmPct: r.tm_pct, stepKg: r.step_kg || 2.5, stepLb: r.step_lb || 5, barKg: r.bar_kg ?? 20, chainKg: r.chain_kg ?? 0, restSec: r.rest_sec ?? null, weightUnit: r.weight_unit ?? null, state: null, ts: null };
+  }
+
+  // One set's e1RM in lb: its weight / the table percentage for its reps and RPE (the logged RPE once ticked,
+  // the planned one before). Null without a weight, reps and an RPE the table knows.
+  function setE1rm(s) {
+    const lb = lbOfKg(num(s.kg)), reps = parseInt(s.reps, 10), rpe = parseFloat(s.done ? (s.arpe ?? s.rpe) : s.rpe);
+    if (!(lb > 0) || !(reps > 0) || isNaN(rpe)) return null;
+    const pct = pctFor(rpe, reps);
+    return pct ? lb / pct : null;
+  }
+
+  // The e1RM of the nearest earlier set that is ticked done and has weight, reps and an RPE.
+  function lastSetE1rm(ex, index) {
+    for (let j = index - 1; j >= 0; j--) {
+      const p = ex.sets[j];
+      if (!p.done || p.type === "warmup") continue;
+      const e1 = setE1rm(p);
+      if (e1) return e1;
+    }
+    return null;
+  }
+
+  // The highest e1RM among the sets ticked done so far (weight / table percentage for the logged RPE), or null.
+  function bestSetToday(ex) {
+    let best = null, working = 0;
+    ex.sets.forEach((s) => {
+      if (s.type !== "warmup") working += 1;
+      if (!s.done || s.type === "warmup") return;
+      const e1 = setE1rm(s);
+      if (!e1) return;
+      if (!best || e1 >= best.e1) best = { e1, set: working, lb: lbOfKg(num(s.kg)), reps: parseInt(s.reps, 10), rpe: parseFloat(s.arpe ?? s.rpe) };
+    });
+    return best;
+  }
+
+  // The TS is the movement's e1RM and no other set outranks it, however high its own e1RM comes out: a set marked TS
+  // and ticked done in this workout, else the latest saved TS. Only a movement with no TS mixes in its best set.
+  function anchorE1rm(ex) {
+    for (const s of ex.sets) {
+      if (!s.ts || !s.done || s.type === "warmup") continue;
+      const e1 = setE1rm(s);
+      if (e1) return e1;
+    }
+    const ts = ex.ref.ts;
+    return ts && ts.found ? ts.e1rm_lb : null;
+  }
+
+  // The movement's current e1RM: its TS if it has one, else its best set today, until a set is done the one from the last session.
+  function currentE1rm(ex) {
+    const anchor = anchorE1rm(ex);
+    if (anchor) return { value: anchor, best: null };
+    const best = bestSetToday(ex);
+    if (best) return { value: best.e1, best };
+    const st = ex.ref.state;
+    return st && st.found ? { value: st.e1rm_lb, best: null } : null;
+  }
+
+  // Keep the e1RM tile current as sets change, without rebuilding the card.
+  const setE1Cells = new Map();   // set -> the e1RM cell of its row
+  function refreshE1rm(ex) {
+    const card = cardEls.get(ex.id);
+    if (!card) return;
+    for (const s of ex.sets) {
+      const cell = setE1Cells.get(s);
+      if (!cell) continue;
+      const e1 = setE1rm(s);
+      cell.textContent = e1 ? String(Math.round(e1)) : "";
+    }
+    const tv = card.querySelector(".e1v");
+    if (!tv) return;
+    const tile = tv.closest(".tile"), cap = tile.querySelector(".cap");   // "TS" under the number while the TS holds it
+    if (anchorE1rm(ex) != null && !cap) tile.append(el("span", "cap", "TS"));
+    else if (anchorE1rm(ex) == null && cap) cap.remove();
+    const cur = currentE1rm(ex);
+    tv.textContent = cur ? String(Math.round(cur.value)) : (ex.ref.state ? "–" : "…");
+  }
+
+  // The movement's TM: the latest saved TS's e1RM x the TM %. Until a TS has been saved it falls back to the
+  // best set of the last session, so a movement keeps its weights while you have no TS yet.
+  function tmValue(ex) {
+    const ts = ex.ref.ts, st = ex.ref.state;
+    if (ts && ts.found) return ts.e1rm_lb * ex.ref.tmPct;
+    return st && st.found ? st.e1rm_lb * ex.ref.tmPct : null;
+  }
+
+  // The set in this workout marked as the TS, with its working-set number, or null.
+  function markedTs(ex) {
+    let working = 0;
+    for (const s of ex.sets) {
+      if (s.type !== "warmup") working += 1;
+      if (s.ts) return { set: s, n: working };
+    }
+    return null;
+  }
+
+  function baseFor(ex, index) {
+    if (ex.ref.autoWeights === false) return null;
+    if (ex.ref.ls) {
+      const v = lastSetE1rm(ex, index);
+      if (v) return v;
+    }
+    const st = ex.ref.state;
+    if (ex.ref.basis === "tm") return tmValue(ex);
+    const cur = currentE1rm(ex);
+    return cur ? cur.value : null;
+  }
+
+  function autoWeight(ex, index) {
+    const s = ex.sets[index];
+    const base = baseFor(ex, index), reps = parseInt(s.reps, 10), rpe = parseFloat(s.rpe);
+    if (!base || !(reps > 0) || isNaN(rpe)) return null;
+    const pct = pctFor(rpe, reps);
+    return pct ? plannedKg(base * pct, ex.ref) : null;
+  }
+
+  // Fill weights from RPE. Never touches a set that is ticked done or whose weight was typed by hand.
+  function applyAuto(ex, only) {
+    ex.sets.forEach((s, i) => {
+      if (only && s !== only) return;
+      if (s.done || s.manual || s.type === "warmup") return;
+      const w = autoWeight(ex, i);
+      if (w == null) return;
+      s.kg = String(Math.round(w * 1e6) / 1e6);
+      s.autoSuggestion = w;
+      showWeight(s, ex);
+    });
+  }
+
+  function refreshCard(ex) {
+    const old = cardEls.get(ex.id);
+    if (!old || !old.isConnected) return;
+    if (typeof LoggerLayout !== 'undefined') LoggerLayout.release(ex.id);
+    const fresh = renderExercise(ex);
+    old.replaceWith(fresh);
+    cardEls.set(ex.id, fresh);
+    if (typeof LoggerLayout !== 'undefined') LoggerLayout.update();
+  }
+
+  async function loadTs(ex) {
+    try {
+      ex.ref.ts = await api("/training-max/" + encodeURIComponent(ex.template_id));
+    } catch (err) {
+      ex.ref.ts = { found: false };
+    }
+    applyAuto(ex); saveDraft(); refreshCard(ex);
+  }
+
+  async function loadState(ex) {
+    loadTs(ex);
+    try {
+      ex.ref.state = await api("/hevy/exercise-state/" + encodeURIComponent(ex.template_id));
+    } catch (err) {
+      ex.ref.state = { found: false, error: err.message };
+    }
+    applyAuto(ex); saveDraft(); refreshCard(ex);
+  }
+
+  function saveRef(ex) {
+    const id = ex.template_id;
+    clearTimeout(refTimers[id]);
+    refTimers[id] = setTimeout(async () => {
+      const body = { basis: ex.ref.basis, auto_weights: ex.ref.autoWeights !== false, ls: ex.ref.ls, tm_pct: ex.ref.tmPct, step_kg: ex.ref.stepKg, step_lb: ex.ref.stepLb, bar_kg: ex.ref.barKg, chain_kg: ex.ref.chainKg, rest_sec: ex.ref.restSec, weight_unit: ex.ref.weightUnit ?? null };
+      try {
+        refs[id] = await api("/exercise-refs/" + encodeURIComponent(id), {
+          method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+        });
+      } catch (err) { /* the draft still holds it; it is saved again on the next change */ }
+    }, 600);
+  }
+
+  async function loadReference() {
+    try {
+      const [table, list] = await Promise.all([api("/rpe-table"), api("/exercise-refs")]);
+      rpeTable = new Map(table.rows.map((r) => [r[0] + "|" + r[1], r[2]]));
+      refs = Object.fromEntries(list.map((r) => [r.exercise_template_id, r]));
+    } catch (err) { /* weights simply stay as they are */ }
+  }
+
+  // ── Start screen ────────────────────────────────────────────────────────────
+  function fmtDate(iso) {
+    const d = new Date(iso);
+    return isNaN(d) ? "" : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  }
+
+  async function renderStart() {
+    show("start");
+    loadPlannedStart();
+    const box = $("recent"); box.replaceChildren(el("p", "muted", "Loading recent workouts…"));
+    try {
+      recentPage = recentPage || (await api("/hevy/workouts?page=1&page_size=10"));
+      box.replaceChildren();
+      for (const w of recentPage.workouts) {
+        const b = el("button", "pick");
+        b.type = "button";
+        b.append(el("span", null, w.title), el("small", null, fmtDate(w.start_time) + " · " + w.exercises.length + " exercises"));
+        b.addEventListener("click", () => startFrom(w));
+        box.append(b);
+      }
+      if (!recentPage.workouts.length) box.replaceChildren(el("p", "muted", "No workouts in Hevy yet."));
+    } catch (err) {
+      box.replaceChildren();
+      say(err.message + (err.status === 400 ? " Save your Hevy key on the Recent page first." : ""));
+    }
+  }
+
+  async function loadPlannedStart() {
+    const box = $("plannedStart");
+    box.hidden = false; box.replaceChildren(el("p", "muted", "Loading planned workout…"));
+    try {
+      const plans = await api("/api/mesocycles");
+      box.replaceChildren();
+      const link = el("a", null, "Open microcycle builder"); link.href = trainingUrl("/microcycles");
+      box.append(el("h2", null, "Planned workout"));
+      if (!plans.length) { box.append(el("p", "muted", "Build a microcycle and load your next workout here."), link); return; }
+      const label = el("label", null, "Microcycle"), select = el("select", "wide");
+      select.setAttribute("aria-label", "Select microcycle");
+      for (const plan of plans) { const option = el("option", null, plan.name + (plan.active ? " · Active" : "")); option.value = plan.id; select.append(option); }
+      select.value = (plans.find(p => p.active) || plans[0]).id;
+      label.append(select); const details = el("div"); box.append(label, details, link);
+      function showSelectedPlan() {
+        const plan = plans.find(p => p.id === select.value); details.replaceChildren();
+        if (!plan) return;
+        const done = new Set(plan.completed.map(c => c.session_id));
+        const manual = new Set(plan.completed.filter(c => c.hevy_workout_id === null).map(c => c.session_id));
+        const sessions = plan.weeks.flatMap(week => week.sessions);
+        const pending = sessions.filter(session => !done.has(session.id));
+        if (!pending.length) {
+          details.append(el("p", "muted", sessions.length ? "Microcycle complete. Select another plan or build the next week." : "No days planned yet. Add a day in the builder."));
+          if (!manual.size) return;
+        }
+        const dayLabel = el("label", null, "Workout day"), daySelect = el("select", "wide");
+        daySelect.setAttribute("aria-label", "Select workout day");
+        for (const session of sessions) {
+          const option = el("option", null, session.name + (manual.has(session.id) ? " · Completed manually" : done.has(session.id) ? " · Completed" : ""));
+          option.value = session.id; option.disabled = done.has(session.id) && !manual.has(session.id); daySelect.append(option);
+        }
+        daySelect.value = (pending[0] || sessions.find(s => manual.has(s.id))).id;
+        dayLabel.append(daySelect); const workoutDetails = el("div"); details.append(dayLabel, workoutDetails);
+        function showSelectedDay() {
+          workoutDetails.replaceChildren();
+          const selected = sessions.find(session => session.id === daySelect.value);
+          if (!selected) return;
+          if (done.has(selected.id)) {
+            if (!manual.has(selected.id)) return;
+            const undo = el("button", "wide", "Undo completion"); undo.type = "button";
+            undo.addEventListener("click", async () => {
+              undo.disabled = true; select.disabled = true; daySelect.disabled = true;
+              try {
+                const updated = await api("/api/mesocycles/" + encodeURIComponent(plan.id) + "/sessions/" + encodeURIComponent(selected.id) + "/complete", { method: "DELETE" });
+                Object.assign(plan, updated); showSelectedPlan();
+              } catch (err) { say(err.message); }
+              finally { undo.disabled = false; select.disabled = false; daySelect.disabled = false; }
+            });
+            workoutDetails.append(el("p", "muted", "This day was marked completed manually."), undo); return;
+          }
+          const mark = el("button", "wide", "Mark already completed"); mark.type = "button";
+          mark.addEventListener("click", async () => {
+            if (!confirm("Mark " + selected.name + " as already completed? This only updates Rackbook's plan progress; it does not create or change a Hevy workout.")) return;
+            mark.disabled = true; select.disabled = true; daySelect.disabled = true;
+            if (start) start.disabled = true;
+            try {
+              const updated = await api("/api/mesocycles/" + encodeURIComponent(plan.id) + "/sessions/" + encodeURIComponent(selected.id) + "/complete", { method: "POST" });
+              Object.assign(plan, updated); showSelectedPlan();
+            } catch (err) { say(err.message); }
+            finally { mark.disabled = false; select.disabled = false; daySelect.disabled = false; if (start) start.disabled = false; }
+          });
+          let start = null;
+          if (!selected.exercises.length) { workoutDetails.append(el("p", "muted", "Add movements to this workout in the builder before loading it."), mark); return; }
+          start = el("button", "primary wide", "Load selected workout"); start.type = "button";
+          start.addEventListener("click", async () => {
+            start.disabled = true; mark.disabled = true; select.disabled = true; daySelect.disabled = true;
+            try {
+              if (!plan.active) { await api("/api/mesocycles/" + encodeURIComponent(plan.id) + "/activate", { method: "POST" }); plans.forEach(p => { p.active = p.id === plan.id; }); for (const option of select.children) { const p = plans.find(p => p.id === option.value); option.textContent = p.name + (p.active ? " · Active" : ""); } }
+              await loadPlannedWorkout(plan.id, selected.id);
+            } catch (err) { say(err.message); }
+            finally { start.disabled = false; mark.disabled = false; select.disabled = false; daySelect.disabled = false; }
+          });
+          workoutDetails.append(start, mark);
+        }
+        daySelect.addEventListener("change", showSelectedDay); showSelectedDay();
+      }
+      select.addEventListener("change", showSelectedPlan); showSelectedPlan();
+    } catch (err) { box.replaceChildren(el("p", "muted", "Could not load planned workouts: " + err.message)); }
+  }
+
+  async function loadPlannedWorkout(planId, sessionId) {
+    if (draft && draft.planned_session && draft.planned_session.mesocycle_id === planId && draft.planned_session.session_id === sessionId) return;
+    const plan = await api("/api/mesocycles/" + encodeURIComponent(planId) + "/sessions/" + encodeURIComponent(sessionId));
+    const week = plan.weeks.find(w => w.sessions.some(s => s.id === sessionId));
+    const session = week && week.sessions.find(s => s.id === sessionId);
+    if (!session || !session.exercises.length) throw new Error("This planned workout needs movements before you can load it.");
+    if (plan.completed.some(s => s.session_id === sessionId)) throw new Error("This planned workout is already completed. Choose the next one in the builder.");
+    if (draft && !confirm("Replace the current workout draft with this planned workout?")) return;
+    draft = {
+      title: session.name, startedAt: new Date().toISOString(),
+      planned_session: { mesocycle_id: plan.id, session_id: session.id },
+      planLabel: plan.name + " · " + session.name,
+      exercises: session.exercises.map(ex => ({ id: uid(), template_id: ex.exercise_template_id,
+        title: ex.title, notes: ex.notes || "", ref: refFromServer(ex.exercise_template_id),
+        sets: ex.sets.map(s => ({type:s.type, ts:s.ts, kg:s.weight_kg == null ? "" : String(s.weight_kg),
+          reps:String(s.reps), rpe:s.rpe == null ? "" : String(s.rpe), done:false, manual:s.weight_kg != null}))
+      }))
+    };
+    SessionCapture.start(draft, 'plan', rpeTable, plan.revision);
+    saveDraft(); say(""); renderWorkout();
+    draft.exercises.forEach(loadState);
+  }
+
+  async function loadPlannedQuery() {
+    const query = new URLSearchParams(location.search), planId = query.get("microcycle") || query.get("mesocycle"), sessionId = query.get("session");
+    if (!planId || !sessionId) return;
+    try { await loadPlannedWorkout(planId, sessionId); }
+    catch (err) { say(err.message); }
+    finally { history.replaceState(null, "", trainingUrl("/log")); }
+  }
+
+  function startFrom(w) {
+    draft = {
+      title: w.title,
+      startedAt: new Date().toISOString(),
+      exercises: w.exercises.map((ex) => ({
+        id: uid(),
+        template_id: ex.exercise_template_id,
+        title: ex.title,
+        notes: "",
+        ref: refFromServer(ex.exercise_template_id),
+        // warm-ups are not copied: they belong to the weights of that day. "+ Warm-up sets" builds them when you ask.
+        sets: ex.sets.filter((s) => s.type !== "warmup").map((s) => ({
+          type: s.type || "normal",
+          kg: s.weight_kg != null ? trim(s.weight_kg) : "",
+          reps: s.reps != null ? String(s.reps) : "",
+          rpe: RPES.includes(s.rpe) ? String(s.rpe) : "",
+          done: false,
+          manual: false,
+        })),
+      })).filter((ex) => ex.template_id),
+    };
+    // an exercise that was only warm-ups still needs a set to fill in
+    for (const ex of draft.exercises) if (!ex.sets.length) ex.sets.push({ type: "normal", kg: "", reps: "", rpe: "", done: false, manual: false });
+    SessionCapture.start(draft, 'repeated_workout', rpeTable);
+    saveDraft(); say(""); renderWorkout();
+    draft.exercises.forEach(loadState);
+  }
+
+  function startEmpty() {
+    draft = { title: "Workout", startedAt: new Date().toISOString(), exercises: [] };
+    SessionCapture.start(draft, 'ad_hoc', rpeTable);
+    saveDraft(); say(""); renderWorkout();
+  }
+
+  // ── Workout screen ──────────────────────────────────────────────────────────
+  let trialEnabled = false, trialDaily = null;
+  async function loadTrialPreference() {
+    try {
+      const value=await api('/fatigue-trial/settings');
+      trialEnabled=value.enabled; $('previewNotice').hidden=!value.preview;
+    } catch (_) { say('Trial setting unavailable. Reload to retry automatic recording.'); }
+  }
+  let trialRecordTimer;
+  const trialRecording = new WeakSet();
+  function queueTrialRecording() {
+    clearTimeout(trialRecordTimer);
+    if (!trialEnabled || !draft) return;
+    trialRecordTimer = setTimeout(() => {
+      if (trialEnabled && draft) draft.exercises.forEach(ex => { void recordTrialAutomatically(ex); });
+    }, 1500);
+  }
+  async function recordTrialAutomatically(ex) {
+    if (!trialEnabled || !draft || !draft.exercises.includes(ex) || ex.trialId || trialRecording.has(ex)) return;
+    const workout = draft;
+    const working = ex.sets.filter(s => s.type !== "warmup");
+    if (ex.trialStarted || working.some(s => s.done)) return;
+    const target = working.find(s => s.ts) || working[0];
+    const rating = draft.soreness?.[sorenessPatterns?.[ex.title]] || ex.trialSoreness || {};
+    if (!Number.isInteger(rating.level) || rating.level < 0 || rating.level > 3 || !target ||
+        !Number.isInteger(Number(target.reps)) || Number(target.reps) < 1 ||
+        target.rpe === "" || target.rpe == null || !Number.isFinite(Number(target.rpe)) || Number(target.rpe) < 4 || Number(target.rpe) > 10 || Number(target.rpe)*2 % 1 ||
+        !(Number(target.kg) > 0)) return;
+    trialRecording.add(ex);
+    try {
+      const result = await api("/fatigue-trial/snapshots", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+        session_key:workout.startedAt, workout_start:workout.startedAt, exercise_template_id:ex.template_id, exercise_order:workout.exercises.indexOf(ex),
+        local_date:localTrialDate(), soreness:rating.level, pain:rating.pain === true, working_set_started:false,
+        mode:working.some(s=>s.ts)?"strength":"hypertrophy", planned_reps:Number(target.reps), planned_rpe:Number(target.rpe), planned_weight_kg:Number(target.kg)})});
+      ex.trialId = result.id; ex.trialProspective = result.prospective; delete ex.trialRecordError;
+      if (draft === workout) saveDraft();
+    } catch (err) { ex.trialRecordError = err.message; }
+    finally {
+      trialRecording.delete(ex);
+      if (draft === workout) {
+        const card = cardEls.get(ex.id), box = card?.querySelector(".trial-panel");
+        if (box) { box.replaceChildren(); renderTrial(ex, box); }
+      }
+    }
+  }
+  function localTrialDate() {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
+  async function refreshTrialDaily() {
+    if (!trialEnabled) { $("trialDaily").hidden = true; return; }
+    try { trialDaily = await api("/fatigue-trial/daily?day=" + localTrialDate()); }
+    catch (_) { trialDaily = {status:"unavailable"}; }
+    const box = $("trialDaily"); box.hidden = false; box.replaceChildren();
+    const details = el("details"); details.append(el("summary", null, "Daily check-in · " + (trialDaily.status === "available" ? "Today ✓" : trialDaily.status)));
+    details.append(el("p", "hint", "Original Hevy Fatigue scale: 0–4. " + (trialDaily.date || "No check-in available") + ". Date-only source; fetched " + (trialDaily.fetched_at || "now") + "."));
+    for (const [key,value] of Object.entries(trialDaily.ratings || {})) details.append(el("p", "hint", key.replaceAll("_", " ") + ": " + (value ?? "Unknown")));
+    box.append(details);
+  }
+  function renderTrial(ex, box) {
+    if (!trialEnabled && !ex.trialId) return;
+    box.className = "trial-panel"; box.setAttribute("aria-label", "Optional model trial for " + ex.title);
+    if (!sorenessPatterns?.[ex.title] && !ex.trialId) {
+      const controls = el("fieldset"); controls.style.cssText="border:0;padding:0;margin:0 0 12px";
+      controls.append(el("legend",null,"Soreness before this movement"));
+      const choices=el("div"); choices.style.cssText="display:flex;gap:6px;flex-wrap:wrap";
+      for (const [value,label] of [[0,"None"],[1,"Mild"],[2,"Moderate"],[3,"Severe"]]) {
+        const choice=el("button",null,label); choice.type="button"; choice.style.minHeight="44px";
+        choice.setAttribute("aria-pressed",String(ex.trialSoreness?.level===value));
+        choice.addEventListener("click",()=>{ ex.trialSoreness ||= {level:null,pain:false}; ex.trialSoreness.level=ex.trialSoreness.level===value?null:value; saveDraft(); box.replaceChildren(); renderTrial(ex,box); }); choices.append(choice);
+      }
+      const painLabel=el("label"); painLabel.style.cssText="display:flex;gap:8px;align-items:center;min-height:44px";
+      const pain=el("input"); pain.type="checkbox"; pain.checked=ex.trialSoreness?.pain===true;
+      pain.addEventListener("change",()=>{ ex.trialSoreness ||= {level:null,pain:false}; ex.trialSoreness.pain=pain.checked; saveDraft(); });
+      painLabel.append(pain,el("span",null,"Pain or injury")); controls.append(choices,painLabel); box.append(controls);
+    }
+    if (ex.trialId) {
+      const details = el("details"); details.append(el("summary", null, "Trial recorded · Result hidden"));
+      details.append(el("p", "hint", ex.trialProspective ? "Recorded before your first working set." : "Late entry · excluded from prospective predictions."));
+      details.append(el("p", "hint", "Later soreness edits do not replace the original trial snapshot."), trialNoteControls(ex.trialId)); box.append(details); return;
+    }
+    const started = ex.trialStarted || ex.sets.some(s => s.type !== "warmup" && s.done);
+    const status = el("p", "hint", ex.trialRecordError ? "Automatic trial recording failed: " + ex.trialRecordError + ". Keep logging; another pre-set edit will retry." : started ? "Trial not recorded before the first set. Keep logging normally." : "Enter soreness/pain and the planned working set. Trial records automatically after a short pause; wait for Trial recorded before lifting.");
+    status.setAttribute("role", "status");
+    box.append(el("strong", null, "Model trial · Automatic"), status);
+    if (!ex.trialRecordError) queueTrialRecording();
+  }
+  function trialNoteControls(id) {
+    const wrap = el("details"); wrap.append(el("summary", null, "Record a correction or training change"));
+    const kind = el("select"); kind.setAttribute("aria-label", "Trial note type");
+    for (const [value,label] of [["correction","Observation correction"],["workout_change","Workout changed"],["advice_followed","Advice followed from either app"],["suggested_change","Suggested dose change"],["actual_change","Dose change actually made"]]) {
+      const option=el("option",null,label); option.value=value; kind.append(option);
+    }
+    const text=el("textarea"); text.maxLength=2000; text.setAttribute("aria-label","Trial note");
+    const button=el("button",null,"Save note"); button.type="button";
+    const status=el("p","hint"); status.setAttribute("role","status");
+    button.addEventListener("click",async()=>{
+      if(!text.value.trim()) { status.textContent="Enter a note first."; return; }
+      button.disabled=true;
+      try { await api("/fatigue-trial/snapshots/"+encodeURIComponent(id)+"/notes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({kind:kind.value,text:text.value.trim()})}); status.textContent="Note saved. The original snapshot is unchanged."; text.value=""; }
+      catch(err) { status.textContent=err.message; }
+      finally { button.disabled=false; }
+    });
+    wrap.append(kind,text,button,status); return wrap;
+  }
+  function showTrialResults(results, exercises=[]) {
+    const box = $("trialResults"); box.replaceChildren();
+    for (const result of results || []) {
+      const card = el("section", "card trial-panel");
+      const name=exercises.find(ex=>ex.exercise_template_id===result.exercise_template_id)?.title || result.exercise_template_id;
+      card.append(el("h2", null, name + " · Model trial"), el("p", null, "Expected performance: " + result.prediction.replaceAll("_"," ")),
+        el("p", null, "Observed performance: " + result.observed.replaceAll("_"," ")),
+        el("p", "hint", result.prospective ? "Recorded before training." : "Late entry · excluded from prospective evaluation."),
+        el("p", null, "Across sessions · " + result.across_sessions.status), el("p", "hint", result.across_sessions.message));
+      if (result.pain) card.append(el("p", null, "Pain/injury concern recorded separately from the prediction."));
+      const details = el("details"); details.append(el("summary", null, "View comparison details"));
+      details.append(el("p", "hint", result.reasons.join(" ")));
+      const evidence = el("pre"); evidence.style.cssText="white-space:pre-wrap;overflow-wrap:anywhere";
+      evidence.textContent=JSON.stringify(result.evidence,null,2); details.append(evidence); card.append(details,trialNoteControls(result.id)); box.append(card);
+    }
+  }
+  let sorenessPatterns = null;
+  function renderSoreness(ex, box) {
+    box.replaceChildren();
+    if (!sorenessPatterns) {
+      box.append(el("p", "hint", "Soreness controls unavailable. Reload to retry.")); return;
+    }
+    const key = sorenessPatterns[ex.title];
+    if (!key) return;
+    const title = {squat: "Squat", bench_press: "Bench/Press", deadlift: "Deadlift"}[key];
+    box.append(el("p", "hint", "Soreness before this movement · " + title + ". Leave unanswered if unsure."));
+    {
+      const group = el("fieldset");
+      group.style.cssText = "border:0;padding:0;margin:12px 0";
+      group.append(el("legend", null, title));
+      const row = el("div");
+      row.style.cssText = "display:flex;flex-wrap:wrap;gap:6px";
+      for (const [value, label] of [[0, "None"], [1, "Mild"], [2, "Moderate"], [3, "Severe"]]) {
+        const button = el("button", null, label); button.type = "button";
+        const selected = draft.soreness?.[key]?.level === value;
+        button.setAttribute("aria-pressed", String(selected));
+        button.setAttribute("aria-label", title + " soreness: " + label);
+        button.style.minHeight = "44px";
+        if (selected) button.style.outline = "2px solid currentColor";
+        button.addEventListener("click", () => {
+          draft.soreness ||= {};
+          draft.soreness[key] ||= { level: null, pain: false };
+          draft.soreness[key].level = selected ? null : value;
+          saveDraft();
+          for (const movement of draft.exercises) {
+            const target = cardEls.get(movement.id)?.querySelector(".movement-soreness");
+            if (target) renderSoreness(movement, target);
+          }
+        });
+        row.append(button);
+      }
+      const painLabel = el("label");
+      painLabel.style.cssText = "display:flex;align-items:center;gap:8px;min-height:44px;margin-top:4px";
+      const pain = el("input"); pain.type = "checkbox";
+      pain.checked = draft.soreness?.[key]?.pain === true;
+      pain.setAttribute("aria-label", title + ": pain or injury");
+      pain.addEventListener("change", () => {
+        draft.soreness ||= {};
+        draft.soreness[key] ||= { level: null, pain: false };
+        draft.soreness[key].pain = pain.checked;
+        saveDraft();
+        for (const movement of draft.exercises) {
+          const target = cardEls.get(movement.id)?.querySelector(".movement-soreness");
+          if (target) renderSoreness(movement, target);
+        }
+      });
+      painLabel.append(pain, el("span", null, "Pain or injury"));
+      group.append(row, painLabel);
+      if (ex.trialId) {
+        const edit = el("details"), rating = draft.soreness?.[key] || {};
+        edit.append(el("summary",null,"Soreness: " + (["None","Mild","Moderate","Severe"][rating.level] || "Unknown") + " · " + (rating.pain ? "Pain/injury flagged" : "No pain reported")),group); box.append(edit);
+      } else box.append(group);
+    }
+  }
+
+  function renderWorkout() {
+    closeNumberPad();
+    if (typeof LoggerLayout !== 'undefined') LoggerLayout.release();
+    const stay = !$("workout").hidden, y = window.scrollY;   // redrawing the workout you are already on keeps your place
+    show("workout");
+    $("title").value = draft.title;
+    if (typeof SessionMotivation !== 'undefined') SessionMotivation.mount(draft,$("sessionMotivation"),saveMotivationDraft);
+    const origin = $("plannedOrigin"); origin.hidden = !draft.planned_session; origin.replaceChildren();
+    if (draft.planned_session) {
+      origin.append(el("span", null, draft.planLabel || "Planned workout"));
+      const detach = el("button", "link", "Use as unplanned workout"); detach.type = "button";
+      detach.addEventListener("click", () => { if (!confirm("Keep this workout, but stop linking it to the microcycle?")) return; delete draft.planned_session; delete draft.planLabel; saveDraft(); renderWorkout(); });
+      origin.append(detach);
+    }
+    const list = $("exercises"); list.replaceChildren();
+    cardEls.clear(); setE1Cells.clear(); setStressCells.clear();
+    for (const ex of draft.exercises) { const card = renderExercise(ex); cardEls.set(ex.id, card); list.append(card); }
+    for (const id of new Set(draft.exercises.map(ex => ex.template_id))) paintStress(id);
+    tickClock();
+    if (typeof LoggerLayout !== 'undefined') LoggerLayout.update();
+    if (stay) window.scrollTo(0, y);
+  }
+
+  function fmtShortDate(iso) {
+    const d = new Date(iso);
+    return isNaN(d) ? "" : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+
+  function renderRefBar(ex) {
+    const wrap = el("div", "refbar");
+    const st = ex.ref.state;
+    const show = (v) => (v != null ? String(v) : !st ? "…" : "–");
+
+    const tiles = el("div", "tiles");
+    const tile = (key, label, value, caption) => {
+      const selected = ex.ref.autoWeights !== false && ex.ref.basis === key;
+      const t = el("div", "tile" + (selected ? " on" : ""));
+      t.setAttribute("role", "button"); t.setAttribute("aria-pressed", String(selected)); t.tabIndex = 0;
+      t.setAttribute("aria-label", key === "tm" ? "Use TM for weights" : "Use e1RM for weights");
+      t.title = "Select to calculate weights; select again to leave weights unchanged.";
+      t.append(label, el("span", "tv", value));
+      if (caption) t.append(el("span", "cap", caption));
+      const choose = () => {
+        ex.ref.autoWeights = !(ex.ref.autoWeights !== false && ex.ref.basis === key);
+        ex.ref.basis = key; applyAuto(ex); saveDraft(); saveRef(ex); refreshCard(ex);
+      };
+      t.addEventListener("click", choose);
+      t.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); choose(); } });
+      return t;
+    };
+
+    const cur = currentE1rm(ex);
+    const e1Tile = tile("e1rm", el("span", "tl", "e1RM"), show(cur ? Math.round(cur.value) : null), anchorE1rm(ex) != null ? "TS" : "");
+    e1Tile.querySelector(".tv").classList.add("e1v");
+    tiles.append(e1Tile);
+
+    const tmLabel = el("span", "tl");
+    tmLabel.append("TM ");
+    const pct = el("input", "pctin"); pct.type = "text"; pct.inputMode = "decimal";
+    pct.value = trim(ex.ref.tmPct * 100); pct.setAttribute("aria-label", "TM as a percentage of e1RM");
+    pct.addEventListener("click", (e) => e.stopPropagation());
+    tmLabel.append(pct, "%");
+    const tmv = tmValue(ex);
+    const ts = ex.ref.ts;
+    const caption = markedTs(ex) ? "TS on save" : ts && ts.found ? "TS " + fmtShortDate(ts.set_at) : ts ? "no TS yet" : "";
+    const tmTile = tile("tm", tmLabel, show(tmv != null ? Math.round(tmv) : null), caption);
+    pct.addEventListener("input", () => {
+      const v = Number(pct.value) / 100;
+      if (!(v >= 0.5 && v <= 1)) return;
+      ex.ref.tmPct = v; applyAuto(ex); saveDraft(); saveRef(ex);
+      const now = tmValue(ex);
+      if (now != null) tmTile.querySelector(".tv").textContent = String(Math.round(now));
+    });
+    tiles.append(tmTile);
+
+    const active = ex.ref.autoWeights !== false;
+    const ls = el("button", "pill" + (active && ex.ref.ls ? " on" : ""), "LSe1RM");
+    ls.type = "button"; ls.disabled = !active; ls.setAttribute("aria-pressed", String(active && ex.ref.ls));
+    ls.title = active ? "Plan each set from the e1RM of the last set you ticked. Off: every set uses the e1RM or TM selected here." : "Select e1RM or TM to enable automatic weights.";
+    ls.addEventListener("click", () => { ex.ref.ls = !ex.ref.ls; applyAuto(ex); saveDraft(); saveRef(ex); refreshCard(ex); });
+    tiles.append(ls);
+    wrap.append(tiles);
+    if (!active) wrap.append(el("p", "muted", "Automatic weights off. Select e1RM or TM to enable."));
+
+    return wrap;
+  }
+
+  // ── The plate loader ──────────────────────────────────────────────────────────
+  // Which plates go on each end of the bar for a set, drawn like the Barbell Loader. It follows the next set you have
+  // not ticked, or the one you pick. The bar and chains are remembered for each movement (kg only; in lb mode it is a 45 lb bar).
+  const PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
+  const PLATES_LB = [45, 35, 25, 10, 5, 2.5];
+  const BAR_LB = 45;
+  const BARS = [[20, "20 kg Barbell"], [30, "30 kg SSB"], [20, "20 kg Buffalo Bar"], [15, "15 kg Neutral Grip Bar"], [10, "10 kg Arch Nem. Bar"]];
+  const PLATE_CLASSES = ["p25", "p20", "p15", "p10", "p5", "p2", "p1"];
+  const plateClass = (p, weightUnit = unit) => PLATE_CLASSES[(weightUnit === "lb" ? PLATES_LB : PLATES_KG).indexOf(p)] || "p1";   // colours by size, biggest first
+  function platePlan(kg, ex) {
+    const unit = unitFor(ex.ref);
+    const inLb = unit === "lb";
+    const total = inLb ? lbOfKg(kg) : kg;
+    const bar = inLb ? BAR_LB : ex.ref.barKg;
+    const chains = inLb ? lbOfKg(ex.ref.chainKg) : ex.ref.chainKg;
+    let rem = (total - bar - chains) / 2;
+    if (rem < -1e-6) return { below: true, counts: [], short: 0 };
+    const counts = [];
+    for (const p of inLb ? PLATES_LB : PLATES_KG) {
+      const n = Math.floor(rem / p + 1e-9);
+      if (n > 0) { counts.push([p, n]); rem -= n * p; }
+    }
+    return { below: false, counts, short: rem > 1e-6 ? rem * 2 : 0 };
+  }
+  function setName(ex, index) {
+    let warm = 0, work = 0;
+    for (let i = 0; i <= index; i++) { if (ex.sets[i].type === "warmup") warm += 1; else work += 1; }
+    return ex.sets[index].type === "warmup" ? "Warm-up " + warm : "Set " + work;
+  }
+  function loaderSet(ex) {
+    if (ex.loadPin != null && ex.sets[ex.loadPin]) return ex.loadPin;
+    let i = ex.sets.findIndex((x) => !x.done && !isNaN(num(x.kg)));
+    if (i < 0) for (let j = ex.sets.length - 1; j >= 0; j--) if (!isNaN(num(ex.sets[j].kg))) { i = j; break; }
+    return i;
+  }
+  const platesText = (plan) => plan.counts.map(([p, n]) => n + "×" + trim(p)).join(" ") || (plan.below ? "under the bar" : "bar only");
+  function fillLoader(ex, box) {
+    const unit = unitFor(ex.ref);
+    box.replaceChildren();
+    const i = loaderSet(ex), set = i >= 0 ? ex.sets[i] : null, kg = set ? num(set.kg) : NaN;
+    const head = el("div", "loadhead");
+    const which = el("button", "loadwhich", set ? setName(ex, i) + " · " + primaryText(set, ex) + " " + unit + " ▾" : "Plates ▾");
+    which.type = "button"; which.addEventListener("click", () => pickLoadSet(ex));
+    head.append(which);
+    if (unit === "kg") {
+      const bar = el("button", null, trim(ex.ref.barKg) + " kg bar ▾"); bar.type = "button"; bar.addEventListener("click", () => pickBar(ex));
+      const chains = el("button", null, "Chains " + trim(ex.ref.chainKg) + " kg ▾"); chains.type = "button"; chains.addEventListener("click", () => pickChains(ex));
+      head.append(bar, chains);
+    } else head.append(el("span", "static", BAR_LB + " lb bar"));
+    box.append(head);
+    if (isNaN(kg)) { box.append(el("p", "loadnote", "Give a set a weight to see its plates.")); return; }
+    const plan = platePlan(kg, ex);
+    const list = [];
+    plan.counts.forEach(([p, n]) => { for (let k = 0; k < n; k++) list.push(p); });
+    const left = el("span", "side"), right = el("span", "side");
+    list.forEach((p) => right.append(el("i", "pl " + plateClass(p, unit))));             // largest nearest the middle
+    [...list].reverse().forEach((p) => left.append(el("i", "pl " + plateClass(p, unit))));
+    const barEl = el("div", "barfull");
+    barEl.append(left, el("span", "shaft"), right);
+    box.append(barEl);
+    const read = el("div", "readout");
+    if (plan.below) read.append("Under the bar");
+    else if (!plan.counts.length) read.append("Bar only");
+    else plan.counts.forEach(([p, n], k) => {
+      if (k) read.append("  ·  ");
+      read.append(el("b", null, n + "×"), " " + trim(p) + " " + unit);
+    });
+    if (plan.short) read.append(el("div", "short", "(" + trim(Math.round(plan.short * 100) / 100) + " " + unit + " short of " + primaryText(set, ex) + " " + unit + ")"));
+    box.append(read);
+  }
+  function renderLoader(ex) { const box = el("div", "loader"); fillLoader(ex, box); return box; }
+  function refreshLoader(ex) {
+    const card = cardEls.get(ex.id), box = (card && card.querySelector(".loader")) ||
+      (typeof LoggerLayout !== 'undefined' && LoggerLayout.loaderFor(ex.id));
+    if (box) fillLoader(ex, box);
+  }
+  function pickLoadSet(ex) {
+    const unit = unitFor(ex.ref);
+    const items = [{ v: "auto", label: "Next set", desc: "Follows the next set you haven't ticked", on: ex.loadPin == null }];
+    ex.sets.forEach((x, i) => {
+      const kg = num(x.kg);
+      if (isNaN(kg)) return;
+      items.push({ v: String(i), label: setName(ex, i) + " · " + primaryText(x, ex) + " " + unit, desc: platesText(platePlan(kg, ex)) + " per side", on: ex.loadPin === i });
+    });
+    openSheet("Show the plates for", "", items, 1, (v) => { ex.loadPin = v === "auto" ? null : Number(v); saveDraft(); refreshLoader(ex); });
+  }
+  function setBarAndChains(ex, bar, chains) {
+    if (bar != null) ex.ref.barKg = bar;
+    if (chains != null) ex.ref.chainKg = chains;
+    saveRef(ex); saveDraft(); refreshLoader(ex);
+  }
+  function askKg(label, current, max) {
+    const v = parseFloat(String(prompt(label, current) || "").replace(",", "."));
+    return v >= 0 && v <= max ? v : null;
+  }
+  function pickBar(ex) {
+    const items = BARS.map(([kg, name], k) => ({ v: "b" + k, label: name, on: kg === ex.ref.barKg }));
+    items.push({ v: "custom", label: "Custom…", on: false });
+    openSheet("Bar for " + ex.title, "Remembered for this movement.", items, 1, (v) => {
+      if (v === "custom") { const kg = askKg("Bar weight in kg", ex.ref.barKg, 100); if (kg != null) setBarAndChains(ex, kg, null); return; }
+      setBarAndChains(ex, BARS[Number(v.slice(1))][0], null);
+    });
+  }
+  function pickChains(ex) {
+    const opts = [0, 5, 10, 15, 20, 30, 40];
+    const items = opts.map((kg) => ({ v: String(kg), label: kg + " kg", on: kg === ex.ref.chainKg }));
+    items.push({ v: "other", label: "Other…", on: false });
+    openSheet("Chains on the bar", "Chain weight counts toward the load but isn't plates. Remembered for this movement.", items, 4, (v) => {
+      if (v === "other") { const kg = askKg("Chain weight in kg", ex.ref.chainKg, 200); if (kg != null) setBarAndChains(ex, null, kg); return; }
+      setBarAndChains(ex, null, Number(v));
+    });
+  }
+
+  // Swipe a set left to reveal Delete; tap Delete to remove it. A tap elsewhere, or a swipe back, closes it again.
+  const SWIPE_W = 76;
+  let openSwipe = null;
+  function setOffset(wrap, x) { wrap.lastElementChild.style.transform = x ? "translateX(" + x + "px)" : ""; }
+  function closeSwipe() {
+    if (!openSwipe) return;
+    setOffset(openSwipe, 0); openSwipe.classList.remove("open"); openSwipe = null;
+  }
+  document.addEventListener("pointerdown", (e) => { if (openSwipe && !openSwipe.contains(e.target)) closeSwipe(); });
+  function makeSwipeable(wrap, onDelete) {
+    const row = wrap.lastElementChild, del = wrap.firstElementChild;
+    let x0 = null, y0 = 0, base = 0, cur = 0, dragging = false, id = null;
+    row.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      x0 = e.clientX; y0 = e.clientY; id = e.pointerId; dragging = false;
+      base = wrap.classList.contains("open") ? -SWIPE_W : 0; cur = base;
+    });
+    row.addEventListener("pointermove", (e) => {
+      if (x0 === null || e.pointerId !== id) return;
+      const dx = e.clientX - x0, dy = e.clientY - y0;
+      if (!dragging) {
+        if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy)) return;   // a tap or a vertical scroll, not a swipe
+        dragging = true; wrap.classList.add("dragging");
+        try { row.setPointerCapture(id); } catch (err) { /* not every pointer can be captured */ }
+        if (openSwipe && openSwipe !== wrap) closeSwipe();
+      }
+      cur = Math.max(-SWIPE_W - 16, Math.min(0, base + dx));
+      setOffset(wrap, cur);
+    });
+    const end = (e) => {
+      if (x0 === null || e.pointerId !== id) return;
+      x0 = null; wrap.classList.remove("dragging");
+      if (!dragging) return;
+      dragging = false;
+      const open = cur < -SWIPE_W / 2;
+      setOffset(wrap, open ? -SWIPE_W : 0); wrap.classList.toggle("open", open);
+      openSwipe = open ? wrap : (openSwipe === wrap ? null : openSwipe);
+    };
+    row.addEventListener("pointerup", end);
+    row.addEventListener("pointercancel", end);
+    del.addEventListener("click", onDelete);
+  }
+
+  // Drag an exercise card by its grip to change the order. The card follows the finger and the others shuffle live;
+  // on release the new order is saved to the draft (and so is the order the exercises go to Hevy in).
+  function makeReorderable(card, grip, ex) {
+    let id = null, grab = 0, edge = 0, lastY = 0, raf = 0;
+    const place = () => {
+      card.style.transform = "";
+      const top = card.getBoundingClientRect().top;
+      card.style.transform = "translateY(" + (lastY - grab - top) + "px)";
+    };
+    const step = () => {   // swap with a neighbour once the card's centre passes the neighbour's centre
+      place();
+      const r = card.getBoundingClientRect(), mid = r.top + r.height / 2;
+      const prev = card.previousElementSibling, next = card.nextElementSibling;
+      const mid_of = (n) => { const b = n.getBoundingClientRect(); return b.top + b.height / 2; };
+      let moved = false;
+      if (prev && mid < mid_of(prev)) { prev.before(card); moved = true; }
+      else if (next && mid > mid_of(next)) { next.after(card); moved = true; }
+      if (moved) {
+        // Reparenting releases pointer capture in browsers; retain the same drag
+        // so pointerup still commits the displayed order to the draft.
+        try { grip.setPointerCapture(id); } catch (err) { /* optional pointer API */ }
+        place();
+      }
+    };
+    const tick = () => {   // scroll the page while the card is held near the top or bottom edge
+      raf = 0;
+      if (id === null) return;
+      const h = window.innerHeight;
+      edge = lastY < 80 ? -12 : lastY > h - 80 ? 12 : 0;
+      if (edge) { window.scrollBy(0, edge); step(); raf = requestAnimationFrame(tick); }
+    };
+    grip.addEventListener("pointerdown", (e) => {
+      if (id !== null || (e.pointerType === "mouse" && e.button !== 0)) return;
+      id = e.pointerId; lastY = e.clientY; grab = e.clientY - card.getBoundingClientRect().top;
+      try { grip.setPointerCapture(id); } catch (err) { /* not every pointer can be captured */ }
+      card.classList.add("lifted");
+      e.preventDefault();
+    });
+    grip.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== id) return;
+      lastY = e.clientY; step();
+      if (!raf) raf = requestAnimationFrame(tick);
+    });
+    const end = (e) => {
+      if (e.pointerId !== id) return;
+      id = null; cancelAnimationFrame(raf); raf = 0;
+      card.style.transform = ""; card.classList.remove("lifted");
+      const order = [...$("exercises").children].map((c) => [...cardEls].find(([, el2]) => el2 === c)[0]);
+      const byId = new Map(draft.exercises.map((x) => [x.id, x]));
+      const next = order.map((k) => byId.get(k));
+      if (next.every((x, i) => x === draft.exercises[i])) return;   // dropped where it started
+      draft.exercises = next; saveDraft();
+    };
+    grip.addEventListener("pointerup", end);
+    grip.addEventListener("pointercancel", end);
+  }
+
+  // Warm-up sets, only when you ask for them: last session's warm-ups (the same share of the first working weight
+  // and the same reps), or a standard ladder when there were none, such as a new movement.
+  const WARMUP_LADDER = [[0.40, 8], [0.55, 5], [0.70, 3], [0.85, 1]];
+  function warmupPlan(ex) {
+    const prev = (ex.ref.state && ex.ref.state.previous) || [];
+    const prevWork = prev.find((p) => p.type !== "warmup" && p.weight_lb > 0);
+    const prevWarm = prev.filter((p) => p.type === "warmup" && p.weight_lb > 0 && p.reps > 0);
+    if (prevWork && prevWarm.length) return prevWarm.map((p) => [p.weight_lb / prevWork.weight_lb, p.reps]);
+    return WARMUP_LADDER;
+  }
+  function addWarmups(ex) {
+    const unit = unitFor(ex.ref);
+    const first = ex.sets.find((s) => s.type !== "warmup" && !isNaN(num(s.kg)));
+    if (!first) { say("Give the first working set a weight (or an RPE) first, so the warm-ups have something to build on."); return; }
+    const top = num(first.kg), step = unit === "lb" ? ex.ref.stepLb / LB_PER_KG : ex.ref.stepKg;
+    const seen = new Set(), made = [];
+    for (const [ratio, reps] of warmupPlan(ex)) {
+      const kg = Math.round(top * ratio / step) * step;
+      const key = kg.toFixed(3);
+      if (!(kg > 0) || kg >= top || seen.has(key)) continue;   // nothing at or above the working weight, no doubles
+      seen.add(key);
+      made.push({ type: "warmup", kg: String(Math.round(kg * 1e6) / 1e6), reps: String(reps), rpe: "", done: false, manual: true });
+    }
+    if (!made.length) { say("The first working set is too light to warm up for."); return; }
+    say("");
+    // warm-ups you already ticked stay; the ones not done yet are replaced
+    const keep = ex.sets.filter((s) => s.type !== "warmup" || s.done);
+    ex.sets = [...keep.filter((s) => s.type === "warmup"), ...made, ...keep.filter((s) => s.type !== "warmup")];
+    saveDraft(); renderWorkout();
+  }
+
+  function setExerciseUnit(ex, preference) {
+    if (![null, 'kg', 'lb'].includes(preference)) return;
+    closeNumberPad();
+    for (const movement of draft.exercises.filter(e=>e.template_id===ex.template_id)) {
+      movement.ref.weightUnit=preference;
+      applyAuto(movement);
+    }
+    saveDraft(); saveRef(ex); renderWorkout();
+  }
+  function exerciseUnitControl(ex) {
+    const current=ex.ref.weightUnit ?? null;
+    const button=el('button','chip',unitFor(ex.ref)+' '+(current===null?'(page)':'')+' ▾');
+    button.type='button';button.setAttribute('aria-label','Weight unit for '+ex.title);
+    button.addEventListener('click',()=>openSheet('Weight unit · '+ex.title,
+      'Remembered for this exercise in future workouts. Entered and completed weights keep their value; automatic planned weights use the selected rounding step.',
+      [{v:'page',label:'Follow page ('+unit+')',on:current===null},{v:'kg',label:'Kilograms (kg)',on:current==='kg'},{v:'lb',label:'Pounds (lb)',on:current==='lb'}],3,
+      value=>setExerciseUnit(ex,value==='page'?null:value)));
+    return button;
+  }
+  function exerciseComplete(ex) {
+    const work = ex.sets.filter(s => s.type !== "warmup");
+    return work.length > 0 && work.every(s => s.done);
+  }
+
+  function renderExercise(ex) {
+    const unit = unitFor(ex.ref);
+    const card = el("section", "card");
+    const head = el("div", "exhead"), left = el("div", "exleft"), right = el("div", "exright");   // side by side on a wide screen, stacked otherwise
+    card.append(head, left, right);
+    const grip = el("button", "grip", "⠿");
+    grip.type = "button"; grip.setAttribute("aria-label", "Drag to reorder " + ex.title);
+    makeReorderable(card, grip, ex);
+    head.append(grip, el("p", "ex-title", ex.title));
+    const chip = el("button", "chip", "Round to " + trim(stepOf(ex.ref)) + " " + unit + " ▾");
+    chip.type = "button"; chip.setAttribute("aria-label", "Round planned weights to this many " + unit);
+    chip.addEventListener("click", () => {
+      const steps = unit === "lb" ? [1, 2.5, 5, 10] : [0.5, 1, 1.25, 2.5, 5];
+      const cur = stepOf(ex.ref);
+      if (!steps.includes(cur)) steps.push(cur);
+      openSheet("Round weights to", "Planned weights snap to this many " + unit + ".", steps.map((v) => ({ v, label: trim(v) + " " + unit, on: v === cur })), steps.length, (v) => {
+        ex.ref[unit === "lb" ? "stepLb" : "stepKg"] = Number(v); applyAuto(ex); saveDraft(); saveRef(ex); refreshCard(ex);
+      });
+    });
+    const rest = el("button", "chip", "Rest " + restLabel(restFor(ex)) + " ▾");
+    rest.type = "button"; rest.setAttribute("aria-label", "Rest time after each working set of " + ex.title);
+    rest.addEventListener("click", () => {
+      const items = REST_OPTIONS.map((v) => ({ v, label: restLabel(v), on: v === ex.ref.restSec }));
+      items.unshift({ v: "default", label: "Default (" + restLabel(restSecs) + ")", on: ex.ref.restSec == null });
+      openSheet("Rest after " + ex.title, "Starts when you tick a working set of this exercise. Default is the time set in the bottom bar.", items, 4, (v) => {
+        ex.ref.restSec = v === "default" ? null : Number(v);
+        saveDraft(); saveRef(ex); refreshCard(ex);
+      });
+    });
+    const more = el("button", "more", "⋯");
+    more.type = "button"; more.setAttribute("aria-label", "More for " + ex.title);
+    more.addEventListener("click", () => openSheet(ex.title, "", [
+      { v: "last", label: "Remove last set" },
+      { v: "all", label: "Remove exercise", cls: "danger" },
+    ], 1, (v) => {
+      if (v === "last") { ex.sets.pop(); saveDraft(); renderWorkout(); return; }
+      if (!confirm("Remove " + ex.title + " from this workout?")) return;
+      draft.exercises = draft.exercises.filter((e) => e.id !== ex.id); saveDraft(); renderWorkout();
+    }));
+    const toggle = el("button", "chip");
+    toggle.type = "button";
+    const complete = el("span", "hint");
+    const updateCollapse = () => {
+      left.hidden = right.hidden = Boolean(ex.collapsed);
+      chip.hidden = rest.hidden = more.hidden = Boolean(ex.collapsed);
+      toggle.textContent = ex.collapsed ? "Reopen" : "Collapse";
+      toggle.setAttribute("aria-expanded", String(!ex.collapsed));
+      toggle.setAttribute("aria-label", (ex.collapsed ? "Reopen " : "Collapse ") + ex.title);
+      complete.textContent = exerciseComplete(ex) ? "Completed ✓" : "";
+    };
+    toggle.addEventListener("click", () => { ex.collapsed = !ex.collapsed; closeNumberPad(); updateCollapse(); saveDraft(); });
+    head.append(exerciseUnitControl(ex), chip, rest, more, complete, toggle);
+    const checkin = el("div", "movement-soreness");
+    renderSoreness(ex, checkin); left.append(checkin);
+    const trialBox = el("section"); renderTrial(ex, trialBox); left.append(trialBox);
+    if (typeof SessionAdvice !== 'undefined' && draft) {
+      const adviceBox=el('section'); left.append(adviceBox);
+      adviceBox.setAttribute('data-session-advice',ex.id);
+      adviceBox.setAttribute('aria-label','Session advice for '+ex.title);
+      SessionAdvice.mount(draft,ex,adviceBox,saveDraft,Boolean(draft.soreness?.[sorenessPatterns?.[ex.title]]?.pain));
+    }
+    left.append(renderRefBar(ex));
+    const stressBox = el("section", "stress");
+    stressBox.setAttribute("aria-label", "Stress for " + ex.title);
+    left.append(stressBox); queueStress(ex.template_id); fillStress(stressBox, ex.template_id);
+    const cols = el("div", "cols");
+    const heads = unit === "lb" ? ["Set", "Previous", "Lb", "Kg", "Reps", "RPErx", "RPEact", "e1RM", "Stress", ""] : ["Set", "Previous", "Kg", "Lb", "Reps", "RPErx", "RPEact", "e1RM", "Stress", ""];
+    for (const t of heads) cols.append(el("span", null, t));
+    right.append(cols);
+
+    // Previous: what you did on this set last time, in lb (warm-ups line up with warm-ups, working sets with working sets)
+    const previous = (ex.ref.state && ex.ref.state.previous) || [];
+    const prevWarm = previous.filter((p) => p.type === "warmup"), prevWork = previous.filter((p) => p.type !== "warmup");
+    let working = 0, warm = 0;
+    ex.sets.forEach((s, idx) => {
+      if (s.type === "warmup") warm += 1; else working += 1;
+      const p = s.type === "warmup" ? prevWarm[warm - 1] : prevWork[working - 1];
+      const row = el("div", "set" + (s.done ? " done" : ""));
+      const k = kindOf(s);
+      const kind = el("button", "kind" + (k === "ts" ? " ts" : s.type === "warmup" ? " w" : s.type === "failure" ? " f" : s.type === "dropset" ? " d" : ""),
+        k === "normal" ? String(working) : k === "ts" ? "TS" : KIND[s.type]);
+      kind.type = "button";
+      kind.setAttribute("aria-label", "Set type: " + (k === "ts" ? "TS, sets your TM when you save" : s.type));
+      kind.addEventListener("click", () => pickKind(k, (v) => {
+        setKind(ex, s, v);
+        saveDraft(); renderWorkout();
+      }));
+
+      const prevCell = el("span", "prev", p ? trim(p.weight_lb) + "\u00d7" + (p.reps ?? "?") + (p.rpe != null ? " @" + p.rpe : "") : "");
+      const wt = el("input"); wt.type = "text"; wt.inputMode = "decimal"; wt.setAttribute("aria-label", "Weight in " + (unit === "lb" ? "pounds" : "kilograms"));
+      prepareKeypadInput(wt, true, ex.title + " · Set " + (idx + 1));
+      const refCell = el("span", "refcol");
+      primaryInputs.set(s, wt); refCells.set(s, refCell); wt.value = primaryText(s, ex); refCell.textContent = refText(s, ex);
+      wt.addEventListener("input", () => {
+        const v = num(wt.value);
+        s.kg = isNaN(v) ? "" : String(unit === "lb" ? v / LB_PER_KG : v);
+        s.manual = s.kg !== ""; showWeight(s, ex);
+        if (s.done) applyAuto(ex);                // a logged set changed: re-plan the sets after it
+        else if (!s.manual) applyAuto(ex, s);     // clearing the box hands the weight back to auto
+        saveDraft();
+      });
+      wt.addEventListener("blur", () => showWeight(s, ex));
+      const reps = el("input"); reps.type = "text"; reps.inputMode = "numeric"; reps.value = s.reps; reps.setAttribute("aria-label", "Reps");
+      prepareKeypadInput(reps, false, ex.title + " · Set " + (idx + 1));
+      reps.addEventListener("input", () => { s.reps = reps.value; applyAuto(ex, s.done ? null : s); saveDraft(); });
+
+      const rpe = rpeControl(s.rpe, (v) => {
+        s.rpe = v;
+        applyAuto(ex, s);   // only unfinished, automatic weights follow the prescription
+        saveDraft();
+      }, "RPErx");
+      const actualRpe = rpeControl(s.arpe ?? (s.done ? s.rpe : ""), (v) => {
+        s.arpe = v;
+        s.actualSource = v ? 'entered' : 'unrated';
+        if (s.done) applyAuto(ex);   // actual effort replans later sets, never the completed weight
+        saveDraft();
+      }, "RPEact");
+
+      const e1Cell = el("span", "setE1");
+      setE1Cells.set(s, e1Cell);
+      const e1 = setE1rm(s); e1Cell.textContent = e1 ? String(Math.round(e1)) : "";
+      e1Cell.title = "e1RM from this set's weight, reps and RPE (lb)";
+      const stressCell = el("span", "set-stress", "—");
+      setStressCells.set(s, stressCell);
+
+      const tick = el("button", "tick", "✓");
+      tick.type = "button"; tick.setAttribute("aria-label", "Mark set done");
+      tick.addEventListener("click", () => {
+        if (!rpe.reportValidity() || !actualRpe.reportValidity()) return;
+        s.done = !s.done;
+        if (s.done && s.type !== "warmup") {
+          ex.trialStarted = true;
+          if (trialEnabled) api("/fatigue-trial/started", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_key:draft.startedAt,exercise_template_id:ex.template_id})}).catch(()=>{});
+        }
+        if (!s.done) ex.collapsed = false;
+        updateCollapse();
+        if (s.done && !s.arpe) { s.arpe = s.rpe; s.actualSource = s.rpe ? 'copied_target' : 'unrated'; }
+        if (s.done) SessionCapture.complete(ex, s);
+        row.classList.toggle("done", s.done);
+        showRpe(actualRpe, s.arpe || "");
+        applyAuto(ex); saveDraft();
+        if (trialEnabled || ex.trialId) {
+          const trialBox = cardEls.get(ex.id)?.querySelector(".trial-panel");
+          if (trialBox) { trialBox.replaceChildren(); renderTrial(ex, trialBox); }
+        }
+        const rest = restFor(ex);
+        if (s.done && s.type !== "warmup" && rest > 0) restStart(rest);   // the rest timer, this movement's own time; warm-ups don't start it
+        // A ticked warm-up is dropped from the workout (so it is not saved to Hevy either) after a moment, so a mis-tap can be undone.
+        // Only its row goes, not a redraw, so a box you have started typing in keeps its keyboard.
+        if (s.done && s.type === "warmup") setTimeout(() => {
+          const i = ex.sets.indexOf(s);
+          if (!s.done || i < 0) return;
+          ex.sets.splice(i, 1); saveDraft(); if (openSwipe === wrap) openSwipe = null; wrap.remove();
+        }, 800);
+      });
+
+      row.append(kind, prevCell, wt, refCell, reps, rpe, actualRpe, e1Cell, stressCell, tick);
+      const wrap = el("div", "setwrap");
+      const delBtn = el("button", "delbtn", "Delete"); delBtn.type = "button"; delBtn.setAttribute("aria-label", "Delete this set");
+      wrap.append(delBtn, row);
+      makeSwipeable(wrap, () => {
+        const i = ex.sets.indexOf(s);
+        if (i >= 0) ex.sets.splice(i, 1);
+        closeSwipe(); saveDraft(); renderWorkout();
+      });
+      right.append(wrap);
+    });
+
+    const stressTotal = el("div", "set stress-total");
+    stressTotal.append(el("span", "total-label", "Total stress"), el("strong", null, "—"), el("span"));
+    right.append(stressTotal);
+    const add = el("button", "addset", "+ Add set"); add.type = "button";
+    add.addEventListener("click", () => {
+      const prev = ex.sets[ex.sets.length - 1];
+      const next = { type: "normal", kg: prev ? prev.kg : "", reps: prev ? prev.reps : "", rpe: prev ? prev.rpe : "", done: false, manual: false };
+      ex.collapsed = false;
+      ex.sets.push(next);
+      applyAuto(ex, next);
+      saveDraft(); renderWorkout();
+    });
+    const warmBtn = el("button", "addset", "+ Warm-up sets"); warmBtn.type = "button";
+    warmBtn.addEventListener("click", () => addWarmups(ex));
+    const setbar = el("div", "setbar");
+    setbar.append(warmBtn, add);
+    right.append(setbar);
+    right.append(renderLoader(ex));
+    updateCollapse();
+    if (typeof LoggerLayout !== 'undefined') LoggerLayout.decorate(card, ex);
+    return card;
+  }
+
+  function tickClock() {
+    if (!draft) return;
+    const start = new Date(draft.startedAt);
+    const mins = Math.max(0, Math.round((Date.now() - start) / 60000));
+    $("clock").textContent = "Started " + start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) + " · " + mins + " min";
+  }
+  setInterval(() => { if (!$("workout").hidden) tickClock(); }, 30000);
+
+  $("title").addEventListener("input", () => { draft.title = $("title").value; saveDraft(); });
+  $("empty").addEventListener("click", startEmpty);
+  $("discard").addEventListener("click", () => {
+    if (!confirm("Discard this workout? Nothing has been saved to Hevy.")) return;
+    clearDraft(); say(""); renderStart();
+  });
+  $("again").addEventListener("click", () => { say(""); renderStart(); });
+
+  // ── Add exercise ────────────────────────────────────────────────────────────
+  let refreshTried = false;
+
+  // Exercises from your recent Hevy workouts, most recently used first, each once.
+  function recentExercises() {
+    const seen = new Set(), list = [];
+    for (const w of (recentPage ? recentPage.workouts : [])) {
+      for (const ex of w.exercises) {
+        const id = ex.exercise_template_id;
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        list.push({ id, title: ex.title });
+      }
+    }
+    return list;
+  }
+
+  function addExercise(e) {
+    const added = { id: uid(), template_id: e.id, title: e.title, notes: "", ref: refFromServer(e.id),
+      sets: [{ type: "normal", kg: "", reps: "", rpe: "", done: false, manual: false }] };
+    draft.exercises.push(added);
+    saveDraft(); $("picker").hidden = true; renderWorkout();
+    const card = cardEls.get(added.id);
+    if (card) card.scrollIntoView({ block: "start" });   // take you to the exercise you just added
+    loadState(added);
+  }
+
+  function squareCard(e, isRecent, muscle) {
+    const b = el("button", "sq" + (isRecent ? " recent" : "")); b.type = "button"; b.title = e.title;
+    b.append(el("span", "t", e.title), el("span", "m", muscle || ""));
+    b.addEventListener("click", () => addExercise(e));
+    return b;
+  }
+
+  function section(box, title, items, recentIds, muscleOf) {
+    if (!items.length) return;
+    box.append(el("p", "sec", title));
+    const grid = el("div", "grid");
+    for (const e of items) grid.append(squareCard(e, recentIds.has(e.id), muscleOf(e.id)));
+    box.append(grid);
+  }
+
+  function renderResults() {
+    const box = $("results"); box.replaceChildren();
+    if (!catalog.length) {
+      box.append(el("p", "muted", "No exercises cached yet. Pull your exercise list from Hevy first."));
+      const sync = el("button", "wide", "Sync exercises from Hevy"); sync.type = "button";
+      sync.addEventListener("click", async () => {
+        sync.disabled = true; sync.textContent = "Syncing…";
+        try { await api("/exercises/sync", { method: "POST" }); catalog = await api("/exercises"); renderResults(); }
+        catch (err) { sync.disabled = false; sync.textContent = "Sync exercises from Hevy"; say(err.message); }
+      });
+      box.append(sync); return;
+    }
+    const muscles = new Map(catalog.map((e) => [e.id, e.primary_muscle]));
+    const muscleOf = (id) => muscles.get(id) || "";
+    const recents = recentExercises();
+    const recentIds = new Set(recents.map((e) => e.id));
+    const terms = $("search").value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+
+    if (!terms.length) {
+      section(box, "Recent", recents, recentIds, muscleOf);
+      section(box, "All exercises (" + catalog.length + ")", catalog, recentIds, muscleOf);
+      return;
+    }
+    // Every word must appear in the title. Recent exercises first, then titles starting with the first word.
+    const hit = (title) => { const t = title.toLowerCase(); return terms.every((x) => t.includes(x)); };
+    const pool = new Map();
+    for (const e of recents) if (hit(e.title)) pool.set(e.id, e);
+    for (const e of catalog) if (hit(e.title) && !pool.has(e.id)) pool.set(e.id, e);
+    const rank = (e) => (recentIds.has(e.id) ? 0 : e.title.toLowerCase().startsWith(terms[0]) ? 1 : 2);
+    const results = [...pool.values()].sort((a, b) => rank(a) - rank(b));
+    if (!results.length) { box.append(el("p", "muted", "No matches.")); return; }
+    section(box, "Results (" + results.length + ")", results, recentIds, muscleOf);
+  }
+
+  // Hevy's list changes (new custom exercises), so refresh the stored copy when it is old.
+  async function refreshCatalogIfStale() {
+    if (refreshTried) return;
+    const stamps = catalog.map((e) => Date.parse(String(e.cached_at).replace(" ", "T") + "Z")).filter((x) => !isNaN(x));
+    const newest = stamps.length ? Math.max(...stamps) : 0;
+    if (catalog.length && Date.now() - newest < 12 * 3600 * 1000) return;
+    refreshTried = true;
+    $("syncnote").hidden = false;
+    try { await api("/exercises/sync", { method: "POST" }); catalog = await api("/exercises"); }
+    catch (err) { /* keep the stored list */ }
+    finally { $("syncnote").hidden = true; }
+    renderResults();
+  }
+
+  async function openPicker() {
+    $("picker").hidden = false; $("search").value = "";
+    $("results").replaceChildren(el("p", "muted", "Loading exercises…"));
+    try { catalog = catalog || (await api("/exercises")); } catch (err) { catalog = []; }
+    if (!recentPage) { try { recentPage = await api("/hevy/workouts?page=1&page_size=10"); } catch (err) { /* no recents */ } }
+    renderResults(); $("search").focus();
+    refreshCatalogIfStale();
+  }
+
+  $("addEx").addEventListener("click", openPicker);
+  $("closePicker").addEventListener("click", () => { $("picker").hidden = true; });
+  $("search").addEventListener("input", renderResults);
+
+  // ── Finish ──────────────────────────────────────────────────────────────────
+  function buildEntry() {
+    const invalidRpe = document.querySelector('.rpeinput[aria-invalid="true"]');
+    if (invalidRpe) { invalidRpe.reportValidity(); throw new Error("Correct the highlighted RPE before saving (4–10 in steps of 0.5)."); }
+    const exercises = [];
+    for (const ex of draft.exercises) {
+      const sets = [];
+      for (const [i, s] of ex.sets.entries()) {
+        const where = ex.title + " (row " + (i + 1) + ")";
+        if (!s.done) {
+          if (s.ts) throw new Error(where + ": tick ✓ on your TS set, or tap its number until the TS is gone.");
+          continue;
+        }
+        const reps = s.reps.trim() === "" ? NaN : Number(s.reps);
+        if (!Number.isInteger(reps) || reps < 0) throw new Error(where + ": enter the reps you did.");
+        const kgRaw = s.kg.trim().replace(",", ".");
+        const kg = kgRaw === "" ? null : Number(kgRaw);
+        if (kg !== null && (isNaN(kg) || kg < 0)) throw new Error(where + ": the weight isn't a number.");
+        const logged = s.arpe ?? s.rpe;
+        if (s.ts && !(kg > 0 && reps > 0 && logged)) throw new Error(where + ": the TS set needs a weight, reps and an RPE.");
+        sets.push({ type: s.type, weight_kg: kg, reps, rpe: !logged ? null : Number(logged), target_rpe: s.rpe ? Number(s.rpe) : null, ...(s.ts ? { ts: true } : {}),
+          ...(s.review ? {review:SessionCapture.evidence(s, logged ? pctFor(Number(logged), reps) : null)} : {}) });
+      }
+      if (sets.length) exercises.push({ exercise_template_id: ex.template_id, title: ex.title, notes: ex.notes, ...(ex.ref?.weightUnit ? {weight_unit:ex.ref.weightUnit} : {}), sets });
+    }
+    if (!exercises.length) throw new Error("Tap ✓ on each set you did before saving.");
+    // Keep check-ins only for movements in the saved workout; one for a removed card would record a movement not trained.
+    const trained = new Set(exercises.map((ex) => sorenessPatterns && sorenessPatterns[ex.title]));
+    const soreness = Object.fromEntries(Object.entries(draft.soreness || {}).filter(([key]) => trained.has(key)));
+    return { soreness: Object.keys(soreness).length ? soreness : null, title: draft.title.trim() || "Workout", weight_unit: unit, start_time: draft.startedAt, end_time: new Date().toISOString(), exercises,
+      ...(draft.prescription ? { prescription:draft.prescription } : {}),
+      ...(draft.advisory_links?.length ? {advisory_links:draft.advisory_links} : {}),
+      ...(draft.motivation != null ? {motivation:draft.motivation} : {}),
+      ...(draft.planned_session ? { planned_session: draft.planned_session } : {}) };
+  }
+
+  const saveDialog = document.createElement("dialog");
+  saveDialog.id = "saveConfirmation";
+  saveDialog.setAttribute("aria-labelledby", "saveConfirmationTitle");
+  saveDialog.style.cssText = "box-sizing:border-box;width:calc(100% - 32px);max-width:480px;max-height:80dvh;overflow:auto;border:1px solid #64748b;border-radius:16px;padding:20px;color:inherit;background:var(--bg, Canvas)";
+  saveDialog.innerHTML = '<h2 id="saveConfirmationTitle">Save workout to Hevy?</h2><p id="saveWorkoutName"></p><p id="saveSetCount"></p><p id="saveExcludedCount"></p><ul id="saveExcludedSets"></ul><div style="display:flex;flex-wrap:wrap;gap:12px"><button id="keepTraining" type="button" autofocus>Keep training</button><button id="confirmSave" type="button" class="primary">Save to Hevy</button></div>';
+  document.body.append(saveDialog);
+  let pendingSaveEntry = null;
+  $("keepTraining").addEventListener("click", () => saveDialog.close());
+  saveDialog.addEventListener("close", () => { pendingSaveEntry = null; });
+  $("finish").addEventListener("click", () => {
+    if (saving || saveDialog.open) return;
+    let entry;
+    try { entry = draft.frozenSave || buildEntry(); } catch (err) { say(err.message); window.scrollTo(0, 0); return; }
+    const excluded = draft.exercises.flatMap(ex => ex.sets.flatMap((s, i) =>
+      !s.done && s.type !== "warmup" ? [ex.title + " — set " + (i + 1)] : []));
+    $("saveWorkoutName").textContent = entry.title;
+    $("saveSetCount").textContent = entry.exercises.reduce((n, ex) => n + ex.sets.length, 0) + " completed sets will be saved.";
+    $("saveExcludedCount").textContent = excluded.length + " unticked working sets will be excluded.";
+    $("saveExcludedSets").replaceChildren(...excluded.map(text => { const li = document.createElement("li"); li.textContent = text; return li; }));
+    pendingSaveEntry = entry;
+    saveDialog.showModal();
+    $("keepTraining").focus();
+  });
+  $("confirmSave").addEventListener("click", async () => {
+    if (saving) return;
+    if (!saveDialog.open || !pendingSaveEntry) return;
+    let entry = pendingSaveEntry;
+    const workoutBeingSaved = draft;
+    saveDialog.close();
+    saving = true; $("finish").disabled = true; $("finish").textContent = "Saving…"; say("");
+    try {
+      entry = WorkoutSave.freeze(workoutBeingSaved, entry);
+      if (typeof LoggerLayout !== 'undefined') LoggerLayout.update();
+      if (typeof SessionMotivation !== 'undefined') SessionMotivation.mount(workoutBeingSaved,$("sessionMotivation"),saveMotivationDraft);
+      const saved = await api("/hevy/workouts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(entry) });
+      if (draft !== workoutBeingSaved) return;
+      if (saved.state !== 'complete') {
+        say(saved.status || 'Save recovery is required.');
+        WorkoutSave.panel(draft, completeRecoveredSave);
+        return;
+      }
+      clearDraft();
+      show("done");
+      $("done").querySelector(".msg").textContent = (saved.plan_warning || "Saved to Hevy.") + (saved.monitoring_refresh !== "complete" ? " Monitoring refresh " + saved.monitoring_refresh + "; use Settings to sync." : "");
+      showTrialResults(saved.trial_results, entry.exercises);
+      WorkoutSave.monitoring(saved);
+      SessionReviewUI.saved(saved);
+    } catch (err) {
+      if (draft !== workoutBeingSaved) return;
+      say(err.message + " Your frozen workout is retained. Check save status before continuing.");
+      WorkoutSave.noteFailure(draft, err);
+      WorkoutSave.panel(draft, completeRecoveredSave);
+      window.scrollTo(0, 0);
+    } finally {
+      saving = false; $("finish").disabled = false; $("finish").textContent = "Finish and save to Hevy";
+    }
+  });
+
+  function completeRecoveredSave(saved) {
+    if (!draft || draft.client_workout_id !== saved.client_workout_id) return;
+    clearDraft(); document.getElementById('saveRecovery')?.remove(); show('done');
+    $('done').querySelector('.msg').textContent='Saved to Hevy and local records. Monitoring refresh '+saved.monitoring_refresh+'.';
+    WorkoutSave.monitoring(saved);
+    SessionReviewUI.saved(saved);
+  }
+  DraftTransfer.install('workout-draft');
+
+  // ── Rest timer ──────────────────────────────────────────────────────
+  // Starts by itself when you tick a working set (warm-ups don't), counts down in the bar, and buzzes and beeps at zero.
+  // The end time is kept in localStorage, so a reload doesn't lose it. The screen is kept awake where the browser
+  // allows it (HTTPS only), because a sleeping page can't buzz.
+  const REST_OPTIONS = [0, 60, 90, 120, 150, 180, 240, 300];
+  let restSecs = 180, restEnd = null, restTotal = 0, restDone = false, restTimer = null, audio = null, wake = null;
+  try {
+    const saved = Number(localStorage.getItem("training.restSecs"));
+    if (localStorage.getItem("training.restSecs") !== null && REST_OPTIONS.includes(saved)) restSecs = saved;
+    const end = Number(localStorage.getItem("training.restEnd"));
+    if (end > Date.now()) { restEnd = end; restTotal = Number(localStorage.getItem("training.restTotal")) || Math.ceil((end - Date.now()) / 1000); }
+  } catch (e) {}
+  const mmss = (secs) => Math.floor(secs / 60) + ":" + String(secs % 60).padStart(2, "0");
+  const restLabel = (secs) => (secs ? mmss(secs) : "Off");
+  const restFor = (ex) => (ex.ref.restSec == null ? restSecs : ex.ref.restSec);   // this movement's own rest time, else the default
+  function restSave() {
+    try {
+      localStorage.setItem("training.restSecs", String(restSecs));
+      if (restEnd !== null) { localStorage.setItem("training.restEnd", String(restEnd)); localStorage.setItem("training.restTotal", String(restTotal)); }
+      else { localStorage.removeItem("training.restEnd"); localStorage.removeItem("training.restTotal"); }
+    } catch (e) {}
+  }
+  function restRender() {
+    const running = restEnd !== null, active = running || restDone;
+    $("rest").classList.toggle("done", restDone);
+    $("rest").classList.toggle("active", active);
+    $("bar").classList.toggle("restactive", active);
+    $("restPick").hidden = active;
+    $("restTime").hidden = !active;
+    $("restMinus").hidden = !running; $("restPlus").hidden = !running;
+    $("restPick").textContent = "Default rest " + restLabel(restSecs) + " ▾";
+    $("restMain").textContent = running ? "Skip" : restDone ? "Dismiss" : "Start";
+    if (running) {
+      const left = Math.max(0, restEnd - Date.now());
+      $("restTime").textContent = mmss(Math.ceil(left / 1000));
+      $("restProg").firstElementChild.style.width = Math.min(100, Math.max(0, left / (restTotal * 1000) * 100)) + "%";
+    } else if (restDone) { $("restTime").textContent = "Rest over"; $("restProg").firstElementChild.style.width = "0%"; }
+  }
+  function restBeep() {
+    try { if (navigator.vibrate) navigator.vibrate([400, 150, 400, 150, 400, 150, 400]); } catch (e) {}
+    try {
+      if (!audio) return;
+      // Loud on purpose: square waves (much harsher than a sine) at full gain, two alternating tones, about 3 seconds.
+      // A compressor in front keeps the stacked tones from clipping. The phone's media volume still sets the ceiling.
+      const t0 = audio.currentTime, comp = audio.createDynamicsCompressor();
+      comp.threshold.value = -30; comp.ratio.value = 12; comp.attack.value = 0.003; comp.release.value = 0.1;
+      comp.connect(audio.destination);
+      for (let i = 0; i < 8; i++) {
+        const at = t0 + i * 0.4;
+        for (const f of [i % 2 ? 1320 : 990, i % 2 ? 1760 : 1320]) {
+          const osc = audio.createOscillator(), gain = audio.createGain();
+          osc.type = "square"; osc.frequency.value = f; osc.connect(gain); gain.connect(comp);
+          gain.gain.setValueAtTime(1, at); gain.gain.setValueAtTime(0, at + 0.3);
+          osc.start(at); osc.stop(at + 0.32);
+        }
+      }
+    } catch (e) {}
+  }
+  function restLoop() {
+    if (restEnd === null) return;
+    if (Date.now() >= restEnd) { restEnd = null; restDone = true; clearInterval(restTimer); restSave(); restBeep(); }
+    restRender();
+  }
+  function restStart(secs) {
+    // the sound is set up here, inside a tap, because the browser only lets a page beep later if it was allowed to now
+    try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === "suspended") audio.resume(); } catch (e) {}
+    restEnd = Date.now() + secs * 1000; restTotal = secs; restDone = false; restSave();
+    clearInterval(restTimer); restTimer = setInterval(restLoop, 250); restRender();
+  }
+  function restStop() { restEnd = null; restDone = false; clearInterval(restTimer); restSave(); restRender(); }
+  async function keepAwake() {
+    try {
+      if (navigator.wakeLock && !document.hidden && !wake) {
+        wake = await navigator.wakeLock.request("screen");
+        wake.addEventListener("release", () => { wake = null; });
+      }
+    } catch (e) {}
+  }
+  $("restMain").addEventListener("click", () => { if (restEnd !== null || restDone) restStop(); else restStart(restSecs || 180); });
+  $("restMinus").addEventListener("click", () => { if (restEnd !== null) { const was = restEnd; restEnd = Math.max(Date.now() + 1000, restEnd - 15000); restTotal = Math.max(1, restTotal - (was - restEnd) / 1000); restSave(); restRender(); } });
+  $("restPlus").addEventListener("click", () => { if (restEnd !== null) { restEnd += 15000; restTotal += 15; restSave(); restRender(); } });
+  $("restPick").addEventListener("click", () => openSheet(
+    "Default rest", "For exercises without their own rest time (set on each exercise). Starts when you tick a working set. Warm-ups don't start it.",
+    REST_OPTIONS.map((v) => ({ v, label: restLabel(v), on: v === restSecs })), 4,
+    (v) => { restSecs = Number(v); restSave(); restRender(); if (draft && !$("workout").hidden) renderWorkout(); }   // redraw so each exercise's chip shows the new default
+  ));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { keepAwake(); restLoop(); } });
+  restRender();
+  if (restEnd !== null) restTimer = setInterval(restLoop, 250);
+
+  // ── Unit switch ──────────────────────────────────────────────────────────
+  function showUnit() {
+    $("unitKg").classList.toggle("on", unit === "kg"); $("unitLb").classList.toggle("on", unit === "lb");
+    $("unitKg").setAttribute("aria-pressed", String(unit === "kg")); $("unitLb").setAttribute("aria-pressed", String(unit === "lb"));
+  }
+  function setUnit(u) {
+    if (u === unit) return;
+    unit = u;
+    try { localStorage.setItem("training.unit", u); } catch (e) {}
+    showUnit();
+    if (draft && !$("workout").hidden) { draft.exercises.forEach((ex) => applyAuto(ex)); saveDraft(); renderWorkout(); }   // planned weights re-round to the new unit's step
+  }
+  $("unitKg").addEventListener("click", () => setUnit("kg"));
+  $("unitLb").addEventListener("click", () => setUnit("lb"));
+  showUnit();
+
+  // ── Typing ───────────────────────────────────────────────────────────────────
+  // Touch weight/reps entry uses one layout; desktop keeps its normal keyboard.
+  function numberPadEdit(value, start, end, key, decimal) {
+    if (key === "clear") return { value: "", caret: 0 };
+    if (key === "backspace") {
+      const from = start === end ? Math.max(0, start - 1) : start;
+      return { value: value.slice(0, from) + value.slice(end), caret: from };
+    }
+    if (!/^[0-9.]$/.test(key) || (key === "." && !decimal)) return null;
+    const text = value.slice(0, start) + key + value.slice(end);
+    if (!(decimal ? /^\d*[.,]?\d*$/ : /^\d*$/).test(text)) return null;
+    return { value: text, caret: start + 1 };
+  }
+  function prepareKeypadInput(input, decimal, context) {
+    input.dataset.keypad = decimal ? "decimal" : "integer";
+    input.dataset.padContext = context;
+    input.autocomplete = "off";
+    const mode = decimal ? "decimal" : "numeric";
+    input.inputMode = window.matchMedia("(pointer: coarse)").matches ? "none" : mode;
+    input.addEventListener("pointerdown", (e) => {
+      // A hybrid computer can have a mouse and a touch screen.
+      input.inputMode = e.pointerType === "touch" || e.pointerType === "pen" ? "none" : mode;
+      if (input === padInput && input.inputMode !== "none") closeNumberPad();
+    });
+    input.addEventListener("focus", () => {
+      if (input.inputMode === "none" && padInput !== input) openNumberPad(input);
+    });
+    input.addEventListener("click", () => {
+      if (input.inputMode === "none" && padInput !== input) openNumberPad(input);
+    });
+    input.addEventListener("keydown", (e) => {
+      if (padInput === input && e.key === "Escape") { e.preventDefault(); input.blur(); closeNumberPad(); }
+    });
+  }
+  const numberpad = $("numberpad");
+  let padInput = null;
+  function padInputs() { return Array.from(document.querySelectorAll("#exercises input[data-keypad]")); }
+  function sizeNumberPad() {
+    if (!padInput) return;
+    document.body.style.setProperty("--keypad-height", numberpad.offsetHeight + "px");
+    liftIntoView(padInput);
+  }
+  function openNumberPad(input) {
+    padInput = input;
+    numberpad.hidden = false;
+    document.body.classList.remove("typing");
+    document.body.classList.add("keypad-open");
+    $("padField").textContent = input.getAttribute("aria-label");
+    $("padContext").textContent = input.dataset.padContext;
+    numberpad.querySelector('[data-pad-key="."]').disabled = input.dataset.keypad !== "decimal";
+    numberpad.querySelector('[data-pad-key="next"]').disabled = padInputs().at(-1) === input;
+    input.select();
+    requestAnimationFrame(sizeNumberPad);
+  }
+  function closeNumberPad() {
+    padInput = null;
+    numberpad.hidden = true;
+    document.body.classList.remove("keypad-open");
+  }
+  numberpad.addEventListener("pointerdown", (e) => {
+    if (e.target.closest("button")) e.preventDefault(); // keep input focus, caret and selection
+  });
+  numberpad.addEventListener("click", (e) => {
+    const button = e.target.closest("button[data-pad-key]");
+    if (!button || button.disabled || !padInput) return;
+    if (!padInput.isConnected) { closeNumberPad(); return; }
+    const key = button.dataset.padKey, input = padInput;
+    if (key === "done") { input.blur(); closeNumberPad(); return; }
+    if (key === "next") {
+      const inputs = padInputs(), next = inputs[inputs.indexOf(input) + 1];
+      if (next) { next.inputMode = "none"; next.focus({ preventScroll: true }); }
+      return;
+    }
+    input.focus({ preventScroll: true });
+    const edit = numberPadEdit(input.value, input.selectionStart ?? input.value.length, input.selectionEnd ?? input.value.length, key, input.dataset.keypad === "decimal");
+    if (!edit) return;
+    input.value = edit.value;
+    input.setSelectionRange(edit.caret, edit.caret);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  let padOutsideTap = false;
+  document.addEventListener("pointerdown", (e) => {
+    // Keep the layout steady until the tapped control has handled its click.
+    padOutsideTap = Boolean(padInput && !numberpad.contains(e.target) && !e.target.closest("input[data-keypad]"));
+  });
+  document.addEventListener("click", (e) => {
+    padOutsideTap = false;
+    if (padInput && !numberpad.contains(e.target) && !e.target.closest("input[data-keypad]")) closeNumberPad();
+  });
+  document.addEventListener("pointercancel", () => { padOutsideTap = false; });
+  document.addEventListener("focusout", () => {
+    setTimeout(() => { if (!padOutsideTap && padInput && document.activeElement !== padInput && !numberpad.contains(document.activeElement)) closeNumberPad(); }, 0);
+  });
+  window.addEventListener("resize", () => { if (padInput) requestAnimationFrame(sizeNumberPad); });
+
+  // Other text fields retain the system keyboard and its existing scrolling behavior.
+  let typingTimer = null;
+  function liftIntoView(input) {
+    if (document.activeElement !== input) return;
+    const vv = window.visualViewport;
+    const viewportTop = vv ? vv.offsetTop : 0;
+    const visibleBottom = viewportTop + (vv ? vv.height : window.innerHeight) - (padInput ? numberpad.offsetHeight : 0);
+    const rect = input.getBoundingClientRect(), margin = 12;
+    const delta = rect.top < viewportTop + margin ? rect.top - viewportTop - margin
+      : rect.bottom > visibleBottom - margin ? rect.bottom - visibleBottom + margin : 0;
+    // Move only an obscured field, without an animation continuing into a set tap.
+    if (delta) window.scrollBy({ top: delta, behavior: "instant" });
+  }
+  document.addEventListener("focusin", (e) => {
+    if (!e.target.matches || !e.target.matches("#exercises input")) return;
+    if (e.target.inputMode === "none") return;
+    clearTimeout(typingTimer);
+    document.body.classList.add("typing");
+    setTimeout(() => liftIntoView(e.target), 350);   // after the keyboard has finished opening
+  });
+  document.addEventListener("focusout", () => {
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(() => document.body.classList.remove("typing"), 150);   // moving between boxes is not leaving
+  });
+
+  // ── Boot ────────────────────────────────────────────────────────────────────
+  if (typeof LoggerLayout !== 'undefined') LoggerLayout.init({
+    getDraft: () => draft, getCard: id => cardEls.get(id), save: saveDraft,
+    render: renderWorkout, unitFor, format: trim,
+  });
+  window.addEventListener('pageshow',async event=>{
+    if(!event.persisted)return;
+    await loadTrialPreference();
+    if(draft)renderWorkout();
+    refreshTrialDaily();
+  });
+  Promise.all([loadReference(), api("/soreness/patterns").then(value => { sorenessPatterns = value; }).catch(() => {}),
+    loadTrialPreference()]).then(() => {
+    refreshTrialDaily();
+    draft = loadDraft();
+    if (draft && !draft.client_workout_id) { draft.client_workout_id=trainingUUID(); localStorage.setItem(KEY, JSON.stringify(draft)); }
+    WorkoutSave.panel(draft, completeRecoveredSave);
+    if (draft && Array.isArray(draft.exercises)) {
+      for (const ex of draft.exercises) {
+        const old = ex.ref || {};
+        ex.ref = { basis: old.basis || "e1rm", autoWeights: old.autoWeights === undefined ? refs[ex.template_id]?.auto_weights !== false : old.autoWeights, ls: old.ls === undefined ? true : old.ls, tmPct: old.tmPct || 0.95, stepKg: old.stepKg || 2.5, stepLb: old.stepLb || 5, barKg: old.barKg ?? 20, chainKg: old.chainKg ?? 0, restSec: old.restSec ?? null, weightUnit: old.weightUnit === undefined ? (refs[ex.template_id]?.weight_unit ?? null) : old.weightUnit, state: old.state || null, ts: old.ts || null };
+        for (const s of ex.sets) {
+          if (s.manual === undefined) s.manual = false;
+          if (s.kg === undefined) { const l = parseFloat(s.lb); s.kg = l > 0 ? String(Math.round(l / LB_PER_KG * 2) / 2) : ""; delete s.lb; }
+        }
+      }
+      renderWorkout();
+      draft.exercises.forEach(loadState);
+    } else { draft = null; renderStart(); }
+    loadPlannedQuery();
+  });
+</script>
+
+</body>
+</html>

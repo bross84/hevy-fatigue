@@ -1,14 +1,42 @@
 # Hevy Fatigue — Backlog
 
-Last updated: 22MAY2026
+Last updated: 31OCT2026
+
+Phase 1 integration is prepared locally on `codex/rackbook-integration`; see
+[release evidence](training-verification.md) and [cutover/rollback](training-cutover.md).
+Production-copy/data verification passed; physical tablet/PWA acceptance remains
+explicitly deferred. No production cutover or retirement has occurred. Both old
+apps are running again after a temporary stop/restart; release preparation is
+paused until code acceptance and separate commit/push authorization.
+The six pre-cutover review findings have regression fixes, including correction
+and preflight recovery, legacy HTTP compatibility, draft validation/transfer and
+replay-safe finalization status. See the updated release evidence for the second
+review and final checks.
+The latest review additionally fixed preview blocking through mounted paths
+and Recent's outdated credential instructions. Verification now passes 74 host,
+467 logging (one expected failure), all 24 JS files, mocked browsers and Docker.
+The previously transferred image is superseded and must not be deployed.
 
 ---
 
 ## Open Bugs
 
----
+###  NONE
 
 ## Planned Features / Refactors
+
+### `02JUN2026` — Move Movement Trend to Exercises Tab
+Movement Trend (exercise search + metric toggle + time window chart) currently lives on the Workouts tab. It is an exercise-level metric, not a session-level one. Workouts tab should own session-level views only. Exercises tab should own all per-exercise views: metrics browser, naming/canonical review, and movement trend. Keep this item open until the card is actually moved out of the Workouts tab.
+
+### `02JUN2026` — Dead Code Audit
+Review `index.html` and `main.py` for dead code — unreachable JS functions, orphaned DOM sections, unused endpoints, and stale CSS classes. Known candidate: `tab-trend` section may still exist in DOM but be inaccessible from nav. Audit before any major feature work to reduce noise for Copilot.
+
+---
+
+### `26MAY2026` — Canonical Name Notification
+If exercise name needs review for canonical naming, there should be a flag of some type.
+
+Move renaming confirmation to Exercises tab.
 
 ### `11MAY2026` — MRV Stats
 Surface Maximum Recoverable Volume indicators informed by JTS fatigue framework.
@@ -76,6 +104,8 @@ Pull daily macros (protein, carbs, fat) from Apple Health via Claude iOS Health 
 
 | Item | Resolution |
 |---|---|
+| Edit modal `.open` vs `.active` class mismatch | COMPLETE — 02JUN2026. `openModal()` and `closeModal()` corrected to use `.active` matching the CSS rule. |
+| Session verification detail card + pending Workouts badge | COMPLETE — 04JUN2026. Added the verification-card exercise summary, richer meta line, and pending-session nav badge updates. |
 | Docs page check-in schema | COMPLETE — updated `static/docs.html` on 21MAY2026 to match implemented 0–4 fields, subjective weighting formula, current TSB labels, and joint advisory behavior. |
 | Trend history window | Fixed at 30 days. `_trendSlice` hardcodes `slice(-30)` by design. Range buttons change baseline smoothing term only. |
 | HYP sRPE fallback | COMPLETE — merged 11MAY2026. `sRPE × duration_minutes / HYP_SRPE_SCALE` when ≥50% of sets lack RPE values. |
@@ -83,14 +113,19 @@ Pull daily macros (protein, carbs, fat) from Apple Health via Claude iOS Health 
 | CTL time constant | COMPLETE — EWMA with τ=42 days implemented per Allen 2019 / TrainingPeaks standard. |
 | Sticky AI model selection | COMPLETE |
 | Sticky navbar on desktop | COMPLETE |
-| Settings view mobile layout | COMPLETE — 22MAY2026. Updated `static/index.html` settings grid to hold a 2x2 layout on normal widths, collapse to one column at narrow widths, and keep key-row wrapping so cards stack cleanly without horizontal overflow. |
+| Settings view mobile layout | COMPLETE — 22MAY2026. |
 | Combined score formula label truncation | COMPLETE |
 | Pattern stress dots vs trend chart contradiction | COMPLETE — merged 16MAY2026. `_pattern_tsb_signal(tsb, ctl)` replaces ATL/CTL ratio. |
 | Pattern stress card color/label | COMPLETE — Normal → green, Elevated → yellow, High → red, Fresh → teal/blue. |
-| Pre-check-in misleading values | COMPLETE — 16MAY2026. Subjective fallback flagged; pattern cards show distinct no-data state. |
+| Pre-check-in misleading values | COMPLETE — 16MAY2026. |
 | Today page chart load speed | COMPLETE — 17MAY2026. Load time halved (~3s → ~1.5s). |
 | 7-day Readiness Trend band adjustability | COMPLETE |
 | CTL lookback window | COMPLETE — switched to EWMA τ=42 days from flat 6-month rolling window. |
 | Force Full Sync button | COMPLETE |
 | Movement Trend stale exercise names | COMPLETE |
 | Improved Exercise List | COMPLETE |
+| Pattern Stress Showing Zero Knee Stress After Heavy Quad Work | COMPLETE |
+| Edit Modal CSS Missing (Patterns Tab) | COMPLETE |
+| Regular Sync Does Not Pick Up Hevy Exercise Edits | COMPLETE |
+| Move Exercise Naming / Needs-Review Card to Exercises Tab | COMPLETE — 04JUN2026. Conflict card, badge, and tab trigger moved from Patterns to Exercises tab. HTML structure repaired after initial split. |
+| Volume·Fatigue chart rolling readiness mislabeled as "Readiness" | COMPLETE — 06JUN2026. Rolling readiness in Volume·Fatigue chart relabeled to "Fatigue" throughout (legend, axis, tooltip, note text). Main Readiness card and 7-Day Readiness Trend card unchanged. `index.html` only. |

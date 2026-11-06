@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script src="/training/static/session-review.js"></script>
+  <script src="/training/static/training.js"></script>
+  <script src="/training/static/draft-transfer.js"></script>
+  <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="manifest" href="/training/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/training/static/apple-touch-icon.png" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f5f8" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#111923" />
+  <title>Recent workouts</title>
+  <style>
+    :root {
+      --bg: #f6f5f1; --card: #ffffff; --text: #1d1d1b; --muted: #6b6a64;
+      --line: #e3e1d9; --accent: #1f5fbf; --chip: #eef0f4; --warm: #f1efe8;
+      --danger: #a32d2d; --danger-bg: #fcebeb;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #161614; --card: #21211e; --text: #ecebe5; --muted: #a09f97;
+        --line: #34332f; --accent: #7fb0ff; --chip: #2b2c30; --warm: #2a2926;
+        --danger: #f09595; --danger-bg: #3a1f1f;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    main { max-width: 640px; margin: 0 auto; padding: 16px; }
+    h1 { font-size: 22px; font-weight: 500; margin: 8px 0 16px; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+      padding: 14px 16px; margin: 0 0 12px;
+    }
+    .wk-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+    .wk-title { font-size: 17px; font-weight: 500; margin: 0; }
+    .wk-when { font-size: 13px; color: var(--muted); white-space: nowrap; }
+    .wk-meta { font-size: 13px; color: var(--muted); margin: 2px 0 10px; }
+    .ex { border-top: 1px solid var(--line); padding: 10px 0 2px; }
+    .ex-title { font-size: 15px; font-weight: 500; margin: 0 0 6px; }
+    .ex-notes { font-size: 13px; color: var(--muted); margin: 0 0 6px; }
+    .sets { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; padding: 0; list-style: none; }
+    .set {
+      background: var(--chip); border-radius: 8px; padding: 4px 9px; font-size: 14px;
+      font-variant-numeric: tabular-nums;
+    }
+    .set.warmup { background: transparent; border: 1px dashed var(--line); color: var(--muted); }
+    .set .tag { font-size: 11px; color: var(--muted); margin-right: 4px; }
+    .set .rpe { color: var(--accent); margin-left: 4px; }
+    .set .kg { color: var(--muted); font-size: 12px; }
+    button {
+      font: inherit; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--line);
+      background: var(--card); color: var(--text); width: 100%; cursor: pointer; min-height: 48px;
+    }
+    button:disabled { opacity: .6; cursor: default; }
+    button.primary { background: var(--accent); color: #fff; border-color: transparent; }
+    input[type=password], input[type=text] {
+      font: inherit; width: 100%; padding: 12px; border-radius: 10px; margin: 8px 0;
+      border: 1px solid var(--line); background: var(--bg); color: var(--text); min-height: 48px;
+    }
+    .note { font-size: 14px; color: var(--muted); }
+    .error { background: var(--danger-bg); color: var(--danger); border-radius: 10px; padding: 10px 12px; margin: 0 0 12px; }
+    .empty { text-align: center; color: var(--muted); padding: 32px 0; }
+    [hidden] { display: none !important; }
+    .soreness-editor { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; }
+    .soreness-levels { display: flex; flex-wrap: wrap; gap: 6px; }
+    .soreness-levels button { width: auto; flex: 1; padding: 8px; font-size: 14px; }
+    .soreness-levels button[aria-pressed="true"] { background: var(--accent-soft); outline: 2px solid var(--accent); }
+    .soreness-editor fieldset { border: 0; padding: 0; margin: 12px 0; }
+    .pain-label { display: flex; gap: 8px; align-items: center; min-height: 44px; }
+    /* Keep workouts in one chronological column on wide screens too. */
+    @media (min-width: 900px) {
+      main { max-width: 1000px; }
+      #list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
+      #list .card { margin: 0; }
+      #keyform { max-width: 560px; }
+      #more { display: block; max-width: 560px; margin: 12px auto 0; }
+    }
+
+    .page-heading { display:flex; align-items:center; gap:8px; min-width:0; }
+    .page-back { flex-shrink:0; min-height:44px; padding:4px 8px; border:0; border-radius:8px; background:transparent; color:var(--accent,currentColor); font:inherit; font-size:14px; cursor:pointer; white-space:nowrap; }
+    .page-back:disabled { opacity:.4; cursor:default; }
+    .page-back:focus-visible { outline:2px solid var(--accent,currentColor); outline-offset:2px; }
+  </style>
+  <style id="rackbook-theme">
+
+    /* Rackbook visual system: kept inline so every page remains self-contained. */
+    :root {
+      color-scheme: light;
+      --bg: #f3f5f8; --card: #ffffff; --text: #17243a; --muted: #59687c;
+      --line: #dce3ec; --accent: #2459b8; --chip: #edf1f7; --soft: #f7f9fc;
+      --accent-soft: #edf3ff; --done: #edf7f1; --done-line: #28784b;
+      --shadow: 0 2px 5px rgba(23,36,58,.025), 0 10px 28px rgba(23,36,58,.035);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --bg: #111923; --card: #1a2533; --text: #e8eef8; --muted: #a5b4c9;
+        --line: #344358; --accent: #95baff; --chip: #243246; --soft: #202d3d;
+        --accent-soft: #243b5b; --done: #20392f; --done-line: #3f825f;
+        --shadow: 0 4px 20px rgba(0,0,0,.12);
+      }
+    }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+    main { max-width: 1120px; padding: 24px; margin: 0 auto; }
+    .app-header { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 16px; margin: 0 0 24px; }
+    .page-heading { gap: 12px; }
+    .page-title { min-width: 0; }
+    .eyebrow { display: block; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .18em; margin: 0 0 3px; }
+    .page-title h1 { font-size: 26px; font-weight: 700; letter-spacing: -.035em; line-height: 1.2; margin: 0; }
+    .app-header .page-back { width: auto; padding: 0 10px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); font-size: 13px; }
+    .header-tools { justify-self: end; }
+    .app-header .app-nav { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; padding: 5px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; white-space: normal; }
+    .app-header .app-nav a { display: flex; align-items: center; justify-content: center; flex: 1 0 auto; min-height: 40px; padding: 6px 14px; margin: 0; border-radius: 9px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 550; }
+    .app-header .app-nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 650; }
+    .card { border-radius: 16px; border-color: var(--line); box-shadow: var(--shadow); margin-bottom: 16px; }
+    h2, h3, .wk-title, .ex-title { letter-spacing: -.02em; font-weight: 650; }
+    button, input, select { transition: border-color .12s ease, background-color .12s ease, box-shadow .12s ease; }
+    button { font-weight: 550; }
+    button.primary { font-weight: 650; color: var(--card); }
+    button:disabled { cursor: default; }
+    :where(button, a, input, select, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    input, select { accent-color: var(--accent); }
+    .lifts { gap: 6px; padding: 5px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); margin-bottom: 20px; }
+    .lifts button { border-color: transparent; background: transparent; min-height: 44px; font-weight: 600; }
+    .lifts button.on, .lifts button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+    .movement-card { padding: 18px; background: var(--card); border-radius: 16px; box-shadow: var(--shadow); }
+    .movement-card[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+    .card-score { font-size: 30px; font-weight: 700; letter-spacing: -.04em; margin: 8px 0; }
+    .metrics { gap: 16px; }
+    .metric { padding: 12px; border-radius: 12px; background: var(--soft); }
+    .metric strong { font-size: 28px; font-weight: 700; letter-spacing: -.03em; }
+    .controls { gap: 12px; padding: 14px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 16px; }
+    .controls label { font-size: 13px; color: var(--muted); font-weight: 550; }
+    .controls select { color: var(--text); background: var(--soft); }
+    th { font-weight: 600; }
+    .wk-head { flex-wrap: wrap; gap: 4px 12px; }
+    .wk-meta { margin-top: 6px; }
+    .intro { line-height: 1.65; }
+    @media (hover: hover) {
+      .app-header .app-nav a:hover { background: var(--soft); color: var(--text); }
+      button:not(:disabled):hover { border-color: var(--accent); }
+    }
+    @media (max-width: 599px) {
+      main { padding: 16px 12px; }
+      .app-header { gap: 12px; margin-bottom: 18px; }
+      .page-heading { gap: 8px; }
+      .page-title h1 { font-size: 23px; }
+      .app-header .app-nav a { flex: 1 0 28%; padding: 6px 8px; min-height: 44px; font-size: 13px; }
+      .card { border-radius: 14px; }
+      .metric { padding: 10px 8px; }
+      .metric strong { font-size: 23px; }
+      .controls { padding: 12px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header class="app-header">
+    <div class="page-heading"><div class="page-title"><span class="eyebrow">Hevy-Fatigue</span><h1>Recent workouts</h1></div></div>
+    <nav class="app-nav" aria-label="Pages"><a href="/">Today</a><a href="/training/log">Log Workout</a><a href="/training/microcycles">Plans</a><a href="/training/recent" aria-current="page">Recent</a><a href="/training/progress">Progress</a><a href="/training/stress">Stress</a><a href="/training/rpe-charts">RPE Charts</a><a href="/#settings">Settings</a></nav>
+  </header>
+  <div id="status"></div>
+  <div id="keyform" class="card" hidden><p><a href="/#settings">Configure the shared Hevy credential in Settings</a></p>
+    <p class="note" style="margin-top:0">Add or replace the shared Hevy API key in Hevy-Fatigue Settings, then return here and reload.</p>
+    <input id="keyinput" hidden disabled type="password" autocomplete="off" placeholder="Hevy API key" />
+    <button id="keysave" hidden disabled class="primary" type="button">Save key</button>
+  </div>
+  <div id="list"></div>
+  <button id="more" type="button" hidden>Load older workouts</button>
+</main>
+
+<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register(trainingUrl("/sw.js")).catch(function () {});</script>
+<script>
+  const state = { page: 0, pageCount: 1, loading: false };
+  const $ = (id) => document.getElementById(id);
+
+  function el(tag, cls, text) {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+
+  function trim(n) { return String(Number(n.toFixed(2))); }
+
+  function fmtWhen(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return "";
+    const day = d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+    const days = Math.floor((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86400000);
+    const rel = days <= 0 ? "today" : days === 1 ? "yesterday" : days + " days ago";
+    return day + " · " + rel;
+  }
+
+  function fmtLoad(s) {
+    if (s.weight_kg != null) return Math.round(s.weight_lb) + " lb";
+    if (s.reps != null && s.distance_meters == null && s.duration_seconds == null) return "BW";
+    return "";
+  }
+
+  function fmtEffort(s) {
+    const parts = [];
+    if (s.reps != null) parts.push("× " + s.reps);
+    if (s.duration_seconds != null) parts.push(Math.round(s.duration_seconds / 60 * 10) / 10 + " min");
+    if (s.distance_meters != null) parts.push(trim(s.distance_meters) + " m");
+    return parts.join(" ");
+  }
+
+  function renderWorkout(w) {
+    const card = el("section", "card");
+    const head = el("div", "wk-head");
+    head.append(el("h2", "wk-title", w.title), el("span", "wk-when", fmtWhen(w.start_time)));
+    card.append(head);
+
+    const meta = [];
+    if (w.duration_minutes != null) meta.push(w.duration_minutes + " min");
+    meta.push(w.working_sets + " working sets");
+    if (w.volume_kg > 0) meta.push(Math.round(w.volume_kg).toLocaleString() + " kg volume");
+    card.append(el("p", "wk-meta", meta.join(" · ")));
+    if (w.description) card.append(el("p", "ex-notes", w.description));
+
+    for (const ex of w.exercises) {
+      const box = el("div", "ex");
+      box.append(el("p", "ex-title", ex.title));
+      if (ex.notes) box.append(el("p", "ex-notes", ex.notes));
+      const list = el("ul", "sets");
+      for (const s of ex.sets) {
+        const li = el("li", "set" + (s.type === "warmup" ? " warmup" : ""));
+        if (s.type !== "normal") li.append(el("span", "tag", s.type === "warmup" ? "W" : s.type));
+        li.append(document.createTextNode(fmtLoad(s)));
+        if (s.weight_kg != null) li.append(el("span", "kg", " (" + trim(Math.round(s.weight_kg * 10) / 10) + " kg)"));
+        li.append(document.createTextNode(" " + fmtEffort(s)));
+        if (s.target_rpe != null) li.append(el("span", "rpe", "RPErx " + s.target_rpe + " · RPEact " + (s.rpe ?? "—")));
+        else if (s.rpe != null) li.append(el("span", "rpe", "@" + s.rpe));
+        list.append(li);
+      }
+      box.append(list);
+      card.append(box);
+    }
+    SessionReviewUI.button(w.id, card);
+    if (w.soreness_editable) {
+      const edit = el("button", null, "Edit soreness"); edit.type = "button";
+      const editor = el("div", "soreness-editor"); editor.hidden = true;
+      edit.addEventListener("click", () => openSorenessEditor(w, editor, edit));
+      card.append(edit, editor);
+    }
+    return card;
+  }
+
+  async function sorenessRequest(id, options) {
+    const res = await fetch(trainingUrl("/workout-soreness/") + encodeURIComponent(id), options);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Couldn't save soreness.");
+    return data;
+  }
+
+  async function openSorenessEditor(w, box, edit) {
+    edit.disabled = true; box.hidden = false;
+    box.replaceChildren(el("p", "note", "Loading check-ins…"));
+    try {
+      const ratings = await sorenessRequest(w.id);
+      const changes = {};
+      const message = el("p", "note");
+      const draw = () => {
+        box.replaceChildren(el("p", "note", "Soreness before this workout. These check-ins are saved in Rackbook."));
+        for (const [key, title] of [["squat", "Squat"], ["bench_press", "Bench/Press"], ["deadlift", "Deadlift"]]) {
+          const rating = ratings[key] || (ratings[key] = {level: null, pain: false});
+          const group = el("fieldset"), row = el("div", "soreness-levels");
+          group.append(el("legend", null, title));
+          for (const [level, label] of ["None", "Mild", "Moderate", "Severe"].entries()) {
+            const button = el("button", null, label); button.type = "button";
+            button.setAttribute("aria-pressed", String(rating.level === level));
+            button.setAttribute("aria-label", title + " soreness: " + label);
+            button.addEventListener("click", () => {
+              rating.level = rating.level === level ? null : level;
+              changes[key] = rating; message.textContent = ""; draw();
+            });
+            row.append(button);
+          }
+          const label = el("label", "pain-label"), pain = el("input"); pain.type = "checkbox"; pain.checked = rating.pain;
+          pain.addEventListener("change", () => { rating.pain = pain.checked; changes[key] = rating; message.textContent = ""; });
+          label.append(pain, el("span", null, "Pain or injury"));
+          group.append(row, label); box.append(group);
+        }
+        const save = el("button", "primary", "Save soreness"), cancel = el("button", null, "Cancel");
+        save.type = cancel.type = "button";
+        save.addEventListener("click", async () => {
+          save.disabled = cancel.disabled = true;
+          // Freeze the editor while the request is in flight so no changes get lost.
+          for (const input of box.querySelectorAll("input, button")) input.disabled = true;
+          try {
+            await sorenessRequest(w.id, {method: "PATCH", headers: {"Content-Type": "application/json"}, body: JSON.stringify(changes)});
+            box.replaceChildren(el("p", "note", "Soreness saved.")); edit.disabled = false;
+          } catch (err) {
+            message.textContent = err.message;
+            for (const input of box.querySelectorAll("input, button")) input.disabled = false;
+          }
+        });
+        cancel.addEventListener("click", () => { box.hidden = true; box.replaceChildren(); edit.disabled = false; });
+        message.setAttribute("role", "status"); box.append(message, save, cancel);
+      };
+      draw();
+    } catch (err) { box.replaceChildren(el("p", "error", err.message)); edit.disabled = false; }
+  }
+
+  function showError(message) {
+    const status = $("status");
+    status.replaceChildren();
+    if (message) status.append(el("div", "error", message));
+  }
+
+  async function loadMore() {
+    if (state.loading) return;
+    state.loading = true;
+    $("more").disabled = true;
+    $("more").textContent = "Loading…";
+    try {
+      const res = await fetch(trainingUrl("/hevy/workouts?page=") + (state.page + 1) + "&page_size=10");
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showError(body.detail || "Something went wrong (" + res.status + ").");
+        if (res.status === 400) $("keyform").hidden = false;
+        return;
+      }
+      showError("");
+      $("keyform").hidden = true;
+      state.page = body.page;
+      state.pageCount = body.page_count;
+      for (const w of body.workouts) $("list").append(renderWorkout(w));
+      if (state.page === 1 && body.workouts.length === 0) {
+        $("list").append(el("p", "empty", "No workouts in Hevy yet."));
+      }
+    } catch (err) {
+      showError("Couldn't reach this server. Check your connection.");
+    } finally {
+      state.loading = false;
+      $("more").disabled = false;
+      $("more").textContent = "Load older workouts";
+      $("more").hidden = state.page === 0 || state.page >= state.pageCount;
+    }
+  }
+
+  $("more").addEventListener("click", loadMore);
+
+  $("keysave").addEventListener("click", async () => {
+    const key = $("keyinput").value.trim();
+    if (!key) { showError("Enter your Hevy API key first."); return; }
+    const res = await fetch(trainingUrl("/settings/api-key"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_key: key }),
+    });
+    if (!res.ok) { showError("Couldn't save the key."); return; }
+    $("keyinput").value = "";
+    $("keyform").hidden = true;
+    showError("");
+    state.page = 0;
+    $("list").replaceChildren();
+    loadMore();
+  });
+
+  loadMore();
+</script>
+
+</body>
+</html>

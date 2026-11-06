@@ -1,0 +1,100 @@
+name: Integration checks
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integration-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Python, JavaScript and container checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out reviewed source
+        uses: actions/checkout@v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Validate tracked production configuration without deploying
+        run: |
+          docker compose -f deploy/production.compose.yml config --format json | python3 deploy/check_config.py validate -
+          python3 -m unittest discover -s deploy/tests -v
+
+      - name: Build disposable test image
+        run: docker build --tag hevy-fatigue:pr-check .
+
+      - name: Run host and integration tests
+        run: >-
+          docker run --rm --network none
+          --tmpfs /tmp:rw,size=256m
+          --tmpfs /data:rw,size=64m
+          --tmpfs /training-data:rw,size=64m
+          --env HEVY_WRITES_ENABLED=0
+          --env PYTHONDONTWRITEBYTECODE=1
+          --entrypoint python hevy-fatigue:pr-check
+          -X utf8 -m unittest discover -s tests
+
+      - name: Run logging tests
+        run: >-
+          docker run --rm --network none
+          --tmpfs /tmp:rw,size=256m
+          --tmpfs /data:rw,size=64m
+          --tmpfs /training-data:rw,size=64m
+          --env HEVY_WRITES_ENABLED=0
+          --env PYTHONDONTWRITEBYTECODE=1
+          --entrypoint python hevy-fatigue:pr-check
+          -X utf8 -m unittest discover -s rackbook/tests -t .
+
+      - name: Fetch JavaScript test runtime
+        run: docker pull node:22-bookworm-slim
+
+      - name: Run all JavaScript checks
+        run: |
+          docker run --rm --network none --read-only \
+            --mount type=bind,source="$PWD",target=/repo,readonly \
+            --workdir /repo node:22-bookworm-slim sh -eu -c '
+              for check in tests/*.cjs rackbook/tests/*.cjs; do
+                node "$check"
+              done
+            '
+
+      - name: Check write-disabled startup and mounted pages
+        run: |
+          docker run --rm -i --network none --read-only \
+            --tmpfs /tmp:rw,size=256m \
+            --tmpfs /data:rw,size=64m \
+            --tmpfs /training-data:rw,size=64m \
+            --env HEVY_WRITES_ENABLED=0 \
+            --env RACKBOOK_READ_ONLY_PREVIEW=1 \
+            --env PYTHONDONTWRITEBYTECODE=1 \
+            --entrypoint python hevy-fatigue:pr-check -X utf8 - <<'PY'
+          import os
+          import sqlite3
+          from fastapi.testclient import TestClient
+          import main
+
+          assert os.environ['HEVY_WRITES_ENABLED'] == '0'
+          for _ in range(2):
+              with TestClient(main.app) as client:
+                  for path in ('/', '/api/sync/status', '/training/log', '/training/microcycles',
+                               '/training/static/training.js', '/training/sw.js'):
+                      assert client.get(path).status_code == 200, path
+                  manifest = client.get('/training/manifest.webmanifest').json()
+                  assert manifest['scope'] == '/training/'
+                  assert manifest['start_url'] == '/training/log'
+                  assert client.post('/training/hevy/workouts', json={}).status_code == 403
+          with sqlite3.connect('/data/hevy_fatigue.db') as host:
+              assert not host.execute("SELECT 1 FROM sqlite_master WHERE name='logged_sets'").fetchone()
+          with sqlite3.connect('/training-data/rackbook.db') as logging:
+              assert not logging.execute("SELECT 1 FROM sqlite_master WHERE name='daily_readiness'").fetchone()
+              assert logging.execute('SELECT COUNT(*) FROM workout_saves').fetchone()[0] == 0
+          print('Repeated startup, mounted assets, separate schemas and preview write guard passed')
+          PY

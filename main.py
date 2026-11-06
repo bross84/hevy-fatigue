@@ -9,44 +9,19 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date as date_type, timedelta, datetime
 from uuid import UUID
-from cryptography.fernet import Fernet
 import httpx
 import json
 import os
 import threading
 
-from database import SessionLocal, DailyReadiness, WorkoutLog, WorkoutSession, ExerciseMapping, ExerciseCanonical, ExerciseConflict, AppSetting, init_db
+from pattern_recovery import build_pattern_history
+import coaching
 
-# ── Encryption ────────────────────────────────────────────────────────────────
-# A Fernet key is generated once and stored in the Docker volume at /data/app.key.
-# The API key in the DB is encrypted with it, so a DB dump alone can't expose it.
-_FERNET_KEY_PATH = os.getenv("FERNET_KEY_PATH", "/data/app.key")
-_fernet: Fernet | None = None
+from recommendations import build_history as build_recommendation_history, RATING_FIELDS
 
-def _get_fernet() -> Fernet:
-    global _fernet
-    if _fernet is not None:
-        return _fernet
-    if os.path.exists(_FERNET_KEY_PATH):
-        with open(_FERNET_KEY_PATH, "rb") as f:
-            key = f.read().strip()
-    else:
-        key = Fernet.generate_key()
-        os.makedirs(os.path.dirname(_FERNET_KEY_PATH), exist_ok=True)
-        with open(_FERNET_KEY_PATH, "wb") as f:
-            f.write(key)
-        try:
-            os.chmod(_FERNET_KEY_PATH, 0o600)
-        except OSError:
-            pass  # Windows doesn't support chmod — safe to ignore
-    _fernet = Fernet(key)
-    return _fernet
+from database import SessionLocal, DailyReadiness, WorkoutLog, WorkoutSession, ExerciseMapping, ExerciseCanonical, ExerciseConflict, AppSetting, CoachingConversation, CoachingTurn, init_db
 
-def _encrypt(plaintext: str) -> str:
-    return _get_fernet().encrypt(plaintext.encode()).decode()
-
-def _decrypt(ciphertext: str) -> str:
-    return _get_fernet().decrypt(ciphertext.encode()).decode()
+from credentials import _encrypt, _decrypt, get_db_api_key as _get_db_api_key
 from rpe_table import get_set_central_stress, get_set_peripheral_stress, seed_rpe_table, calculate_e1rm
 from importer import import_hevy_data, reclassify_existing_sessions
 
@@ -76,6 +51,9 @@ def get_db():
         db.close()
 
 # --- Pydantic Models ---
+AI_DEFAULT_MODEL = 'openai/gpt-6.1-terra'
+
+
 class ReadinessInput(BaseModel):
     date: date_type = Field(default_factory=date_type.today)
     sore_quad_dom: Optional[int] = Field(None, ge=0, le=4)
@@ -113,7 +91,18 @@ class AIChatMessage(BaseModel):
 class AIChatRequest(BaseModel):
     message: str
     history: list[AIChatMessage] = []
-    model: str = "openai/gpt-4o-mini"
+    model: str = AI_DEFAULT_MODEL
+
+
+class CoachingCreate(BaseModel):
+    id: UUID
+
+
+class CoachingMessage(BaseModel):
+    id: UUID
+    message: str = Field(min_length=1, max_length=12000)
+    model: str = Field(min_length=1, max_length=200)
+    expected_sequence: int = Field(ge=0, le=coaching.MAX_TURNS)
 
 class TrainingStateThresholdsInput(BaseModel):
     tsb_threshold_underloaded: float = Field(8.0, ge=-50.0, le=50.0)
@@ -183,7 +172,7 @@ def calculate_stress_scores(
     hyp_scale: float = 29.0,
 ) -> dict:
     """
-    Calculate central and peripheral stress for a given day across three pathways,
+    Calculate central and peripheral stress for a given day across four pathways,
     plus per-pattern (knee/hip/push/pull) stress for Stage 5 EWMA inputs.
 
     Pathway 1 — Strength / Hypertrophy (per-set RPE math, unchanged):
@@ -202,6 +191,10 @@ def calculate_stress_scores(
         central   = raw × 0.30
         peripheral = raw × 0.70
         pattern_stress — zero (cardio has no pattern distribution)
+
+    Pathway 4 — Hypertrophy sRPE fallback (verified sessions only):
+        When >=50% of sets lack RPE and sRPE + duration exist, replace Pathway 1
+        for the entire session using the conditioning formula and hyp_scale.
 
     Unverified conditioning/cardio sessions contribute zero stress (silent).
     Multiple sessions on the same date are summed.
@@ -232,6 +225,55 @@ def calculate_stress_scores(
         if not (s.is_conditioning or s.exercise_title in conditioning_titles)
     ]
 
+    # Choose the HYP stress source before accumulating any per-set stress.
+    # A qualifying fallback replaces the entire session, including sets with RPE.
+    hyp_sessions = (
+        db.query(WorkoutSession)
+        .filter(
+            WorkoutSession.workout_date == target_date,
+            WorkoutSession.verification_status == "verified",
+            WorkoutSession.srpe.isnot(None),
+            WorkoutSession.duration_minutes.isnot(None),
+            WorkoutSession.modality == "hypertrophy",
+        )
+        .all()
+    )
+
+    hyp_fallback_sessions = []
+    for session in hyp_sessions:
+        # Check per-set RPE coverage for this session's sets
+        session_sets = [
+            s for s in working_sets
+            if s.workout_id == session.hevy_workout_id
+        ]
+        if not session_sets:
+            # No sets found in working_sets for this session -
+            # all sets may have been excluded as conditioning.
+            # Still attempt fallback using all sets on the date
+            # that match this workout_id.
+            session_sets = [
+                s for s in sets
+                if s.workout_id == session.hevy_workout_id
+            ]
+
+        total_sets = len(session_sets)
+        if total_sets == 0:
+            continue
+
+        missing_rpe = sum(
+            1 for s in session_sets
+            if s.rpe is None or s.rpe == 0.0
+        )
+        missing_ratio = missing_rpe / total_sets
+
+        if missing_ratio < HYP_FALLBACK_THRESHOLD:
+            # Sufficient RPE coverage: retain the per-set pathway.
+            continue
+
+        hyp_fallback_sessions.append((session, session_sets))
+
+    hyp_fallback_ids = {session.hevy_workout_id for session, _ in hyp_fallback_sessions}
+
     # Fetch pct mappings for all working-set exercises in one query so pattern
     # stress can be accumulated in the same pass as central/peripheral.
     strength_titles = {s.exercise_title for s in working_sets if s.exercise_title}
@@ -248,6 +290,8 @@ def calculate_stress_scores(
     knee = hip = push = pull = 0.0
 
     for s in working_sets:
+        if s.workout_id in hyp_fallback_ids:
+            continue
         c = get_set_central_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
         p = get_set_peripheral_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
         central    += c
@@ -331,49 +375,7 @@ def calculate_stress_scores(
     # Uses same formula as conditioning but with a separate scale factor.
     hyp_scaling_factor = hyp_scale if hyp_scale > 0.0 else 29.0
 
-    hyp_sessions = (
-        db.query(WorkoutSession)
-        .filter(
-            WorkoutSession.workout_date == target_date,
-            WorkoutSession.verification_status == "verified",
-            WorkoutSession.srpe.isnot(None),
-            WorkoutSession.duration_minutes.isnot(None),
-            WorkoutSession.modality == "hypertrophy",
-        )
-        .all()
-    )
-
-    for session in hyp_sessions:
-        # Check per-set RPE coverage for this session's sets
-        session_sets = [
-            s for s in working_sets
-            if s.workout_id == session.hevy_workout_id
-        ]
-        if not session_sets:
-            # No sets found in working_sets for this session -
-            # all sets may have been excluded as conditioning.
-            # Still attempt fallback using all sets on the date
-            # that match this workout_id.
-            session_sets = [
-                s for s in sets
-                if s.workout_id == session.hevy_workout_id
-            ]
-
-        total_sets = len(session_sets)
-        if total_sets == 0:
-            continue
-
-        missing_rpe = sum(
-            1 for s in session_sets
-            if s.rpe is None or s.rpe == 0.0
-        )
-        missing_ratio = missing_rpe / total_sets
-
-        if missing_ratio < HYP_FALLBACK_THRESHOLD:
-            # Per-set RPE data is sufficient - Pathway 1 already
-            # handled this session. Skip fallback.
-            continue
-
+    for session, session_sets in hyp_fallback_sessions:
         # Fallback: sRPE x duration x (1 / hyp_scaling_factor)
         if session.srpe is None or session.duration_minutes is None:
             continue
@@ -430,6 +432,9 @@ def calculate_stress_scores(
 # --- Startup ---
 @app.on_event("startup")
 def startup():
+    from rackbook.config import validate_database_paths
+    from database import _db_path
+    validate_database_paths(_db_path)
     init_db()
     db = SessionLocal()
     try:
@@ -439,27 +444,16 @@ def startup():
     finally:
         db.close()
 
+    from rackbook.main import initialize
+    initialize()
+    import training_integration
+    training_integration.enable()
+
 # --- Sync state (prevents concurrent imports and rate-limits manual triggers) ---
 _sync_lock = threading.Lock()
 _sync_status = {"running": False, "last_result": None, "last_run": None}
 
 # --- Settings helper ---
-def _get_db_api_key(db: Session) -> str | None:
-    """Read and decrypt the Hevy API key stored in the app_settings table."""
-    row = db.query(AppSetting).filter(AppSetting.key == "hevy_api_key").first()
-    if not row or not row.value:
-        return None
-    try:
-        return _decrypt(row.value)
-    except Exception:
-        # One-time compatibility migration from legacy plaintext storage.
-        legacy_plaintext = row.value.strip()
-        if not legacy_plaintext:
-            return None
-        row.value = _encrypt(legacy_plaintext)
-        db.commit()
-        return legacy_plaintext
-
 _CONDITIONING_SCALING_DEFAULT = 29.0
 _HYP_SCALING_DEFAULT = 29.0
 _AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT = 0.87
@@ -583,7 +577,7 @@ def _openai_compatible_messages(system_prompt: str, history: list[AIChatMessage]
     return out
 
 
-def _stream_openrouter(model: str, api_key: str, messages: list[dict]) -> StreamingResponse:
+def _stream_openrouter(model: str, api_key: str, messages: list[dict], on_finish=None) -> StreamingResponse:
     client = httpx.Client(timeout=httpx.Timeout(90.0, connect=20.0))
     request = client.build_request(
         "POST",
@@ -612,10 +606,13 @@ def _stream_openrouter(model: str, api_key: str, messages: list[dict]) -> Stream
         raise HTTPException(status_code=502, detail=f"OpenRouter error: {detail}")
 
     def _iter():
+        accumulated = ''
+        finalized = False
+        failed = False
         try:
             buffer = ""
             for chunk in response.iter_text():
-                buffer += chunk
+                buffer += chunk.replace('\r\n', '\n')
                 while "\n\n" in buffer:
                     event, buffer = buffer.split("\n\n", 1)
                     forwarded = False
@@ -624,14 +621,39 @@ def _stream_openrouter(model: str, api_key: str, messages: list[dict]) -> Stream
                             continue
                         raw = line[5:].strip()
                         if raw == "[DONE]":
+                            if on_finish:
+                                on_finish(accumulated, 'complete' if accumulated.strip() and not failed else 'failed')
+                                finalized = True
                             yield "data: [DONE]\n\n"
                             return
+                        if on_finish:
+                            try:
+                                event_data = json.loads(raw)
+                                if event_data.get('error'): failed = True
+                                for choice in event_data.get('choices', []):
+                                    accumulated += choice.get('delta', {}).get('content') or choice.get('text') or ''
+                                    if choice.get('finish_reason') in ('length','content_filter'): failed = True
+                                if len(accumulated)>coaching.MAX_REPLY_CHARS:
+                                    raise ValueError('Response exceeded the saved review limit.')
+                            except json.JSONDecodeError:
+                                failed = True
                         yield f"data: {raw}\n\n"
                         forwarded = True
                     if forwarded:
                         continue
+            if on_finish:
+                on_finish(accumulated, 'interrupted')
+                finalized = True
+                yield 'data: {"error":{"message":"Response interrupted. Reload the saved conversation before continuing."}}\n\n'
             yield "data: [DONE]\n\n"
+        except Exception:
+            yield 'data: {"error":{"message":"Response or persistence failed. Reload the saved conversation; no automatic resend."}}\n\n'
         finally:
+            if on_finish and not finalized:
+                try:
+                    on_finish(accumulated[:coaching.MAX_REPLY_CHARS], 'interrupted')
+                except Exception:
+                    pass  # A pending record remains visible; never claim that it was saved.
             response.close()
             client.close()
 
@@ -1202,17 +1224,9 @@ def backfill_sessions_from_logs(db: Session = Depends(get_db)):
 # ── Training Load (ATL / CTL / TSB) ──────────────────────────────────────────
 
 def _training_stress_included_through(db: Session) -> date_type:
-    """
-    Freeze imported workout impact until the next check-in is submitted.
-
-    A readiness entry dated D is assumed to reflect training completed through D-1.
-    So only workout stress up to (latest_readiness_date - 1) is allowed to affect
-    ATL/CTL/TSB and fatigue recommendation math.
-    """
-    latest_readiness = db.query(func.max(DailyReadiness.date)).scalar()
-    if latest_readiness:
-        return latest_readiness - timedelta(days=1)
+    """Imported training through yesterday remains active even without check-ins."""
     return date_type.today() - timedelta(days=1)
+
 
 def _compute_training_load(days: int, db: Session) -> tuple[list[dict], float, float, dict, dict]:
     """
@@ -1332,8 +1346,7 @@ def _compute_training_load(days: int, db: Session) -> tuple[list[dict], float, f
     included_through = _training_stress_included_through(db)
 
     while current <= end:
-        # Ignore workouts that are newer than the unlocked stress window.
-        # They become active once the following day's readiness is submitted.
+        # Morning monitoring uses completed days; missing check-ins never erase training.
         locked_in = current <= included_through
         stress = stress_by_date.get(current, 0.0) if locked_in else 0.0
         p_stress = pattern_stress_by_date.get(current, {p: 0.0 for p in _PATTERNS}) if locked_in else {p: 0.0 for p in _PATTERNS}
@@ -1367,8 +1380,9 @@ def _compute_training_load(days: int, db: Session) -> tuple[list[dict], float, f
                 "stress":     round(stress, 2),
                 "pattern_loads": {
                     p: {
-                        "atl":     round(p_atl[p], 3),
-                        "ctl":     round(p_ctl[p], 3),
+                        "stress":  p_stress.get(p, 0.0),
+                        "atl":     round(p_atl[p], 6),
+                        "ctl":     round(p_ctl[p], 6),
                         "tsb":     round(p_ctl[p] - p_atl[p], 3),
                         "ton_atl": round(p_ton_atl[p], 1),
                     }
@@ -1623,36 +1637,25 @@ def _session_volume(session_id: str, db: Session) -> float:
     return sum((log.weight_lbs or 0.0) * (log.reps or 0) for log in logs)
 
 
-def _objective_score_for_date(target_date: date_type, db: Session) -> float:
-    seven_day_start = target_date - timedelta(days=6)
-    six_month_start = target_date - timedelta(days=179)
-
-    seven_day_sessions = (
-        db.query(WorkoutSession)
-        .filter(
-            WorkoutSession.workout_date >= seven_day_start,
-            WorkoutSession.workout_date <= target_date,
-        )
-        .all()
+def _recommendation_history(db: Session, end_date: date_type) -> list[dict]:
+    entries = db.query(DailyReadiness).filter(DailyReadiness.date <= end_date).order_by(DailyReadiness.date).all()
+    earliest = entries[0].date if entries else end_date
+    # Aggregate once, preserving imported training during monitoring gaps.
+    volume_rows = (
+        db.query(WorkoutSession.workout_date, func.sum(
+            func.coalesce(WorkoutLog.weight_lbs, 0.0) * func.coalesce(WorkoutLog.reps, 0)))
+        .join(WorkoutLog, WorkoutLog.workout_id == WorkoutSession.hevy_workout_id)
+        .filter(WorkoutSession.workout_date >= earliest - timedelta(days=180),
+                WorkoutSession.workout_date < end_date)
+        .group_by(WorkoutSession.workout_date).all()
     )
-    six_month_sessions = (
-        db.query(WorkoutSession)
-        .filter(
-            WorkoutSession.workout_date >= six_month_start,
-            WorkoutSession.workout_date <= target_date,
-        )
-        .all()
-    )
+    checkins = [dict(date=e.date, **{k: getattr(e, k) for k in RATING_FIELDS}) for e in entries]
+    volumes = {d: float(volume or 0) for d, volume in volume_rows}
+    return build_recommendation_history(checkins, volumes, end_date)
 
-    seven_day_volume = sum(_session_volume(session.hevy_workout_id, db) for session in seven_day_sessions)
-    six_month_volume = sum(_session_volume(session.hevy_workout_id, db) for session in six_month_sessions)
-    six_month_weekly_avg = six_month_volume / 26 if six_month_volume > 0 else 0
 
-    return round(_clamp(
-        (seven_day_volume / six_month_weekly_avg * 10) if six_month_weekly_avg > 0 else 0,
-        0.0,
-        20.0,
-    ), 2)
+def _objective_score_for_date(target_date: date_type, db: Session) -> float | None:
+    return _recommendation_history(db, target_date)[-1]["objective_score"]
 
 
 def _combined_recommendation(combined_score: float) -> tuple[str, str, str]:
@@ -1811,71 +1814,62 @@ def _resolve_joint_advisory(joint_upper: int, joint_lower: int) -> dict:
     }
 
 
-def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness | None, calibration: dict | None = None, db: Session | None = None, today_date: date_type | None = None, today_tsb: float = 0.0, fatigue_score: float = 0.0, subjective_score: float | None = None, objective_score: float = 0.0, combined_score: float = 0.0, stress_by_date: dict | None = None, pattern_stress_by_date: dict | None = None) -> dict:
+def _pattern_signal_history(db: Session, load_history: list[dict] | None = None) -> list[dict]:
+    if load_history is None:
+        load_history = _compute_training_load(365, db)[0]
+    rows = db.query(DailyReadiness).filter(DailyReadiness.date <= date_type.today()).all()
+    checkins = [dict(date=str(r.date), **{field: getattr(r, field) for field in
+                ("sore_quad_dom", "sore_posterior", "sore_upper_push", "sore_upper_pull")}) for r in rows]
+    return build_pattern_history(load_history, checkins)
+
+
+def _build_recommendation_v2(today_pattern_loads: dict, checkin: DailyReadiness | None, calibration: dict | None = None, db: Session | None = None, today_date: date_type | None = None, today_tsb: float = 0.0, fatigue_score: float = 0.0, subjective_score: float | None = None, objective_score: float = 0.0, combined_score: float = 0.0, stress_by_date: dict | None = None, pattern_stress_by_date: dict | None = None, daily_recommendation: dict | None = None, pattern_profiles: dict | None = None) -> dict:
     """
     Stage 6 recommendation engine using pattern ATL/CTL/TSB and same-day soreness.
     Produces a pattern-aware recommendation without implying hidden physiology.
     """
     thresholds = _resolve_v2_thresholds(calibration)
     tsb_thresholds = _resolve_tsb_state_thresholds(calibration)
-    soreness = _pattern_soreness_signals(checkin)
     joint_upper = int((checkin.joint_upper if checkin else 0) or 0)
     joint_lower = int((checkin.joint_lower if checkin else 0) or 0)
     joint_advisory = _resolve_joint_advisory(joint_upper, joint_lower)
+    if pattern_profiles is None:
+        pattern_profiles = _pattern_signal_history(db)[-1]["patterns"] if db is not None else {}
 
-    pattern_rows = {}
-    for p in _PATTERN_KEYS:
-        pl = (today_pattern_loads or {}).get(p, {})
-        atl = float(pl.get("atl", 0.0) or 0.0)
-        ctl = float(pl.get("ctl", 0.0) or 0.0)
-        tsb = float(pl.get("tsb", ctl - atl) or 0.0)
-
-        load_signal = _pattern_tsb_signal(tsb, ctl)
-        soreness_signal = float(soreness[p])
-        combined_signal = round(_clamp((0.70 * load_signal) + (0.30 * soreness_signal), 0.0, 1.0), 3)
-        state = _state_from_signal(combined_signal, thresholds)
-
-        pattern_rows[p] = {
-            "atl": round(atl, 3),
-            "ctl": round(ctl, 3),
-            "tsb": round(tsb, 3),
-            "load_signal": round(load_signal, 3),
-            "soreness_signal": round(soreness_signal, 3),
-            "combined_signal": combined_signal,
-            "state": state,
-        }
-
-    training_state, training_state_label, training_state_detail = _combined_recommendation(float(combined_score))
-    fatigue_tier, fatigue_tier_detail = _resolve_fatigue_tier(float(fatigue_score))
-
-    ref_today = today_date or date_type.today()
-    if db is not None:
-        last_loaded_dates = _pattern_last_loaded_dates(db, ref_today, stress_by_date, pattern_stress_by_date)
-    else:
-        last_loaded_dates = {p: None for p in _PATTERN_KEYS}
+    daily = daily_recommendation
+    if daily is None:
+        daily = (_recommendation_history(db, today_date or date_type.today())[-1]
+                 if db is not None else build_recommendation_history([], {}, today_date or date_type.today())[-1])
+    training_state = daily["recommendation"]
+    training_state_label = daily["recommendation_label"]
+    training_state_detail = daily["recommendation_detail"]
+    fatigue_score = daily["smoothed_score"]
+    fatigue_tier, fatigue_tier_detail = (_resolve_fatigue_tier(fatigue_score)
+        if fatigue_score is not None and daily["data_sufficient"]
+        else ("Unavailable", "Insufficient monitoring data"))
 
     pattern_status = {}
     for p in _PATTERN_KEYS:
-        state = pattern_rows[p]["state"]
-        dots = _dots_filled(pattern_rows[p]["combined_signal"])
-        pattern_status[p] = {
-            "status": state,
-            "stress_level_label": _stress_level_label(dots),
-            "combined_signal": pattern_rows[p]["combined_signal"],
-            "days_since_loaded": _days_since_loaded(p, last_loaded_dates, ref_today),
-            "dots_filled": dots,
-            "dots_total": 5,
-        }
+        profile = dict(pattern_profiles.get(p, {}))
+        signal = profile.get("combined_signal")
+        profile["status"] = _state_from_signal(signal, thresholds) if signal is not None else "unknown"
+        profile["stress_level_label"] = ["Very low", "Low", "Moderate", "Elevated", "High"][profile["dots_filled"]-1] if signal is not None else "Insufficient data"
+        pattern_status[p] = profile
 
     return {
         "training_state": training_state,
         "training_state_label": training_state_label,
         "training_state_detail": training_state_detail,
-        "combined_score": round(float(combined_score), 2),
-        "objective_score": round(float(objective_score), 2),
-        "subjective_score": round(float(subjective_score), 2) if subjective_score is not None else None,
+        "model_version": daily["model_version"],
+        "data_sufficient": daily["data_sufficient"],
+        "insufficient_data_reasons": daily["insufficient_data_reasons"],
+        "consecutive_checkins": daily["consecutive_checkins"],
+        "smoothed_score": daily["smoothed_score"],
+        "combined_score": daily["combined_score"],
+        "objective_score": daily["objective_score"],
+        "subjective_score": daily["subjective_score"],
         "tsb": round(float(today_tsb), 3),
-        "fatigue_score": round(float(fatigue_score), 2),
+        "fatigue_score": fatigue_score,
         "fatigue_tier": fatigue_tier,
         "fatigue_tier_detail": fatigue_tier_detail,
         "pattern_status": pattern_status,
@@ -1890,7 +1884,9 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
     """
     Return ATL/CTL/TSB history for the chart and today's summary values.
     """
-    history, atl_max, ctl_max, stress_by_date, pattern_stress_by_date = _compute_training_load(days, db)
+    all_loads, atl_max, ctl_max, stress_by_date, pattern_stress_by_date = _compute_training_load(max(365, days), db)
+    pattern_profiles = _pattern_signal_history(db, all_loads[-365:])[-1]["patterns"]
+    history = all_loads[-max(1, days):]
     today = history[-1] if history else {"date": str(date_type.today()), "atl": 0, "ctl": 0, "tsb": 0, "stress": 0}
     stress_included_through = _training_stress_included_through(db)
     latest_workout_date = db.query(func.max(WorkoutLog.date)).scalar()
@@ -1911,138 +1907,39 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
     # Keep TSB recommendation available for legacy context displays.
     tsb_rec = _tsb_recommendation(today["tsb"])
 
-    # Subjective-first model: check-in defines the base fatigue score.
-    # Training stress modifies the base score in a bounded way.
-    training_mod = _training_modifier(history)
-    checkin = db.query(DailyReadiness).filter(
-        DailyReadiness.date == date_type.today()
-    ).first()
-    if checkin:
-        subj = _subjective_fatigue(checkin)
-        subjective_base_score = round(subj * 20, 2)
-        fatigue_score = round(_clamp(subjective_base_score + training_mod, 0.0, 20.0), 2)
-        score_source = "subjective_plus_training"
-    else:
-        subj = None
-        subjective_base_score = None
-        # If no check-in exists today, provide a neutral fallback adjusted by training.
-        fatigue_score = round(_clamp(10.0 + training_mod, 0.0, 20.0), 2)
-        score_source = "training_fallback"
+    training_mod = _training_modifier(history)  # Legacy diagnostic field only.
+    checkin = db.query(DailyReadiness).filter(DailyReadiness.date == date_type.today()).first()
 
-    seven_day_sessions = (
-        db.query(WorkoutSession)
-        .filter(WorkoutSession.workout_date >= date_type.today() - timedelta(days=7))
-        .all()
-    )
-    six_month_sessions = (
-        db.query(WorkoutSession)
-        .filter(WorkoutSession.workout_date >= date_type.today() - timedelta(days=180))
-        .all()
-    )
-    seven_day_ids = [session.hevy_workout_id for session in seven_day_sessions if session.hevy_workout_id]
-    if seven_day_ids:
-        seven_day_volume_rows = (
-            db.query(
-                WorkoutLog.workout_id,
-                func.sum(
-                    func.coalesce(WorkoutLog.weight_lbs, 0.0)
-                    * func.coalesce(WorkoutLog.reps, 0)
-                ).label("volume"),
-            )
-            .filter(WorkoutLog.workout_id.in_(seven_day_ids))
-            .group_by(WorkoutLog.workout_id)
-            .all()
-        )
-        seven_day_volume_by_id = {
-            workout_id: float(volume or 0.0)
-            for workout_id, volume in seven_day_volume_rows
-        }
-    else:
-        seven_day_volume_by_id = {}
-
-    six_month_ids = [session.hevy_workout_id for session in six_month_sessions if session.hevy_workout_id]
-    if six_month_ids:
-        six_month_volume_rows = (
-            db.query(
-                WorkoutLog.workout_id,
-                func.sum(
-                    func.coalesce(WorkoutLog.weight_lbs, 0.0)
-                    * func.coalesce(WorkoutLog.reps, 0)
-                ).label("volume"),
-            )
-            .filter(WorkoutLog.workout_id.in_(six_month_ids))
-            .group_by(WorkoutLog.workout_id)
-            .all()
-        )
-        six_month_volume_by_id = {
-            workout_id: float(volume or 0.0)
-            for workout_id, volume in six_month_volume_rows
-        }
-    else:
-        six_month_volume_by_id = {}
-
-    seven_day_volume = sum(seven_day_volume_by_id.get(session.hevy_workout_id, 0.0) for session in seven_day_sessions)
-    six_month_volume = sum(six_month_volume_by_id.get(session.hevy_workout_id, 0.0) for session in six_month_sessions)
-    six_month_weekly_avg = six_month_volume / 26 if six_month_volume > 0 else 0
-
-    objective_score = round(_clamp(
-        (seven_day_volume / six_month_weekly_avg * 10) if six_month_weekly_avg > 0 else 0,
-        0.0,
-        20.0,
-    ), 2)
-    subjective_score = round(float(subj) * 20, 2) if checkin and subj is not None else None
-    _subj_for_combined = subjective_score if subjective_score is not None else 10.0
-    combined_score = round((0.80 * _subj_for_combined) + (0.20 * objective_score), 2)
+    recommendation_history = _recommendation_history(db, date_type.today())
+    daily = recommendation_history[-1]
+    fatigue_score = daily["smoothed_score"]
+    objective_score = daily["objective_score"]
+    subjective_score = daily["subjective_score"]
+    combined_score = daily["combined_score"]
+    subjective_base_score = subjective_score
+    subj = subjective_score / 20 if subjective_score is not None else None
+    score_source = "smoothed_checkin" if daily["data_sufficient"] else "insufficient_data"
 
     calibration = _get_calibration_settings(db)
     thresholds = _resolve_recommendation_thresholds(db, calibration)
-    fatigue_rec = _fatigue_recommendation(fatigue_score, thresholds)
+    fatigue_rec = daily["recommendation"]
     recommendation_v2 = _build_recommendation_v2(
-        today.get("pattern_loads", {}),
-        checkin,
-        calibration,
-        db,
-        date_type.today(),
-        today.get("tsb", 0.0),
-        fatigue_score,
-        subjective_score,
-        objective_score,
-        combined_score,
-        stress_by_date,
-        pattern_stress_by_date,
+        today.get("pattern_loads", {}), checkin, calibration, db, date_type.today(),
+        today.get("tsb", 0.0), fatigue_score, subjective_score, objective_score,
+        combined_score, stress_by_date, pattern_stress_by_date, daily_recommendation=daily,
+        pattern_profiles=pattern_profiles,
     )
-
-    # Enrich history items with fatigue_score and recommendation_adjusted.
-    # Fetch all readiness entries for the history window in one query.
-    history_dates = [h["date"] for h in history]
-    if history_dates:
-        from datetime import date as _date_cls
-        earliest_hist = min(history_dates)
-        readiness_rows = (
-            db.query(DailyReadiness)
-            .filter(DailyReadiness.date >= earliest_hist)
-            .all()
-        )
-        readiness_by_date = {str(r.date): r for r in readiness_rows}
-    else:
-        readiness_by_date = {}
-
-    stress_series_hist = [max(0.0, float(h.get("stress", 0.0))) for h in history]
-    for idx, item in enumerate(history):
-        r_entry = readiness_by_date.get(item["date"])
-        t_mod = _training_modifier_for_index(stress_series_hist, idx)
-        if r_entry:
-            h_subj = _subjective_fatigue(r_entry)
-            h_fatigue = round(_clamp(h_subj * 20 + t_mod, 0.0, 20.0), 2)
-        else:
-            h_fatigue = round(_clamp(10.0 + t_mod, 0.0, 20.0), 2)
-        item["fatigue_score"] = h_fatigue
-        item["recommendation_adjusted"] = _fatigue_recommendation(h_fatigue, thresholds)
+    daily_by_date = {r["date"]: r for r in recommendation_history}
+    for item in history:
+        rec = daily_by_date.get(item["date"])
+        item["fatigue_score"] = rec["smoothed_score"] if rec else None
+        item["recommendation_adjusted"] = rec["recommendation"] if rec else "insufficient_data"
+        item["data_sufficient"] = rec["data_sufficient"] if rec else False
 
     recent_sessions_data = (
         db.query(WorkoutSession)
         .order_by(WorkoutSession.workout_date.desc(), WorkoutSession.start_time.desc())
-        .limit(5)
+        .limit(7)
         .all()
     )
 
@@ -2059,9 +1956,10 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
             "subjective_base_score":   subjective_base_score,
             "training_modifier":       training_mod,
             "score_source":            score_source,
+            "checkin_exists":          bool(checkin),
             "tiredness":               checkin.tiredness           if checkin else None,
             "perceived_recovery":      checkin.perceived_recovery  if checkin else None,
-            "recommendation":          tsb_rec,
+            "recommendation":          fatigue_rec,
             "recommendation_adjusted": fatigue_rec,
             "recommendation_legacy_tsb": tsb_rec,
             "recommendation_v2":       recommendation_v2,
@@ -2105,7 +2003,9 @@ def get_training_load(days: int = 60, db: Session = Depends(get_db)):
 
 def _build_diagnostics_snapshot(db: Session) -> dict:
     today_date = date_type.today()
-    history, _, _, _, _ = _compute_training_load(60, db)
+    all_loads = _compute_training_load(365, db)[0]
+    pattern_profiles = _pattern_signal_history(db, all_loads)[-1]["patterns"]
+    history = all_loads[-60:]
     today = history[-1] if history else {
         "date": str(today_date),
         "atl": 0.0,
@@ -2170,48 +2070,16 @@ def _build_diagnostics_snapshot(db: Session) -> dict:
         soreness_contribution = None
         subjective_score_from_checkin = None
 
-    seven_day_sessions = (
-        db.query(WorkoutSession)
-        .filter(WorkoutSession.workout_date >= today_date - timedelta(days=7))
-        .all()
-    )
-    six_month_sessions = (
-        db.query(WorkoutSession)
-        .filter(WorkoutSession.workout_date >= today_date - timedelta(days=180))
-        .all()
-    )
+    daily = _recommendation_history(db, today_date)[-1]
+    seven_day_load_volume = daily["seven_day_volume"]
+    six_month_weekly_avg_load_volume = daily["baseline_weekly_volume"]
+    objective_ratio = (seven_day_load_volume / six_month_weekly_avg_load_volume
+                       if six_month_weekly_avg_load_volume > 0 else None)
+    objective_score = daily["objective_score"]
+    subjective_score_effective = daily["subjective_score"]
+    combined_score = daily["combined_score"]
 
-    seven_day_load_volume = round(
-        sum(_session_volume(session.hevy_workout_id, db) for session in seven_day_sessions),
-        2,
-    )
-    six_month_load_volume = round(
-        sum(_session_volume(session.hevy_workout_id, db) for session in six_month_sessions),
-        2,
-    )
-    six_month_weekly_avg_load_volume = round((six_month_load_volume / 26.0) if six_month_load_volume > 0 else 0.0, 2)
-
-    objective_ratio = (
-        round(seven_day_load_volume / six_month_weekly_avg_load_volume, 4)
-        if six_month_weekly_avg_load_volume > 0
-        else None
-    )
-    objective_score = round(
-        _clamp((objective_ratio * 10.0) if objective_ratio is not None else 0.0, 0.0, 20.0),
-        2,
-    )
-
-    subjective_score_effective = round(float(subjective_score_from_checkin) if checkin and subjective_score_from_checkin is not None else 10.0, 2)
-    combined_score = round((0.80 * subjective_score_effective) + (0.20 * objective_score), 2)
-
-    fatigue_score = round(
-        _clamp(
-            (float(subjective_score_from_checkin) if checkin and subjective_score_from_checkin is not None else 10.0) + training_mod,
-            0.0,
-            20.0,
-        ),
-        2,
-    )
+    fatigue_score = daily["smoothed_score"]
 
     calibration = _get_calibration_settings(db)
     thresholds = _resolve_recommendation_thresholds(db, calibration)
@@ -2226,6 +2094,8 @@ def _build_diagnostics_snapshot(db: Session) -> dict:
         subjective_score_effective,
         objective_score,
         combined_score,
+        daily_recommendation=daily,
+        pattern_profiles=pattern_profiles,
     )
 
     recent_sessions = (
@@ -2238,9 +2108,10 @@ def _build_diagnostics_snapshot(db: Session) -> dict:
     return {
         "date": str(today_date),
         "checkin_exists": bool(checkin),
-        "score_source": "subjective_plus_training" if checkin else "training_fallback",
+        "recommendation_v2": recommendation_v2,
+        "score_source": "smoothed_checkin" if daily["data_sufficient"] else "insufficient_data",
         "subjective_breakdown": {
-            "formula": "((0.45 × tiredness/4) + (0.30 × perceived_recovery/4) + (0.25 × soreness_total/16)) × 10",
+            "formula": "((0.45 × tiredness/4) + (0.30 × perceived_recovery/4) + (0.25 × soreness_total/16)) × 20",
             "raw": {
                 "tiredness": tiredness_raw,
                 "perceived_recovery": recovery_raw,
@@ -2270,6 +2141,8 @@ def _build_diagnostics_snapshot(db: Session) -> dict:
             "subjective_weight": 0.80,
             "objective_weight": 0.20,
             "combined_score": combined_score,
+            "smoothed_score": daily["smoothed_score"],
+            "data_sufficient": daily["data_sufficient"],
         },
         "training_load": {
             "atl": round(float(today.get("atl", 0.0) or 0.0), 2),
@@ -2395,10 +2268,10 @@ def get_vol_fatigue_summary(
         session_stress = scores["central"] + scores["peripheral"]
         stress_by_date[date] += session_stress
 
-    # Build readiness lookup (subjective_score on 0-10 scale)
+    # Build readiness lookup (subjective_score on 0-20 scale)
     for entry in readiness_entries:
         subj = _subjective_fatigue(entry)
-        subjective_score = round(subj * 10.0, 2)
+        subjective_score = round(subj * 20.0, 2)
         readiness_by_date[entry.date] = subjective_score
 
     # Build raw tonnage and set count lookup by date (all modalities)
@@ -2533,20 +2406,24 @@ def _build_ai_system_prompt(db: Session) -> str:
         "This applies to: Tiredness, Perceived Recovery, all Soreness fields, and Joint Health.",
         "A score of 1 means minimal fatigue or soreness - nearly fresh.",
         "A score of 2 is normal post-training state - not a red flag.",
-        "Only scores of 3 or 4 should trigger caution or modification recommendations.",
+        "Interpret daily ratings with the shared recommendation and monitoring status; a low rating today does not erase earlier fatigue.",
         "",
-        "Combined Score and Subjective Score: 0 = fully fresh/recovered, 10 = maximum fatigue.",
+        "Combined Score and Subjective Score: 0 = fully fresh/recovered, 20 = maximum fatigue.",
         "",
-        "Objective Score: 0-10, neutral indicator of recent training volume relative to your 6-month weekly baseline.",
+        "Objective Score: 0-20, neutral indicator of recent training volume relative to your 6-month weekly baseline.",
         "- 0 = little to no recent training",
-        "- 5 = training at your historical average",
-        "- 10 = training at 2x or more your historical average",
+        "- 10 = training at your historical average",
+        "- 20 = training at 2x or more your historical average",
         "This is NOT a readiness score. High does not mean recovered, low does not mean fatigued.",
         "It contributes only 20% to the Combined Score - use it as load context, not a recovery signal.",
         "",
         "TSB: positive = more fitness than fatigue (favorable for performance), negative = more fatigue than fitness (caution).",
         "Volume Ratio: 1.0 = at baseline, >1.0 = above normal load, <1.0 = below normal load.",
         "",
+        f"Recommendation: {snapshot['recommendation_v2']['training_state_label']}",
+        f"Recommendation context: {snapshot['recommendation_v2']['training_state_detail']}",
+        "When recommendation data is insufficient, say Continue Training as Normal; do not infer an increase or decrease from missing observations.",
+        "Recovery memory allows worsening immediately, but requires confirmation before increasing training.",
         "Scores:",
         f"Combined Score: {_fmt_num(combined.get('combined_score'))}",
         f"Subjective Score: {_fmt_num(combined.get('subjective_score'))}",
@@ -2669,12 +2546,73 @@ def ai_chat_proxy(data: AIChatRequest, db: Session = Depends(get_db)):
     if not message:
         raise HTTPException(status_code=422, detail="message cannot be empty.")
 
-    model = (data.model or "").strip() or "openai/gpt-4o-mini"
+    model = (data.model or "").strip() or AI_DEFAULT_MODEL
 
     system_prompt = _build_ai_system_prompt(db)
     history = data.history or []
     messages = _openai_compatible_messages(system_prompt, history, message)
     return _stream_openrouter(model, api_key, messages)
+
+
+@app.get('/api/ai/conversations')
+def coaching_list(db: Session = Depends(get_db)):
+    rows = db.query(CoachingConversation).order_by(CoachingConversation.created_at.desc()).limit(50).all()
+    return [dict(id=r.id,created_at=r.created_at) for r in rows]
+
+
+@app.post('/api/ai/conversations')
+def coaching_create(data: CoachingCreate, db: Session = Depends(get_db)):
+    identity = str(data.id)
+    if not db.get(CoachingConversation, identity):
+        try:
+            snapshot = _build_diagnostics_snapshot(db)
+            monitoring = {k:snapshot[k] for k in ('date','score_source','recommendation_v2','combined_score','training_load','joint_advisory')}
+            evidence = coaching.build_report(db,monitoring_context=monitoring)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        db.add(CoachingConversation(id=identity,created_at=evidence['captured_at'],evidence=coaching.encode(evidence)))
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            if not db.get(CoachingConversation, identity): raise
+    return coaching.conversation(db,identity)
+
+
+@app.get('/api/ai/conversations/{conversation_id}')
+def coaching_read(conversation_id: UUID, db: Session = Depends(get_db)):
+    try:
+        return coaching.conversation(db,str(conversation_id))
+    except LookupError as exc:
+        raise HTTPException(404,str(exc)) from exc
+
+
+@app.post('/api/ai/conversations/{conversation_id}/messages')
+def coaching_send(conversation_id: UUID, data: CoachingMessage, db: Session = Depends(get_db)):
+    api_key = _get_ai_api_key(db)
+    if not api_key: raise HTTPException(422,'AI settings are not configured.')
+    message, model = data.message.strip(), data.model.strip()
+    if not message or not model: raise HTTPException(422,'Message and model must not be blank.')
+    try:
+        view = coaching.conversation(db,str(conversation_id))
+        messages = coaching.messages(view,message)
+        coaching.begin_turn(db,str(conversation_id),str(data.id),message,model,data.expected_sequence)
+    except LookupError as exc:
+        raise HTTPException(404,str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(409,str(exc)) from exc
+
+    def finish(content, status):
+        # Separate short-lived session: provider streaming never holds a database transaction.
+        with SessionLocal() as saved:
+            turn = saved.get(CoachingTurn,str(data.id))
+            turn.response, turn.status = content, status
+            saved.commit()
+    try:
+        return _stream_openrouter(model,api_key,messages,on_finish=finish)
+    except Exception:
+        finish('', 'failed')
+        raise
 
 
 # ── Readiness history ─────────────────────────────────────────────────────────
@@ -2713,37 +2651,7 @@ def get_readiness_combined_history(days: int = 7, db: Session = Depends(get_db))
     today = date_type.today()
     from_date = today - timedelta(days=days - 1)
 
-    readiness_rows = (
-        db.query(DailyReadiness)
-        .filter(
-            DailyReadiness.date >= from_date,
-            DailyReadiness.date <= today,
-        )
-        .order_by(DailyReadiness.date)
-        .all()
-    )
-    readiness_by_date = {row.date: row for row in readiness_rows}
-
-    results = []
-    current = from_date
-    while current <= today:
-        checkin = readiness_by_date.get(current)
-        objective_score = _objective_score_for_date(current, db)
-        subjective_score = round(_subjective_fatigue(checkin) * 20.0, 2) if checkin else None
-        combined_score = (
-            round((0.80 * subjective_score) + (0.20 * objective_score), 2)
-            if subjective_score is not None
-            else None
-        )
-        results.append({
-            "date": str(current),
-            "combined_score": combined_score,
-            "subjective_score": subjective_score,
-            "objective_score": objective_score,
-        })
-        current += timedelta(days=1)
-
-    return results
+    return [row for row in _recommendation_history(db, today) if row["date"] >= str(from_date)]
 
 
 # NOTE: /api/stress/history must be defined BEFORE /api/stress/{target_date}
@@ -2890,28 +2798,14 @@ def get_readiness_log(db: Session = Depends(get_db)):
     if not entries:
         return []
 
-    earliest = min(e.date for e in entries)
-    days_back = (date_type.today() - earliest).days + 1
-    history, _, _, _, _ = _compute_training_load(max(days_back, 30), db)
-    tsb_by_date = {h["date"]: h["tsb"] for h in history}
-    history_index = {h["date"]: idx for idx, h in enumerate(history)}
-    stress_series = [max(0.0, float(h.get("stress", 0.0))) for h in history]
-
-    calibration = _get_calibration_settings(db)
-    thresholds = _resolve_recommendation_thresholds(db, calibration)
+    daily_by_date = {r["date"]: r for r in _recommendation_history(db, date_type.today())}
 
     result = []
     for e in entries:
         date_key = str(e.date)
-        tsb = tsb_by_date.get(date_key, 0.0)
-        base_rec = _tsb_recommendation(tsb)
-        subj = _subjective_fatigue(e)
-        subj_base_score = round(subj * 20, 2)
-
-        idx = history_index.get(date_key)
-        training_mod = _training_modifier_for_index(stress_series, idx) if idx is not None else 0.0
-        fatigue_score = round(_clamp(subj_base_score + training_mod, 0.0, 20.0), 2)
-        adj_rec = _fatigue_recommendation(fatigue_score, thresholds)
+        daily = daily_by_date.get(date_key)
+        # Future entries are not evidence for today's recommendation.
+        key = daily["recommendation"] if daily else "insufficient_data"
 
         result.append({
             "date":                    date_key,
@@ -2925,11 +2819,12 @@ def get_readiness_log(db: Session = Depends(get_db)):
             "perceived_recovery":      e.perceived_recovery  or 0,
             "central_stress":          e.central_stress,
             "peripheral_stress":       e.peripheral_stress,
-            "fatigue_score":           fatigue_score,
-            "subjective_base_score":   subj_base_score,
-            "training_modifier":       training_mod,
-            "recommendation":          base_rec,
-            "recommendation_adjusted": adj_rec,
+            "fatigue_score":           daily["smoothed_score"] if daily else None,
+            "subjective_base_score":   daily["subjective_score"] if daily else None,
+            "data_sufficient":         daily["data_sufficient"] if daily else False,
+            "recommendation_label":    daily["recommendation_label"] if daily else "Continue Training as Normal",
+            "recommendation":          key,
+            "recommendation_adjusted": key,
         })
     return result
 
@@ -3105,6 +3000,42 @@ def get_workout_sessions(
 def get_pending_workout_sessions(days: int = 30, db: Session = Depends(get_db)):
     """Convenience endpoint for pending verification queue."""
     return get_workout_sessions(days=days, status="pending", db=db)
+
+
+@app.get("/api/workout-sessions/{hevy_workout_id}/exercises")
+def get_session_exercise_summary(hevy_workout_id: str, db: Session = Depends(get_db)):
+    """Return exercise list with set counts for a single session (used by verification card)."""
+    session_row = db.query(WorkoutSession).filter(
+        WorkoutSession.hevy_workout_id == hevy_workout_id
+    ).first()
+    if not session_row:
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    rows = db.execute(
+        text(
+            """
+            SELECT exercise_title, COUNT(*) AS set_count
+            FROM workout_logs
+            WHERE workout_id = :wid
+            GROUP BY exercise_title
+            ORDER BY MIN(id)
+            """
+        ),
+        {"wid": hevy_workout_id},
+    ).fetchall()
+
+    return [{"title": r[0], "set_count": r[1]} for r in rows]
+
+
+@app.get("/api/workout-sessions/pending-count")
+def get_pending_session_count(days: int = 45, db: Session = Depends(get_db)):
+    """Returns count of pending sessions within the same date window as the verification queue."""
+    since = date_type.today() - timedelta(days=max(1, days) - 1)
+    count = db.query(WorkoutSession).filter(
+        WorkoutSession.verification_status == "pending",
+        WorkoutSession.workout_date >= since,
+    ).count()
+    return {"count": count}
 
 
 @app.get("/api/workout-sessions/{hevy_workout_id}")
@@ -4471,3 +4402,8 @@ if os.path.isdir(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 if os.path.isdir(RESOURCES_DIR):
     app.mount("/resources", StaticFiles(directory=RESOURCES_DIR), name="resources")
+
+
+# Mounted pages retain their own sqlite3 services and tables.
+from rackbook.main import app as training_app
+app.mount("/training", training_app)

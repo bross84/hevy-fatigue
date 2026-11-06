@@ -31,10 +31,13 @@ COPY . .
 RUN apt-get update && apt-get install -y sqlite3 && rm -rf /var/lib/apt/lists/*
 
 # Create the data directory for the SQLite volume mount point
-RUN mkdir -p /data
+RUN mkdir -p /data /training-data
 
 # Set the DB path to the persistent volume location
 ENV DB_PATH=/data/hevy_fatigue.db
+ENV RACKBOOK_DB_PATH=/training-data/rackbook.db
+ENV HEVY_FATIGUE_DB_PATH=/data/hevy_fatigue.db
+ENV HEVY_WRITES_ENABLED=0
 
 # Expose the FastAPI port
 EXPOSE 8000

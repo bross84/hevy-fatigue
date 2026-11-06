@@ -90,6 +90,26 @@ class AppSetting(Base):
     def __repr__(self):
         return f"<AppSetting key={self.key}>"
 
+
+class CoachingConversation(Base):
+    __tablename__ = 'coaching_conversations'
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    created_at: Mapped[str] = mapped_column(String)
+    evidence: Mapped[str] = mapped_column(String)
+
+
+class CoachingTurn(Base):
+    __tablename__ = 'coaching_turns'
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    conversation_id: Mapped[str] = mapped_column(String, index=True)
+    sequence: Mapped[int] = mapped_column(Integer)
+    message: Mapped[str] = mapped_column(String)
+    response: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    model: Mapped[str] = mapped_column(String)
+    status: Mapped[str] = mapped_column(String)
+    created_at: Mapped[str] = mapped_column(String)
+    __table_args__ = (UniqueConstraint('conversation_id', 'sequence'),)
+
 # --- TABLE 5: Exercise Movement Pattern Mapping ---
 class ExerciseMapping(Base):
     __tablename__ = "exercise_mappings"

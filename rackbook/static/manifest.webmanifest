@@ -1,0 +1,30 @@
+{
+  "name": "Hevy-Fatigue",
+  "short_name": "Hevy-Fatigue",
+  "description": "Log workouts and save them to Hevy.",
+  "start_url": "/training/log",
+  "scope": "/training/",
+  "display": "standalone",
+  "background_color": "#111923",
+  "theme_color": "#111923",
+  "icons": [
+    {
+      "src": "/training/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/training/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/training/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
