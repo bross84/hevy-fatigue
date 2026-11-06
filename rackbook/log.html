@@ -6,6 +6,7 @@
   <script src="/training/static/draft-transfer.js"></script>
   <script src="/training/static/session-review.js"></script>
   <script src="/training/static/session-advice.js"></script>
+  <script src="/training/static/session-motivation.js"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -418,6 +419,7 @@
       <p class="hint">RPErx is the target; RPEact is what you performed. Tap ✓ after the set; if actual is blank, it uses the target. With LSe1RM on, actual RPE adjusts following weights; your completed weight stays fixed.</p>
       <div id="sessionSoreness" hidden></div>
       <div id="trialDaily" class="hint" hidden></div>
+      <div id="sessionMotivation"></div>
       <div id="plannedOrigin" class="hint" hidden></div>
     </div>
     <div id="exercises"></div>
@@ -590,6 +592,12 @@
     try { localStorage.setItem(KEY, JSON.stringify(draft)); } catch (e) {}
     if (draft) draft.exercises.forEach((ex) => { refreshE1rm(ex); refreshLoader(ex); });
     if (draft) new Set(draft.exercises.map((ex) => ex.template_id)).forEach(queueStress);
+  }
+  function saveMotivationDraft() {
+    // Coaching context must not trigger trial capture, stress refresh or weight calculations.
+    if (!draft || draft.frozenSave) return;
+    try { localStorage.setItem(KEY,JSON.stringify(draft)); }
+    catch (_) { say('Could not preserve the motivation answer on this device. Keep this page open until the workout is saved.'); }
   }
   function clearDraft() {
     draft = null; try { localStorage.removeItem(KEY); } catch (e) {} restStop();
@@ -1316,6 +1324,7 @@
     const stay = !$("workout").hidden, y = window.scrollY;   // redrawing the workout you are already on keeps your place
     show("workout");
     $("title").value = draft.title;
+    if (typeof SessionMotivation !== 'undefined') SessionMotivation.mount(draft,$("sessionMotivation"),saveMotivationDraft);
     const origin = $("plannedOrigin"); origin.hidden = !draft.planned_session; origin.replaceChildren();
     if (draft.planned_session) {
       origin.append(el("span", null, draft.planLabel || "Planned workout"));
@@ -1996,6 +2005,7 @@
     return { soreness: Object.keys(soreness).length ? soreness : null, title: draft.title.trim() || "Workout", weight_unit: unit, start_time: draft.startedAt, end_time: new Date().toISOString(), exercises,
       ...(draft.prescription ? { prescription:draft.prescription } : {}),
       ...(draft.advisory_links?.length ? {advisory_links:draft.advisory_links} : {}),
+      ...(draft.motivation != null ? {motivation:draft.motivation} : {}),
       ...(draft.planned_session ? { planned_session: draft.planned_session } : {}) };
   }
 
@@ -2031,6 +2041,7 @@
     saving = true; $("finish").disabled = true; $("finish").textContent = "Saving…"; say("");
     try {
       entry = WorkoutSave.freeze(workoutBeingSaved, entry);
+      if (typeof SessionMotivation !== 'undefined') SessionMotivation.mount(workoutBeingSaved,$("sessionMotivation"),saveMotivationDraft);
       const saved = await api("/hevy/workouts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(entry) });
       if (draft !== workoutBeingSaved) return;
       if (saved.state !== 'complete') {

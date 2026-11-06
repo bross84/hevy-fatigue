@@ -413,3 +413,29 @@ presets show checked-date input/output USD per million tokens; history/reasoning
 and provider rates affect actual charges. No API call or automatic model switch
 is triggered by changing the selector. Keys, databases, review evidence, fatigue
 models, training prescriptions and logger weight controls remain unchanged.
+
+## Session motivation for coaching (local, 2026-11-06)
+
+The logger has one optional session-level pre-training question: Eager (0),
+Willing (1), Neutral (2), Reluctant (3), Dreading it (4). An optional reason
+(fatigue, stale training, time/life stress, other) and note accompany the answer.
+Unanswered is absent/unknown, never inferred eager. Draft persistence is separate
+from saveDraft's weight/stress/trial hooks. Ratings, reasons and notes do not
+enter fatigue calculations, daily check-ins or frozen trial records.
+
+Completed workout saves atomically add a logger-only session_motivation record
+with the exact frozen answer, client-reported time/phase and server save time.
+It is not sent to Hevy. Partial/failed local finalization does not repost the
+remote workout. Old frozen requests remain compatible because absent motivation
+is omitted before hashing. Controls lock after freeze; draft transfer retains
+and validates the optional answer. Marked/previously started working sets make
+later edits non-prospective, including after undo. Post-save/Recent review shows
+saved motivation even without an original prescription.
+
+New AI training reviews include motivation_checkins from the existing six-month
+read-only logger bridge. The coaching brief explicitly separates motivation from
+fatigue, considers reasons alongside performance/spacing, and forbids interpreting
+one reluctant day as proof of overtraining or a failed block. Only saved workouts
+are observed; skipped/discarded workouts are not tracked. Older review evidence
+remains frozen; start a new review after saving to include new answers. No automatic
+programming changes, commits, pushes or deployments are part of this local work.

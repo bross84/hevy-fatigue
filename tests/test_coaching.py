@@ -121,6 +121,26 @@ class CoachingTests(TestCase):
             'https://pubmed.ncbi.nlm.nih.gov/35044672/',
         })
 
+    def test_motivation_is_separate_raw_evidence_missing_is_not_zero(self):
+        from rackbook.motivation import record
+        monitoring=main._build_diagnostics_snapshot(self.db)
+        with logger.get_db() as conn:
+            record(dict(start_time=str(DAY)+'T12:00:00Z',motivation=dict(level=3,reason='stale',note='Bored',timing='before_working_sets',recorded_at=str(DAY)+'T11:55:00Z')),'w',conn)
+        before=self.path.read_bytes()
+        report=coaching.build_report(self.db,today=DAY)
+        self.assertEqual(report['motivation_checkins'][0]['level'],3)
+        self.assertEqual(report['motivation_checkins'][0]['reason'],'stale')
+        provider_context=coaching.messages(dict(evidence=report,turns=[]),'Review my training')[0]['content']
+        supplied=json.loads(provider_context.split('FROZEN TRAINING REPORT:\n',1)[1])
+        self.assertEqual(supplied['motivation_checkins'][0]['note'],'Bored')
+        self.assertEqual(supplied['motivation_checkins'],report['motivation_checkins'])
+        self.assertEqual(report['daily_checkins'],[])
+        self.assertEqual(report['coverage']['complete_daily_checkins'],0)
+        self.assertEqual(self.path.read_bytes(),before)
+        self.assertEqual(main._build_diagnostics_snapshot(self.db),monitoring)
+        self.assertIn('Motivation is separate from fatigue',coaching.BRIEF)
+        self.assertIn('One low-motivation day is not evidence',coaching.BRIEF)
+
     def create(self):
         identity=str(uuid4())
         with patch.object(coaching,'build_report',return_value=dict(captured_at=coaching.now_iso(),version=coaching.VERSION,references=coaching.REFERENCES)):

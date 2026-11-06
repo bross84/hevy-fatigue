@@ -15,6 +15,7 @@ from fastapi import HTTPException
 
 from .database import get_db, get_rpe_percentage
 from . import mesocycles, set_log, training_max, soreness, fatigue_trial, stress_service, session_review, session_advice
+from . import motivation
 from .workout_payload import build_hevy_workout
 from .hevy_client import WorkoutNotSent
 
@@ -104,6 +105,8 @@ def monitoring_status(workout_id, state):
 
 def prepare(entry):
     payload = entry.model_dump(mode='json')
+    if payload.get('motivation') is None:
+        payload.pop('motivation', None)  # Legacy frozen requests retain their exact canonical hash.
     if not payload.get('advisory_links'):
         payload.pop('advisory_links',None)
     if payload.get('prescription') is None:
@@ -182,6 +185,7 @@ def finalize(client_id):
             remote_id = row['hevy_workout_id']
             set_log.record(set_log.rows_from_entry(payload, remote_id), connection=conn)
             session_review.record(payload, remote_id, conn)
+            motivation.record(payload, remote_id, conn)
             session_advice.record_outcomes(payload, remote_id, conn)
             training_max.record(json.loads(row['ts_rows']), payload['start_time'], connection=conn)
             if payload.get('planned_session'):

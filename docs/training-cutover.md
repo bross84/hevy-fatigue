@@ -496,3 +496,21 @@ selection persistence. The next review turn should record that exact ID. A new
 browser with no saved preference should default to GPT-6.1 Terra. Provider access
 and actual live costs remain separate checks; no production AI requests were used
 for verification. Existing review evidence/history and workout behavior are retained.
+
+## Motivation check-in release follow-up (local, 2026-11-06)
+
+After separately authorized release, keep the latest pull/up update workflow.
+Startup adds the logger-only session_motivation table; there is no host-schema,
+credential or model migration. Finish/preserve pending drafts and keep both current
+databases and key material. Existing frozen requests without motivation remain
+valid. Pending requests containing motivation require this version to preserve
+that metadata; retain their identities and do not automatically repost on rollback.
+
+Device acceptance: load a normal session and confirm motivation starts unanswered.
+Select a rating/reason/note, reload, and confirm preservation without changes to
+sets, loads or fatigue scores. Clear returns it to unknown. During the next normal
+workout, save once and check the answer in its review/Recent. Start a new AI training
+review and inspect motivation_checkins for the saved answer/reason/note. Existing
+AI review evidence must not change silently. Motivation edited after a working set
+was marked complete is labelled as later context. No production test workout is
+needed; live-device/deployed-data acceptance remains pending.

@@ -5,6 +5,7 @@ vm.runInContext(fs.readFileSync(path.join(root,'draft-transfer.js'),'utf8')+';th
 const storage=()=>{const values=new Map();return {getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,String(v)),removeItem:k=>values.delete(k),values};};
 const source=storage(),dest=storage();
 const draft={title:'ST workout',startedAt:'2026-10-30T10:00:00Z',client_workout_id:'12345678-1234-4123-8123-123456789abc',
+ motivation:{level:0,reason:'stale',note:'Same movements',recorded_at:'2026-10-30T09:59:00Z',timing:'before_working_sets'},
  planned_session:{mesocycle_id:'plan',session_id:'day'},exercises:[{id:'movement-1',template_id:'sq',title:'Squat',notes:'Keep this',ref:{weightUnit:'lb'},sets:[{type:'normal',kg:'100.123',reps:'1',rpe:'5',ts:true,done:true,manual:true}]}]};
 source.setItem('training.logDraft',JSON.stringify(draft));source.setItem('training.unit','lb');source.setItem('training.restEnd',Date.now()-1000);source.setItem('secret','must never export');
 const file=context.transfer.exportData('workout-draft',source);
@@ -23,6 +24,11 @@ assert.equal(JSON.stringify([...dest.values]),before);
 for(const field of ['kg','reps','rpe','arpe']) {
   const malformed=structuredClone(file);malformed.data.draft.exercises[0].sets[0][field]=5;
   assert.throws(()=>context.transfer.importData(malformed,'workout-draft',dest,()=>{throw Error('Must validate before asking to replace');}));
+  assert.equal(JSON.stringify([...dest.values]),before);
+}
+for(const motivation of [{level:true},{level:5},{level:0,reason:'bad'},{level:0,note:null},{level:0,note:'x'.repeat(501)},{level:1,timing:'before_training'}]) {
+  const malformed=structuredClone(file);malformed.data.draft.motivation=motivation;
+  assert.throws(()=>context.transfer.importData(malformed,'workout-draft',dest,()=>{throw Error('Must validate first');}));
   assert.equal(JSON.stringify([...dest.values]),before);
 }
 for(const mutate of [d=>delete d.exercises[0].id,d=>d.startedAt='10/30/2026',
