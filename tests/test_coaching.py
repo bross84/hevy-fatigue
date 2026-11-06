@@ -115,7 +115,11 @@ class CoachingTests(TestCase):
         self.assertEqual(report['saved_plans'][0]['document']['notes'],'Goal: strength')
         self.assertEqual(report['pretraining_checkins'][0]['squat'],0)
         self.assertEqual(len(report['references']),3)
-        self.assertTrue(all(r['url'].endswith('/') and 'pubmed.ncbi.nlm.nih.gov/' in r['url'] for r in report['references']))
+        self.assertEqual({r['url'] for r in report['references']}, {
+            'https://pubmed.ncbi.nlm.nih.gov/19204579/',
+            'https://pubmed.ncbi.nlm.nih.gov/33520457/',
+            'https://pubmed.ncbi.nlm.nih.gov/35044672/',
+        })
 
     def create(self):
         identity=str(uuid4())
