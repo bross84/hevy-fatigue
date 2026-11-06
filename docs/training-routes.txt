@@ -1,4 +1,6 @@
 # Mounted Rackbook route inventory (all paths below /training)
+POST /training/session-advice
+POST /training/session-advice/{recommendation_id}/decisions
 GET /training/session-reviews/{workout_id}
 GET,HEAD /training/openapi.json
 GET,HEAD /training/docs

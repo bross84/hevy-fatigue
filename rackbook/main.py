@@ -39,6 +39,7 @@ from . import rpe_history
 from . import rpe_assignments
 from . import set_log
 from . import session_review
+from . import session_advice
 from . import stress_index
 from . import stress_service
 from . import mesocycles
@@ -345,6 +346,7 @@ class WorkoutEntry(BaseModel):
     soreness: SessionSoreness | None = None
     planned_session: mesocycles.PlanLink | None = None
     prescription: session_review.Prescription | None = None
+    advisory_links: list[session_advice.AdviceLink] | None = Field(default=None, max_length=100)
 
     @model_validator(mode='after')
     def review_identities(self):
@@ -373,7 +375,23 @@ class WorkoutEntry(BaseModel):
 
 @app.get('/session-reviews/{workout_id}', response_model=session_review.ReviewResponse)
 def get_session_review(workout_id: str):
-    return session_review.read(workout_id)
+    return {**session_review.read(workout_id), 'advisory_outcomes':session_advice.outcomes(workout_id)}
+
+
+@app.post('/session-advice', response_model=session_advice.AdviceView)
+def create_session_advice(data: session_advice.AdviceRequest):
+    try:
+        return session_advice.create(data)
+    except session_advice.AdviceError as exc:
+        raise HTTPException(exc.status,exc.message) from exc
+
+
+@app.post('/session-advice/{recommendation_id}/decisions', response_model=session_advice.AdviceView)
+def decide_session_advice(recommendation_id: UUID, data: session_advice.DecisionRequest):
+    try:
+        return session_advice.decide(recommendation_id,data)
+    except session_advice.AdviceError as exc:
+        raise HTTPException(exc.status,exc.message) from exc
 
 
 class SavedWorkout(BaseModel):

@@ -15,6 +15,7 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
 const buttons=box=>box.children.filter(n=>n.tag==='button');
 const button=(box,text)=>buttons(box).find(b=>b.textContent===text);
 const draft=()=>({client_workout_id:'old-id',title:'Edited title',planned_session:{mesocycle_id:'missing',session_id:'day'},
+  advisory_links:[{recommendation_id:'old-advice',decision_id:'old-decision'}],
   frozenSave:{client_workout_id:'old-id',title:'Frozen title',end_time:'original',exercises:[]}});
 (async()=>{
   // Business validation is now durably rejected by the server. Correction is
@@ -23,6 +24,7 @@ const draft=()=>({client_workout_id:'old-id',title:'Edited title',planned_sessio
   const d=draft();context.recovery.panel(d,()=>{throw Error('Must not clear rejected draft')});await flush();
   let box=main.children[0],correct=button(box,'Correct rejected draft');assert.equal(correct.hidden,false);
   await correct.events.click();assert.equal(reloads,1);assert.equal(d.frozenSave,undefined);assert.notEqual(d.client_workout_id,'old-id');
+  assert.equal(d.advisory_links,undefined,'A corrected draft must not reuse advice bound to the rejected save identity');
   const fresh=context.recovery.freeze(d,{title:d.title,end_time:'corrected',exercises:[]});
   assert.equal(fresh.title,'Edited title');assert.equal(fresh.end_time,'corrected');
   assert.equal(posts,0,'Correction must not post or finalize');
@@ -57,6 +59,7 @@ const draft=()=>({client_workout_id:'old-id',title:'Edited title',planned_sessio
   const quota=draft();context.localStorage.setItem=()=>{throw Error('Quota')};
   assert.throws(()=>context.recovery.correct(quota),/Quota/);
   assert.equal(quota.client_workout_id,'old-id');assert.ok(quota.frozenSave);
+  assert.ok(quota.advisory_links,'Storage failure must retain the existing advisory identity links too');
   // A delayed status response from an old draft cannot clear a newly loaded
   // session while the logger's deep-link request is completing.
   const log=fs.readFileSync(path.join(__dirname,'../rackbook/log.html'),'utf8');

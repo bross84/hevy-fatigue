@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 from .database import get_db
+from .session_advice import OutcomeView
 
 
 class PrescribedSet(BaseModel):
@@ -109,6 +110,7 @@ class ReviewResponse(BaseModel):
     reason: str | None = None
     review: SessionReview | None = None
     prescription: Prescription | None = None
+    advisory_outcomes: list[OutcomeView] = Field(default_factory=list)
 
 
 def build(payload):

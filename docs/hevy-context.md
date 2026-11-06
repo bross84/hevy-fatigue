@@ -321,3 +321,41 @@ rebuild of the constrained table. Draft autoWeights and API auto_weights preserv
 the deselected state across reload/new workouts. New review evidence records
 basis manual and LS off when no weight source is active. No new progression
 algorithm or bodyweight-load calculation was added. Local implementation only.
+
+## Provisional session advice and feedback (local, 2026-11-05)
+
+`session_advice.py` adds provisional-session-v1 as a separate advisory policy;
+existing monitoring/daily/pattern models and frozen trials are unchanged. It can
+suggest a smaller session from current tiredness/poor recovery, repeated recorded
+RPE overshoots, or three declining matched local capacity observations. Optional
+extra work requires a good current check-in and three sustained rep-matched
+exposures with entered representative effort and no recorded overshoot. These
+are tentative product rules, not validated individual recovery thresholds.
+Unknown/stale check-ins remain unknown; pain/high joint-discomfort flags yield
+review rather than an increase. Manual-weight movements do not use added-weight
+capacity trends. No block recommendation or automatic programming edit is added.
+
+Advice uses a read-only host bridge for original 0–4 daily ratings and imported
+exercise history, plus exact local history. Workout identities are deduplicated
+with local records preferred. The lookback is 90 days, with recent comparison
+samples limited by a 21-day staleness rule. The dashboard's .limit(7) only limits
+recent-session display; full/incremental Hevy imports already paginate all API
+pages. `/api/workouts/recent` has its own display count (default 12). Neither is a
+backend history-retention limit. Missing imported history is labelled explicitly.
+
+Each session/movement gets an immutable evidence snapshot. Accept/Modify/Dismiss/
+Not now append decision events; Modify records optional set/rep/RPE intent only,
+including zero sets for a skipped movement. No workout/program inputs are edited.
+Dismiss collapses similar advice for seven days; Not now defers only this record.
+Snapshots do not silently re-evaluate after check-in or workout edits; the UI
+states this and refresh reloads recorded decisions, not a new assessment.
+
+Frozen save links identify the precise acknowledged decision. Actual saved dose
+and entered effort comparisons are recorded atomically with local save effects
+and journal completion. Acceptance is never treated as execution or proof of
+benefit. The review/Recent show the decision versus actual work and the first
+later check-in within the six subsequent dates, read-only and date-only. Later
+check-ins do not rewrite frozen recommendation/trial records. Recent decisions
+and linked actual counts inform feedback context; this is not automatic fitting
+of a physiological model. Unrelated settings, keys and latest update flow remain
+unchanged. No commit/push/deployment occurred in this local implementation.

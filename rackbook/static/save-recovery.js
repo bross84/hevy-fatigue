@@ -21,9 +21,11 @@ const WorkoutSave = (() => {
     if (!confirm('This attempt was rejected before creating a workout. Unlock the draft and create a new save identity?')) return false;
     const corrected={...draft,client_workout_id:trainingUUID()};
     delete corrected.frozenSave;delete corrected.validationRejected;delete corrected.validationError;
+    delete corrected.advisory_links;
     // Retain the original identity and frozen payload if persistence fails.
     localStorage.setItem(key,JSON.stringify(corrected));
     delete draft.frozenSave;delete draft.validationRejected;delete draft.validationError;
+    delete draft.advisory_links;
     draft.client_workout_id=corrected.client_workout_id;
     return true;
   }

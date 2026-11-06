@@ -48,6 +48,75 @@ class SaveRecoveryTests(unittest.TestCase):
             return tuple(db.execute('SELECT COUNT(*) FROM '+table).fetchone()[0]
                          for table in ('logged_sets','training_max_history','session_soreness','mesocycle_completions'))
 
+    def advised_workout(self,action='accept'):
+        from datetime import timedelta
+        from rackbook import session_advice as advice
+        from rackbook.tests.test_session_review import captured_payload
+        data=training.WorkoutEntry(client_workout_id=uuid4(),**captured_payload())
+        at=advice.stamp(data.start_time)
+        request=advice.AdviceRequest(session_id=data.client_workout_id,exercise_id='movement',exercise_template_id='sq',title='Squat',
+            workout_start=at,local_date=at.date(),sets=[dict(reps=5,rpe=6) for _ in range(3)])
+        with patch('rackbook.session_advice.host_context',return_value=dict(status='unavailable',checkins=[],history=[])):
+            row=advice.create(request,now=at+timedelta(minutes=1))
+        decision=advice.DecisionRequest(id=uuid4(),action=action,
+            modification=dict(working_sets=2,reps=4,target_rpe=6) if action=='modify' else None)
+        advice.decide(row['id'],decision,now=at+timedelta(minutes=2))
+        data.advisory_links=[advice.AdviceLink(recommendation_id=row['id'],decision_id=decision.id)]
+        return data,row,decision
+
+    def test_acceptance_is_separate_from_actual_training_and_decisions_freeze(self):
+        from rackbook import session_advice as advice
+        data,row,decision=self.advised_workout()
+        before=data.model_dump(mode='json')
+        self.assertEqual(saves.save(data,self.factory)['state'],'complete')
+        self.assertEqual(data.model_dump(mode='json'),before)
+        with closing(get_db()) as db:
+            outcome=json.loads(db.execute('SELECT outcome FROM advisory_outcomes').fetchone()[0])
+        self.assertEqual(outcome['decision']['action'],'accept')
+        self.assertEqual(outcome['intended']['working_sets'],3)
+        self.assertEqual(outcome['actual']['working_sets'],2)
+        self.assertFalse(outcome['matched_intended_sets'])
+        self.assertFalse(outcome['actual']['decision_after_recorded_set'])
+        sent=self.remote.create_workout.call_args.args[0]
+        self.assertNotIn('advisory_links',sent)
+        self.assertNotIn('advisory_links',sent['workout'])
+        with self.assertRaises(advice.AdviceError):
+            advice.decide(row['id'],advice.DecisionRequest(id=uuid4(),action='dismiss',expected_decision_id=decision.id))
+
+    def test_advisory_outcome_commits_atomically_on_local_retry_without_reposting(self):
+        data,row,decision=self.advised_workout('modify')
+        with patch('rackbook.session_advice.record_outcomes',side_effect=RuntimeError('disk')):
+            with self.assertLogs('rackbook.workout_saves',level='ERROR'):
+                self.assertEqual(saves.save(data,self.factory)['state'],'remote_saved')
+        self.assertEqual(self.counts(),(0,0,0,0))
+        with closing(get_db()) as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM advisory_outcomes').fetchone()[0],0)
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM session_reviews').fetchone()[0],0)
+        self.assertEqual(saves.save(data,self.factory)['state'],'complete')
+        self.assertEqual(saves.save(data,self.factory)['state'],'complete')
+        self.remote.create_workout.assert_called_once()
+        with closing(get_db()) as db:
+            rows=db.execute('SELECT outcome FROM advisory_outcomes').fetchall()
+        self.assertEqual(len(rows),1)
+        outcome=json.loads(rows[0][0])
+        self.assertTrue(outcome['matched_intended_sets'])
+        self.assertFalse(outcome['matched_intended_reps'])
+        self.assertFalse(outcome['matched_intended_rpe'])
+
+    def test_foreign_advice_link_is_durably_rejected_before_remote_io(self):
+        data,_,_=self.advised_workout()
+        data.client_workout_id=uuid4()
+        self.assertEqual(saves.save(data,self.factory)['state'],'rejected')
+        self.factory.assert_not_called()
+
+    def test_changed_decision_links_conflict_with_a_frozen_save(self):
+        data,_,_=self.advised_workout()
+        saves.prepare(data)
+        changed=data.model_copy(deep=True)
+        changed.advisory_links[0].decision_id=None
+        with self.assertRaises(HTTPException) as caught:saves.prepare(changed)
+        self.assertEqual(caught.exception.status_code,409)
+
     def test_review_and_original_prescription_commit_once_with_recovery(self):
         from rackbook.tests.test_session_review import captured_payload
         payload=captured_payload()
@@ -122,6 +191,7 @@ class SaveRecoveryTests(unittest.TestCase):
         old_payload = self.data.model_dump(mode='json')
         old_payload.pop('client_workout_id')
         old_payload.pop('prescription')
+        old_payload.pop('advisory_links')
         for ex in old_payload['exercises']:
             for s in ex['sets']:
                 s.pop('target_rpe')
