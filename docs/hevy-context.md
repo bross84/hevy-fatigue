@@ -583,3 +583,15 @@ It is descriptive of this athlete, not a validated optimal zone or a programming
 trigger. Raw combined scores have a separate dashed line; missing values stay
 null and the axis remains 0–20. Absolute ratings remain available so chronically
 high fatigue cannot be hidden by the moving reference. No program writes occur.
+
+Coach script compatibility (follow-up to #88). The host HTML requires cache
+revalidation. Dashboard and logger load the shared Coach script with a revised
+URL, and the dashboard also revises its daily script URL. Update these revisions
+when the script interface changes. If the expected function is unavailable, the
+daily card keeps the saved evidence and prompts for a reload and Retry.
+
+Pending daily interpretations can be retried explicitly after five minutes. The
+dashboard and saved AI Coach conversation use the same frozen check-in evidence.
+The server checks the specific pending turn and expected sequence before
+recording it as interrupted and starting a replacement in one transaction.
+A late completion may only update a turn that is still pending.

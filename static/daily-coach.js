@@ -11,7 +11,8 @@ const DailyCoach = (() => {
     return view?.turns.find(turn=>turn.status==='complete') || view?.turns.at(-1);
   }
   function canRetry(view){
-    return !!view?.turns.length && view.turns.every(turn=>['failed','interrupted'].includes(turn.status));
+    return !!view?.retry_pending_turn_id ||
+      (!!view?.turns.length && view.turns.every(turn=>['failed','interrupted'].includes(turn.status)));
   }
   function savedStartFailure(view){
     if(!view || view.turns.length)return false;
@@ -38,7 +39,7 @@ const DailyCoach = (() => {
       if(first?.response){const response=document.createElement('p');response.textContent=first.response;response.style.whiteSpace='pre-wrap';box.append(response);}
       const detail=document.createElement('small');
       detail.textContent='Evidence saved '+new Date(state.view.created_at).toLocaleString()+(first?' · '+first.model+' · '+first.status:'')+'. Proposals only; programming is unchanged.';box.append(detail);
-      const link=document.createElement('a');link.href=WeeklyCoach.openUrl(state.view.id);link.textContent='Discuss with AI Coach';link.style.display='block';box.append(link);
+      const link=document.createElement('a');link.href="/?coaching_conversation="+encodeURIComponent(state.view.id)+"#ai";link.textContent='Discuss with AI Coach';link.style.display='block';box.append(link);
     }
     if(!state.busy && (canRetry(state.view) || (state.failed && !state.view?.turns.length))){
       const button=document.createElement('button');
@@ -46,7 +47,7 @@ const DailyCoach = (() => {
       button.className='btn btn-secondary';
       button.textContent='Retry';
       const date=visibleDate;
-      button.addEventListener('click',()=>run(date,{id:state.view?.id,sequence:state.view?.turns.length || 0}));
+      button.addEventListener('click',()=>run(date,{id:state.view?.id,sequence:state.view?.turns.length || 0,pendingTurnId:state.view?.retry_pending_turn_id}));
       box.append(button);
     }
   }
@@ -72,6 +73,7 @@ const DailyCoach = (() => {
     const turn=displayedTurn(view);
     if(!turn)return 'Preparing your daily interpretation…';
     if(turn.status==='complete')return 'Saved interpretation.';
+    if(view.retry_pending_turn_id)return 'The earlier request has been pending for at least five minutes. Retry to send a new request using this check-in.';
     if(turn.status==='pending')return 'AI Coach is preparing a response. Reload to check its status.';
     return 'Response '+turn.status+'. You can retry the interpretation.';
   }
@@ -94,9 +96,12 @@ const DailyCoach = (() => {
           return;
         }
         setStartFailure(view,false);
+        if(typeof WeeklyCoach==='undefined' || typeof WeeklyCoach.reviewPrepared!=='function'){
+          throw Error('AI Coach did not finish updating. Reload this page, then select Retry.');
+        }
         const result=await WeeklyCoach.reviewPrepared(view,
           'Interpret this daily check-in briefly. Compare the current absolute ratings with my supplied personal historical range, recent check-ins, training spacing and performance. Explain what matters, what is uncertain and what to watch at my next session. Low fatigue is not a reason on its own to add volume. Keep motivation separate from fatigue. Do not change programming.',
-          status=>update(date,{status}),sameReview?retry.sequence:0);
+          status=>update(date,{status}),sameReview?retry.sequence:0,sameReview?retry.pendingTurnId:null);
         update(date,{view:result,status:describe(result)});
       }catch(error){
         update(date,{failed:true,status:'Check-in saved. '+error.message});

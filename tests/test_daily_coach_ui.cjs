@@ -20,7 +20,13 @@ const context=vm.createContext({TextDecoder,Date,crypto:{randomUUID:()=>Math.ran
     if(url==='/api/settings/ai')return ok({configured,default_model:'test/default'});
     if(url.endsWith('/messages')){
       const id=url.split('/')[4],v=views.get(id);
-      if(v.turns.length!==JSON.parse(options.body).expected_sequence)return {ok:false,status:409};
+      const request=JSON.parse(options.body);
+      if(v.turns.length!==request.expected_sequence)return {ok:false,status:409};
+      if(request.retry_pending_turn_id){
+        assert.equal(v.retry_pending_turn_id,request.retry_pending_turn_id);
+        v.turns.at(-1).status='interrupted';
+        delete v.retry_pending_turn_id;
+      }
       v.turns.push({status:fail?'interrupted':'complete',response:'<img src=x onerror=bad()> Tired but recovered.',model:'test/budget-model'});
       const chunks=fail?['data: {"error":{"message":"Mock interruption"}}\n\n']:['data: [DO','NE]\n\n'];let index=0;
       return {ok:true,status:200,body:{getReader:()=>({read:async()=>index<chunks.length?{done:false,value:Buffer.from(chunks[index++])}:{done:true}})}};
@@ -63,9 +69,18 @@ const text=()=>box.children.map(e=>e.textContent).join('\n');
   assert.equal(calls.filter(c=>c.url==='/api/settings/ai').length,settingsChecks);
   assert.ok(box.children.some(e=>e.textContent==='Retry'),'setup failure remains retryable on reload');
   revision='pending';
-  view();views.get(revision).turns=[{status:'pending',model:'test/budget-model'}];
+  view();views.get(revision).turns=[{id:'old-turn',status:'pending',model:'test/budget-model'}];
   await context.daily.mount('2026-11-06');
   assert.equal(box.children.some(e=>e.tagName==='button'),false,'pending responses cannot be retried');
+  views.get(revision).retry_pending_turn_id='old-turn';
+  configured=true;
+  await context.daily.mount('2026-11-06');
+  assert.equal(calls.filter(c=>c.url.endsWith('/messages')).length,3,'stale pending is never automatically retried');
+  await box.children.find(e=>e.textContent==='Retry').listeners.click();
+  const retried=calls.filter(c=>c.url.endsWith('/messages')).at(-1).body;
+  assert.equal(retried.retry_pending_turn_id,'old-turn');
+  assert.equal(retried.expected_sequence,1);
+  assert.ok(text().includes('Saved interpretation.'));
   context.daily.clear('2026-11-06');assert.equal(box.hidden,true);
   console.log('Daily Coach: restore without billing, duplicate protection, selected model, literal text, saved links, revisions, AI outage and deletion passed.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
