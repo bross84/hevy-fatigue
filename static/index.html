@@ -7425,7 +7425,9 @@ async function loadTrainingLoadCard() {
       ensureReadinessCombinedHistoryPayload(),
     ]);
     _renderTodayCards(trainingRes, 0);
-    DailyCoach.mount(todayStr(),!!trainingRes?.today?.checkin_exists);
+    if (document.getElementById('tab-dashboard').classList.contains('active')) {
+      DailyCoach.mount(todayStr(), !!trainingRes?.today?.checkin_exists);
+    }
     renderTodayReadinessChart(readinessHistory);
     renderTodayPatternFatigueCard();
     renderDashboardRecentSessions(trainingRes);

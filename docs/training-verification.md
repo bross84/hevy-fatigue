@@ -989,3 +989,8 @@ All 31 JavaScript checks passed. The mocked daily browser flow verified opening
 a previously saved check-in, one automatic request, reload without another
 request, setup failure, interrupted response, successful explicit Retry, and
 the absence of legacy advice. Container startup and Python suites run in PR CI.
+
+The weekly browser regression initially caught an extra daily request when a
+direct Coach link loaded dashboard data in the background. Automatic recovery
+now runs only when the dashboard is active. The daily and weekly mocked browser
+flows both passed after the correction.
