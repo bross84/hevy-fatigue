@@ -67,7 +67,15 @@ discussing variation or phase options alongside performance, recovery and actual
 One low-motivation day is not evidence of overtraining or a failed program. Do not add motivation
 to fatigue scores or assume that boredom proves a need for a deload. Timing is client-reported;
 after-working-set/unknown answers are not prospective pre-training observations. Missing is unknown,
-not eager. Only saved workouts supply motivation here; skipped or discarded sessions are not observed.
+not eager. Confirmed pre-session check-ins may have no linked workout; do not count them as training.
+Legacy reason fatigue used a combined tiredness/poor-recovery label. Its precise meaning is
+ambiguous without the note, and it is never proof of poor physical recovery.
+Use motivation as engagement context, never a performance prediction or a fatigue-score component.
+For weekly reviews, week_context identifies the planned training week, not a calendar Monday–Sunday.
+Opening reviews should discuss the upcoming plan using current check-in, recent response and spacing.
+Closing reviews should compare planned versus actually linked work, motivation and response, revisit
+the opening discussion, and propose specific options to discuss with the athlete like a remote coach.
+The athlete will decide changes; never claim a proposed plan or substitution has been applied.
 The evidence date is frozen for each conversation. If training has changed, suggest a new review.
 """
 
@@ -97,7 +105,7 @@ def day_of(value):
 def local_evidence(start, end):
     """Read only, no initialization, credentials, settings, or frozen-trial rewrites."""
     result = dict(status='unavailable', sets=[], reviews=[], plans=[], completions=[],
-                  pretraining=[], decisions=[], motivation=[])
+                  pretraining=[], decisions=[], motivation=[], confirmed_checkins=[])
     try:
         with closing(sqlite3.connect(database_path().as_uri()+'?mode=ro', uri=True, timeout=2)) as conn:
             conn.row_factory = sqlite3.Row
@@ -111,6 +119,8 @@ def local_evidence(start, end):
             result['completions'] = rows('SELECT mesocycle_id,session_id,hevy_workout_id,workout_start FROM mesocycle_completions WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=?', (str(start), str(end)))
             result['pretraining'] = rows('SELECT * FROM session_soreness WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=? ORDER BY workout_start', (str(start), str(end)))
             result['motivation'] = rows('SELECT hevy_workout_id,workout_start,level,reason,note,recorded_at,timing,saved_at FROM session_motivation WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=? ORDER BY workout_start',(str(start),str(end)))
+            result['confirmed_checkins']=rows('SELECT * FROM session_checkins WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=? ORDER BY workout_start',(str(start),str(end)))
+            for check in result['confirmed_checkins']:check['motivation']=parsed(check['motivation'],{})
             # Only original input ratings from captured trials, not predictions or completions.
             for row in rows('SELECT exercise_template_id,workout_start,recorded_at,prospective,snapshot FROM fatigue_trial_snapshots WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=? ORDER BY recorded_at', (str(start), str(end))):
                 data = (parsed(row.pop('snapshot'), {}) or {}).get('input', {})
@@ -124,7 +134,8 @@ def local_evidence(start, end):
     return result
 
 
-def build_report(db, *, today=None, monitoring_context=None):
+def build_report(db, *, today=None, monitoring_context=None, context_limit=None):
+    context_limit=MAX_CONTEXT_CHARS if context_limit is None else context_limit
     today = today or date.today()
     month_index = today.year * 12 + today.month - 1 - 6
     year, month = divmod(month_index, 12)
@@ -236,14 +247,14 @@ def build_report(db, *, today=None, monitoring_context=None):
             missing_checkin_dates=(today-start).days+1-len(checkins),local_source=local['status']),
         weekly_workload=[dict(week_start=k,**v) for k,v in sorted(weeks.items())],exercises=list(exercises.values()),
         recent_sessions=ordered[-RECENT_SESSIONS:],daily_checkins=checkins,
-        pretraining_checkins=local['pretraining'],motivation_checkins=local['motivation'],saved_plans=[dict(id=p['id'],active=bool(p['active']),archived=bool(p['archived']),revision=p['revision'],document=parsed(p['document'],{})) for p in local['plans']],
+        pretraining_checkins=local['pretraining'],motivation_checkins=local['motivation'],confirmed_session_checkins=local['confirmed_checkins'],saved_plans=[dict(id=p['id'],active=bool(p['active']),archived=bool(p['archived']),revision=p['revision'],document=parsed(p['document'],{})) for p in local['plans']],
         plan_completions=local['completions'],preserved_sessions=[dict(workout_id=k,workout_start=v['workout_start'],prescription=parsed(v['prescription']),review=parsed(v['review'])) for k,v in sorted(reviews.items(),key=lambda x:x[1]['workout_start'])[-RECENT_SESSIONS:]],
         recommendation_feedback=[dict(created_at=r['created_at'],suggestion=parsed(r['snapshot']),decision=parsed(r['record']),actual_outcome=parsed(r['outcome'])) for r in local['decisions']],
         references=REFERENCES,limitations=[
             'Six calendar months of stored data; missing imports are not proof of no training.',
             'Imported set roles and historical targets are unknown. Unknown-role sets are not asserted to be working sets.',
             'Daily check-ins are date-only; pretraining soreness uses a separate 0–3 scale, daily ratings use 0–4 (higher is worse).',
-            'Motivation 0–4 is separate from fatigue (0 eager, 4 dreading it). Missing answers and skipped/discarded sessions are unknown. recorded_at/timing are client-reported; saved_at is server persistence time.',
+            'Motivation 0–4 is separate from fatigue (0 eager, 4 dreading it). Missing answers are unknown. A confirmed check-in without a linked workout proves neither training nor skipping. Motivation recorded_at/timing are client-reported; check-in recorded_at is server confirmation and saved_at is workout persistence time.',
             'Matched load comparisons require entered effort and the same reps, RPE, set role and automatic weight basis. No e1RM is invented for manual/unknown basis.',
             'Recent raw detail is bounded; full-window exposure counts, spacing and weekly set summaries are calculated before trimming.',
             'Saved plans describe current saved intent, not proof of historical block purpose or execution.',
@@ -259,15 +270,15 @@ def build_report(db, *, today=None, monitoring_context=None):
     report['prior_review_excerpts']=prior
     report['limitations'].append('Prior review excerpts: latest three conversations, last four completed turns each, at most 4000 characters per message/response. They are historical claims, not verified outcomes.')
     # Drop bounded detail first, always record every omitted section. Do not silently send oversized prompts.
-    for section in ('prior_review_excerpts','recommendation_feedback','preserved_sessions','saved_plans','pretraining_checkins','motivation_checkins','recent_sessions'):
-        while len(encode(report))>MAX_CONTEXT_CHARS and report[section]:
+    for section in ('prior_review_excerpts','recommendation_feedback','preserved_sessions','saved_plans','pretraining_checkins','motivation_checkins','confirmed_session_checkins','recent_sessions'):
+        while len(encode(report))>context_limit and report[section]:
             report[section].pop(-1 if section in ('prior_review_excerpts','recommendation_feedback','saved_plans') else 0)
             note=f'{section}: older detail omitted for context size.'
             if note not in report['limitations']: report['limitations'].append(note)
-    if len(encode(report))>MAX_CONTEXT_CHARS:
+    if len(encode(report))>context_limit:
         for ex in report['exercises']: ex['recent_exposures']=[]
         report['limitations'].append('Per-exercise raw sets omitted for context size; summaries retained.')
-    if len(encode(report))>MAX_CONTEXT_CHARS:
+    if len(encode(report))>context_limit:
         raise ValueError('Training context exceeds the review limit; no incomplete assessment was sent.')
     return report
 

@@ -16,6 +16,7 @@ from fastapi import HTTPException
 from .database import get_db, get_rpe_percentage
 from . import mesocycles, set_log, training_max, soreness, fatigue_trial, stress_service, session_review, session_advice
 from . import motivation
+from . import session_checkins
 from .workout_payload import build_hevy_workout
 from .hevy_client import WorkoutNotSent
 
@@ -107,6 +108,8 @@ def prepare(entry):
     payload = entry.model_dump(mode='json')
     if payload.get('motivation') is None:
         payload.pop('motivation', None)  # Legacy frozen requests retain their exact canonical hash.
+    if payload.get('checkin_required') is None:
+        payload.pop('checkin_required',None)
     if not payload.get('advisory_links'):
         payload.pop('advisory_links',None)
     if payload.get('prescription') is None:
@@ -135,6 +138,7 @@ def prepare(entry):
     body, rows, completed, rejection = {}, [], None, None
     try:
         with closing(get_db()) as conn:
+            session_checkins.validate_save(conn,payload,client_id)
             session_advice.validate_links(conn,entry.advisory_links,entry.client_workout_id,entry.start_time)
         completed = mesocycles.validate_save(entry.planned_session, entry.start_time) if entry.planned_session else None
         body = build_hevy_workout(payload)
@@ -186,6 +190,7 @@ def finalize(client_id):
             set_log.record(set_log.rows_from_entry(payload, remote_id), connection=conn)
             session_review.record(payload, remote_id, conn)
             motivation.record(payload, remote_id, conn)
+            session_checkins.link_workout(conn,client_id,remote_id)
             session_advice.record_outcomes(payload, remote_id, conn)
             training_max.record(json.loads(row['ts_rows']), payload['start_time'], connection=conn)
             if payload.get('planned_session'):

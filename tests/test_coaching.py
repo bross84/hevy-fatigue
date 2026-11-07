@@ -255,3 +255,74 @@ class CoachingTests(TestCase):
             self.assertEqual(self.send(identity).status_code,200)
         saved=self.client.get('/api/ai/conversations/'+identity).json()
         self.assertEqual(saved['turns'][0]['status'],'failed')
+
+    def week(self, session='day1', timing='before_working_sets'):
+        from rackbook import mesocycles,session_checkins,workout_saves
+        from datetime import datetime,timezone
+        workout_saves.initialize()
+        plan=mesocycles.save_plan(mesocycles.PlanInput(name='Training week',weeks=[dict(name='Week',sessions=[
+            dict(id='day1',name='Day 1',exercises=[]),dict(id='day2',name='Day 2',exercises=[])])]))
+        identity=str(uuid4())
+        check=session_checkins.CheckinInput(session_id=identity,workout_start=datetime.now(timezone.utc),
+            planned_session=dict(mesocycle_id=plan['id'],session_id=session),
+            motivation=dict(level=0,note='Tired but excited for pull-ups',recorded_at=datetime.now(timezone.utc),timing=timing))
+        return plan,check
+
+    def test_opening_review_uses_current_confirmed_checkin_once_without_fatigue_change(self):
+        from rackbook import session_checkins
+        plan,check=self.week()
+        before=main._build_diagnostics_snapshot(self.db)
+        result=session_checkins.record(check)
+        self.assertTrue(result['weekly_review_eligible'])
+        body=dict(plan_id=plan['id'],kind='start',session_id=str(check.session_id))
+        response=self.client.post('/api/ai/week-reviews',json=body)
+        self.assertEqual(response.status_code,200,response.text)
+        view=response.json()
+        current=view['evidence']['week_context']['current_checkin']
+        self.assertEqual(current['motivation']['level'],0)
+        self.assertEqual(current['motivation']['note'],'Tired but excited for pull-ups')
+        self.assertEqual(view['evidence']['coverage']['sessions'],0)
+        check.motivation.note='Changed after capture'
+        session_checkins.record(check)
+        again=self.client.post('/api/ai/week-reviews',json=body)
+        self.assertEqual(again.json()['id'],view['id'])
+        self.assertEqual(again.json()['evidence'],view['evidence'])
+        self.assertEqual(main._build_diagnostics_snapshot(self.db),before)
+
+    def test_weekly_opening_rejects_missing_wrong_day_and_late_checkin(self):
+        from rackbook import session_checkins
+        plan,check=self.week(session='day2')
+        body=dict(plan_id=plan['id'],kind='start',session_id=str(check.session_id))
+        self.assertEqual(self.client.post('/api/ai/week-reviews',json=body).status_code,422)
+        result=session_checkins.record(check)
+        self.assertFalse(result['weekly_review_eligible'])
+        self.assertEqual(self.client.post('/api/ai/week-reviews',json=body).status_code,422)
+        check.planned_session.session_id='day1';check.motivation.timing='after_working_sets'
+        session_checkins.record(check)
+        self.assertEqual(self.client.post('/api/ai/week-reviews',json=body).status_code,422)
+
+    def test_closing_review_is_manual_complete_week_and_includes_opening_discussion(self):
+        from rackbook import session_checkins,mesocycles
+        plan,check=self.week()
+        session_checkins.record(check)
+        opening=self.client.post('/api/ai/week-reviews',json=dict(plan_id=plan['id'],kind='start',session_id=str(check.session_id))).json()
+        self.db.add(CoachingTurn(id=str(uuid4()),conversation_id=opening['id'],sequence=1,message='Goal: strength with varied accessories',
+            response='Keep main lifts, discuss accessories after the week.',model='test/model',status='complete',created_at=coaching.now_iso()))
+        self.db.commit()
+        body=dict(plan_id=plan['id'],kind='end')
+        self.assertEqual(self.client.post('/api/ai/week-reviews',json=body).status_code,422)
+        mesocycles.mark_completed(plan['id'],'day1')
+        mesocycles.mark_completed(plan['id'],'day2')
+        closing=self.client.post('/api/ai/week-reviews',json=body)
+        self.assertEqual(closing.status_code,200,closing.text)
+        context=closing.json()['evidence']['week_context']
+        self.assertEqual(context['saved_workout_count'],0)
+        self.assertEqual(context['manually_marked_count'],2)
+        self.assertEqual(context['actual_workouts'],[])
+        self.assertEqual(context['opening_review_id'],opening['id'])
+        self.assertIn('varied accessories',context['opening_discussion'][0]['message'])
+        self.assertNotEqual(closing.json()['id'],opening['id'])
+        self.assertEqual(self.client.post('/api/ai/week-reviews',json=body).json()['id'],closing.json()['id'])
+        source=coaching.messages(closing.json(),'Discuss next week')[0]['content']
+        self.assertIn('remote coach',source)
+        self.assertIn('varied accessories',source)

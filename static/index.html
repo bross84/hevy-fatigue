@@ -6,6 +6,7 @@
 <title>Hevy Fatigue</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script src="/training/static/weekly-coach.js"></script>
 <link rel="icon" href="/resources/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/resources/apple-touch-icon.png">
 <style>
@@ -3911,6 +3912,7 @@ let aiSettingsLocked = false;
 let aiChatHistory = [];
 let aiConversation = null;
 let aiReviewLoading = false;
+let aiWeeklyHandled = false;
 let aiReadinessContext = null;
 let aiChatConfigured = false;
 let aiChatStreaming = false;
@@ -4763,11 +4765,22 @@ async function loadCoachingConversations() {
   if (aiChatStreaming || aiReviewLoading) return;
   aiReviewLoading = true; _setAIChatStreaming(false);
   try {
+    const params=new URLSearchParams(location.search);
+    if(params.get('coaching_week')&&!aiWeeklyHandled){
+      aiWeeklyHandled=true;
+      await WeeklyCoach.run(params.get('coaching_week'),params.get('coaching_kind') || 'end',null,
+        text=>_setAIChatStatus(text),view=>{
+          params.delete('coaching_week');params.delete('coaching_kind');params.set('coaching_conversation',view.id);
+          history.replaceState(null,'',location.pathname+'?'+params.toString()+'#ai');
+        });
+    }
     const rows = await coachingJSON('/api/ai/conversations');
     const select = document.getElementById('ai-conversation-select');
     select.replaceChildren(new Option('Select a saved review', ''));
-    for (const row of rows) select.add(new Option(new Date(row.created_at).toLocaleString(), row.id));
-    const id = rows.some(r=>r.id===aiConversation?.id) ? aiConversation.id : rows[0]?.id;
+    for (const row of rows) select.add(new Option((row.label?row.label+' · ':'')+new Date(row.created_at).toLocaleString(), row.id));
+    const requested=params.get('coaching_conversation');
+    const id = requested || (rows.some(r=>r.id===aiConversation?.id) ? aiConversation.id : rows[0]?.id);
+    if(requested&&!rows.some(r=>r.id===requested))select.add(new Option('Saved coaching review',requested));
     if (id) { select.value = id; _setAIChatStatus(''); renderTrainingReview(await coachingJSON('/api/ai/conversations/'+encodeURIComponent(id))); }
   } catch(e) { _setAIChatStatus(e.message, true); }
   finally { aiReviewLoading = false; _setAIChatStreaming(false); }

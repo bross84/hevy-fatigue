@@ -139,6 +139,7 @@ function renderLibrary() {
  const box=$('library'),finished=$('completedLibrary');box.replaceChildren();finished.replaceChildren();let finishedCount=0;if(!plans.length)box.append(el('p','muted','No plans yet. Create one, add your movements, and save it here.'));
  for(const p of plans){const card=el('section','card'),next=nextSession(p);card.append(el('h3',null,p.name),el('p','muted',(p.active?'Active · ':'Inactive · ')+p.weeks[0].sessions.length+' workouts · '+p.completed.length+' workouts completed'));
   if(next)card.append(el('p','muted','Next: '+next.s.name));else card.append(el('p','muted',p.weeks[0].sessions.length?'Microcycle complete':'No days yet'));
+  if(!next&&p.weeks[0].sessions.length){const review=el('a',null,'Review this week with AI Coach');review.href='/?coaching_week='+encodeURIComponent(p.id)+'&coaching_kind=end#ai';card.append(review);}
   const actions=el('div','row');actions.append(button('Edit plan',()=>openPlan(p)),button('Duplicate microcycle',()=>duplicateMicrocycle(p)),button('Delete',()=>deleteMicrocycle(p),'danger'));
   const toggle=button(p.active?'Deactivate':'Activate',()=>setMicrocycleActive(p,!p.active));toggle.disabled=busy||(!p.active&&!next);actions.prepend(toggle);
   if(next&&next.s.exercises.length){const a=el('a',null,'Start next workout');a.href=startUrl(p,next.s);actions.append(a);}card.append(actions);if(!next&&p.weeks[0].sessions.length){finished.append(card);finishedCount++;}else box.append(card);}
