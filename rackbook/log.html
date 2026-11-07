@@ -7,6 +7,7 @@
   <script src="/training/static/session-review.js"></script>
   <script src="/training/static/session-advice.js"></script>
   <script src="/training/static/session-motivation.js"></script>
+  <script src="/training/static/weekly-coach.js"></script>
   <script src="/training/static/logger-layout.js"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="utf-8" />
@@ -631,9 +632,9 @@
   }
   function saveMotivationDraft() {
     // Coaching context must not trigger trial capture, stress refresh or weight calculations.
-    if (!draft || draft.frozenSave) return;
-    try { localStorage.setItem(KEY,JSON.stringify(draft)); }
-    catch (_) { say('Could not preserve the motivation answer on this device. Keep this page open until the workout is saved.'); }
+    if (!draft || draft.frozenSave) return false;
+    try { localStorage.setItem(KEY,JSON.stringify(draft)); return true; }
+    catch (_) { say('Could not preserve the motivation answer on this device. Keep this page open until the workout is saved.'); return false; }
   }
   function clearDraft() {
     draft = null; try { localStorage.removeItem(KEY); } catch (e) {} restStop();
@@ -1056,6 +1057,7 @@
         const pending = sessions.filter(session => !done.has(session.id));
         if (!pending.length) {
           details.append(el("p", "muted", sessions.length ? "Microcycle complete. Select another plan or build the next week." : "No days planned yet. Add a day in the builder."));
+          if(sessions.length){const review=el('a',null,'Review this week with AI Coach');review.href=WeeklyCoach.endUrl(plan.id);details.append(review);}
           if (!manual.size) return;
         }
         const dayLabel = el("label", null, "Workout day"), daySelect = el("select", "wide");
@@ -1841,6 +1843,9 @@
       const tick = el("button", "tick", "✓");
       tick.type = "button"; tick.setAttribute("aria-label", "Mark set done");
       tick.addEventListener("click", () => {
+        if(!s.done&&s.type!=='warmup'&&typeof SessionMotivation!=='undefined'&&!SessionMotivation.ready(draft)){
+          say('Confirm your motivation check-in before working sets.');$("motivation-level")?.focus();return;
+        }
         if (!rpe.reportValidity() || !actualRpe.reportValidity()) return;
         s.done = !s.done;
         if (s.done && s.type !== "warmup") {
@@ -2025,6 +2030,7 @@
 
   // ── Finish ──────────────────────────────────────────────────────────────────
   function buildEntry() {
+    if(typeof SessionMotivation!=='undefined'&&!SessionMotivation.ready(draft))throw Error('Confirm your motivation check-in before saving.');
     const invalidRpe = document.querySelector('.rpeinput[aria-invalid="true"]');
     if (invalidRpe) { invalidRpe.reportValidity(); throw new Error("Correct the highlighted RPE before saving (4–10 in steps of 0.5)."); }
     const exercises = [];
@@ -2056,6 +2062,7 @@
       ...(draft.prescription ? { prescription:draft.prescription } : {}),
       ...(draft.advisory_links?.length ? {advisory_links:draft.advisory_links} : {}),
       ...(draft.motivation != null ? {motivation:draft.motivation} : {}),
+      checkin_required:true,
       ...(draft.planned_session ? { planned_session: draft.planned_session } : {}) };
   }
 
@@ -2090,6 +2097,7 @@
     saveDialog.close();
     saving = true; $("finish").disabled = true; $("finish").textContent = "Saving…"; say("");
     try {
+      if(!workoutBeingSaved.frozenSave&&typeof SessionMotivation!=='undefined')await SessionMotivation.ensureSaved(workoutBeingSaved);
       entry = WorkoutSave.freeze(workoutBeingSaved, entry);
       if (typeof LoggerLayout !== 'undefined') LoggerLayout.update();
       if (typeof SessionMotivation !== 'undefined') SessionMotivation.mount(workoutBeingSaved,$("sessionMotivation"),saveMotivationDraft);

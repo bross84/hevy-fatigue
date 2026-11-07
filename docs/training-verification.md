@@ -872,3 +872,52 @@ browser check passed again in an isolated worktree based on current main. A
 fixture/theme-refresh race found during that check was fixed by keeping the
 synthetic readiness summary in the browser-only cached payload before redraw;
 geometry and behavior assertions were retained. No production renderer changed.
+
+## Required engagement check-in and weekly Coach — local, 2026-11-06
+
+Implemented required motivation + optional note, removed the reason dropdown,
+added confirmed pre-session context and one automatic opening review per planned
+week. End-of-week review remains manually requested, with a persistent Coach
+conversation using linked actual work and the opening discussion. No fatigue,
+pattern/trial model or automatic programming changes. Historical reasons and
+legacy frozen payloads remain compatible. Existing unrelated layout/docs edits
+were preserved. All data and provider experiments are synthetic/disposable.
+
+- Host/integration: 107 passed. New cases cover current confirmed motivation in
+  opening evidence without a saved workout, unchanged full monitoring snapshot,
+  missing/wrong-day/late check-in rejection, immutable repeated captures, closing
+  eligibility, manual-mark uncertainty, opening discussion in closing context,
+  required confirmation, changed-answer rejection, frozen-edit protection,
+  atomic check-in/workout linkage and legacy payload hashes.
+- Logging: 495 run, OK with the inherited expected failure.
+- JavaScript: all 30 files passed. Required-rating controls cover zero, optional
+  note, no reason, confirmation/invalidated edits, restore, late timing and freeze.
+  Weekly helper tests cover selected model, split SSE chunks, cached/pending no
+  repost, missing settings and safe explicit navigation. Prior assertions remain.
+- New mocked weekly browser: passed. Current check-in did not alter monitoring
+  diagnostics. Day 1 triggered one AI request; reload/day 2 caused none. After two
+  normal mocked saves, the explicit closing action produced the second request;
+  a follow-up discussion produced the third and survived reload. The saved plan
+  contents remained unchanged. Phone and desktop screenshots were inspected.
+- Existing mocked workout, coaching phone/desktop and save-recovery browser checks
+  passed with temporary databases and mocked Hevy/OpenRouter. Required check-in
+  input was added to fixtures. Durable rejection coverage explicitly retains a
+  legacy frozen stale-plan payload, rather than weakening recovery assertions.
+
+An initial context-budget regression was fixed by resolving the default budget
+at call time; the unchanged omission test and final full suite passed. The plan
+selector test gained its new weekly-link dependency and assertion. No behavioral
+assertion was removed to obtain a passing result. Temporary servers are stopped
+by their harnesses; artifacts remain ignored under artifacts/weekly-coaching.
+No live API calls, production databases, local Docker build/start, commits,
+pushes or deployments were performed. Live-provider cost/quality and physical
+PWA/deployed-data checks remain separate. Existing frozen review evidence is not
+rewritten, and failed/uncertain weekly responses require explicit discussion/retry.
+
+Publication preparation: Brian explicitly authorized commit/push and a PR. The
+feature was isolated onto `codex/weekly-coaching` from current main (`fc8e5bf`),
+excluding local layout and deployment edits. Revalidation on that branch passed
+107 host tests, all 30 JavaScript files and the mocked weekly browser flow.
+Initial sandboxed Python/browser attempts could not use their local test servers;
+the same checks passed with local test thread/socket access. GitHub CI provides
+the isolated container verification; no local Docker or production action.

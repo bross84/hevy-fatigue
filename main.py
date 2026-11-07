@@ -16,6 +16,7 @@ import threading
 
 from pattern_recovery import build_pattern_history
 import coaching
+import weekly_coaching
 
 from recommendations import build_history as build_recommendation_history, RATING_FIELDS
 
@@ -1065,6 +1066,7 @@ def get_ai_settings(db: Session = Depends(get_db)):
     return {
         "configured": configured,
         "api_key_preview": api_key_preview,
+        "default_model": AI_DEFAULT_MODEL,
     }
 
 
@@ -2557,7 +2559,17 @@ def ai_chat_proxy(data: AIChatRequest, db: Session = Depends(get_db)):
 @app.get('/api/ai/conversations')
 def coaching_list(db: Session = Depends(get_db)):
     rows = db.query(CoachingConversation).order_by(CoachingConversation.created_at.desc()).limit(50).all()
-    return [dict(id=r.id,created_at=r.created_at) for r in rows]
+    return [dict(id=r.id,created_at=r.created_at,label=(coaching.parsed(r.evidence,{}).get('week_context') or {}).get('label')) for r in rows]
+
+
+@app.post('/api/ai/week-reviews')
+def coaching_week_review(data: weekly_coaching.WeekReviewInput,db: Session = Depends(get_db)):
+    try:
+        snapshot=_build_diagnostics_snapshot(db)
+        monitoring={k:snapshot[k] for k in ('date','score_source','recommendation_v2','combined_score','training_load','joint_advisory')}
+        return weekly_coaching.prepare(db,data,monitoring)
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
 
 
 @app.post('/api/ai/conversations')

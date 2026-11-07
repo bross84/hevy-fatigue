@@ -41,6 +41,8 @@ const DraftTransfer = (() => {
     for(const cell of x.rpe_chart){assert(object(cell)&&Number.isInteger(cell.reps)&&cell.reps>=1&&cell.reps<=1000);optionalNumber(cell.rpe,0,10);optionalNumber(cell.percentage,Number.MIN_VALUE,1);assert(cell.rpe!=null&&cell.percentage!=null);}
   }
   function frozenRequest(x,id) {
+    assert([undefined,null,true].includes(x?.checkin_required));
+    if(x?.checkin_required)assert(x.motivation!=null);
     if(x?.motivation!=null)motivation(x.motivation);
     assert(object(x)&&x.client_workout_id===id&&string(x.title)&&timestamp(x.start_time)&&timestamp(x.end_time)&&Date.parse(x.end_time)>=Date.parse(x.start_time)&&Array.isArray(x.exercises)&&x.exercises.length>0);
     assert([undefined,null,'kg','lb'].includes(x.weight_unit));
@@ -66,6 +68,7 @@ const DraftTransfer = (() => {
     if(x&&typeof x==='object')for(const [k,v] of Object.entries(x)){assert(!['__proto__','constructor','prototype'].includes(k));safe(v,depth+1);}
   }
   function validateWorkout(d) {
+    if(d?.checkin_confirmation!=null)assert(object(d.checkin_confirmation)&&string(d.checkin_confirmation.signature,4000)&&timestamp(d.checkin_confirmation.confirmed_at));
     if(d?.motivation!=null)motivation(d.motivation);
     assert(object(d)&&string(d.title)&&timestamp(d.startedAt)&&Array.isArray(d.exercises)&&d.exercises.length<=100);
     if(d.client_workout_id!==undefined)assert(uuid.test(d.client_workout_id));

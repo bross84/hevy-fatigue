@@ -26,6 +26,7 @@ from .database import get_db, get_rpe_percentage, init_db
 from . import soreness
 from . import motivation
 from .motivation import MotivationInput
+from . import session_checkins
 from . import fatigue
 from . import fatigue_trial
 from . import trial_dashboard
@@ -337,6 +338,14 @@ def edit_workout_soreness(workout_id: str, ratings: SessionSoreness):
         raise HTTPException(404, detail=str(exc))
 
 
+@app.post('/session-checkins')
+def confirm_session_checkin(data: session_checkins.CheckinInput):
+    try:
+        return session_checkins.record(data)
+    except ValueError as exc:
+        raise HTTPException(409,str(exc)) from exc
+
+
 class WorkoutEntry(BaseModel):
     client_workout_id: UUID | None = None
     title: str
@@ -347,6 +356,7 @@ class WorkoutEntry(BaseModel):
     exercises: list[EntryExercise]
     soreness: SessionSoreness | None = None
     motivation: MotivationInput | None = None
+    checkin_required: Literal[True] | None = None
     planned_session: mesocycles.PlanLink | None = None
     prescription: session_review.Prescription | None = None
     advisory_links: list[session_advice.AdviceLink] | None = Field(default=None, max_length=100)

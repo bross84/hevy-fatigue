@@ -7,7 +7,7 @@ from .database import get_db
 
 class MotivationInput(BaseModel):
     level: int = Field(strict=True, ge=0, le=4)
-    reason: Literal['fatigue', 'stale', 'life_stress', 'other'] | None = None
+    reason: Literal['fatigue', 'stale', 'life_stress', 'other'] | None = None  # Historical compatibility; no dropdown in the new UI.
     note: str = Field(default='', max_length=500)
     recorded_at: AwareDatetime | None = None  # Client-reported, not server-verified prospective timing.
     timing: Literal['before_working_sets', 'after_working_sets', 'unknown'] = 'unknown'

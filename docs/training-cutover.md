@@ -588,3 +588,28 @@ compact summary and check-in state, readable axes/legends, responsive chart
 stacking, range/signal controls, themes and navigation. Use the next normal
 workout for live-data acceptance; do not create a production test workout.
 Physical-device and deployed-data acceptance remain separate from automation.
+
+## Required motivation / weekly Coach acceptance (local, 2026-11-06)
+
+After separately authorized publication, retain the existing latest pull/up flow.
+Startup adds only logger session_checkins. Host conversation schemas, keys and
+existing logger tables remain intact. Keep all original database/key rollback
+material and pending UUID/payloads. Older frozen saves without checkin_required
+continue normally; do not inject new defaults into them. A new-format pending
+request should finish on a version supporting its confirmed-check-in contract.
+
+On the next normal workout, choose motivation and optionally a note, then Confirm
+check-in. There is no reason dropdown. Confirm daily check-ins, fatigue scores,
+RPE/loading/toggles and completed weights remain unchanged. On day 1 of a fresh
+planned week, inspect the automatic opening review and its current observation.
+Reload and use another device without generating a duplicate response. AI/key
+failure must allow logging after local confirmation; reconnect before upload.
+Do not create production test workouts or force real API failures to verify this.
+
+At normal week completion, manually choose Review this week with AI Coach from
+Plans or the logger's completed-week view. Confirm linked actual sessions, manual
+marks and opening discussion are distinguished. Discuss the next week in that
+saved conversation, reload, and verify persistence. No plan edits occur merely
+from a review or follow-up. This is tied to planned week identities, not calendar
+weeks, and only runs with the app open. Physical devices/live-provider quality,
+cost and deployed-data acceptance remain unverified for this local follow-up.

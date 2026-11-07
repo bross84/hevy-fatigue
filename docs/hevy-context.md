@@ -515,3 +515,38 @@ all three charts and share a row from 1100px. Left navigation keeps its existing
 The change is presentation-only in static/index.html: existing card IDs,
 renderers, model scores, data gaps, ranges and chart lifecycle are preserved.
 The prior compact logger inputs and consistent exercise card widths are untouched.
+
+## Required motivation and weekly coaching (local, 2026-11-06)
+
+Supersedes the optional rating/reason UI above: every current logger workout
+requires an explicit Eager(0)..Dreading it(4) answer and Confirm check-in before
+working sets or a new save. Notes remain optional; the reason dropdown is removed.
+Historical reason data stays readable, with fatigue displayed as Low Energy/Tired
+and interpreted as ambiguous legacy wording, never proof of poor recovery.
+Motivation represents engagement, not predicted performance or a fatigue component.
+Daily, pattern and trial models, exact RPE and loading/toggle rules are unchanged.
+
+Confirmed observations persist in logger-only session_checkins before workout
+completion. They may be unlinked and must not be counted as completed training or
+assumed skipped sessions. Device confirmation allows logging during an AI/network
+failure; server confirmation is required before freezing/uploading a new-format
+save. Pending legacy frozen requests are still valid without new check-in fields.
+New checkin_required saves verify the exact confirmed answer, start and plan link;
+finalization links the check-in atomically with all required local records.
+
+A planned week is the saved microcycle identity, not Monday–Sunday. Confirming
+its first session starts one opening AI review using current check-in, saved plan,
+monitoring context, training history/spacing and prior coaching excerpts. Later
+days and reloads reuse it; late confirmations do not generate a supposedly
+pre-training assessment. AI unavailability never blocks logging. End-of-week
+review is explicitly requested from completed Plans or the logger's completed
+week; it includes linked actual workouts, manual-completion uncertainty, and the
+opening discussion. It opens a persistent AI Coach conversation for proposals,
+questions and program development. No recommendations are automatically applied.
+
+Opening and closing reviews have deterministic IDs per plan/kind. Existing host
+conversation/turn persistence protects concurrent or uncertain attempts from
+reposting. Each review freezes its evidence; edits do not silently regenerate it.
+Provider requests use the browser's selected model or the server's default.
+Nothing schedules a paid request when the app is closed, on a calendar boundary,
+or merely because a week is completed. No commit/push/deployment in this work.

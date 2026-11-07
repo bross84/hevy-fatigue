@@ -38,6 +38,9 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
                 page.goto(URL+'/training/log')
                 page.get_by_role('button',name='Load selected workout',exact=True).click()
                 expect(page.locator('#title')).to_have_value('Mock Workout')
+                page.locator('#motivation-level').select_option('2')
+                with page.expect_response(lambda r:r.url.endswith('/session-checkins') and r.request.method=='POST'):
+                    page.locator('#confirmMotivation').click()
                 for button in page.get_by_role('button',name='Mark set done',exact=True).all():button.click()
             def save():
                 page.locator('#finish').click()
@@ -46,7 +49,9 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
                 return response.value
             # A stale plan fails business validation before any Hevy request.
             load();original=local_draft()['client_workout_id']
-            page.evaluate("const d=JSON.parse(localStorage.getItem('training.logDraft'));d.planned_session.mesocycle_id='missing-plan';localStorage.setItem('training.logDraft',JSON.stringify(d));")
+            # Preserve a legacy frozen request to exercise durable rejection and
+            # correction even though new check-ins catch stale links before freeze.
+            page.evaluate("const d=JSON.parse(localStorage.getItem('training.logDraft'));d.planned_session.mesocycle_id='missing-plan';d.frozenSave={client_workout_id:d.client_workout_id,title:d.title,start_time:d.startedAt,end_time:new Date().toISOString(),planned_session:d.planned_session,exercises:d.exercises.map(e=>({exercise_template_id:e.template_id,title:e.title,sets:e.sets.filter(s=>s.done).map(s=>({type:s.type,weight_kg:s.kg===''?null:Number(s.kg),reps:Number(s.reps),rpe:Number(s.arpe||s.rpe),ts:!!s.ts}))}))};localStorage.setItem('training.logDraft',JSON.stringify(d));")
             page.reload();expect(page.locator('#title')).to_have_value('Mock Workout')
             result=save().json();assert result['state']=='rejected',result
             correction=page.get_by_role('button',name='Correct rejected draft',exact=True)
@@ -55,6 +60,8 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             correction.click();page.wait_for_function("old=>JSON.parse(localStorage.getItem('training.logDraft')).client_workout_id!==old",arg=original)
             assert 'frozenSave' not in local_draft()
             page.get_by_role('button',name='Use as unplanned workout',exact=True).click()
+            with page.expect_response(lambda r:r.url.endswith('/session-checkins') and r.request.method=='POST'):
+                page.locator('#confirmMotivation').click()
             page.locator('#title').fill('Corrected Mock Workout')
             result=save().json();assert result['state']=='complete',result
             expect(page.locator('#done')).to_be_visible()

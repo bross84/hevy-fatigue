@@ -10,7 +10,7 @@ const plans=[{id:'first',name:'Week 1',active:false,completed:[{session_id:'done
 const box=node('section'),calls=[],loads=[],errors=[];
 let data=plans,fail=false;
 let allowMark=false;
-const context=vm.createContext({trainingUrl:path=>path.startsWith("/training/")?path:"/training"+path,$:()=>box,el:node,confirm:()=>allowMark,api:async(url,options)=>{calls.push({url,options});if(options&&fail)throw Error('Activation failed');if(url.endsWith('/complete')){const p=data.find(p=>p.id==='first');if(options.method==='DELETE')p.completed=p.completed.filter(c=>c.session_id!=='done');else p.completed.push({session_id:'done',hevy_workout_id:null});return structuredClone(p);}return structuredClone(data);},loadPlannedWorkout:async(...args)=>loads.push(args),say:text=>errors.push(text)});
+const context=vm.createContext({WeeklyCoach:{endUrl:id=>'/?coaching_week='+id+'&coaching_kind=end#ai'},trainingUrl:path=>path.startsWith("/training/")?path:"/training"+path,$:()=>box,el:node,confirm:()=>allowMark,api:async(url,options)=>{calls.push({url,options});if(options&&fail)throw Error('Activation failed');if(url.endsWith('/complete')){const p=data.find(p=>p.id==='first');if(options.method==='DELETE')p.completed=p.completed.filter(c=>c.session_id!=='done');else p.completed.push({session_id:'done',hevy_workout_id:null});return structuredClone(p);}return structuredClone(data);},loadPlannedWorkout:async(...args)=>loads.push(args),say:text=>errors.push(text)});
 vm.runInContext(source,context);
 (async()=>{
  await context.loadPlannedStart();const select=find(box,'select')[0];assert.equal(select.value,'second');
@@ -42,6 +42,7 @@ vm.runInContext(source,context);
  assert.equal(find(box,'select')[1].value,'done','Undo must remain available even when every day is complete');
  assert.equal(find(box,'select')[1].children[1].disabled,true,'Saved completions stay protected');
  assert.equal(find(box,'button')[0].textContent,'Undo completion');
+ assert.ok(find(box,'a').some(a=>a.href==='/?coaching_week=first&coaching_kind=end#ai'));
  data=[];await context.loadPlannedStart();assert.equal(find(box,'select').length,0);assert.equal(find(box,'a')[0].href,'/training/microcycles');
  console.log('Log microcycle selection, active default, next pending day, activation, failures and empty states passed.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

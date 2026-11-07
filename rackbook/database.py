@@ -32,6 +32,11 @@ def init_db() -> None:
             pass  # already renamed, or new DB (table doesn't exist yet)
 
         conn.executescript("""
+            CREATE TABLE IF NOT EXISTS session_checkins (
+                session_id TEXT PRIMARY KEY, workout_start TEXT NOT NULL,
+                plan_id TEXT, plan_session_id TEXT, motivation TEXT NOT NULL,
+                recorded_at TEXT NOT NULL, linked_workout_id TEXT
+            );
             CREATE TABLE IF NOT EXISTS session_motivation (
                 hevy_workout_id TEXT PRIMARY KEY,
                 workout_start TEXT NOT NULL,

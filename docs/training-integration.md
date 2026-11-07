@@ -442,3 +442,42 @@ Mocked browser acceptance now checks this composition instead of requiring all
 six cards to have equal widths: compact populated/missing readiness, full-width
 trend, aligned equal secondary charts on wide screens, readable stacked charts,
 secondary content placement, containment and navigation across 320–2560px.
+
+## Required check-in and weekly review integration (local, 2026-11-06)
+
+POST /training/session-checkins accepts session UUID, timezone-aware workout_start,
+MotivationInput and optional planned_session. The logger-owned session_checkins
+table is initialized idempotently. Confirmation validates plan membership and
+returns weekly_review_eligible only for incomplete day 1 with a pre-working-set
+response. Frozen save journals reject check-in edits. Data stays separate from
+monitoring tables and frozen trial records; no new Hevy payload fields are added.
+
+WorkoutEntry adds nullable checkin_required (literal true). Absent legacy flags
+are omitted before hashing. Current UI supplies true, checks local confirmation
+before working sets/new saves, persists the confirmed observation before freeze,
+and validates it server-side before remote I/O. Required finalization links the
+session check-in to the remote ID in the existing local transaction. Frozen legacy
+payloads bypass new requirements; no identity replacement or automatic repost is
+introduced. Draft transfer validates the added confirmation/flag shape.
+
+POST /api/ai/week-reviews accepts plan_id, start/end kind and opening session UUID.
+weekly_coaching.py reads logger data read-only; the host owns conversation storage.
+UUIDv5(plan ID + kind) deduplicates captures and concurrent requests. The normal
+server-owned /messages endpoint sends the initial assessment with sequence zero;
+existing turns, including uncertain/failed ones, are never automatically resent.
+A missing key or interrupted response is visible without changing workout inputs.
+GET /api/settings/ai adds default_model for the logger's fallback selection.
+
+Opening evidence includes the confirmed current observation even without a saved
+workout. Closing capture requires all planned sessions completed/explicitly marked;
+actual dose comes only from linked workouts. Its opening discussion includes the
+first and latest five completed turns, bounded to 4000 characters per message.
+Context budgets include the weekly section and retain existing omission notices.
+Motivation is raw engagement context and cannot change fatigue or infer performance.
+
+WeeklyCoach is a shared vanilla script at /training/static/weekly-coach.js. Host
+AI requests use /api/ai; logger requests use trainingUrl. Explicit completed-week
+links use /?coaching_week=...&coaching_kind=end#ai. The host replaces that request
+with a saved conversation link after capture, preserving reload/follow-up behavior.
+Links from opening assessments use coaching_conversation UUID with #ai. No new
+framework, scheduler, model tool permission or automatic program-writing API.

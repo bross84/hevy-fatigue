@@ -97,6 +97,33 @@ class SaveRecoveryTests(unittest.TestCase):
             with self.subTest(fields=fields),self.assertRaises(ValueError):MotivationInput(**fields)
         self.assertEqual(MotivationInput(level=0).level,0)
 
+    def test_new_checkin_contract_is_required_and_links_atomically(self):
+        from rackbook import session_checkins,motivation
+        self.data.checkin_required=True
+        self.data.motivation=motivation.MotivationInput(level=0,note='Eager but tired',timing='before_working_sets')
+        rejected=saves.save(self.data,self.factory)
+        self.assertEqual(rejected['state'],'rejected')
+        self.remote.create_workout.assert_not_called()
+        self.data.client_workout_id=uuid4()  # Explicit correction after durable rejection.
+        check=session_checkins.CheckinInput(session_id=self.data.client_workout_id,workout_start=self.data.start_time,motivation=self.data.motivation)
+        session_checkins.record(check)
+        result=saves.save(self.data,self.factory)
+        self.assertEqual(result['state'],'complete')
+        with closing(get_db()) as conn:
+            self.assertEqual(conn.execute('SELECT linked_workout_id FROM session_checkins WHERE session_id=?',(str(self.data.client_workout_id),)).fetchone()[0],'remote-1')
+        with self.assertRaises(ValueError):session_checkins.record(check)
+        self.assertNotIn('checkin_required',json.dumps(self.remote.create_workout.call_args.args[0]))
+
+    def test_changed_checkin_must_be_confirmed_and_frozen_legacy_still_matches(self):
+        from rackbook import session_checkins,motivation
+        self.data.checkin_required=True
+        self.data.motivation=motivation.MotivationInput(level=2)
+        session_checkins.record(session_checkins.CheckinInput(session_id=self.data.client_workout_id,workout_start=self.data.start_time,motivation=self.data.motivation))
+        self.data.motivation.note='Changed without confirmation'
+        rejected=saves.save(self.data,self.factory)
+        self.assertEqual(rejected['state'],'rejected')
+        self.remote.create_workout.assert_not_called()
+
     def advised_workout(self,action='accept'):
         from datetime import timedelta
         from rackbook import session_advice as advice
@@ -242,6 +269,7 @@ class SaveRecoveryTests(unittest.TestCase):
         old_payload.pop('prescription')
         old_payload.pop('advisory_links')
         old_payload.pop('motivation')
+        old_payload.pop('checkin_required')
         for ex in old_payload['exercises']:
             for s in ex['sets']:
                 s.pop('target_rpe')
