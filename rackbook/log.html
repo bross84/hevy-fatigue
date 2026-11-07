@@ -6,8 +6,8 @@
   <script src="/training/static/draft-transfer.js"></script>
   <script src="/training/static/session-review.js"></script>
   <script src="/training/static/session-advice.js"></script>
-  <script src="/training/static/session-motivation.js?v=2"></script>
-  <script src="/training/static/weekly-coach.js?v=2"></script>
+  <script src="/training/static/session-motivation.js?v=3"></script>
+  <script src="/training/static/ai-coach.js?v=1"></script>
   <script src="/training/static/logger-layout.js?v=2"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="utf-8" />
@@ -1063,7 +1063,7 @@
         const pending = sessions.filter(session => !done.has(session.id));
         if (!pending.length) {
           details.append(el("p", "muted", sessions.length ? "Microcycle complete. Select another plan or build the next week." : "No days planned yet. Add a day in the builder."));
-          if(sessions.length){const review=el('a',null,'Review this week with AI Coach');review.href=WeeklyCoach.endUrl(plan.id);details.append(review);}
+          if(sessions.length){const review=el('a',null,'Review this week with AI Coach');review.href=AICoach.endUrl(plan.id);details.append(review);}
           if (!manual.size) return;
         }
         const dayLabel = el("label", null, "Workout day"), daySelect = el("select", "wide");

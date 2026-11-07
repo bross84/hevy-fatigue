@@ -113,10 +113,10 @@ const DailyCoach = (() => {
           return;
         }
         setStartFailure(view,false);
-        if(typeof WeeklyCoach==='undefined' || typeof WeeklyCoach.reviewPrepared!=='function'){
+        if(typeof AICoach==='undefined' || typeof AICoach.reviewPrepared!=='function'){
           throw Error('AI Coach did not finish updating. Reload this page, then select Retry.');
         }
-        const result=await WeeklyCoach.reviewPrepared(view,
+        const result=await AICoach.reviewPrepared(view,
           'What should I do at my next training session?',
           status=>update(date,{status}),sameReview?retry.sequence:0,sameReview?retry.pendingTurnId:null);
         update(date,{view:result,status:describe(result)});

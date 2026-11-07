@@ -481,7 +481,9 @@ first and latest five completed turns, bounded to 4000 characters per message.
 Context budgets include the weekly section and retain existing omission notices.
 Motivation is raw engagement context and cannot change fatigue or infer performance.
 
-WeeklyCoach is a shared vanilla script at /training/static/weekly-coach.js. Host
+AICoach is the one shared vanilla script for the Coach's browser code, at
+/training/static/ai-coach.js. It reads every Coach reply stream (dashboard chat, daily and
+weekly reviews) and starts weekly reviews (reviewWeek). Host
 AI requests use /api/ai; logger requests use trainingUrl. Explicit completed-week
 links use /?coaching_week=...&coaching_kind=end#ai. The host replaces that request
 with a saved conversation link after capture, preserving reload/follow-up behavior.
@@ -499,7 +501,7 @@ rating version or null, never captures/sends. Saved conversations remain accessi
 through existing Coach routes, with Daily check-in labels in the conversation list.
 
 The client starts after successful POST/PUT readiness, independent of scoring and
-save success. It shares WeeklyCoach.reviewPrepared (selected/default model, existing
+save success. It shares AICoach.reviewPrepared (selected/default model, existing
 expected_sequence=0 turn protection and SSE persistence). Repeated captures/tabs
 cannot automatically resend existing turns. If an edit arrives during a response,
 the client rechecks the current identity afterward. Dashboard load starts an

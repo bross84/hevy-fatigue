@@ -32,7 +32,7 @@ const SessionMotivation = (() => {
       confirm.textContent=ready(draft)?'Check-in confirmed':'Confirm check-in';
       status.textContent=state.message || (ready(draft)?'Check-in confirmed. Your workout remains yours to adjust.':'Choose motivation, add a note if useful, then confirm.');
       reviewBox.replaceChildren();
-      if(draft.weekly_review_id){const link=node('a','Discuss this week with AI Coach');link.href=WeeklyCoach.openUrl(draft.weekly_review_id);reviewBox.append(link);}
+      if(draft.weekly_review_id){const link=node('a','Discuss this week with AI Coach');link.href=AICoach.openUrl(draft.weekly_review_id);reviewBox.append(link);}
       const turn=state.view?.turns?.at(-1);
       if(turn){
         const details=node('details');details.append(node('summary','Before day 1 · '+turn.status));
@@ -51,7 +51,7 @@ const SessionMotivation = (() => {
         if(started(draft)){
           if(draft.weekly_review_id){const r=await fetch('/api/ai/conversations/'+encodeURIComponent(draft.weekly_review_id));if(r.ok)state.view=await r.json();}
           else state.message='Training has started; no opening assessment will be presented as pre-training evidence. Discuss this session in AI Coach.';
-        } else state.view=await WeeklyCoach.run(draft.planned_session.mesocycle_id,'start',draft.client_workout_id,
+        } else state.view=await AICoach.reviewWeek(draft.planned_session.mesocycle_id,'start',draft.client_workout_id,
           text=>{state.message=text;state.paint();},view=>{draft.weekly_review_id=view.id;save();state.paint();});
         if(state.view)state.message='Opening review '+(state.view.turns.at(-1)?.status || 'saved')+'. Open AI Coach to discuss any proposals. No programming changes were applied.';
       }catch(error){state.message=error.message+' Logging can continue; no automatic resend.';}
