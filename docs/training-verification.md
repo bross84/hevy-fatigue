@@ -921,3 +921,58 @@ excluding local layout and deployment edits. Revalidation on that branch passed
 Initial sandboxed Python/browser attempts could not use their local test servers;
 the same checks passed with local test thread/socket access. GitHub CI provides
 the isolated container verification; no local Docker or production action.
+
+## Saved daily interpretation and personal range — local, 2026-11-06
+
+Implemented on top of the merged motivation/weekly coaching behavior while
+preserving unrelated local layout/deployment edits. All tests/providers/history
+are synthetic or disposable; no real account/database or OpenRouter traffic.
+
+- Full host/integration suite: 113 tests passed (six new daily/range tests).
+  Exact raw/legacy replay fields remain unchanged; chart windows produce identical
+  ranges for overlapping dates. Coverage tests include sparse/missing/ineligible
+  observations, prior-only percentiles, window expiry, immutable original rows,
+  same-day workout exclusion, partial ratings, future rejection, failed/missing
+  AI configuration, frozen revisions after edits/deletion, selected model,
+  mocked streaming/follow-up persistence, duplicate sequence rejection and
+  unchanged full monitoring diagnostics/logger database bytes during review.
+- Logger suite: 495 run, OK with the inherited expected failure.
+- All 31 JavaScript files passed. New daily transport/UI coverage verifies restore
+  without billing, duplicate prevention, selected model, literal provider text,
+  saved Coach links, changed revisions, interrupted responses without automatic
+  resend, missing settings and deletion. Chart assertions retain smoothed gaps,
+  raw overlay values, 0–20 axis, point-specific shading, coverage and missing-band
+  behavior. Existing behavioral assertions remain intact.
+- New real-chart mocked browser passed at phone/desktop widths: daily save starts
+  exactly one interpretation; reload makes none; Coach follow-up saves/reloads;
+  changed ratings create a new evidence version; missing settings preserve the
+  successful edit; an explicit interrupted response persists and is not reposted.
+  Exactly three mocked provider calls (initial, follow-up, explicit revised call).
+  Stored plans and full diagnostics after the rating edit stayed unchanged by AI.
+  Provider HTML is literal text in the daily card; no executable node is inserted.
+  The same shipped Chart.js renders raw/smoothed lines and historical range.
+- Existing mocked weekly opening/closing workflow, coaching phone/desktop,
+  save-recovery and responsive dashboard/real-chart checks passed. Dashboard
+  checks cover 320–2560px, themes, chart ranges, missing-data gaps and navigation.
+  Daily phone/desktop screenshots were inspected under artifacts/daily-coaching.
+
+The first browser edit check exposed the existing log modal using the class open
+while CSS requires active. Fixed those two class calls so the existing editor
+works; the test then uses its visible number input and actual Save Changes action.
+No assertion was weakened to pass. Follow-up targeted 22 Python tests plus daily/
+chart JS and the final daily browser flow passed after tightening the discussion
+cutoff (prior review excerpts must precede the check-in date) and adding compact
+prior programming-discussion context.
+
+No local Docker per the user's standing GitHub-first workflow preference. Future
+PR CI must perform the container build/startup check. Disposable browser startup
+initialized both existing databases successfully; no new schema/configuration.
+No commits, pushes, PRs or deployments were performed for this local change.
+Live-provider response quality/cost, physical PWA and deployed-data acceptance
+remain separate operator checks in training-cutover.md.
+
+Publication preparation: Brian explicitly authorized commit/push and a PR for
+this feature. Isolated on codex/daily-ai-interpretation from current main d3c9f60,
+excluding unrelated workspace edits, dependency changes, layout assets and prior
+release documentation. The newer main-branch script-extraction test fix is retained.
+GitHub integration CI will supply container build/startup verification.

@@ -7,6 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script src="/training/static/weekly-coach.js"></script>
+<script src="/static/daily-coach.js"></script>
 <link rel="icon" href="/resources/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/resources/apple-touch-icon.png">
 <style>
@@ -3223,6 +3224,8 @@ body.ai-open main {
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
+      <section class="card" id="daily-coach-review" style="grid-column:1/-1;order:1;min-width:0;overflow-wrap:anywhere" aria-label="AI daily interpretation" hidden></section>
+
       <div class="dashboard-card" id="today-readiness-trend-card">
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
@@ -5239,6 +5242,7 @@ async function _handleCheckinSubmit(e) {
         checkTodayReadiness();
         loadTrainingLoadCard();
       }
+      if(submittedDate<=todayStr())DailyCoach.run(submittedDate);
     } else if (r.status === 409) {
       setStatus('error', `An entry for ${submittedDate} already exists — open the Log tab to edit it.`);
       btn.disabled    = false;
@@ -5461,16 +5465,17 @@ function openLogEdit(entry) {
   document.getElementById('le-r').value  = entry.perceived_recovery ?? 0;
   document.getElementById('lv-r').value  = entry.perceived_recovery ?? 0;
 
-  document.getElementById('log-modal').classList.add('open');
+  document.getElementById('log-modal').classList.add('active');
 }
 
 function closeLogModal() {
-  document.getElementById('log-modal').classList.remove('open');
+  document.getElementById('log-modal').classList.remove('active');
   logEditDate = null;
 }
 
 async function saveLogEntry() {
   if (!logEditDate) return;
+  const savedDate=logEditDate;
   const statusEl = document.getElementById('log-modal-status');
 
   const payload = {
@@ -5501,6 +5506,9 @@ async function saveLogEntry() {
     // Reload the log table and invalidate related tabs
     logLoaded = false;
     loadLog();
+    invalidateTodayCaches();
+    loadTrainingLoadCard();
+    if(savedDate<=todayStr())DailyCoach.run(savedDate);
   } catch (err) {
     statusEl.style.color = 'var(--danger)';
     statusEl.textContent = `Save failed: ${err.message}`;
@@ -5509,6 +5517,7 @@ async function saveLogEntry() {
 
 async function deleteLogEntry() {
   if (!logEditDate) return;
+  const deletedDate=logEditDate;
   if (!confirm(`Delete the check-in for ${logEditDate}? This cannot be undone.`)) return;
 
   const statusEl = document.getElementById('log-modal-status');
@@ -5524,6 +5533,10 @@ async function deleteLogEntry() {
     closeLogModal();
     logLoaded = false;
     loadLog();
+    DailyCoach.clear(deletedDate);
+    invalidateTodayCaches();
+    checkTodayReadiness();
+    loadTrainingLoadCard();
   } catch (err) {
     statusEl.style.color = 'var(--danger)';
     statusEl.textContent = `Delete failed: ${err.message}`;
@@ -7096,8 +7109,9 @@ function _renderTodayCards(data, pendingCount) {
   document.getElementById('dashboard-readiness-card').innerHTML = `
     <div class="dashboard-card-title">Readiness</div>
     <div class="readiness-score">${readinessScore}</div>
-    <div class="readiness-label ${_stateClass(stateKey)}">${escHtml(stateLabel)}</div>
-    <div class="readiness-rec">${escHtml(stateDetail)}</div>
+    <div class="readiness-label">${checkinExists?'Daily monitoring':'No check-in today'}</div>
+    <div class="readiness-rec">${checkinExists?'See your saved AI interpretation below. The score describes monitoring, not a training prescription.':'Complete your daily check-in for an interpretation.'}</div>
+    <details style="grid-column:1/-1"><summary>Legacy rule output</summary><small>${escHtml(stateLabel)} · ${escHtml(stateDetail)} These fixed rules are retained for comparison, not AI coaching advice.</small></details>
     ${checkinExists ? `
     <div class="readiness-score-breakdown">
       <div class="readiness-breakdown-item">
@@ -7420,6 +7434,7 @@ async function loadTrainingLoadCard() {
       ensureReadinessCombinedHistoryPayload(),
     ]);
     _renderTodayCards(trainingRes, 0);
+    DailyCoach.mount(todayStr(),!!trainingRes?.today?.checkin_exists);
     renderTodayReadinessChart(readinessHistory);
     renderTodayPatternFatigueCard();
     renderDashboardRecentSessions(trainingRes);
@@ -7510,26 +7525,21 @@ function _destroyTodayPatternFatigueChart() {
   }
 }
 
-function _todayReadinessBandsPlugin() {
+function _todayReadinessBandsPlugin(history=[]) {
   return {
     id: 'todayReadinessBands',
     beforeDatasetsDraw(chart) {
-      const { ctx, chartArea, scales } = chart;
-      if (!chartArea || !scales?.y) return;
-      const bands = [
-        { from: 0.0, to: 6.0, color: 'rgba(2, 47, 64, 0.40)' },
-        { from: 6.0, to: 8.0, color: 'rgba(82, 178, 207, 0.35)' },
-        { from: 8.0, to: 13.0, color: 'rgba(79, 180, 119, 0.40)' },
-        { from: 13.0, to: 14.0, color: 'rgba(255, 178, 15, 0.35)' },
-        { from: 14.0, to: 20.0, color: 'rgba(158, 43, 37, 0.35)' },
-      ];
-      ctx.save();
-      for (const band of bands) {
-        const top = scales.y.getPixelForValue(band.to);
-        const bottom = scales.y.getPixelForValue(band.from);
-        ctx.fillStyle = band.color;
-        ctx.fillRect(chartArea.left, top, chartArea.right - chartArea.left, bottom - top);
-      }
+      const {ctx,chartArea,scales}=chart;
+      if(!chartArea||!scales?.y||!scales?.x)return;
+      ctx.save();ctx.fillStyle='rgba(82,178,207,0.22)';
+      history.forEach((day,index)=>{
+        const range=day.historical_range;if(!range?.sufficient)return;
+        const x=scales.x.getPixelForValue(index);
+        const left=index===0?chartArea.left:(scales.x.getPixelForValue(index-1)+x)/2;
+        const right=index===history.length-1?chartArea.right:(x+scales.x.getPixelForValue(index+1))/2;
+        const top=scales.y.getPixelForValue(range.upper),bottom=scales.y.getPixelForValue(range.lower);
+        ctx.fillRect(left,top,right-left,Math.max(1,bottom-top));
+      });
       ctx.restore();
     },
   };
@@ -7603,20 +7613,16 @@ function renderTodayReadinessChart(history) {
     return;
   }
 
+  const latest=history[history.length-1],range=latest?.historical_range;
+  const rangeText=range?.sufficient
+    ? `Usual range ${Number(range.lower).toFixed(1)}–${Number(range.upper).toFixed(1)} · ${range.observations} valid observations in the prior ${range.window_days} days`
+    : `Personal range collecting · ${range?.observations ?? 0}/${range?.minimum_observations ?? 14} valid observations; at least ${range?.minimum_span_days ?? 28} days of observed span required`;
   card.innerHTML = `
-<div class="today-chart-legend">
-      <span class="today-chart-legend-swatch" id="today-readiness-legend-swatch"></span>
-      <span class="today-chart-legend-label">Fatigue Trend</span>
-    </div>
-<div class="today-chart-bands-legend">
-      <span class="today-band-item"><span class="today-band-swatch" style="background:rgba(2,47,64,0.60)"></span><span class="today-band-label">Low (0–6)</span></span>
-      <span class="today-band-item"><span class="today-band-swatch" style="background:rgba(82,178,207,0.70)"></span><span class="today-band-label">Recovery (6–8)</span></span>
-      <span class="today-band-item"><span class="today-band-swatch" style="background:rgba(79,180,119,0.70)"></span><span class="today-band-label">Optimal (8–13)</span></span>
-      <span class="today-band-item"><span class="today-band-swatch" style="background:rgba(255,178,15,0.70)"></span><span class="today-band-label">Elevated (13–14)</span></span>
-      <span class="today-band-item"><span class="today-band-swatch" style="background:rgba(158,43,37,0.70)"></span><span class="today-band-label">High (14–20)</span></span>
-    </div>
+    <div class="today-chart-legend"><span class="today-chart-legend-swatch" id="today-readiness-legend-swatch"></span><span class="today-chart-legend-label">Fatigue Trend</span></div>
+    <div class="today-chart-bands-legend"><span>Solid: smoothed fatigue · Dashed: raw combined score · Shading: your prior 10th–90th percentile</span></div>
+    <p class="today-chart-note">${escHtml(rangeText)}</p>
     <div class="today-chart-wrap"><canvas id="today-readiness-chart"></canvas></div>
-    <div class="today-chart-note">Fatigue trend retains recent fatigue as recovery improves. Missing or insufficient monitoring data renders as gaps. Increases also require confirmation.</div>
+    <div class="today-chart-note">Your usual range is descriptive, not an optimal recovery zone. The 0–20 scale and raw ratings are unchanged. Each day's range excludes that day and future data; missing or ineligible observations are not zero.</div>
   `;
 
   const c = themeColors();
@@ -7645,6 +7651,9 @@ function renderTodayReadinessChart(history) {
           tension: 0.35,
           spanGaps: false,
         },
+        {label:'Raw combined',data:history.map(day=>day.combined_score ?? null),
+          borderColor:c.accent,borderDash:[5,4],borderWidth:1,pointRadius:2,
+          spanGaps:false,tension:0},
       ],
     },
     options: {
@@ -7661,13 +7670,14 @@ function renderTodayReadinessChart(history) {
             },
             label(ctxItem) {
               if (ctxItem.parsed?.y == null) return 'Combined: no check-in';
-              return `Fatigue trend: ${Number(ctxItem.parsed.y).toFixed(1)}`;
+              return `${ctxItem.datasetIndex===1?'Raw combined':'Fatigue trend'}: ${Number(ctxItem.parsed.y).toFixed(1)}`;
             },
             afterBody(items) {
               const idx = items?.[0]?.dataIndex ?? 0;
               const day = history[idx] || {};
               return [
-                `Recommendation: ${day.recommendation_label || 'Continue Training as Normal'}`,
+                day.historical_range?.sufficient ? `Prior usual range: ${day.historical_range.lower}–${day.historical_range.upper} (${day.historical_range.observations} observations)` : 'Personal range: insufficient history',
+                `Relative position: ${(day.historical_position || 'unavailable').replaceAll('_',' ')}`,
                 `Combined: ${day.combined_score == null ? 'unavailable' : Number(day.combined_score).toFixed(1)}`,
                 `Objective: ${day.objective_score == null ? 'unavailable' : Number(day.objective_score).toFixed(1)}`,
                 `Subjective: ${day.subjective_score == null ? 'none' : Number(day.subjective_score).toFixed(1)}`,
@@ -7692,7 +7702,7 @@ function renderTodayReadinessChart(history) {
         },
       },
     },
-    plugins: [_todayReadinessBandsPlugin()],
+    plugins: [_todayReadinessBandsPlugin(history)],
   });
     const swatch = document.getElementById('today-readiness-legend-swatch');
     if (swatch) swatch.style.backgroundColor = c.accent;

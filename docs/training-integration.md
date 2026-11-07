@@ -481,3 +481,43 @@ links use /?coaching_week=...&coaching_kind=end#ai. The host replaces that reque
 with a saved conversation link after capture, preserving reload/follow-up behavior.
 Links from opening assessments use coaching_conversation UUID with #ai. No new
 framework, scheduler, model tool permission or automatic program-writing API.
+
+## Daily interpretation integration (local, 2026-11-06)
+
+Host-only daily_coaching.py reuses CoachingConversation/CoachingTurn; no new table
+or migration and no logger write. POST /api/ai/daily-reviews accepts explicit date,
+requires an existing nonfuture DailyReadiness record, and freezes a compact report
+at UUIDv5(date + SHA256 of canonical date/eight rating fields). Concurrent captures
+resolve to one identity. GET /api/ai/daily-reviews/{date} returns only the current
+rating version or null, never captures/sends. Saved conversations remain accessible
+through existing Coach routes, with Daily check-in labels in the conversation list.
+
+The client starts after successful POST/PUT readiness, independent of scoring and
+save success. It shares WeeklyCoach.reviewPrepared (selected/default model, existing
+expected_sequence=0 turn protection and SSE persistence). Repeated captures/tabs
+cannot automatically resend existing turns. If an edit arrives during a response,
+the client rechecks the current identity afterward. Reload restores without billing.
+Provider outage/missing configuration is shown separately from a successful save.
+The existing log editor's open/active CSS class mismatch was fixed so rating edits
+can actually open the modal; stress fields remain untouched.
+
+Daily evidence includes exact current ratings, raw/smoothed scores, causal personal
+range/coverage and recent daily scores. Training evidence ends before the check-in
+date using existing deduplicated Hevy/Rackbook reporting. Compact context retains
+four sessions, recent exercise summaries, 14 prior daily observations, motivation,
+current saved plan intent and bounded prior programming-review discussions. Context
+is capped at 36k characters with explicit omissions. Original check-in/trial/plan
+records are not modified. Full/weekly review excerpts exclude daily conversations
+so daily summaries do not crowd out prior programming discussions. Daily brief
+separates tiredness/recovery/engagement, considers spacing/performance, rejects
+low-fatigue-only load increases and treats the historical band as descriptive.
+The daily reference pack additionally identifies Saw et al. (2016),
+https://pmc.ncbi.nlm.nih.gov/articles/PMC4789708/; it does not validate app thresholds.
+
+readiness_context.historical_ranges decorates a chronological replay without
+altering any original field. Previous 84 days, eligible smoothed values only,
+linear 10th/90th percentiles, median, observation count, observed span and missing/
+ineligible count. A point requires 14 observations over 28 days; its own value and
+future values cannot shift its range. GET /api/readiness/combined-history adds
+historical_range and historical_position after replay, before days slicing. Raw
+combined data remain available even when smoothed eligibility is insufficient.

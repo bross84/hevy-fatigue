@@ -51,6 +51,21 @@ context.renderTodayReadinessChart([
 ]);
 assert.equal(JSON.stringify(context.lastChart.data.datasets[0].data),JSON.stringify([null,null,9.89]));
 assert.equal(context.lastChart.data.datasets[0].spanGaps,false);
+assert.equal(JSON.stringify(context.lastChart.data.datasets[1].data),JSON.stringify([2,null,5.52]));
+assert.equal(context.lastChart.options.scales.y.min,0);
+assert.equal(context.lastChart.options.scales.y.max,20);
+assert.ok(!element('today-readiness-trend-card').innerHTML.includes('Optimal'));
+context.renderTodayReadinessChart([{date:'2026-10-30',combined_score:5.52,smoothed_score:9.89,data_sufficient:true,
+  historical_range:{sufficient:true,lower:4,upper:9,observations:30,window_days:84}}]);
+assert.ok(element('today-readiness-trend-card').innerHTML.includes('Usual range 4.0–9.0'));
+assert.ok(element('today-readiness-trend-card').innerHTML.includes('30 valid observations'));
+// The shaded range is point-specific, and missing history is never painted as zero.
+const drawings=[];
+const bands=vm.createContext({});vm.runInContext(extract(page,'_todayReadinessBandsPlugin'),bands);
+bands._todayReadinessBandsPlugin([{historical_range:{sufficient:true,lower:4,upper:9}},{historical_range:{sufficient:false}}]).beforeDatasetsDraw({
+  ctx:{save(){},restore(){},fillRect(...args){drawings.push(args);}},chartArea:{left:0,right:100},
+  scales:{x:{getPixelForValue:i=>i*100},y:{getPixelForValue:y=>200-y*10}}});
+assert.deepEqual(drawings,[[0,110,50,50]]);
 const helpers=diagnostic.slice(diagnostic.indexOf('    function escHtml('),diagnostic.indexOf('    async function loadAndRender('));
 const diag=vm.createContext({formatDate:x=>x});
 vm.runInContext(helpers,diag);
