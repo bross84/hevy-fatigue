@@ -68,6 +68,18 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             assert calls()==2
             assert len(page.request.get(URL+'/api/ai/conversations/'+view['id']).json()['turns'])==2
             page.reload();expect(page.locator('#ai-chat-messages')).to_contain_text('What should I watch')
+            # Simulate a check-in saved before the dashboard could start AI.
+            ratings={key:0 for key in ('sore_quad_dom','sore_posterior','sore_upper_push','sore_upper_pull','joint_upper','joint_lower','perceived_recovery')}
+            assert page.request.put(URL+'/api/readiness/'+day,data=dict(ratings,tiredness=1)).ok
+            assert page.request.get(URL+'/api/ai/daily-reviews/'+day).json() is None
+            page.goto(URL+'/')
+            expect(page.locator('#daily-coach-review')).to_contain_text('Saved interpretation.')
+            expect(page.locator('#daily-coach-review')).to_contain_text('Tiredness 1; perceived recovery 0')
+            expect(page.get_by_role('button',name='Retry',exact=True)).to_have_count(0)
+            expect(page.locator('#dashboard-readiness-card')).not_to_contain_text('Legacy rule output')
+            page.reload()
+            expect(page.locator('#daily-coach-review')).to_contain_text('Saved interpretation.')
+            assert calls()==3
             # Missing AI configuration must leave a successfully edited check-in intact.
             page.request.post(URL+'/mock/daily-provider?value=unavailable')
             page.goto(URL+'/#log');expect(page.locator('#log-wrap')).to_contain_text(day)
@@ -79,17 +91,22 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             expect(page.locator('#daily-coach-review')).to_contain_text('Configure AI')
             edited_monitoring=page.request.get(URL+'/api/diagnostics/snapshot').json()
             page.goto(URL+'/')
-            expect(page.locator('#daily-coach-review')).to_contain_text('Context saved.')
+            expect(page.locator('#daily-coach-review')).to_contain_text('Interpretation could not start.')
             assert page.request.get(URL+'/api/readiness/today').json()['tiredness']==3
-            assert calls()==2
+            assert calls()==3
             assert page.request.get(URL+'/api/ai/conversations/'+view['id']).json()['evidence']==view['evidence']
             # An explicit request after configuring produces a new saved revision.
             page.request.post(URL+'/mock/daily-provider?value=interrupted')
-            page.get_by_role('button',name='Interpret this check-in',exact=True).click()
+            page.get_by_role('button',name='Retry',exact=True).click()
             expect(page.locator('#daily-coach-review')).to_contain_text('Mock provider interrupted')
-            assert calls()==3
+            assert calls()==4
             page.reload();expect(page.locator('#daily-coach-review')).to_contain_text('Response interrupted')
-            assert calls()==3
+            assert calls()==4
+            page.request.post(URL+'/mock/daily-provider?value=success')
+            page.get_by_role('button',name='Retry',exact=True).click()
+            expect(page.locator('#daily-coach-review')).to_contain_text('Saved interpretation.')
+            expect(page.get_by_role('button',name='Retry',exact=True)).to_have_count(0)
+            assert calls()==5
             page.set_viewport_size(dict(width=1440,height=1000))
             page.locator('#theme-toggle [data-theme-btn="light"]').click()
             page.wait_for_function('todayReadinessChart && todayReadinessChart.canvas.isConnected')
@@ -103,7 +120,7 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             assert after['training_load']==monitoring['training_load']
             assert not errors,errors
             context.close();browser.close()
-        print(json.dumps(dict(daily_save='passed',personal_range='prior-only with raw overlay',persistence='reload and discussion',ai_calls=3,outage='check-in retained',programming='unchanged',providers='fully mocked')))
+        print(json.dumps(dict(daily_save='passed',personal_range='prior-only with raw overlay',persistence='reload and discussion',ai_calls=5,outage='check-in retained',programming='unchanged',providers='fully mocked')))
     finally:
         server.terminate()
         try:server.wait(timeout=10)

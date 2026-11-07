@@ -496,8 +496,12 @@ The client starts after successful POST/PUT readiness, independent of scoring an
 save success. It shares WeeklyCoach.reviewPrepared (selected/default model, existing
 expected_sequence=0 turn protection and SSE persistence). Repeated captures/tabs
 cannot automatically resend existing turns. If an edit arrives during a response,
-the client rechecks the current identity afterward. Reload restores without billing.
-Provider outage/missing configuration is shown separately from a successful save.
+the client rechecks the current identity afterward. Dashboard load starts an
+interpretation for today’s saved check-in if no attempt exists. An explicit Retry
+rechecks the current identity and uses the recorded turn count. It can follow
+failed/interrupted turns, but cannot resend pending or completed turns. A failed
+start without a turn is remembered by conversation ID in browser storage when
+available. The check-in remains saved if the provider is unavailable.
 The existing log editor's open/active CSS class mismatch was fixed so rating edits
 can actually open the modal; stress fields remain untouched.
 

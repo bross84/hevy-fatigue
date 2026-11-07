@@ -624,17 +624,19 @@ After deployment, submit a normal daily check-in with the existing AI key/model.
 Check that ratings save, then a short AI daily interpretation appears with its
 capture/model/status and Discuss with AI Coach link. Reload must retain it without
 another automatic request. Discuss a follow-up and reload the Coach conversation.
-A changed rating should create new current evidence without rewriting the old
+A previously saved check-in without an interpretation should start automatically
+when today’s dashboard opens. A changed rating should create new current evidence
+without rewriting the old
 review. Unchanged ratings should reuse their existing version. Daily AI failure
 must leave the check-in and workout logger usable; interrupted responses must not
-automatically repost. The UI has an explicit request action if AI was not configured.
+automatically repost. Retry appears after a failure and disappears after success.
 
 Fatigue Trend should show prior usual-range shading once coverage is sufficient
 (14 eligible observations spanning 28 days in the prior 84 days), otherwise state
 what is collecting. Check raw combined dashed line, smoothed solid line, 0–20 axis,
 missing-day gaps, tooltip raw values and personal range count. Fixed Optimal/
 Recovery bands are removed from this chart. Subjective/objective/combined scores
-remain in Readiness, with old numerical advice in Legacy rule output/diagnostics.
+remain in Readiness. Old numerical advice is available in diagnostics only.
 Confirm fatigue/pattern/trial results, motivation separation, saved programs,
 RPErx/act, manual weights and the automatic-adjustment toggle remain unchanged.
 Physical PWA/live-provider/deployed-data checks are operator acceptance, separate
