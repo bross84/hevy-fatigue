@@ -1,0 +1,25 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const ctx=vm.createContext({TextDecoder});
+vm.runInContext(fs.readFileSync('rackbook/static/ai-coach.js','utf8')+';this.stream=AICoach;',ctx);
+const response=chunks=>{let i=0;return {body:{getReader:()=>({read:async()=>i<chunks.length?{done:false,value:Buffer.from(chunks[i++])}:{done:true}})}};};
+const delta=text=>'data: '+JSON.stringify({choices:[{delta:{content:text}}]})+'\n\n';
+(async()=>{
+  let got='';
+  assert.equal(await ctx.stream.readStream(response([delta('Keep '),delta('going.')+'data: [DONE]\n\n']),{onDelta:d=>got+=d}),true);
+  assert.equal(got,'Keep going.');
+  got='';
+  const whole=delta('Split')+'data: [DONE]\n\n';
+  assert.equal(await ctx.stream.readStream(response([whole.slice(0,12),whole.slice(12,30),whole.slice(30)]),{onDelta:d=>got+=d}),true);
+  assert.equal(got,'Split');
+  assert.equal(await ctx.stream.readStream(response([delta('Partial')])),false,'ending without [DONE] is not complete');
+  assert.equal(await ctx.stream.readStream(response(['data:{"choices":[{"text":"nospace"}]}\n\ndata:[DONE]\n\n']),{onDelta:d=>got=d}),true);
+  assert.equal(got,'nospace');
+  await assert.rejects(()=>ctx.stream.readStream(response(['data: {"error":{"message":"Mock failure"}}\n\n'])),/Mock failure/);
+  await assert.rejects(()=>ctx.stream.readStream(response(['data: {"error":{}}\n\n']),{fallback:'Review failed.'}),/Review failed\./);
+  got='';
+  assert.equal(await ctx.stream.readStream(response(['data: not-json\n\n'+delta('ok')+'data: [DONE]\n\n']),{onDelta:d=>got+=d}),true);
+  assert.equal(got,'ok','unreadable events are skipped');
+  assert.equal(await ctx.stream.readStream(response([delta('a')+'data: [DONE]\n\n'+delta('never')]),{onDelta:d=>got+=d}),true);
+  assert.ok(!got.includes('never'),'nothing after [DONE] is read');
+  console.log('Coach stream: deltas, split events, missing [DONE], error events, fallback text, bad events and stop-at-done passed.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

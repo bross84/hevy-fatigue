@@ -303,7 +303,13 @@ server-side history is authoritative. The legacy /api/ai/chat remains compatible
 No trainingUrl calls are needed for these host-owned routes; logger paths and
 network-only worker scope remain unchanged.
 
-coaching.py separates evidence and conversation logic from routes. Reports cover
+coaching.py separates evidence and conversation logic from routes. All three
+conversation creators (review, daily, weekly) save through coaching.save_conversation,
+and finish_turn records turn outcomes in a short-lived session (daily turns without a
+usable recommendation are failed; only pending turns are updated, so Retry stays safe).
+coaching_stream.py decides how a streamed reply ends (complete/failed/interrupted) from
+plain text chunks with no network client; main.py only opens the provider connection.
+Wire format and never-resend behavior are unchanged. Reports cover
 six calendar months, not seven displayed workouts: exact local records override
 imports by remote workout identity. Role/target/provenance gaps remain explicit.
 Full-window summaries precede limits of 12 recent sessions/preserved prescriptions,
@@ -475,7 +481,15 @@ first and latest five completed turns, bounded to 4000 characters per message.
 Context budgets include the weekly section and retain existing omission notices.
 Motivation is raw engagement context and cannot change fatigue or infer performance.
 
-WeeklyCoach is a shared vanilla script at /training/static/weekly-coach.js. Host
+The app menu is defined once in /training/static/app-menu.js. Every logger page draws it
+(the Log page as the grouped slide-out sidebar; the other pages as a top bar with Dashboard,
+the Training pages and Settings visible, and Monitoring/Tools behind More). The dashboard
+keeps its own sidebar for in-page tab buttons and badges; tests/test_app_menu.cjs fails if
+it drifts from the shared list. Model trial stays out of the main menu.
+
+AICoach is the one shared vanilla script for the Coach's browser code, at
+/training/static/ai-coach.js. It reads every Coach reply stream (dashboard chat, daily and
+weekly reviews) and starts weekly reviews (reviewWeek). Host
 AI requests use /api/ai; logger requests use trainingUrl. Explicit completed-week
 links use /?coaching_week=...&coaching_kind=end#ai. The host replaces that request
 with a saved conversation link after capture, preserving reload/follow-up behavior.
@@ -493,7 +507,7 @@ rating version or null, never captures/sends. Saved conversations remain accessi
 through existing Coach routes, with Daily check-in labels in the conversation list.
 
 The client starts after successful POST/PUT readiness, independent of scoring and
-save success. It shares WeeklyCoach.reviewPrepared (selected/default model, existing
+save success. It shares AICoach.reviewPrepared (selected/default model, existing
 expected_sequence=0 turn protection and SSE persistence). Repeated captures/tabs
 cannot automatically resend existing turns. If an edit arrives during a response,
 the client rechecks the current identity afterward. Dashboard load starts an

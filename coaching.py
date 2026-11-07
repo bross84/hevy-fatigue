@@ -379,6 +379,36 @@ def daily_pending_retry_id(view):
     return None
 
 
+def save_conversation(db, conversation_id, evidence):
+    """Freeze evidence as a new conversation and return its view.
+
+    Idempotent: if a concurrent request saved the same identity first, the duplicate
+    insert is discarded and the existing conversation is returned.
+    """
+    db.add(CoachingConversation(id=conversation_id,created_at=evidence['captured_at'],evidence=encode(evidence)))
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        if not db.get(CoachingConversation,conversation_id): raise
+    return conversation(db,conversation_id)
+
+
+def finish_turn(session_factory, turn_id, view, content, status):
+    """Record how a turn ended, in its own short-lived session.
+
+    Provider streaming never holds a database transaction open. A daily interpretation
+    without a usable recommendation is recorded as failed, and a late response cannot
+    replace a turn that Retry already superseded (only a pending turn is updated).
+    """
+    if status=='complete' and needs_daily_recommendation(view) and not daily_recommendation(content):
+        status='failed'
+    with session_factory() as saved:
+        saved.query(CoachingTurn).filter_by(id=turn_id,status='pending').update(
+            {'response':content,'status':status},synchronize_session=False)
+        saved.commit()
+
+
 def begin_turn(db, conversation_id, turn_id, message, model, expected_sequence,
                retry_pending_turn_id=None):
     # Serialize append checks with the insert, before provider I/O. No automatic retries of pending turns.

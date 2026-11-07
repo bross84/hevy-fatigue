@@ -34,7 +34,7 @@ const context=vm.createContext({TextDecoder,Date,crypto:{randomUUID:()=>Math.ran
     }
     return ok(structuredClone(views.get(url.split('/').pop())));
   }});
-vm.runInContext(fs.readFileSync('rackbook/static/weekly-coach.js','utf8')+';this.weekly=WeeklyCoach;',context);
+vm.runInContext(fs.readFileSync('rackbook/static/ai-coach.js','utf8')+';this.weekly=AICoach;',context);
 vm.runInContext(fs.readFileSync('static/daily-coach.js','utf8')+';this.daily=DailyCoach;',context);
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const textOf=element=>[element.textContent,...element.children.map(textOf)].join('\n');

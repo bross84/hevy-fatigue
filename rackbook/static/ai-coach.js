@@ -1,5 +1,7 @@
-/* Host AI APIs; logger-owned requests still use trainingUrl. Never edits a plan. */
-const WeeklyCoach = (() => {
+/* The AI Coach's browser code, shared by the dashboard, the daily card and the logger.
+   Host AI requests use /api/ai; logger-owned requests still use trainingUrl. It only reads
+   and requests: whether a reply may be resent is decided by the server, and it never edits a plan. */
+const AICoach = (() => {
   async function json(path,options) {
     const response=await fetch(path,options),data=await response.json();
     if(!response.ok)throw Error(typeof data.detail==='string'?data.detail:'Weekly review unavailable.');
@@ -7,7 +9,7 @@ const WeeklyCoach = (() => {
   }
   const openUrl=id=>'/?coaching_conversation='+encodeURIComponent(id)+'#ai';
   const endUrl=id=>'/?coaching_week='+encodeURIComponent(id)+'&coaching_kind=end#ai';
-  async function run(planId,kind,sessionId=null,onStatus=()=>{},onPrepared=()=>{}) {
+  async function reviewWeek(planId,kind,sessionId=null,onStatus=()=>{},onPrepared=()=>{}) {
     onStatus('Preparing your weekly coaching context…');
     let view=await json('/api/ai/week-reviews',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({plan_id:planId,kind,session_id:sessionId})});
@@ -34,19 +36,32 @@ const WeeklyCoach = (() => {
     if(response.status===409)return json('/api/ai/conversations/'+encodeURIComponent(view.id));
     if(!response.ok){const err=await response.json();throw Error(typeof err.detail==='string'?err.detail:'Weekly review failed.');}
     if(!response.body)throw Error('Review response interrupted. Open AI Coach to check its saved status.');
-    const reader=response.body.getReader(),decoder=new TextDecoder();let buffer='',done=false;
-    while(!done){
-      const chunk=await reader.read();if(chunk.done)break;
-      buffer+=decoder.decode(chunk.value,{stream:true});const lines=buffer.split('\n');buffer=lines.pop() || '';
-      for(const line of lines){
-        if(!line.startsWith('data:'))continue;
-        const value=line.slice(5).trim();if(value==='[DONE]'){done=true;break;}
-        try {const event=JSON.parse(value);if(event.error)throw Error(event.error.message || 'Review failed.');}
-        catch(error){if(!(error instanceof SyntaxError))throw error;}
-      }
-    }
+    const done=await readStream(response,{fallback:'Review failed.'});
     if(!done)throw Error('Review interrupted. Open AI Coach to check it; no automatic resend.');
     return json('/api/ai/conversations/'+encodeURIComponent(view.id));
   }
-  return {run,reviewPrepared,openUrl,endUrl};
+  // Resolves true once the server sends [DONE]; false if the stream ends first.
+  // Throws on an error event. Reply text is passed to onDelta as it arrives.
+  async function readStream(response, {onDelta = () => {}, fallback = 'AI response failed.'} = {}) {
+    const reader = response.body.getReader(), decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) return false;
+      buffer += decoder.decode(chunk.value, {stream: true});
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        const value = line.slice(5).trim();
+        if (value === '[DONE]') return true;
+        let event;
+        try { event = JSON.parse(value); } catch (error) { continue; }
+        if (event.error) throw Error(event.error.message || fallback);
+        const delta = event.choices?.[0]?.delta?.content || event.choices?.[0]?.text || '';
+        if (delta) onDelta(delta);
+      }
+    }
+  }
+  return {reviewWeek,reviewPrepared,readStream,openUrl,endUrl};
 })();

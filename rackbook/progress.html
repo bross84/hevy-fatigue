@@ -180,12 +180,13 @@
     }
     @media(pointer:coarse) { .segmented button,.zoom-actions button,.session-step,#sessionSelect { min-height:44px; } }
   </style>
+  <script src="/training/static/app-menu.js"></script>
 </head>
 <body>
 <main>
   <header class="app-header">
     <div class="page-heading"><div class="page-title"><span class="eyebrow">Hevy-Fatigue</span><h1>Progress</h1></div></div>
-    <nav class="app-nav" aria-label="Pages"><a href="/">Today</a><a href="/training/log">Log Workout</a><a href="/training/microcycles">Plans</a><a href="/training/recent">Recent</a><a href="/training/progress" aria-current="page">Progress</a><a href="/training/stress">Stress</a><a href="/training/rpe-charts">RPE Charts</a><a href="/#settings">Settings</a></nav>
+    <nav class="app-nav" aria-label="Pages" data-app-menu="bar"></nav>
   </header>
   <div id="status" role="status"></div>
   <div class="lifts" id="lifts" role="group" aria-label="Lift">

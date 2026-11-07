@@ -6,8 +6,9 @@
   <script src="/training/static/draft-transfer.js"></script>
   <script src="/training/static/session-review.js"></script>
   <script src="/training/static/session-advice.js"></script>
-  <script src="/training/static/session-motivation.js?v=2"></script>
-  <script src="/training/static/weekly-coach.js?v=2"></script>
+  <script src="/training/static/session-motivation.js?v=3"></script>
+  <script src="/training/static/app-menu.js?v=1"></script>
+  <script src="/training/static/ai-coach.js?v=1"></script>
   <script src="/training/static/logger-layout.js?v=2"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="utf-8" />
@@ -402,26 +403,7 @@
 <button id="loggerNavScrim" type="button" aria-label="Close navigation" hidden></button>
 <aside id="loggerNav" class="logger-nav" aria-label="Application navigation">
   <div class="logger-nav-title"><span>Hevy-Fatigue</span><button id="loggerCloseMenu" type="button">Close</button></div>
-  <nav class="app-nav" aria-label="Pages">
-    <span class="logger-nav-group">Overview</span>
-    <a href="/">Dashboard</a>
-    <span class="logger-nav-group">Training</span>
-    <a href="/training/log" aria-current="page">Log Workout</a>
-    <a href="/training/microcycles">Plans</a>
-    <a href="/training/recent">Recent</a>
-    <a href="/training/progress">Progress</a>
-    <a href="/training/stress">Stress</a>
-    <a href="/training/rpe-charts">RPE Charts</a>
-    <span class="logger-nav-group">Monitoring</span>
-    <a href="/#exercise-metrics">Exercises</a>
-    <a href="/#workouts">Workouts</a>
-    <a href="/#log">Check-in History</a>
-    <a href="/#exercises">Patterns</a>
-    <span class="logger-nav-group">Tools</span>
-    <a href="/#ai">AI Coach</a>
-    <a href="/static/docs.html">Docs</a>
-    <a href="/#settings">Settings</a>
-  </nav>
+  <nav class="app-nav" aria-label="Pages" data-app-menu="sidebar"></nav>
 </aside>
 <main>
   <header class="app-header">
@@ -1063,7 +1045,7 @@
         const pending = sessions.filter(session => !done.has(session.id));
         if (!pending.length) {
           details.append(el("p", "muted", sessions.length ? "Microcycle complete. Select another plan or build the next week." : "No days planned yet. Add a day in the builder."));
-          if(sessions.length){const review=el('a',null,'Review this week with AI Coach');review.href=WeeklyCoach.endUrl(plan.id);details.append(review);}
+          if(sessions.length){const review=el('a',null,'Review this week with AI Coach');review.href=AICoach.endUrl(plan.id);details.append(review);}
           if (!manual.size) return;
         }
         const dayLabel = el("label", null, "Workout day"), daySelect = el("select", "wide");

@@ -3,7 +3,6 @@ from datetime import date, timedelta
 from hashlib import sha256
 from uuid import NAMESPACE_URL, uuid5
 from pydantic import BaseModel
-from sqlalchemy.exc import IntegrityError
 from database import DailyReadiness, CoachingConversation
 import coaching
 
@@ -88,10 +87,4 @@ def prepare(db, day, history):
             if note not in evidence['limitations']: evidence['limitations'].append(note)
     if len(coaching.encode(evidence))>36000:
         raise ValueError('Daily context is too large. The check-in remains saved.')
-    db.add(CoachingConversation(id=review_id,created_at=evidence['captured_at'],evidence=coaching.encode(evidence)))
-    try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        if not db.get(CoachingConversation,review_id): raise
-    return coaching.conversation(db,review_id)
+    return coaching.save_conversation(db,review_id,evidence)

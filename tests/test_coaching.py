@@ -326,3 +326,13 @@ class CoachingTests(TestCase):
         source=coaching.messages(closing.json(),'Discuss next week')[0]['content']
         self.assertIn('remote coach',source)
         self.assertIn('varied accessories',source)
+
+    def test_save_conversation_keeps_the_first_saved_evidence_on_duplicates(self):
+        identity=str(uuid4())
+        first=dict(captured_at='2026-11-05T12:00:00Z',marker='first')
+        second=dict(captured_at='2026-11-05T13:00:00Z',marker='second')
+        saved=coaching.save_conversation(self.db,identity,first)
+        again=coaching.save_conversation(self.sessions(),identity,second)
+        self.assertEqual(saved['evidence']['marker'],'first')
+        self.assertEqual(again['evidence']['marker'],'first')
+        self.assertEqual(self.db.query(CoachingConversation).filter_by(id=identity).count(),1)

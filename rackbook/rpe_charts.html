@@ -156,12 +156,13 @@
     #importBridge { font: inherit; min-height: 44px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--accent-soft); color: var(--accent); cursor: pointer; }
     #importBridge:disabled { opacity: .6; cursor: default; }
   </style>
+  <script src="/training/static/app-menu.js"></script>
 </head>
 <body>
 <main>
   <header class="app-header">
     <div class="page-heading"><div class="page-title"><span class="eyebrow">Hevy-Fatigue</span><h1>RPE Charts</h1></div></div>
-    <nav class="app-nav" aria-label="Pages"><a href="/">Today</a><a href="/training/log">Log Workout</a><a href="/training/microcycles">Plans</a><a href="/training/recent">Recent</a><a href="/training/progress">Progress</a><a href="/training/stress">Stress</a><a href="/training/rpe-charts" aria-current="page">RPE Charts</a><a href="/#settings">Settings</a></nav>
+    <nav class="app-nav" aria-label="Pages" data-app-menu="bar"></nav>
   </header>
   <div id="status"></div>
   <details hidden class="card" style="padding:14px 16px;margin-bottom:16px">

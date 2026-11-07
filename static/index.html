@@ -6,8 +6,8 @@
 <title>Hevy Fatigue</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
-<script src="/training/static/weekly-coach.js?v=2"></script>
-<script src="/static/daily-coach.js?v=3"></script>
+<script src="/training/static/ai-coach.js?v=1"></script>
+<script src="/static/daily-coach.js?v=4"></script>
 <link rel="icon" href="/resources/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/resources/apple-touch-icon.png">
 <style>
@@ -4795,7 +4795,7 @@ async function loadCoachingConversations() {
     const params=new URLSearchParams(location.search);
     if(params.get('coaching_week')&&!aiWeeklyHandled){
       aiWeeklyHandled=true;
-      await WeeklyCoach.run(params.get('coaching_week'),params.get('coaching_kind') || 'end',null,
+      await AICoach.reviewWeek(params.get('coaching_week'),params.get('coaching_kind') || 'end',null,
         text=>_setAIChatStatus(text),view=>{
           params.delete('coaching_week');params.delete('coaching_kind');params.set('coaching_conversation',view.id);
           history.replaceState(null,'',location.pathname+'?'+params.toString()+'#ai');
@@ -4937,40 +4937,15 @@ async function sendAIMessage(reviewMessage = null, newReview = false, retryPendi
     }
     if (!r.body) throw new Error('No response stream returned by server.');
 
-    const reader = r.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let doneReceived = false;
-
-    while (!doneReceived) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        const data = line.slice(6).trim();
-        if (data === '[DONE]') {
-          doneReceived = true;
-          break;
-        }
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed.error) throw Error(parsed.error.message || 'AI response failed.');
-          const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.text || '';
-          if (!delta) continue;
-          assistantText += delta;
-          if (bubbleEl) bubbleEl.innerHTML = _aiMarkdown(assistantText);
-          const container = document.getElementById('ai-chat-messages');
-          if (container) container.scrollTop = container.scrollHeight;
-        } catch (e) {
-          if (!(e instanceof SyntaxError)) throw e;
-        }
-      }
-    }
+    const doneReceived = await AICoach.readStream(r, {
+      fallback: 'AI response failed.',
+      onDelta: delta => {
+        assistantText += delta;
+        if (bubbleEl) bubbleEl.innerHTML = _aiMarkdown(assistantText);
+        const container = document.getElementById('ai-chat-messages');
+        if (container) container.scrollTop = container.scrollHeight;
+      },
+    });
     if (!doneReceived) throw Error('Response interrupted. Reload the saved review before continuing.');
 
     if (!assistantText.trim()) {

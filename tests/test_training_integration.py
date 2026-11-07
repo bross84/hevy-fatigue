@@ -701,7 +701,8 @@ for i in range(2):
   assert manifest['scope']=='/training/' and manifest['start_url']=='/training/log'
   for icon in manifest['icons']: assert c.get(icon['src']).status_code==200
   assert '/training/log' in c.get('/').text and 'Check-in History' in c.get('/').text
-  assert '/#settings' in c.get('/training/log').text
+  assert '/training/static/app-menu.js' in c.get('/training/log').text
+  assert "href: '/#settings'" in c.get('/training/static/app-menu.js').text
 with sqlite3.connect(os.environ['DB_PATH']) as db:
  assert not db.execute("SELECT 1 FROM sqlite_master WHERE name='logged_sets'").fetchone()
 with sqlite3.connect(os.environ['RACKBOOK_DB_PATH']) as db:

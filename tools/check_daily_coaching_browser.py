@@ -33,7 +33,8 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             page=context.new_page();errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
             def calls():return page.request.get(URL+'/mock/daily-provider').json()['calls']
             # A cached pre-daily Coach asset still has the old public interface.
-            # Serve that copy at the old URL and verify the dashboard bypasses it.
+            # Serve that copy at the old URL and verify the dashboard never requests it
+            # (the Coach script now has a new name and versioned URL).
             stale_requests=[]
             def stale_coach(route):
                 stale_requests.append(route.request.url)
@@ -41,7 +42,7 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             context.route(URL+'/training/static/weekly-coach.js',stale_coach)
             response=page.goto(URL+'/')
             assert response.headers.get('cache-control')=='no-cache'
-            assert page.evaluate("typeof WeeklyCoach.reviewPrepared")=='function'
+            assert page.evaluate("typeof AICoach.reviewPrepared")=='function'
             assert not stale_requests,stale_requests
             page.get_by_role('button',name='Check in',exact=True).click()
             expect(page.locator('#ci-submit')).to_be_visible()
