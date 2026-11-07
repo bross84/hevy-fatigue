@@ -613,3 +613,29 @@ saved conversation, reload, and verify persistence. No plan edits occur merely
 from a review or follow-up. This is tied to planned week identities, not calendar
 weeks, and only runs with the app open. Physical devices/live-provider quality,
 cost and deployed-data acceptance remain unverified for this local follow-up.
+
+## Daily interpretation and historical range acceptance (local, 2026-11-06)
+
+Use the normal reviewed GitHub/image update workflow when this feature is released.
+There is no new schema or production configuration change. Keep existing rollback
+material; no new backup/cutover/service replacement is requested by this change.
+
+After deployment, submit a normal daily check-in with the existing AI key/model.
+Check that ratings save, then a short AI daily interpretation appears with its
+capture/model/status and Discuss with AI Coach link. Reload must retain it without
+another automatic request. Discuss a follow-up and reload the Coach conversation.
+A changed rating should create new current evidence without rewriting the old
+review. Unchanged ratings should reuse their existing version. Daily AI failure
+must leave the check-in and workout logger usable; interrupted responses must not
+automatically repost. The UI has an explicit request action if AI was not configured.
+
+Fatigue Trend should show prior usual-range shading once coverage is sufficient
+(14 eligible observations spanning 28 days in the prior 84 days), otherwise state
+what is collecting. Check raw combined dashed line, smoothed solid line, 0–20 axis,
+missing-day gaps, tooltip raw values and personal range count. Fixed Optimal/
+Recovery bands are removed from this chart. Subjective/objective/combined scores
+remain in Readiness, with old numerical advice in Legacy rule output/diagnostics.
+Confirm fatigue/pattern/trial results, motivation separation, saved programs,
+RPErx/act, manual weights and the automatic-adjustment toggle remain unchanged.
+Physical PWA/live-provider/deployed-data checks are operator acceptance, separate
+from mocked browser/regression verification. No automatic programming changes.

@@ -17,6 +17,8 @@ import threading
 from pattern_recovery import build_pattern_history
 import coaching
 import weekly_coaching
+import daily_coaching
+from readiness_context import historical_ranges
 
 from recommendations import build_history as build_recommendation_history, RATING_FIELDS
 
@@ -2559,7 +2561,25 @@ def ai_chat_proxy(data: AIChatRequest, db: Session = Depends(get_db)):
 @app.get('/api/ai/conversations')
 def coaching_list(db: Session = Depends(get_db)):
     rows = db.query(CoachingConversation).order_by(CoachingConversation.created_at.desc()).limit(50).all()
-    return [dict(id=r.id,created_at=r.created_at,label=(coaching.parsed(r.evidence,{}).get('week_context') or {}).get('label')) for r in rows]
+    return [dict(id=r.id,created_at=r.created_at,label=(coaching.parsed(r.evidence,{}).get('week_context') or coaching.parsed(r.evidence,{}).get('daily_context') or {}).get('label')) for r in rows]
+
+
+@app.post('/api/ai/daily-reviews')
+def coaching_daily_review(data: daily_coaching.DailyReviewInput, db: Session = Depends(get_db)):
+    try:
+        existing=daily_coaching.current(db,data.date)
+        if existing: return existing
+        return daily_coaching.prepare(db,data.date,historical_ranges(_recommendation_history(db,data.date)))
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
+
+
+@app.get('/api/ai/daily-reviews/{entry_date}')
+def coaching_daily_read(entry_date: date_type, db: Session = Depends(get_db)):
+    try:
+        return daily_coaching.current(db,entry_date)
+    except ValueError:
+        return None
 
 
 @app.post('/api/ai/week-reviews')
@@ -2663,7 +2683,7 @@ def get_readiness_combined_history(days: int = 7, db: Session = Depends(get_db))
     today = date_type.today()
     from_date = today - timedelta(days=days - 1)
 
-    return [row for row in _recommendation_history(db, today) if row["date"] >= str(from_date)]
+    return [row for row in historical_ranges(_recommendation_history(db, today)) if row["date"] >= str(from_date)]
 
 
 # NOTE: /api/stress/history must be defined BEFORE /api/stress/{target_date}

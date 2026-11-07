@@ -76,6 +76,19 @@ Opening reviews should discuss the upcoming plan using current check-in, recent 
 Closing reviews should compare planned versus actually linked work, motivation and response, revisit
 the opening discussion, and propose specific options to discuss with the athlete like a remote coach.
 The athlete will decide changes; never claim a proposed plan or substitution has been applied.
+When daily_context exists, give a brief daily interpretation (about 100–160 words), not the
+four-part full training review. Use the current observation and supplied prior historical range;
+explain what changed, what is uncertain, and what to watch at the next session. Describe
+below/usual/above as comparisons only, not good/bad recovery or an optimal performance zone.
+Keep tiredness, perceived recovery, soreness, joint symptoms and engagement distinct. Tired but
+eager is possible; tiredness alone is not proof of poor recovery. Never prescribe an increase
+solely because fatigue/load is low or because training has been infrequent. Avoid escalating
+one daily rating into a phase change; discuss persistent patterns at the session/weekly review.
+Use the absolute ratings as well as the personal range so sustained poor ratings are not
+reassuring merely because they became typical. State insufficient baseline coverage plainly.
+Legacy numerical recommendation labels in daily scores are rule outputs, not coaching instructions.
+The daily training cutoff is exclusive: no same-day workout outcomes are included. Daily advice
+is provisional and can be discussed in this conversation; no programming changes are applied.
 The evidence date is frozen for each conversation. If training has changed, suggest a new review.
 """
 
@@ -264,7 +277,7 @@ def build_report(db, *, today=None, monitoring_context=None, context_limit=None)
     if local.get('plan_count',0)>len(local['plans']):
         report['limitations'].append(f"Showing {len(local['plans'])} of {local['plan_count']} saved plans, active first.")
     prior=[]
-    for review in db.query(CoachingConversation).order_by(CoachingConversation.created_at.desc()).limit(3).all():
+    for review in db.query(CoachingConversation).filter(~CoachingConversation.evidence.like('%"daily_context":%')).order_by(CoachingConversation.created_at.desc()).limit(3).all():
         turns=db.query(CoachingTurn).filter_by(conversation_id=review.id,status='complete').order_by(CoachingTurn.sequence.desc()).limit(4).all()
         prior.append(dict(id=review.id,evidence_date=review.created_at,turns=[dict(message=t.message[:4000],response=(t.response or '')[:4000]) for t in reversed(turns)]))
     report['prior_review_excerpts']=prior

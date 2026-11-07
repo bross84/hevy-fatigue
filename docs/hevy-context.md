@@ -550,3 +550,36 @@ reposting. Each review freezes its evidence; edits do not silently regenerate it
 Provider requests use the browser's selected model or the server's default.
 Nothing schedules a paid request when the app is closed, on a calendar boundary,
 or merely because a week is completed. No commit/push/deployment in this work.
+
+## Daily AI interpretation and personal fatigue range (local, 2026-11-06)
+
+After a successful daily check-in save or rating edit in the host UI, DailyCoach
+requests a short interpretation using the existing selected OpenRouter model.
+The ratings commit first; AI preparation/provider failures cannot roll them back.
+No request is scheduled with the app closed. Reload/theme changes only restore
+saved evidence and responses, never automatically send a new provider request.
+A manual Interpret this check-in action is available when no turn was submitted.
+Partial/pending/failed turns link to Coach for explicit discussion/retry.
+
+The dashboard shows the saved initial interpretation, capture date, model/status
+and Discuss with AI Coach link. Existing conversation storage persists follow-ups.
+Identity is deterministic for date + exact eight ratings, including nulls. Changed
+ratings create another frozen version; unchanged ratings reuse the saved version.
+Old conversations survive edits/deletion, labelled by evidence date. Future-date
+check-ins do not generate interpretations. Backdated interpretations use the
+selected observation and exclude workouts on/after that date.
+
+The existing 0–20 scores, recovery smoothing, rule outputs, cutoff, missing-data,
+pattern/trial calculations and logging weight behavior are unchanged. The primary
+readiness card now points to AI interpretation; old rule advice is under Legacy
+rule output, and diagnostics retain it for comparison. Raw subjective/objective/
+combined values remain visible. Motivation is engagement, never added to fatigue.
+
+Fatigue Trend replaces fixed Low/Recovery/Optimal coloured zones with each point's
+prior 84-calendar-day 10th–90th percentile of eligible smoothed scores. Require 14
+observations spanning at least 28 days; otherwise show collecting/coverage. Range
+is computed before display slicing and excludes the point itself/future data.
+It is descriptive of this athlete, not a validated optimal zone or a programming
+trigger. Raw combined scores have a separate dashed line; missing values stay
+null and the axis remains 0–20. Absolute ratings remain available so chronically
+high fatigue cannot be hidden by the moving reference. No program writes occur.
