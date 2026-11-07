@@ -7089,18 +7089,10 @@ function _safeJointAdvisory(r2) {
 function _renderTodayCards(data, pendingCount) {
   const today = data?.today || {};
   const recV2 = today.recommendation_v2 || null;
-  const hasData = Number(today.atl || 0) !== 0 || Number(today.ctl || 0) !== 0 || Number(today.tsb || 0) !== 0;
   const checkinExists = today.checkin_exists != null
     ? !!today.checkin_exists
     : today.score_source === 'subjective_plus_training';
 
-  const recAdj = today.recommendation_adjusted || 'continue';
-  const recAdjLabel = (REC_META[recAdj]?.label || 'Continue').replace(/[↑↓→]+\s*/g, '').trim();
-  const stateLabel = recV2?.training_state_label || (hasData ? 'Today Overview' : 'No Data Yet');
-  const stateDetail = recV2?.training_state_detail || (hasData
-    ? `Recommendation: ${recAdjLabel}`
-    : 'Log workouts and complete daily check-ins to build your baseline');
-  const stateKey = recV2?.training_state || (hasData ? 'continue' : 'nodata');
   const subjScore = recV2?.subjective_score ?? null;
   const objScore = recV2?.objective_score ?? null;
   const combScore = recV2?.combined_score ?? null;
@@ -7111,7 +7103,6 @@ function _renderTodayCards(data, pendingCount) {
     <div class="readiness-score">${readinessScore}</div>
     <div class="readiness-label">${checkinExists?'Daily monitoring':'No check-in today'}</div>
     <div class="readiness-rec">${checkinExists?'See your saved AI interpretation below. The score describes monitoring, not a training prescription.':'Complete your daily check-in for an interpretation.'}</div>
-    <details style="grid-column:1/-1"><summary>Legacy rule output</summary><small>${escHtml(stateLabel)} · ${escHtml(stateDetail)} These fixed rules are retained for comparison, not AI coaching advice.</small></details>
     ${checkinExists ? `
     <div class="readiness-score-breakdown">
       <div class="readiness-breakdown-item">

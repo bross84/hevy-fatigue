@@ -556,10 +556,10 @@ or merely because a week is completed. No commit/push/deployment in this work.
 After a successful daily check-in save or rating edit in the host UI, DailyCoach
 requests a short interpretation using the existing selected OpenRouter model.
 The ratings commit first; AI preparation/provider failures cannot roll them back.
-No request is scheduled with the app closed. Reload/theme changes only restore
-saved evidence and responses, never automatically send a new provider request.
-A manual Interpret this check-in action is available when no turn was submitted.
-Partial/pending/failed turns link to Coach for explicit discussion/retry.
+Opening the dashboard also starts an interpretation for today’s existing check-in
+if there is no recorded attempt. Reloads restore recorded turns. Retry appears
+after a failure, including an interrupted turn. Pending and completed turns
+are restored without resending. Setup failures are remembered in this browser.
 
 The dashboard shows the saved initial interpretation, capture date, model/status
 and Discuss with AI Coach link. Existing conversation storage persists follow-ups.
@@ -571,8 +571,8 @@ selected observation and exclude workouts on/after that date.
 
 The existing 0–20 scores, recovery smoothing, rule outputs, cutoff, missing-data,
 pattern/trial calculations and logging weight behavior are unchanged. The primary
-readiness card now points to AI interpretation; old rule advice is under Legacy
-rule output, and diagnostics retain it for comparison. Raw subjective/objective/
+readiness card points to AI interpretation. Diagnostics retain the old rule output
+for comparison. Raw subjective/objective/
 combined values remain visible. Motivation is engagement, never added to fatigue.
 
 Fatigue Trend replaces fixed Low/Recovery/Optimal coloured zones with each point's

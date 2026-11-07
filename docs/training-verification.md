@@ -976,3 +976,16 @@ this feature. Isolated on codex/daily-ai-interpretation from current main d3c9f6
 excluding unrelated workspace edits, dependency changes, layout assets and prior
 release documentation. The newer main-branch script-extraction test fix is retained.
 GitHub integration CI will supply container build/startup verification.
+
+## Automatic daily interpretation recovery (follow-up to #87)
+
+The dashboard starts a missing interpretation for today's saved check-in. It
+restores completed or pending turns on reload. Retry appears only after failure
+and uses the saved turn sequence to avoid duplicate requests. The dashboard no
+longer displays the old rule advice. Raw scores and the historical range remain
+available.
+
+All 31 JavaScript checks passed. The mocked daily browser flow verified opening
+a previously saved check-in, one automatic request, reload without another
+request, setup failure, interrupted response, successful explicit Retry, and
+the absence of legacy advice. Container startup and Python suites run in PR CI.

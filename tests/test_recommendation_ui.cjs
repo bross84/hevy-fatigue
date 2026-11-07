@@ -36,8 +36,9 @@ const fallback = {training_state:'insufficient_data',training_state_label:'Conti
   combined_score:2, smoothed_score:2};
 context._renderTodayCards({today:{checkin_exists:true,recommendation_v2:fallback}},0);
 let html=element('dashboard-readiness-card').innerHTML;
-assert.ok(html.includes('Continue Training as Normal'));
-assert.ok(html.includes('Insufficient data to recommend a change.'));
+assert.ok(!html.includes('Continue Training as Normal'));
+assert.ok(!html.includes('Legacy rule output'));
+assert.ok(html.includes('Combined'));
 assert.ok(html.includes('readiness-score">—'));
 assert.ok(!html.includes('today-state-large_increase'));
 context._renderTodayCards({today:{checkin_exists:true,recommendation_v2:{...fallback,
