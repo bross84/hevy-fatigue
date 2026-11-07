@@ -1,5 +1,5 @@
 """Personal ranges and saved daily coaching, using only temporary databases/providers."""
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 import json
 import os
 from pathlib import Path
@@ -16,7 +16,7 @@ from sqlalchemy.pool import StaticPool
 import coaching
 import daily_coaching
 import main
-from database import Base, DailyReadiness, WorkoutSession, WorkoutLog, CoachingConversation
+from database import Base, DailyReadiness, WorkoutSession, WorkoutLog, CoachingConversation, CoachingTurn
 from rackbook import database as logger
 from readiness_context import historical_ranges
 
@@ -150,6 +150,62 @@ class DailyCoachingTests(TestCase):
         self.assertEqual(remote.send.call_count,2)
         # Daily snippets must not crowd previous programming discussions out of full reviews.
         self.assertEqual(coaching.build_report(self.db,today=DAY)['prior_review_excerpts'],[])
+
+    def test_retry_stale_pending_reuses_checkin_and_fences_late_response(self):
+        self.submit()
+        view = self.prepare()
+        path = '/api/ai/conversations/' + view['id']
+        finish_callbacks = []
+
+        def provider(model, api_key, messages, on_finish):
+            finish_callbacks.append(on_finish)
+            if len(finish_callbacks) == 2:
+                on_finish('Saved retry response.', 'complete')
+            return {'mock': 'accepted'}
+
+        def send(sequence, pending_id=None):
+            turn_id = str(uuid4())
+            response = self.client.post(path + '/messages', json=dict(
+                id=turn_id, message='Interpret today', model='test/model',
+                expected_sequence=sequence, retry_pending_turn_id=pending_id,
+            ))
+            return turn_id, response
+
+        with patch.object(main, '_get_ai_api_key', return_value='mock-only'), patch.object(
+            main, '_stream_openrouter', side_effect=provider
+        ) as remote:
+            original, response = send(0)
+            self.assertEqual(response.status_code, 200)
+            self.assertNotIn('retry_pending_turn_id', self.client.get(path).json())
+            self.assertEqual(send(1, original)[1].status_code, 409)
+
+            with self.sessions() as db:
+                db.get(CoachingTurn, original).created_at = (
+                    datetime.now(timezone.utc) - timedelta(minutes=6)
+                ).isoformat()
+                db.commit()
+
+            pending = self.client.get(path).json()
+            self.assertEqual(pending['retry_pending_turn_id'], original)
+            self.assertEqual(pending['turns'][0]['status'], 'pending')
+            self.assertEqual(send(1)[1].status_code, 409)
+            self.assertEqual(send(1, str(uuid4()))[1].status_code, 409)
+            remote.assert_called_once()
+
+            _, response = send(1, original)
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(send(1, original)[1].status_code, 409)
+            finish_callbacks[0]('Late response from the earlier request.', 'complete')
+            self.assertEqual(remote.call_count, 2)
+
+        saved = self.client.get('/api/ai/daily-reviews/' + str(DAY)).json()
+        self.assertEqual(saved['id'], view['id'])
+        self.assertEqual(saved['evidence'], view['evidence'])
+        self.assertEqual([t['status'] for t in saved['turns']], ['interrupted', 'complete'])
+        self.assertIsNone(saved['turns'][0]['response'])
+        self.assertEqual(saved['turns'][1]['response'], 'Saved retry response.')
+        self.assertNotIn('retry_pending_turn_id', saved)
+        self.assertEqual(self.client.get('/api/readiness/today').json()['tiredness'], 2)
 
     def test_missing_key_history_and_future_do_not_block_daily_logging(self):
         self.submit();view=self.prepare()

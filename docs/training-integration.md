@@ -525,3 +525,10 @@ ineligible count. A point requires 14 observations over 28 days; its own value a
 future values cannot shift its range. GET /api/readiness/combined-history adds
 historical_range and historical_position after replay, before days slicing. Raw
 combined data remain available even when smoothed eligibility is insufficient.
+
+A daily conversation can expose retry_pending_turn_id after its first unfinished
+interpretation has been pending for five minutes. The conversation messages route
+validates the ID, age, daily evidence type and sequence under the same write
+transaction that appends the replacement. A normal send still rejects pending
+turns. Late responses cannot change a superseded turn. The dashboard and the
+saved Coach conversation both require an explicit click.

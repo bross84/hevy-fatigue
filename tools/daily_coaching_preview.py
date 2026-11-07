@@ -1,8 +1,11 @@
 """Synthetic daily interpretation fixture; no account, real database or provider."""
 import json
+from datetime import datetime, timedelta, timezone
+from uuid import UUID, uuid4
 from typing import Literal
 from fastapi.responses import StreamingResponse
 from tools.dashboard_preview import app, main
+from database import CoachingTurn
 
 calls=0
 mode='success'
@@ -35,3 +38,14 @@ def set_mode(value: Literal['success','unavailable','interrupted']):
     global mode
     mode=value
     return state()
+
+
+@app.post('/mock/stale-daily-turn/{conversation_id}')
+def seed_stale_daily_turn(conversation_id: UUID):
+    turn_id = str(uuid4())
+    with main.SessionLocal() as db:
+        db.add(CoachingTurn(id=turn_id, conversation_id=str(conversation_id), sequence=1,
+                           message='Interpret this saved check-in.', model='mock/model',
+                           status='pending', created_at=(datetime.now(timezone.utc) - timedelta(minutes=6)).isoformat()))
+        db.commit()
+    return {'id': turn_id}

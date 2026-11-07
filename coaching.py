@@ -18,6 +18,7 @@ RECENT_EXPOSURES = 6
 MAX_CONTEXT_CHARS = 160_000
 MAX_REPLY_CHARS = 60_000
 MAX_TURNS = 40
+DAILY_PENDING_RETRY_AGE = timedelta(minutes=5)
 RATINGS = ('tiredness', 'perceived_recovery', 'sore_quad_dom', 'sore_posterior',
            'sore_upper_push', 'sore_upper_pull', 'joint_upper', 'joint_lower')
 
@@ -300,11 +301,35 @@ def conversation(db, conversation_id):
     row=db.get(CoachingConversation,conversation_id)
     if row is None: raise LookupError('Review conversation not found.')
     turns=db.query(CoachingTurn).filter_by(conversation_id=conversation_id).order_by(CoachingTurn.sequence).all()
-    return dict(id=row.id,created_at=row.created_at,evidence=parsed(row.evidence),turns=[
-        dict(id=t.id,sequence=t.sequence,message=t.message,response=t.response,model=t.model,status=t.status,created_at=t.created_at) for t in turns])
+    view = dict(id=row.id, created_at=row.created_at, evidence=parsed(row.evidence), turns=[
+        dict(id=t.id, sequence=t.sequence, message=t.message, response=t.response,
+             model=t.model, status=t.status, created_at=t.created_at) for t in turns])
+    retry_id = daily_pending_retry_id(view)
+    if retry_id:
+        view['retry_pending_turn_id'] = retry_id
+    return view
 
 
-def begin_turn(db, conversation_id, turn_id, message, model, expected_sequence):
+def daily_pending_retry_id(view):
+    turns = view['turns']
+    if not (view['evidence'] or {}).get('daily_context') or not turns or len(turns) >= MAX_TURNS:
+        return None
+    pending = turns[-1]
+    if pending['status'] != 'pending' or any(
+        turn['status'] not in ('failed', 'interrupted') for turn in turns[:-1]
+    ):
+        return None
+    try:
+        started = datetime.fromisoformat(pending['created_at'])
+    except (TypeError, ValueError):
+        return None
+    if started.tzinfo and datetime.now(timezone.utc) - started >= DAILY_PENDING_RETRY_AGE:
+        return pending['id']
+    return None
+
+
+def begin_turn(db, conversation_id, turn_id, message, model, expected_sequence,
+               retry_pending_turn_id=None):
     # Serialize append checks with the insert, before provider I/O. No automatic retries of pending turns.
     db.rollback()
     db.execute(text('BEGIN IMMEDIATE'))
@@ -313,12 +338,16 @@ def begin_turn(db, conversation_id, turn_id, message, model, expected_sequence):
         existing=db.get(CoachingTurn,turn_id)
         if existing:
             raise ValueError('That message was already submitted. Reload the recorded conversation before continuing.')
-        if any(t['status']=='pending' for t in view['turns']):
-            raise ValueError('A response is pending. Reload to check its status; do not automatically resend.')
         if len(view['turns'])!=expected_sequence:
             raise ValueError('The conversation changed. Reload it before sending another message.')
         if len(view['turns'])>=MAX_TURNS:
             raise ValueError('Start a new training review to refresh evidence and continue.')
+        if retry_pending_turn_id:
+            if daily_pending_retry_id(view) != retry_pending_turn_id:
+                raise ValueError('This pending interpretation is not eligible for Retry. Reload to check its status.')
+            db.get(CoachingTurn, retry_pending_turn_id).status = 'interrupted'
+        elif any(t['status']=='pending' for t in view['turns']):
+            raise ValueError('A response is pending. Reload to check its status; do not automatically resend.')
         db.add(CoachingTurn(id=turn_id,conversation_id=conversation_id,sequence=len(view['turns'])+1,
             message=message,response=None,model=model,status='pending',created_at=now_iso()))
         db.commit()

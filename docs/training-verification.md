@@ -994,3 +994,16 @@ The weekly browser regression initially caught an extra daily request when a
 direct Coach link loaded dashboard data in the background. Automatic recovery
 now runs only when the dashboard is active. The daily and weekly mocked browser
 flows both passed after the correction.
+
+The daily and weekly mocked browser checks passed for the Coach asset revision.
+The daily preview served an older shared Coach interface at the original URL
+and confirmed the dashboard bypasses it and completes the daily flow.
+Targeted daily and readiness JavaScript checks passed. Production was not used.
+
+Pending Retry verification. All 114 host tests and 31 JavaScript checks passed.
+The mocked browser recovered an earlier day's pending interpretation from its
+saved AI Coach link. The API regression verifies that a recent or mismatched
+turn is rejected, explicit stale Retry sends once, and the late original
+response cannot overwrite the interrupted turn. The weekly browser flow passed.
+The preview's temporary-database guard caught an import-order error before
+startup. The fixture import order was corrected and the browser check passed.

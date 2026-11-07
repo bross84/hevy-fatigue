@@ -6,8 +6,8 @@
 <title>Hevy Fatigue</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
-<script src="/training/static/weekly-coach.js"></script>
-<script src="/static/daily-coach.js"></script>
+<script src="/training/static/weekly-coach.js?v=2"></script>
+<script src="/static/daily-coach.js?v=2"></script>
 <link rel="icon" href="/resources/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/resources/apple-touch-icon.png">
 <style>
@@ -3497,6 +3497,7 @@ body.ai-open main {
       <div class="ai-typing-indicator" id="ai-typing-indicator"><span></span><span></span><span></span></div>
     </div>
     <div class="ai-chat-status" id="ai-chat-status"></div>
+    <button class="btn btn-secondary" id="ai-daily-retry" type="button" onclick="retryDailyInterpretation()" hidden>Retry daily interpretation</button>
     <div class="ai-chat-input-row">
       <textarea class="ai-chat-input" id="ai-chat-input" rows="1" placeholder="Ask for training advice" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="send"></textarea>
       <button class="btn btn-primary ai-chat-send" id="ai-chat-send" type="button" onclick="sendAIMessage()">Send</button>
@@ -4753,7 +4754,9 @@ function renderTrainingReview(view) {
   document.getElementById('ai-evidence-date').textContent = 'Evidence captured '+new Date(e.captured_at).toLocaleString()+
     ' · '+e.coverage.sessions+' sessions · '+e.window.start+' to '+e.window.end+'. Start a new review to include newer training. AI proposals may contain errors; check the evidence and references.';
   setAIContextPreview(JSON.stringify(e, null, 2));
-  if (view.turns.some(t=>t.status==='pending')) _setAIChatStatus('A response is pending. Reload to check it; start a new review if it remains interrupted. No automatic resend.', true);
+  if (view.retry_pending_turn_id) {
+    _setAIChatStatus('The earlier daily request is still pending. Retry daily interpretation to send a new request using the saved check-in.');
+  } else if (view.turns.some(t=>t.status==='pending')) _setAIChatStatus('A response is pending. Reload to check it; start a new review if it remains interrupted. No automatic resend.', true);
 }
 
 async function selectTrainingReview(id) {
@@ -4850,13 +4853,29 @@ function _setAIChatStreaming(active) {
   const clearBtn = document.getElementById('ai-chat-clear');
   if (input) input.disabled = aiChatStreaming;
   if (sendBtn) sendBtn.disabled = !aiChatConfigured || aiChatStreaming || aiReviewLoading || !!aiConversation?.turns.some(t=>t.status==='pending');
+  const retryBtn = document.getElementById('ai-daily-retry');
+  if (retryBtn) {
+    retryBtn.hidden = !canRetryDailyInterpretation(aiConversation);
+    retryBtn.disabled = !aiChatConfigured || aiChatStreaming || aiReviewLoading;
+  }
   const reviewBtn = document.getElementById('ai-training-review');
   if (reviewBtn) reviewBtn.disabled = !aiChatConfigured || aiChatStreaming || aiReviewLoading;
   if (clearBtn) clearBtn.disabled = aiChatStreaming;
   for (const id of ['ai-conversation-select','ai-review-reload']) { const el=document.getElementById(id); if(el) el.disabled=aiChatStreaming || aiReviewLoading; }
 }
 
-async function sendAIMessage(reviewMessage = null, newReview = false) {
+function canRetryDailyInterpretation(view) {
+  return !!view?.retry_pending_turn_id ||
+    (!!view?.evidence?.daily_context && !!view.turns.length &&
+      view.turns.every(turn => ['failed', 'interrupted'].includes(turn.status)));
+}
+
+function retryDailyInterpretation() {
+  if (!canRetryDailyInterpretation(aiConversation)) return;
+  return sendAIMessage(aiConversation.turns[0].message, false, aiConversation.retry_pending_turn_id);
+}
+
+async function sendAIMessage(reviewMessage = null, newReview = false, retryPendingTurnId = null) {
   const input = document.getElementById('ai-chat-input');
   if (!input || aiChatStreaming || aiReviewLoading || !aiChatConfigured) return;
   const message = reviewMessage || input.value.trim();
@@ -4887,7 +4906,8 @@ async function sendAIMessage(reviewMessage = null, newReview = false) {
     const r = await fetch('/api/ai/conversations/'+encodeURIComponent(aiConversation.id)+'/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({id:crypto.randomUUID(), message, model, expected_sequence:aiConversation.turns.length}),
+      body: JSON.stringify({id:crypto.randomUUID(), message, model, expected_sequence:aiConversation.turns.length,
+        ...(retryPendingTurnId ? {retry_pending_turn_id:retryPendingTurnId} : {})}),
     });
 
     if (!r.ok) {

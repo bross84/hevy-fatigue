@@ -641,3 +641,8 @@ Confirm fatigue/pattern/trial results, motivation separation, saved programs,
 RPErx/act, manual weights and the automatic-adjustment toggle remain unchanged.
 Physical PWA/live-provider/deployed-data checks are operator acceptance, separate
 from mocked browser/regression verification. No automatic programming changes.
+
+If a daily interpretation remains pending for five minutes, reload its dashboard
+card or saved AI Coach conversation and use Retry. The saved check-in and
+evidence are reused. The Coach conversation can retry a check-in from an earlier
+day. A recent pending attempt should offer status only.

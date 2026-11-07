@@ -1,6 +1,7 @@
 """Daily save, personal chart range and persistent Coach discussion on mocked data."""
 from pathlib import Path
 import json
+from datetime import date, timedelta
 import os
 import subprocess
 import sys
@@ -31,7 +32,17 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             context.route('https://**/*',external)
             page=context.new_page();errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
             def calls():return page.request.get(URL+'/mock/daily-provider').json()['calls']
-            page.goto(URL+'/')
+            # A cached pre-daily Coach asset still has the old public interface.
+            # Serve that copy at the old URL and verify the dashboard bypasses it.
+            stale_requests=[]
+            def stale_coach(route):
+                stale_requests.append(route.request.url)
+                route.fulfill(content_type='text/javascript',body='const WeeklyCoach = {openUrl: id => "/?coaching_conversation=" + id + "#ai"};')
+            context.route(URL+'/training/static/weekly-coach.js',stale_coach)
+            response=page.goto(URL+'/')
+            assert response.headers.get('cache-control')=='no-cache'
+            assert page.evaluate("typeof WeeklyCoach.reviewPrepared")=='function'
+            assert not stale_requests,stale_requests
             expect(page.locator('#ci-submit')).to_be_visible()
             page.locator('button[data-ci-field="ci-t"][data-value="2"]').click()
             plan=page.request.get(URL+'/training/api/mesocycles').json()
@@ -118,9 +129,23 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             after=page.request.get(URL+'/api/diagnostics/snapshot').json()
             assert after==edited_monitoring
             assert after['training_load']==monitoring['training_load']
+            # A saved Coach link can recover a stale attempt even on another day.
+            previous_day=str(date.fromisoformat(day)-timedelta(days=1))
+            historical=page.request.post(URL+'/api/ai/daily-reviews',data={'date':previous_day}).json()
+            assert page.request.post(URL+'/mock/stale-daily-turn/'+historical['id']).ok
+            page.goto(URL+'/?coaching_conversation='+historical['id']+'#ai')
+            retry=page.get_by_role('button',name='Retry daily interpretation',exact=True)
+            expect(retry).to_be_enabled()
+            assert calls()==5
+            retry.click()
+            expect(retry).to_be_hidden()
+            assert calls()==6
+            retried=page.request.get(URL+'/api/ai/conversations/'+historical['id']).json()
+            assert retried['evidence']==historical['evidence']
+            assert [turn['status'] for turn in retried['turns']]==['interrupted','complete']
             assert not errors,errors
             context.close();browser.close()
-        print(json.dumps(dict(daily_save='passed',personal_range='prior-only with raw overlay',persistence='reload and discussion',ai_calls=5,outage='check-in retained',programming='unchanged',providers='fully mocked')))
+        print(json.dumps(dict(daily_save='passed',personal_range='prior-only with raw overlay',persistence='reload and discussion',ai_calls=6,stale_retry='saved historical check-in',outage='check-in retained',programming='unchanged',providers='fully mocked')))
     finally:
         server.terminate()
         try:server.wait(timeout=10)

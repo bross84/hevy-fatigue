@@ -106,6 +106,7 @@ class CoachingMessage(BaseModel):
     message: str = Field(min_length=1, max_length=12000)
     model: str = Field(min_length=1, max_length=200)
     expected_sequence: int = Field(ge=0, le=coaching.MAX_TURNS)
+    retry_pending_turn_id: UUID | None = None
 
 class TrainingStateThresholdsInput(BaseModel):
     tsb_threshold_underloaded: float = Field(8.0, ge=-50.0, le=50.0)
@@ -940,7 +941,7 @@ def _execute_sync_pipeline(db: Session) -> dict:
 def serve_frontend():
     index = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(index):
-        return FileResponse(index)
+        return FileResponse(index, headers={"Cache-Control": "no-cache"})
     return {"message": "Hevy Fatigue API — place index.html in the static/ folder"}
 
 @app.post("/api/sync")
@@ -2628,7 +2629,10 @@ def coaching_send(conversation_id: UUID, data: CoachingMessage, db: Session = De
     try:
         view = coaching.conversation(db,str(conversation_id))
         messages = coaching.messages(view,message)
-        coaching.begin_turn(db,str(conversation_id),str(data.id),message,model,data.expected_sequence)
+        coaching.begin_turn(
+            db, str(conversation_id), str(data.id), message, model, data.expected_sequence,
+            retry_pending_turn_id=str(data.retry_pending_turn_id) if data.retry_pending_turn_id else None,
+        )
     except LookupError as exc:
         raise HTTPException(404,str(exc)) from exc
     except ValueError as exc:
@@ -2637,8 +2641,10 @@ def coaching_send(conversation_id: UUID, data: CoachingMessage, db: Session = De
     def finish(content, status):
         # Separate short-lived session: provider streaming never holds a database transaction.
         with SessionLocal() as saved:
-            turn = saved.get(CoachingTurn,str(data.id))
-            turn.response, turn.status = content, status
+            # A late response cannot replace a turn explicitly superseded by Retry.
+            saved.query(CoachingTurn).filter_by(id=str(data.id), status='pending').update(
+                {'response': content, 'status': status}, synchronize_session=False
+            )
             saved.commit()
     try:
         return _stream_openrouter(model,api_key,messages,on_finish=finish)
