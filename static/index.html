@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script src="/training/static/weekly-coach.js?v=2"></script>
-<script src="/static/daily-coach.js?v=2"></script>
+<script src="/static/daily-coach.js?v=3"></script>
 <link rel="icon" href="/resources/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/resources/apple-touch-icon.png">
 <style>
@@ -3031,6 +3031,29 @@ body.ai-open main {
 .host-workspace #dashboard-readiness-card .readiness-rec { grid-column:1/-1; grid-row:3; margin:12px 0 0; padding:12px 0 0; }
 .host-workspace #dashboard-readiness-card .readiness-score-breakdown { grid-column:1/-1; grid-row:4; }
 .host-workspace #today-readiness-trend-card { order:2; }
+#daily-coach-review {
+  grid-column:1/-1;
+  order:1;
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+#daily-coach-review:not([hidden]) {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px 24px;
+}
+#daily-coach-review h2 {
+  color:var(--muted);
+  font-size:13px;
+  font-weight:600;
+  margin:0 0 5px;
+}
+#daily-coach-review .daily-coach-action { display:block; font-size:20px; }
+#daily-coach-review p { margin:4px 0 0; max-width:72ch; }
+#daily-coach-review a { color:var(--accent); text-underline-offset:3px; }
+#daily-coach-review button { margin-top:8px; }
 .host-workspace #dashboard-vf-card { order:3; }
 .host-workspace #today-pattern-fatigue-card { order:4; }
 .host-workspace #dashboard-pattern-card { order:5; }
@@ -3224,7 +3247,7 @@ body.ai-open main {
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
-      <section class="card" id="daily-coach-review" style="grid-column:1/-1;order:1;min-width:0;overflow-wrap:anywhere" aria-label="AI daily interpretation" hidden></section>
+      <section class="card" id="daily-coach-review" aria-label="AI training recommendation" hidden></section>
 
       <div class="dashboard-card" id="today-readiness-trend-card">
         <div class="loading-wrap"><span class="spinner"></span></div>
@@ -7122,7 +7145,7 @@ function _renderTodayCards(data, pendingCount) {
     <div class="dashboard-card-title">Readiness</div>
     <div class="readiness-score">${readinessScore}</div>
     <div class="readiness-label">${checkinExists?'Daily monitoring':'No check-in today'}</div>
-    <div class="readiness-rec">${checkinExists?'See your saved AI interpretation below. The score describes monitoring, not a training prescription.':'Complete your daily check-in for an interpretation.'}</div>
+    <div class="readiness-rec">${checkinExists?'See your AI training recommendation below.':'Complete your daily check-in for an interpretation.'}</div>
     ${checkinExists ? `
     <div class="readiness-score-breakdown">
       <div class="readiness-breakdown-item">

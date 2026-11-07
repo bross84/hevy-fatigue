@@ -19,6 +19,27 @@ MAX_CONTEXT_CHARS = 160_000
 MAX_REPLY_CHARS = 60_000
 MAX_TURNS = 40
 DAILY_PENDING_RETRY_AGE = timedelta(minutes=5)
+DAILY_RECOMMENDATION_VERSION = 'daily-recommendation-v2'
+DAILY_ACTIONS = {
+    'continue': 'Continue as planned',
+    'reduce': 'Ease off today',
+    'increase': 'Consider a small increase',
+    'insufficient_evidence': 'Not enough evidence',
+}
+DAILY_RECOMMENDATION_INSTRUCTIONS = """
+For this first daily recommendation, return exactly one JSON object with keys
+"action" and "reason". No Markdown or additional fields. The action must be
+"continue", "reduce", "increase", or "insufficient_evidence". The reason is one
+plain-text sentence of at most 200 characters. Give the strongest reason for
+what to do at the next session, grounded in recent training, actual session
+spacing, performance or repeated check-ins. Never recommend more work based
+only on low fatigue, low volume, or days off. Use "increase" only when repeated
+training response supports a modest increase. Use "reduce" when the available
+evidence supports reducing today's demand. Use "insufficient_evidence" when
+a useful call cannot be made. Keep the advice high level and provisional.
+This response format replaces the longer review format for the first answer.
+"""
+
 RATINGS = ('tiredness', 'perceived_recovery', 'sore_quad_dom', 'sore_posterior',
            'sore_upper_push', 'sore_upper_pull', 'joint_upper', 'joint_lower')
 
@@ -77,8 +98,7 @@ Opening reviews should discuss the upcoming plan using current check-in, recent 
 Closing reviews should compare planned versus actually linked work, motivation and response, revisit
 the opening discussion, and propose specific options to discuss with the athlete like a remote coach.
 The athlete will decide changes; never claim a proposed plan or substitution has been applied.
-When daily_context exists, give a brief daily interpretation (about 100–160 words), not the
-four-part full training review. Use the current observation and supplied prior historical range;
+When daily_context exists, keep the advice focused on the next session. Use the current observation and supplied prior historical range;
 explain what changed, what is uncertain, and what to watch at the next session. Describe
 below/usual/above as comparisons only, not good/bad recovery or an optimal performance zone.
 Keep tiredness, perceived recovery, soreness, joint symptoms and engagement distinct. Tired but
@@ -297,6 +317,30 @@ def build_report(db, *, today=None, monitoring_context=None, context_limit=None)
     return report
 
 
+def daily_recommendation(response):
+    content = (response or '').strip()
+    if content.startswith('```') and content.endswith('```'):
+        content = content.partition('\n')[2][:-3].strip()
+    try:
+        result = json.loads(content)
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(result, dict) or result.keys() != {'action', 'reason'}:
+        return None
+    action, reason = result['action'], result['reason']
+    if not isinstance(action, str) or action not in DAILY_ACTIONS or not isinstance(reason, str):
+        return None
+    reason = reason.strip()
+    if not reason or len(reason) > 200 or len(reason.splitlines()) != 1:
+        return None
+    return dict(action=action, label=DAILY_ACTIONS[action], reason=reason)
+
+
+def needs_daily_recommendation(view):
+    return ((view['evidence'] or {}).get('version') == DAILY_RECOMMENDATION_VERSION
+            and not any(turn['status'] == 'complete' for turn in view['turns']))
+
+
 def conversation(db, conversation_id):
     row=db.get(CoachingConversation,conversation_id)
     if row is None: raise LookupError('Review conversation not found.')
@@ -304,6 +348,13 @@ def conversation(db, conversation_id):
     view = dict(id=row.id, created_at=row.created_at, evidence=parsed(row.evidence), turns=[
         dict(id=t.id, sequence=t.sequence, message=t.message, response=t.response,
              model=t.model, status=t.status, created_at=t.created_at) for t in turns])
+    if (view['evidence'] or {}).get('version') == DAILY_RECOMMENDATION_VERSION:
+        first_complete = next((turn for turn in view['turns'] if turn['status'] == 'complete'), None)
+        if first_complete:
+            recommendation = daily_recommendation(first_complete['response'])
+            if recommendation:
+                view['daily_recommendation'] = recommendation
+                first_complete['response'] = f"**{recommendation['label']}**\n\n{recommendation['reason']}"
     retry_id = daily_pending_retry_id(view)
     if retry_id:
         view['retry_pending_turn_id'] = retry_id
@@ -358,7 +409,8 @@ def begin_turn(db, conversation_id, turn_id, message, model, expected_sequence,
 
 
 def messages(view, message):
-    prior=[dict(role='system',content=BRIEF+'\nFROZEN TRAINING REPORT:\n'+encode(view['evidence']))]
+    brief = BRIEF + DAILY_RECOMMENDATION_INSTRUCTIONS if needs_daily_recommendation(view) else BRIEF
+    prior=[dict(role='system',content=brief+'\nFROZEN TRAINING REPORT:\n'+encode(view['evidence']))]
     for t in view['turns']:
         prior.append(dict(role='user',content=t['message']))
         if t['response']:

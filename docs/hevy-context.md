@@ -595,3 +595,10 @@ dashboard and saved AI Coach conversation use the same frozen check-in evidence.
 The server checks the specific pending turn and expected sequence before
 recording it as interrupted and starting a replacement in one transaction.
 A late completion may only update a turn that is still pending.
+
+The dashboard's daily card now shows one AI training recommendation and one
+short reason. Coach remains the entry point for discussion. The current format
+uses a distinct conversation identity, so a check-in with an older completed
+write-up can generate the compact recommendation once. Older conversations
+remain accessible. If the prior review has a pending turn, it retains its
+existing Retry flow before the dashboard starts the new format.

@@ -32,14 +32,31 @@ const DailyCoach = (() => {
     if(!box||!visibleDate)return;
     const state=states.get(visibleDate)||{};
     box.replaceChildren();
-    const title=document.createElement('strong');title.textContent='AI daily interpretation · '+visibleDate;box.append(title);
-    const status=document.createElement('p');status.textContent=state.status || 'Checking for a saved interpretation…';status.setAttribute('role','status');box.append(status);
+    const body=document.createElement('div');
+    box.append(body);
+    const title=document.createElement('h2');
+    title.textContent='AI training recommendation · '+visibleDate;
+    body.append(title);
+    const recommendation=state.view?.daily_recommendation;
+    if(recommendation){
+      const action=document.createElement('strong');
+      action.className='daily-coach-action';
+      action.textContent=recommendation.label;
+      body.append(action);
+      const reason=document.createElement('p');
+      reason.textContent=recommendation.reason;
+      body.append(reason);
+    }else{
+      const status=document.createElement('p');
+      status.textContent=state.status || 'Checking for a saved recommendation…';
+      status.setAttribute('role','status');
+      body.append(status);
+    }
     if(state.view){
-      const first=displayedTurn(state.view);
-      if(first?.response){const response=document.createElement('p');response.textContent=first.response;response.style.whiteSpace='pre-wrap';box.append(response);}
-      const detail=document.createElement('small');
-      detail.textContent='Evidence saved '+new Date(state.view.created_at).toLocaleString()+(first?' · '+first.model+' · '+first.status:'')+'. Proposals only; programming is unchanged.';box.append(detail);
-      const link=document.createElement('a');link.href="/?coaching_conversation="+encodeURIComponent(state.view.id)+"#ai";link.textContent='Discuss with AI Coach';link.style.display='block';box.append(link);
+      const link=document.createElement('a');
+      link.href="/?coaching_conversation="+encodeURIComponent(state.view.id)+"#ai";
+      link.textContent='Discuss with AI Coach';
+      box.append(link);
     }
     if(!state.busy && (canRetry(state.view) || (state.failed && !state.view?.turns.length))){
       const button=document.createElement('button');
@@ -48,7 +65,7 @@ const DailyCoach = (() => {
       button.textContent='Retry';
       const date=visibleDate;
       button.addEventListener('click',()=>run(date,{id:state.view?.id,sequence:state.view?.turns.length || 0,pendingTurnId:state.view?.retry_pending_turn_id}));
-      box.append(button);
+      body.append(button);
     }
   }
   function update(date,values){states.set(date,{...states.get(date),...values});draw();}
@@ -72,7 +89,7 @@ const DailyCoach = (() => {
   function describe(view){
     const turn=displayedTurn(view);
     if(!turn)return 'Preparing your daily interpretation…';
-    if(turn.status==='complete')return 'Saved interpretation.';
+    if(turn.status==='complete')return 'Open AI Coach to view the saved review.';
     if(view.retry_pending_turn_id)return 'The earlier request has been pending for at least five minutes. Retry to send a new request using this check-in.';
     if(turn.status==='pending')return 'AI Coach is preparing a response. Reload to check its status.';
     return 'Response '+turn.status+'. You can retry the interpretation.';
@@ -100,7 +117,7 @@ const DailyCoach = (() => {
           throw Error('AI Coach did not finish updating. Reload this page, then select Retry.');
         }
         const result=await WeeklyCoach.reviewPrepared(view,
-          'Interpret this daily check-in briefly. Compare the current absolute ratings with my supplied personal historical range, recent check-ins, training spacing and performance. Explain what matters, what is uncertain and what to watch at my next session. Low fatigue is not a reason on its own to add volume. Keep motivation separate from fatigue. Do not change programming.',
+          'What should I do at my next training session?',
           status=>update(date,{status}),sameReview?retry.sequence:0,sameReview?retry.pendingTurnId:null);
         update(date,{view:result,status:describe(result)});
       }catch(error){

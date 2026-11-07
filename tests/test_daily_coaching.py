@@ -129,13 +129,19 @@ class DailyCoachingTests(TestCase):
         raw=main._recommendation_history(self.db,DAY)[-1]
         for key,value in raw.items():self.assertEqual(short[-1][key],value,key)
         view=self.prepare()
-        self.assertEqual(view['evidence']['daily_context']['scores'],short[-1])
+        self.assertEqual(view['evidence']['daily_context']['scores'],
+                         {k:v for k,v in short[-1].items() if not k.startswith('recommendation')})
+        self.assertTrue(all(not any(k.startswith('recommendation') for k in row)
+                            for row in view['evidence']['daily_context']['recent_daily_scores']))
 
     def test_mocked_interpretation_and_followup_persist_with_exact_context(self):
         self.submit();view=self.prepare()
         remote=MagicMock();response=remote.send.return_value;response.status_code=200
         def send(seq,message):
-            response.iter_text.return_value=iter(['data: {"choices":[{"delta":{"content":"Tiredness is higher; recovery rating is low. Keep the plan provisional."}}]}\n\ndata: [DONE]\n\n'])
+            content = (json.dumps(dict(action='continue', reason='Recent effort is steady.')) if seq == 0
+                       else 'Watch how your working sets feel.')
+            event = json.dumps(dict(choices=[dict(delta=dict(content=content))]))
+            response.iter_text.return_value=iter(['data: '+event+'\n\ndata: [DONE]\n\n'])
             return self.client.post('/api/ai/conversations/'+view['id']+'/messages',json=dict(id=str(uuid4()),message=message,model='test/value-model',expected_sequence=seq))
         with patch.object(main,'_get_ai_api_key',return_value='mock-only'),patch.object(main.httpx,'Client',return_value=remote):
             self.assertEqual(send(0,'Interpret today').status_code,200)
@@ -147,6 +153,9 @@ class DailyCoachingTests(TestCase):
         saved=self.client.get('/api/ai/daily-reviews/'+str(DAY)).json()
         self.assertEqual(len(saved['turns']),2);self.assertEqual(saved['turns'][0]['status'],'complete')
         self.assertEqual(saved['turns'][0]['model'],'test/value-model')
+        self.assertEqual(saved['daily_recommendation'], dict(action='continue', label='Continue as planned',
+                                                            reason='Recent effort is steady.'))
+        self.assertEqual(saved['turns'][1]['response'], 'Watch how your working sets feel.')
         self.assertEqual(remote.send.call_count,2)
         # Daily snippets must not crowd previous programming discussions out of full reviews.
         self.assertEqual(coaching.build_report(self.db,today=DAY)['prior_review_excerpts'],[])
@@ -160,7 +169,7 @@ class DailyCoachingTests(TestCase):
         def provider(model, api_key, messages, on_finish):
             finish_callbacks.append(on_finish)
             if len(finish_callbacks) == 2:
-                on_finish('Saved retry response.', 'complete')
+                on_finish(json.dumps(dict(action='reduce', reason='Repeated overshoots support backing off.')), 'complete')
             return {'mock': 'accepted'}
 
         def send(sequence, pending_id=None):
@@ -203,9 +212,40 @@ class DailyCoachingTests(TestCase):
         self.assertEqual(saved['evidence'], view['evidence'])
         self.assertEqual([t['status'] for t in saved['turns']], ['interrupted', 'complete'])
         self.assertIsNone(saved['turns'][0]['response'])
-        self.assertEqual(saved['turns'][1]['response'], 'Saved retry response.')
+        self.assertEqual(saved['daily_recommendation']['action'], 'reduce')
         self.assertNotIn('retry_pending_turn_id', saved)
         self.assertEqual(self.client.get('/api/readiness/today').json()['tiredness'], 2)
+
+    def test_verbose_response_fails_and_legacy_review_remains_accessible(self):
+        self.submit()
+        legacy_id = daily_coaching.identity(daily_coaching.observation(self.db, DAY), 'v1')
+        self.db.add(CoachingConversation(id=legacy_id, created_at=coaching.now_iso(),
+                                         evidence=coaching.encode({'version':'daily-interpretation-v1'})))
+        self.db.add(CoachingTurn(id=str(uuid4()), conversation_id=legacy_id, sequence=1,
+                                 message='Interpret today', model='test/model', status='complete',
+                                 response='Existing long review.', created_at=coaching.now_iso()))
+        self.db.commit()
+        current = self.prepare()
+        self.assertNotEqual(current['id'], legacy_id)
+        path = '/api/ai/conversations/'
+        self.assertEqual(self.client.get(path + legacy_id).json()['turns'][0]['response'],
+                         'Existing long review.')
+
+        def provider(model, api_key, messages, on_finish):
+            on_finish('## Long report instead of a recommendation', 'complete')
+            return {'mock': 'done'}
+
+        with patch.object(main, '_get_ai_api_key', return_value='mock-only'), patch.object(
+            main, '_stream_openrouter', side_effect=provider
+        ):
+            response = self.client.post(path + current['id'] + '/messages', json=dict(
+                id=str(uuid4()), message='What should I do next session?', model='test/model',
+                expected_sequence=0,
+            ))
+        self.assertEqual(response.status_code, 200)
+        failed = self.client.get(path + current['id']).json()
+        self.assertEqual(failed['turns'][0]['status'], 'failed')
+        self.assertNotIn('daily_recommendation', failed)
 
     def test_missing_key_history_and_future_do_not_block_daily_logging(self):
         self.submit();view=self.prepare()

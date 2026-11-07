@@ -532,3 +532,11 @@ validates the ID, age, daily evidence type and sequence under the same write
 transaction that appends the replacement. A normal send still rejects pending
 turns. Late responses cannot change a superseded turn. The dashboard and the
 saved Coach conversation both require an explicit click.
+
+Daily recommendations use a versioned conversation identity and the existing
+training context, including recent performance, session spacing and check-ins.
+Fixed-rule recommendation fields are excluded from the new daily evidence.
+The first completed turn must contain a recognized action and a single-line
+reason of at most 200 characters. An invalid response is saved as failed and
+can be retried. The conversation presents the validated response as readable
+text. Subsequent messages retain the normal Coach discussion format.

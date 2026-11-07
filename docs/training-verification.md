@@ -1007,3 +1007,11 @@ turn is rejected, explicit stale Retry sends once, and the late original
 response cannot overwrite the interrupted turn. The weekly browser flow passed.
 The preview's temporary-database guard caught an import-order error before
 startup. The fixture import order was corrected and the browser check passed.
+
+Compact recommendation verification. The mocked daily browser flow passed,
+including explicit Retry, historical recovery and saved follow-ups. Phone and
+desktop previews were inspected. The compact card does not render the provider
+report or capture metadata. API tests cover the accepted recommendation format,
+an invalid long response, prior conversation preservation, and the absence of
+fixed-rule advice from current daily context. The weekly browser regression and
+all 31 JavaScript checks passed. No live provider or production data was used.

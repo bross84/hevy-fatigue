@@ -49,11 +49,13 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             with page.expect_response(lambda r:r.url.endswith('/api/readiness') and r.request.method=='POST') as saved:
                 page.locator('#ci-submit').click()
             assert saved.value.ok,saved.value.text()
-            expect(page.locator('#daily-coach-review')).to_contain_text('Saved interpretation.')
-            expect(page.locator('#daily-coach-review')).to_contain_text('Tiredness 2; perceived recovery 0')
+            expect(page.locator('#daily-coach-review')).to_contain_text('Continue as planned')
+            expect(page.locator('#daily-coach-review')).to_contain_text('Recent effort is steady with tiredness rated 2.')
             assert calls()==1
             assert not page.evaluate('Boolean(window.unsafeAI)')
             expect(page.locator('#daily-coach-review img')).to_have_count(0)
+            expect(page.locator('#daily-coach-review')).not_to_contain_text('Evidence saved')
+            expect(page.locator('#daily-coach-review')).not_to_contain_text('Perceived recovery')
             day=saved.value.json()['date']
             view=page.request.get(URL+'/api/ai/daily-reviews/'+day).json()
             monitoring=page.request.get(URL+'/api/diagnostics/snapshot').json()
@@ -67,11 +69,11 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             assert page.evaluate('todayReadinessChart.options.scales.y.max')==20
             assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
             page.screenshot(path=str(OUT/'daily-phone.png'),full_page=True)
-            page.reload();expect(page.locator('#daily-coach-review')).to_contain_text('Saved interpretation.')
+            page.reload();expect(page.locator('#daily-coach-review')).to_contain_text('Continue as planned')
             assert calls()==1
             page.get_by_role('link',name='Discuss with AI Coach',exact=True).click()
             expect(page.locator('#ai-evidence-date')).to_contain_text('Evidence captured')
-            expect(page.locator('#ai-chat-messages')).to_contain_text('Tiredness 2')
+            expect(page.locator('#ai-chat-messages')).to_contain_text('Continue as planned')
             # Daily fixture replies to follow-up using the same frozen context.
             page.locator('#ai-chat-input').fill('What should I watch during my next session?')
             page.locator('#ai-chat-send').click()
@@ -84,12 +86,12 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             assert page.request.put(URL+'/api/readiness/'+day,data=dict(ratings,tiredness=1)).ok
             assert page.request.get(URL+'/api/ai/daily-reviews/'+day).json() is None
             page.goto(URL+'/')
-            expect(page.locator('#daily-coach-review')).to_contain_text('Saved interpretation.')
-            expect(page.locator('#daily-coach-review')).to_contain_text('Tiredness 1; perceived recovery 0')
+            expect(page.locator('#daily-coach-review')).to_contain_text('Continue as planned')
+            expect(page.locator('#daily-coach-review')).to_contain_text('Recent effort is steady with tiredness rated 1.')
             expect(page.get_by_role('button',name='Retry',exact=True)).to_have_count(0)
             expect(page.locator('#dashboard-readiness-card')).not_to_contain_text('Legacy rule output')
             page.reload()
-            expect(page.locator('#daily-coach-review')).to_contain_text('Saved interpretation.')
+            expect(page.locator('#daily-coach-review')).to_contain_text('Continue as planned')
             assert calls()==3
             # Missing AI configuration must leave a successfully edited check-in intact.
             page.request.post(URL+'/mock/daily-provider?value=unavailable')
@@ -115,7 +117,7 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             assert calls()==4
             page.request.post(URL+'/mock/daily-provider?value=success')
             page.get_by_role('button',name='Retry',exact=True).click()
-            expect(page.locator('#daily-coach-review')).to_contain_text('Saved interpretation.')
+            expect(page.locator('#daily-coach-review')).to_contain_text('Continue as planned')
             expect(page.get_by_role('button',name='Retry',exact=True)).to_have_count(0)
             assert calls()==5
             page.set_viewport_size(dict(width=1440,height=1000))

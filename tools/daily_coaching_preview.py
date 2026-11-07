@@ -18,6 +18,9 @@ def stream(model, api_key, messages, on_finish=None):
     report=json.loads(messages[0]['content'].split('FROZEN TRAINING REPORT:\n')[1])
     daily=report['daily_context']
     content=f"Tiredness {daily['observation']['tiredness']}; perceived recovery {daily['observation']['perceived_recovery']}. Your usual range is descriptive. Discuss the next session; no programming has been changed. <img src=x onerror=window.unsafeAI=true>"
+    if 'For this first daily recommendation' in messages[0]['content']:
+        content=json.dumps(dict(action='continue',
+            reason=f"Recent effort is steady with tiredness rated {daily['observation']['tiredness']}."))
     interrupted=mode=='interrupted'
     def events():
         yield 'data: '+json.dumps(dict(choices=[dict(delta=dict(content=content))]))+'\n\n'
