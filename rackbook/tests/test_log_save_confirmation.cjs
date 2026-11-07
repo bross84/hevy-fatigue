@@ -25,6 +25,7 @@ const context = vm.createContext({trainingUrl:path=>path.startsWith("/training/"
   api(){posts++;return new Promise((resolve,reject)=>{resolvePost=resolve;rejectPost=reject;});},
   clearDraft(){cleared++;},show(x){shown=x;},say(x){errorMessage=x;},window:{scrollTo(){}}});
 vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../static/save-recovery.js'),'utf8')+';WorkoutSave.panel=()=>{};WorkoutSave.monitoring=()=>{};',context);
+vm.runInContext(html.slice(html.indexOf('  function mountMotivation('), html.indexOf('  function renderWorkout(')),context);
 vm.runInContext(html.slice(html.indexOf('  function buildEntry()'), html.indexOf('  // ── Rest timer')),context);
 async function run(){
   const before=JSON.stringify(draft);

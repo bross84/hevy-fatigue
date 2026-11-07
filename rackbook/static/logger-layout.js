@@ -1,8 +1,11 @@
 /* View-only workspace. The logger owns sets, calculations, timers and save recovery. */
 const LoggerLayout = (() => {
   let hooks, selectedId = null, detached = null, outlineKey = '';
+  let inlineExerciseId = null;
   const wide = matchMedia('(min-width: 1900px)');
   const desktop = matchMedia('(min-width: 1100px)');
+  const mobile = matchMedia('(max-width: 767px)');
+  const mobileControls = new WeakMap();
   const byId = id => document.getElementById(id);
   const node = (tag, cls, text) => {
     const element = document.createElement(tag);
@@ -24,6 +27,68 @@ const LoggerLayout = (() => {
   }
 
   function loaderFor(id) { return detached?.id === id ? detached.element : null; }
+
+  function releaseMotivation(id) {
+    if (id != null && inlineExerciseId !== id) return null;
+    const form = byId('sessionMotivation'), home = byId('sessionMotivationHome');
+    if (form.parentElement === home) return null;
+    const focused = form.contains(document.activeElement) ? document.activeElement : null;
+    home.append(form);
+    return focused;
+  }
+
+  function updateMotivation() {
+    const current = draft();
+    const home = byId('sessionMotivationHome'), form = byId('sessionMotivation');
+    const required = Boolean(current && typeof SessionMotivation !== 'undefined' && !SessionMotivation.ready(current));
+    const blocked = mobile.matches && required;
+    let inlineRow = null, returnFocus = null;
+    for (const ex of current?.exercises || []) {
+      const card = hooks.getCard(ex.id), controls = mobileControls.get(card);
+      if (!controls) continue;
+      const rows = [...card.querySelectorAll('.set[data-working]')];
+      const next = rows.find(row => !row.classList.contains('done'));
+      const open = blocked && !current.frozenSave && !ex.collapsed && inlineExerciseId === ex.id && next;
+      if (open) inlineRow = next;
+      if (inlineExerciseId === ex.id) returnFocus = next?.querySelector('.tick');
+      if (blocked && next && controls.gate.parentElement !== next) next.insertBefore(controls.gate, next.querySelector('.tick'));
+      controls.gate.hidden = !(blocked && next);
+      controls.reason.textContent = current.frozenSave
+        ? 'This workout is pending save recovery.' : 'Confirm motivation before working sets.';
+      controls.trigger.hidden = Boolean(current.frozenSave);
+      controls.trigger.textContent = open ? 'Close' : 'Check in';
+      controls.trigger.setAttribute('aria-expanded', String(Boolean(open)));
+      for (const row of rows) {
+        const tick = row.querySelector('.tick');
+        row.classList.toggle('next-working-set', row === next);
+        tick.disabled = Boolean(blocked && !row.classList.contains('done'));
+        if (tick.disabled) tick.setAttribute('aria-describedby', controls.reason.id);
+        else tick.removeAttribute('aria-describedby');
+      }
+    }
+    if (inlineRow) {
+      home.hidden = true;
+      if (form.parentElement !== inlineRow) inlineRow.insertBefore(form, inlineRow.querySelector('.tick'));
+    } else {
+      home.hidden = false;
+      inlineExerciseId = null;
+      const focused = releaseMotivation();
+      if (focused && !mobile.matches) focused.focus({preventScroll: true});
+      else if (!required) returnFocus?.focus();
+    }
+  }
+
+  function positionAdvice(card) {
+    const controls = mobileControls.get(card);
+    if (!controls?.advice) return;
+    const {advice, disclosure} = controls;
+    if (mobile.matches && advice.parentElement !== disclosure) disclosure.append(advice);
+    else if (!mobile.matches && advice.parentElement === disclosure) {
+      const left = card.querySelector('.exleft');
+      left.insertBefore(advice, left.querySelector('.refbar'));
+    }
+    disclosure.hidden = !mobile.matches || !card.querySelector('.set[data-working]');
+  }
 
   function renderPrevious(ex) {
     const box = byId('loggerPrevious');
@@ -95,6 +160,7 @@ const LoggerLayout = (() => {
       selectedId = (exercises.find(ex => ex.sets.some(s => !s.done)) || exercises[0])?.id ?? null;
     }
     updateOutline(exercises);
+    updateMotivation();
     const ex = selected();
     byId('loggerTools').hidden = !wide.matches || !ex || byId('workout').hidden;
     if (!wide.matches || !ex || byId('workout').hidden) { release(); return; }
@@ -144,6 +210,29 @@ const LoggerLayout = (() => {
     const summary = node('span', 'exercise-progress');
     const [done, total] = counts(ex); summary.textContent = done + ' of ' + total + ' sets completed';
     card.querySelector('.exhead').append(summary);
+    const gate = node('div', 'mobile-set-gate');
+    gate.hidden = true;
+    const reason = node('p');
+    reason.id = 'set-checkin-' + ex.id;
+    const trigger = node('button', null, 'Check in');
+    trigger.type = 'button';
+    trigger.setAttribute('aria-controls', 'sessionMotivation');
+    trigger.addEventListener('click', () => {
+      inlineExerciseId = inlineExerciseId === ex.id ? null : ex.id;
+      updateMotivation();
+      if (inlineExerciseId === ex.id) byId('motivation-level')?.focus();
+    });
+    gate.append(reason, trigger);
+    const advice = card.querySelector('[data-session-advice]');
+    const disclosure = node('details', 'mobile-session-advice');
+    disclosure.hidden = true;
+    if (advice) {
+      disclosure.append(node('summary', null, 'Session advice · optional'));
+      const right = card.querySelector('.exright');
+      right.insertBefore(disclosure, right.querySelector('.loader'));
+    }
+    mobileControls.set(card, {gate, reason, trigger, advice, disclosure});
+    positionAdvice(card);
   }
 
   function init(options) {
@@ -176,7 +265,14 @@ const LoggerLayout = (() => {
     });
     wide.addEventListener('change', position);
     desktop.addEventListener('change', () => { if (desktop.matches) closeMenu(false); });
+    const positionMobile = () => {
+      byId('sessionMotivationHome').open = !mobile.matches;
+      for (const ex of draft()?.exercises || []) positionAdvice(hooks.getCard(ex.id));
+      updateMotivation();
+    };
+    mobile.addEventListener('change', positionMobile);
+    positionMobile();
     position();
   }
-  return {init, update, release, loaderFor, decorate};
+  return {init, update, release, loaderFor, decorate, releaseMotivation, updateMotivation};
 })();

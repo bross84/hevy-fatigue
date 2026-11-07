@@ -43,12 +43,15 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             assert response.headers.get('cache-control')=='no-cache'
             assert page.evaluate("typeof WeeklyCoach.reviewPrepared")=='function'
             assert not stale_requests,stale_requests
+            page.get_by_role('button',name='Check in',exact=True).click()
             expect(page.locator('#ci-submit')).to_be_visible()
             page.locator('button[data-ci-field="ci-t"][data-value="2"]').click()
             plan=page.request.get(URL+'/training/api/mesocycles').json()
             with page.expect_response(lambda r:r.url.endswith('/api/readiness') and r.request.method=='POST') as saved:
                 page.locator('#ci-submit').click()
             assert saved.value.ok,saved.value.text()
+            expect(page.get_by_role('dialog',name='Daily Check-in')).to_be_hidden()
+            expect(page.locator('#dashboard-title')).to_be_focused()
             card=page.locator('#dashboard-readiness-card')
             expect(card.locator('.readiness-rec #daily-coach-review')).to_contain_text('Continue as planned')
             expect(card.get_by_role('link',name='Discuss with AI Coach')).to_be_visible()

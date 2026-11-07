@@ -12,7 +12,7 @@ const SessionMotivation = (() => {
     const data=await response.json();if(!response.ok)throw Error(typeof data.detail==='string'?data.detail:'Could not save the check-in.');
     return data;
   }
-  function mount(draft,box,save) {
+  function mount(draft,box,save,onState=()=>{}) {
     box.replaceChildren();
     let state=states.get(draft.client_workout_id);
     if(!state){state={pending:false,reviewRunning:false,reviewChecked:false,message:'',view:null};states.set(draft.client_workout_id,state);}
@@ -40,6 +40,7 @@ const SessionMotivation = (() => {
         if(turn.status!=='complete')details.append(node('p','Open AI Coach to check or discuss this attempt. It will not be automatically resent.'));
         reviewBox.append(details);
       }
+      onState();
     }
     state.paint=paint;
     async function opening(result) {

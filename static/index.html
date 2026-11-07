@@ -418,18 +418,24 @@ main { max-width: 1200px; margin: 0 auto; padding: 74px 24px 20px; }
 .checkin-modal-scrim {
   position: fixed;
   inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
   background: var(--modal-scrim);
-  z-index: 300;
-  display: flex;
+  color: var(--text);
+  display: none;
   align-items: flex-end;
   justify-content: center;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity .2s ease;
 }
-.checkin-modal-scrim.open {
-  opacity: 1;
-  visibility: visible;
+.checkin-modal-scrim[open] {
+  display: flex;
+}
+.checkin-modal-scrim::backdrop {
+  background: transparent;
 }
 .checkin-modal {
   background: var(--card);
@@ -441,11 +447,14 @@ main { max-width: 1200px; margin: 0 auto; padding: 74px 24px 20px; }
   overflow-y: auto;
   padding: 20px 20px 32px;
   padding-bottom: calc(32px + env(safe-area-inset-bottom));
-  transform: translateY(100%);
-  transition: transform .25s ease;
 }
-.checkin-modal-scrim.open .checkin-modal {
-  transform: translateY(0);
+@media (prefers-reduced-motion: no-preference) {
+  .checkin-modal-scrim[open] .checkin-modal {
+    animation: checkin-slide-in .25s ease-out;
+  }
+  @keyframes checkin-slide-in {
+    from { transform: translateY(100%); }
+  }
 }
 .checkin-modal-handle {
   width: 36px;
@@ -475,26 +484,23 @@ main { max-width: 1200px; margin: 0 auto; padding: 74px 24px 20px; }
   line-height: 1;
 }
 .checkin-prompt-banner {
-  background: var(--accent-sub);
-  border: 1px solid var(--accent);
-  border-radius: 10px;
-  padding: 12px 14px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
-  margin-bottom: 14px;
-  cursor: pointer;
+  margin-bottom: 12px;
 }
 .checkin-prompt-text {
-  font-size: 13px;
-  color: var(--accent-light);
+  min-width: 0;
+  font-size: 14px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
 }
 .checkin-prompt-btn {
   background: var(--accent);
   color: #fff;
   border: none;
-  border-radius: 20px;
+  border-radius: 8px;
+  min-height: 44px;
   padding: 5px 14px;
   font-size: 12px;
   font-weight: 500;
@@ -678,65 +684,59 @@ main { max-width: 1200px; margin: 0 auto; padding: 74px 24px 20px; }
   background: transparent;
   opacity: 0.6;
 }
-/* ── Pattern stress gauges ── */
-.pattern-gauge-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+/* ── Current pattern stress ── */
+.pattern-gauge-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 13px;
 }
-.pattern-gauge-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 9px 0;
-  border-bottom: 0.5px solid var(--border);
+.pattern-gauge-table th,
+.pattern-gauge-table td {
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
 }
-.pattern-gauge-item:last-child {
-  border-bottom: none;
+.pattern-gauge-table th {
+  font-size: inherit;
+  font-weight: 500;
+  text-transform: none;
 }
-.pattern-gauge-name {
+.pattern-gauge-table thead {
   font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  color: var(--text);
-  width: 44px;
-  flex-shrink: 0;
+  color: var(--muted);
+}
+.pattern-gauge-table tr > :first-child {
+  padding-left: 0;
+}
+.pattern-gauge-table tr > :last-child {
+  padding-right: 0;
+}
+.pattern-gauge-table tbody tr:last-child > * {
+  border-bottom: 0;
 }
 .pattern-gauge-track {
-  flex: 1;
-  height: 10px;
+  height: 4px;
+  margin-top: 4px;
+  max-width: 96px;
   background: var(--card-raised);
-  border-radius: 20px;
   overflow: hidden;
-  min-width: 0;
 }
 .pattern-gauge-fill {
   height: 100%;
-  border-radius: 20px;
   transition: width .3s ease;
 }
 .pattern-gauge-fill-fresh    { background: var(--accent); }
 .pattern-gauge-fill-normal   { background: var(--success); }
 .pattern-gauge-fill-elevated { background: var(--warn); }
 .pattern-gauge-fill-stressed { background: var(--danger); }
-.pattern-gauge-fill-pending  { background: var(--muted); }
 .pattern-gauge-status {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
-  width: 68px;
-  text-align: right;
-  flex-shrink: 0;
-  white-space: nowrap;
 }
-.pattern-gauge-status-fresh    { color: var(--accent); }
-.pattern-gauge-status-normal   { color: var(--success); }
-.pattern-gauge-status-elevated { color: var(--warn); }
-.pattern-gauge-status-stressed { color: var(--danger); }
 .pattern-gauge-status-pending  { color: var(--muted); }
-.pattern-gauge-sub-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
-.pattern-gauge-sub-row:last-child { margin-bottom: 0; }
-.pattern-gauge-sub-label { font-size: 10px; color: var(--text-secondary); width: 54px; flex-shrink: 0; text-align: right; }
 .today-grid-note {
   margin-top: 10px;
   font-size: 12px;
@@ -2993,19 +2993,13 @@ body.ai-open main {
 .host-workspace .dashboard-card-title,.host-workspace .dashboard-card>.card-title { font-size:16px; font-weight:500; text-transform:none; letter-spacing:0; color:var(--text); margin-bottom:16px; }
 .host-workspace .readiness-score { color:var(--text); font-size:40px; font-weight:500; font-variant-numeric:tabular-nums; }
 .host-workspace .readiness-label,.host-workspace .readiness-rec { font-size:14px; }
-.host-workspace .pattern-gauge-name { font-size:13px; font-weight:500; text-transform:none; letter-spacing:0; width:auto; }
-.host-workspace .pattern-gauge-sub-label { font-size:12px; color:var(--muted); }
-.host-workspace .pattern-gauge-status { font-size:12px; width:80px; }
-.host-workspace .pattern-gauge-track { height:6px; border-radius:0; }
-.host-workspace .pattern-gauge-fill { border-radius:0; }
-.host-workspace .pattern-gauge-item { gap:8px; padding:12px 0; }
+.dashboard-readiness-header { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; }
+.host-workspace .dashboard-readiness-header .dashboard-card-title { margin:0; }
+.dashboard-log-link { display:inline-flex; align-items:center; min-height:44px; text-decoration:none; }
 .host-workspace .today-grid-note,.host-workspace .today-chart-note { font-size:13px; line-height:1.5; }
 .host-workspace .recent-session-item { padding:12px 0; }
 .host-workspace .recent-session-title { font-size:14px; }
 .host-workspace .recent-session-meta { font-size:12px; }
-.host-workspace .checkin-prompt-banner { background:var(--card); border-color:var(--border); margin:0 0 16px; }
-.host-workspace .checkin-prompt-text { color:var(--muted); }
-.host-workspace .checkin-prompt-btn { border-radius:8px; min-height:44px; }
 .host-workspace .today-chart-empty { padding:24px 8px; min-height:100px; }
 .host-workspace .dashboard-card .today-chart-wrap { height:260px; }
 .host-workspace .dashboard-card .vf-chart-wrap { height:260px; }
@@ -3013,26 +3007,20 @@ body.ai-open main {
 .host-workspace .vf-range-row .btn,.host-workspace #today-pattern-fatigue-card button { min-height:44px; padding:8px 12px; }
 .host-workspace .btn-secondary.active,.host-workspace .btn-group:not(.theme-group) button.active { color:var(--bg); }
 .host-workspace .today-chart-bands-legend { flex-wrap:wrap; gap:8px 12px; }
-.host-workspace #today-joint-card { min-width:0; order:7; }
+.host-workspace #today-joint-card { min-width:0; grid-column:1/-1; }
+.host-workspace #daily-coach-review { min-width:0; overflow-wrap:anywhere; }
 .host-workspace.ai-open main { height:100dvh; padding-top:80px; padding-bottom:16px!important; }
 @media(max-width:767px) {
   .host-workspace main { padding:88px 16px 24px!important; }
   .host-workspace.ai-open main { padding:80px 16px 16px!important; }
 }
 [data-theme="dark"] .host-workspace .btn-primary,[data-theme="dark"] .host-workspace .checkin-prompt-btn { color:#10213a; }
-/* Chart-first dashboard; compact readiness remains a summary, not a chart peer. */
-.host-workspace #dashboard-readiness-card {
-  order:1; display:grid; grid-template-columns:minmax(80px,1fr) minmax(0,1fr);
-  grid-template-rows:auto auto auto auto; gap:4px 16px; align-items:center;
-}
-.host-workspace #dashboard-readiness-card .dashboard-card-title { grid-column:1; grid-row:1/3; margin:0; }
-.host-workspace #dashboard-readiness-card .readiness-score { grid-column:2; grid-row:1; font-size:40px; line-height:1.1; margin:0; }
-.host-workspace #dashboard-readiness-card .readiness-label { grid-column:2; grid-row:2; font-size:13px; }
-.host-workspace #dashboard-readiness-card .readiness-rec { grid-column:1/-1; grid-row:3; margin:12px 0 0; padding:12px 0 0; }
-.host-workspace #dashboard-readiness-card .readiness-score-breakdown { grid-column:1/-1; grid-row:4; }
-.host-workspace #today-readiness-trend-card { order:2; }
-#daily-coach-review { min-width:0; overflow-wrap:anywhere; }
-#daily-coach-review:not([hidden]) + .readiness-checkin-prompt { display:none; }
+/* Today's summary comes first. Fatigue Trend leads the analysis below it. */
+.dashboard-readiness-metrics { display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; }
+.dashboard-readiness-metrics .readiness-score { line-height:1.1; margin:0; white-space:nowrap; }
+.dashboard-readiness-metrics .readiness-scale { color:var(--muted); font-size:14px; }
+#dashboard-readiness-card .readiness-rec { display:contents; }
+#dashboard-readiness-card #daily-coach-review { margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
 #daily-coach-review h2 {
   color:var(--muted);
   font-size:13px;
@@ -3043,24 +3031,18 @@ body.ai-open main {
 #daily-coach-review p { margin:4px 0 0; max-width:72ch; }
 #daily-coach-review a { display:inline-block; margin-top:6px; color:var(--accent); text-underline-offset:3px; }
 #daily-coach-review button { margin-top:8px; }
-.host-workspace #dashboard-vf-card { order:3; }
-.host-workspace #today-pattern-fatigue-card { order:4; }
-.host-workspace #dashboard-pattern-card { order:5; }
-.host-workspace #dashboard-recent-card { order:6; }
 @media(min-width:700px) {
   .host-workspace main { padding:88px 24px 24px; }
   .host-workspace .dashboard-wrap { grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
   .host-workspace .dashboard-card { grid-column:1/-1; display:flex; flex-direction:column; padding:24px; }
-  .host-workspace #dashboard-readiness-card {
-    grid-template-columns:84px 90px minmax(0,1fr); grid-template-rows:auto auto;
-    column-gap:16px; padding:14px 24px;
+  .dashboard-readiness-content {
+    display:grid; grid-template-columns:minmax(0,1.15fr) minmax(210px,1fr); align-items:center; gap:16px;
   }
-  .host-workspace #dashboard-readiness-card .dashboard-card-title { grid-row:1/-1; }
-  .host-workspace #dashboard-readiness-card .readiness-rec { grid-column:3; grid-row:1; border:0; padding:0; margin:0; }
-  .host-workspace #dashboard-readiness-card .readiness-score-breakdown { grid-column:3; grid-row:2; border:0; margin:0; padding:8px 0; }
+  .dashboard-readiness-content .readiness-score-breakdown {
+    border-top:0; border-left:1px solid var(--border); margin:0; padding:0 0 0 8px;
+  }
   .host-workspace #today-readiness-trend-card { min-height:380px; }
   .host-workspace #dashboard-vf-card,.host-workspace #today-pattern-fatigue-card { min-height:480px; }
-  .host-workspace #dashboard-pattern-card,.host-workspace #dashboard-recent-card { min-height:560px; }
   .host-workspace .dashboard-card .today-chart-wrap,
   .host-workspace .dashboard-card .vf-chart-wrap {
     flex:1; min-height:240px; height:auto; position:relative;
@@ -3076,18 +3058,12 @@ body.ai-open main {
   .host-workspace .recent-session-item {
     flex:1; min-height:0; padding:8px 0; display:flex; flex-direction:column; justify-content:center;
   }
-  .host-workspace #dashboard-pattern-card .pattern-gauge-row {
-    flex:1; display:flex; flex-direction:column; justify-content:space-between;
-  }
-  .host-workspace #today-joint-card { grid-column:1/-1; }
 }
 @media(min-width:1100px) {
-  .host-workspace #dashboard-pattern-card,.host-workspace #dashboard-recent-card { grid-column:auto; }
+  .dashboard-log-link { display:none; }
 }
-@media(min-width:1200px) {
-  .host-workspace #dashboard-readiness-card { grid-template-columns:100px 110px minmax(200px,1.2fr) minmax(260px,1fr); column-gap:24px; }
-  .host-workspace #dashboard-readiness-card .readiness-rec { grid-row:1/-1; }
-  .host-workspace #dashboard-readiness-card .readiness-score-breakdown { grid-column:4; grid-row:1/-1; border-left:1px solid var(--border); padding:8px 0 8px 24px; }
+@media(min-width:1400px) {
+  .host-workspace #dashboard-readiness-card,.host-workspace #dashboard-pattern-card { grid-column:auto; align-self:start; }
 }
 @media(min-width:2000px) {
   .host-workspace #dashboard-vf-card,.host-workspace #today-pattern-fatigue-card { grid-column:auto; }
@@ -3221,18 +3197,29 @@ body.ai-open main {
 
 <!-- ══════════════ DASHBOARD ══════════════ -->
 <section id="tab-dashboard" class="tab-content active">
-  <div class="dashboard-heading"><h1>Dashboard</h1><time id="dashboardDate"></time></div>
+  <div class="dashboard-heading"><h1 id="dashboard-title" tabindex="-1">Dashboard</h1><time id="dashboardDate"></time></div>
   <p class="dashboard-subtitle">Today’s check-in and recent training</p>
-
-  <!-- Check-in prompt banner (shown when no check-in today) -->
-  <div class="checkin-prompt-banner" id="checkin-prompt-banner" style="display:none;">
-    <div class="checkin-prompt-text">No check-in recorded today — readiness scores may be incomplete.</div>
-    <button class="checkin-prompt-btn" id="checkin-prompt-btn">Check in</button>
-  </div>
 
   <div class="dashboard-wrap">
       <div class="dashboard-card" id="dashboard-readiness-card">
-        <div class="dashboard-card-title">Readiness</div>
+        <div class="dashboard-readiness-header">
+          <h2 class="dashboard-card-title">Readiness</h2>
+          <a class="btn btn-secondary dashboard-log-link" href="/training/log">Log Workout</a>
+        </div>
+        <div class="checkin-prompt-banner" id="checkin-prompt-banner" style="display:none;">
+          <div class="checkin-prompt-text">No check-in recorded today. Readiness scores may be incomplete.</div>
+          <button type="button" class="checkin-prompt-btn" id="checkin-prompt-btn" aria-haspopup="dialog">Check in</button>
+        </div>
+        <div id="dashboard-readiness-summary">
+          <div class="loading-wrap"><span class="spinner"></span></div>
+        </div>
+        <div class="readiness-rec">
+          <section id="daily-coach-review" aria-label="AI training recommendation" hidden></section>
+        </div>
+      </div>
+
+      <div class="dashboard-card" id="dashboard-pattern-card">
+        <h2 class="dashboard-card-title">Pattern stress</h2>
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
@@ -3249,11 +3236,6 @@ body.ai-open main {
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
 
-      <div class="dashboard-card" id="dashboard-pattern-card">
-        <div class="dashboard-card-title">Pattern stress</div>
-        <div class="loading-wrap"><span class="spinner"></span></div>
-      </div>
-
       <div class="dashboard-card" id="dashboard-recent-card">
         <div class="dashboard-card-title">Recent sessions</div>
         <div class="loading-wrap"><span class="spinner"></span></div>
@@ -3266,18 +3248,18 @@ body.ai-open main {
 </section>
 
 <!-- ── Check-in modal ── -->
-<div class="checkin-modal-scrim" id="checkin-modal-scrim">
+<dialog class="checkin-modal-scrim" id="checkin-modal-scrim" aria-labelledby="checkin-modal-title">
   <div class="checkin-modal" id="checkin-modal">
     <div class="checkin-modal-handle"></div>
     <div class="checkin-modal-header">
-      <div class="checkin-modal-title">Daily Check-in</div>
-      <button class="checkin-modal-close" id="checkin-modal-close" aria-label="Close">×</button>
+      <div class="checkin-modal-title" id="checkin-modal-title">Daily Check-in</div>
+      <button type="button" class="checkin-modal-close" id="checkin-modal-close" aria-label="Close" autofocus>×</button>
     </div>
     <div id="checkin-modal-body">
       <!-- Check-in form injected here by JS -->
     </div>
   </div>
-</div>
+</dialog>
 
 <!-- ══════════════ TREND TAB ══════════════ -->
 <section id="tab-trend" class="tab-content">
@@ -3916,7 +3898,6 @@ let _todayCheckinSubmitted = false;
 let _todayCheckinExpanded = false;
 let _todayCheckinEntry = null;
 let _checkinFormBound = false;
-let _checkinPromptAutoShown = false;
 let _dashboardVfChart = null;
 let _dashboardVfActiveRange = 4;
 let _dashboardVfSignal = 'tonnage'; // 'rpe' | 'tonnage' | 'sets'
@@ -3989,14 +3970,27 @@ function setBottomSheetOpen(open) {
   document.body.classList.toggle('bottom-sheet-open', open);
 }
 
-function openCheckinModal() {
-  document.getElementById('checkin-modal-scrim')?.classList.add('open');
+const checkinDialog = document.getElementById('checkin-modal-scrim');
+let checkinTrigger;
+let checkinPreviousOverflow;
+
+function openCheckinModal(trigger = document.activeElement) {
+  if (checkinDialog.open) return;
+  checkinTrigger = trigger;
+  checkinPreviousOverflow = document.body.style.overflow;
+  checkinDialog.showModal();
   document.body.style.overflow = 'hidden';
 }
 
 function closeCheckinModal() {
-  document.getElementById('checkin-modal-scrim')?.classList.remove('open');
-  document.body.style.overflow = '';
+  if (!checkinDialog.open) return;
+  checkinDialog.close();
+  document.body.style.overflow = checkinPreviousOverflow;
+  // Saving today's check-in hides its trigger. Return to the Today heading in that case.
+  const target = checkinTrigger?.getClientRects().length
+    ? checkinTrigger : document.getElementById('dashboard-title');
+  target.focus({ preventScroll: true });
+  checkinTrigger = null;
 }
 
 // Bottom nav tab buttons
@@ -4015,10 +4009,26 @@ document.getElementById('bottom-sheet-scrim')?.addEventListener('click', () => {
 });
 
 document.getElementById('checkin-modal-close')?.addEventListener('click', closeCheckinModal);
-document.getElementById('checkin-modal-scrim')?.addEventListener('click', e => {
-  if (e.target === document.getElementById('checkin-modal-scrim')) closeCheckinModal();
+checkinDialog.addEventListener('click', event => {
+  if (event.target === checkinDialog) closeCheckinModal();
 });
-document.getElementById('checkin-prompt-btn')?.addEventListener('click', openCheckinModal);
+checkinDialog.addEventListener('cancel', event => {
+  event.preventDefault();
+  closeCheckinModal();
+});
+checkinDialog.addEventListener('keydown', event => {
+  if (event.key !== 'Tab') return;
+  const controls = [...checkinDialog.querySelectorAll('button, input')].filter(
+    control => control.tabIndex >= 0 && !control.disabled && control.getClientRects().length
+  );
+  const edge = event.shiftKey ? controls.at(0) : controls.at(-1);
+  if (document.activeElement !== edge && controls.includes(document.activeElement)) return;
+  event.preventDefault();
+  (event.shiftKey ? controls.at(-1) : controls.at(0)).focus();
+});
+document.getElementById('checkin-prompt-btn').addEventListener('click', event => {
+  openCheckinModal(event.currentTarget);
+});
 
 // Bottom sheet items — nav tabs
 document.querySelectorAll('.bottom-sheet-item[data-tab]').forEach(item => {
@@ -4045,6 +4055,7 @@ function activateTab(tabName) {
   );
   document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
   document.getElementById('tab-' + tabName).classList.add('active');
+  if (tabName !== 'dashboard') closeCheckinModal();
   document.body.classList.toggle('ai-open', tabName === 'ai');
   if (tabName === 'dashboard') { loadTrainingLoadCard(); checkTodayReadiness(); }
   if (tabName === 'trend')                               activateTrendTab();
@@ -4104,7 +4115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   _exOverrideInitHandlers();
   _renderAIModelField(aiSelectedModel);
   _initAIChatHandlers();
-  checkTodayReadiness(true);
+  checkTodayReadiness();
   loadTrainingLoadCard();
   _updateWoPendingBadge();
   if (tabIds.has(location.hash.slice(1))) activateTab(location.hash.slice(1));
@@ -5168,13 +5179,12 @@ function _setCheckinPromptVisible(show) {
   banner.style.display = show ? 'flex' : 'none';
 }
 
-async function checkTodayReadiness(autoOpen = false) {
+async function checkTodayReadiness() {
   renderCheckinFormIntoModal();
   const dateInput = document.getElementById('ci-date');
   if (!dateInput) return;
   if (dateInput.value !== todayStr()) {
     _setCheckinTodayVisibility(false);
-    _setCheckinPromptVisible(false);
     return;
   }
   try {
@@ -5192,10 +5202,6 @@ async function checkTodayReadiness(autoOpen = false) {
     }
     _setCheckinTodayVisibility(false);
     _setCheckinPromptVisible(true);
-    if (autoOpen && !_checkinPromptAutoShown) {
-      _checkinPromptAutoShown = true;
-      openCheckinModal();
-    }
   } catch {}
 }
 
@@ -7128,16 +7134,12 @@ function _renderTodayCards(data, pendingCount) {
   const combScore = recV2?.combined_score ?? null;
   const readinessScore = recV2?.data_sufficient && recV2?.smoothed_score != null
     ? Number(recV2.smoothed_score).toFixed(1) : '—';
-  const readinessCard = document.getElementById('dashboard-readiness-card');
-  const savedRecommendation = readinessCard.querySelector('#daily-coach-review');
-  readinessCard.innerHTML = `
-    <div class="dashboard-card-title">Readiness</div>
-    <div class="readiness-score">${readinessScore}</div>
-    <div class="readiness-label">${checkinExists?'Daily monitoring':'No check-in today'}</div>
-    <div class="readiness-rec">
-      <section id="daily-coach-review" aria-label="AI training recommendation" hidden></section>
-      ${checkinExists ? '' : '<span class="readiness-checkin-prompt">Complete your daily check-in for a training recommendation.</span>'}
-    </div>
+  document.getElementById('dashboard-readiness-summary').innerHTML = `
+    <div class="dashboard-readiness-content">
+    ${checkinExists || readinessScore !== '—' ? `
+    <div class="dashboard-readiness-metrics">
+      <div class="readiness-score">${readinessScore}${readinessScore === '—' ? '' : '<span class="readiness-scale"> / 20</span>'}</div>
+    </div>` : ''}
     ${checkinExists ? `
     <div class="readiness-score-breakdown">
       <div class="readiness-breakdown-item">
@@ -7155,41 +7157,45 @@ function _renderTodayCards(data, pendingCount) {
         <div class="readiness-breakdown-value">${combScore != null ? Number(combScore).toFixed(1) : '—'}</div>
       </div>
     </div>` : ''}
+    </div>
   `;
-
-  if (savedRecommendation) readinessCard.querySelector('#daily-coach-review').replaceWith(savedRecommendation);
 
   const patterns = _safePatternStatus(recV2);
   const META = [
-    {fill:'fresh',status:'fresh',label:'Very low'},
-    {fill:'normal',status:'normal',label:'Low'},
-    {fill:'normal',status:'normal',label:'Moderate'},
-    {fill:'elevated',status:'elevated',label:'Elevated'},
-    {fill:'stressed',status:'stressed',label:'High'},
+    {fill:'fresh',label:'Very low'},
+    {fill:'normal',label:'Low'},
+    {fill:'normal',label:'Moderate'},
+    {fill:'elevated',label:'Elevated'},
+    {fill:'stressed',label:'High'},
   ];
   const soreLabels = ['None','Mild','Moderate','Significant','Severe'];
-  function gaugeRow(label, signal, dots, available, observedLabel) {
+  function gaugeCell(signal, dots, available, observedLabel) {
     if (!available || signal == null || dots == null) return `
-      <div class="pattern-gauge-sub-row"><div class="pattern-gauge-sub-label">${label}</div>
-      <div class="pattern-gauge-track"><div class="pattern-gauge-fill pattern-gauge-fill-pending" style="width:0%"></div></div>
-      <div class="pattern-gauge-status pattern-gauge-status-pending">—</div></div>`;
+      <td><div class="pattern-gauge-status pattern-gauge-status-pending">—</div>
+      <div class="pattern-gauge-track" aria-hidden="true"></div></td>`;
     const meta = META[Math.max(0,Math.min(4,dots-1))];
     const pct = Math.max(0,Math.min(100,Number(signal)*100));
-    return `<div class="pattern-gauge-sub-row"><div class="pattern-gauge-sub-label">${label}</div>
-      <div class="pattern-gauge-track"><div class="pattern-gauge-fill pattern-gauge-fill-${meta.fill}" style="width:${pct.toFixed(1)}%"></div></div>
-      <div class="pattern-gauge-status pattern-gauge-status-${meta.status}">${observedLabel || meta.label}</div></div>`;
+    return `<td><div class="pattern-gauge-status">${observedLabel || meta.label}</div>
+      <div class="pattern-gauge-track" aria-hidden="true"><div class="pattern-gauge-fill pattern-gauge-fill-${meta.fill}" style="width:${pct.toFixed(1)}%"></div></div></td>`;
   }
   const gauges = ['knee','hip','push','pull'].map(p => {
     const d = patterns[p];
-    return `<div class="pattern-gauge-item"><div class="pattern-gauge-name">${p.charAt(0).toUpperCase()+p.slice(1)}</div>
-      ${gaugeRow('Load',d.load_signal,d.load_dots,d.load_data_sufficient)}
-      ${gaugeRow('Soreness',d.soreness_signal,d.soreness_dots,d.soreness_rating != null,soreLabels[d.soreness_rating])}
-      ${gaugeRow('Trend',d.combined_signal,d.dots_filled,d.data_sufficient)}
-    </div>`;
+    return `<tr><th scope="row">${p.charAt(0).toUpperCase()+p.slice(1)}</th>
+      ${gaugeCell(d.load_signal,d.load_dots,d.load_data_sufficient)}
+      ${gaugeCell(d.soreness_signal,d.soreness_dots,d.soreness_rating != null,soreLabels[d.soreness_rating])}
+      ${gaugeCell(d.combined_signal,d.dots_filled,d.data_sufficient)}
+    </tr>`;
   }).join('');
   document.getElementById('dashboard-pattern-card').innerHTML = `
-    <div class="dashboard-card-title">Pattern stress</div><div class="pattern-gauge-row">${gauges}</div>
-    <div class="today-grid-note">Load uses training through yesterday and decays on rest days. Soreness shows your latest rating unchanged. Trend retains recent pattern fatigue as recovery improves. Missing or insufficient observations show —.</div>`;
+    <h2 class="dashboard-card-title" id="dashboard-pattern-title">Pattern stress</h2>
+    <table class="pattern-gauge-table" aria-labelledby="dashboard-pattern-title">
+      <thead><tr><th scope="col">Pattern</th><th scope="col">Load</th><th scope="col">Soreness</th><th scope="col">Trend</th></tr></thead>
+      <tbody>${gauges}</tbody>
+    </table>
+    <details class="today-grid-note">
+      <summary>How to read these signals</summary>
+      <p>Load uses training through yesterday and decays on rest days. Soreness shows your latest rating unchanged. Trend retains recent pattern fatigue as recovery improves. Missing or insufficient observations show —.</p>
+    </details>`;
 
   const jointCard = document.getElementById('today-joint-card');
   const jointAdv = _safeJointAdvisory(recV2);
@@ -7471,13 +7477,13 @@ async function loadTrainingLoadCard() {
     renderDashboardVFCard();
   } catch {
     _destroyTodayReadinessChart();
-    const readinessCard = document.getElementById('dashboard-readiness-card');
-    if (readinessCard) {
-      readinessCard.innerHTML = '<div class="dashboard-card-title">Readiness</div><div class="readiness-score">—</div><div class="readiness-label">No Data Yet</div><div class="readiness-rec">Log workouts and complete daily check-ins to build your baseline.</div>';
+    const readinessSummary = document.getElementById('dashboard-readiness-summary');
+    if (readinessSummary) {
+      readinessSummary.innerHTML = '<div class="readiness-label">Readiness data unavailable right now.</div>';
     }
     const patternCard = document.getElementById('dashboard-pattern-card');
     if (patternCard) {
-      patternCard.innerHTML = '<div class="dashboard-card-title">Pattern stress</div><div class="today-chart-empty">Pattern data unavailable right now.</div>';
+      patternCard.innerHTML = '<h2 class="dashboard-card-title">Pattern stress</h2><div class="today-chart-empty">Pattern data unavailable right now.</div>';
     }
     const jointCard = document.getElementById('today-joint-card'); if (jointCard) { jointCard.style.display = 'none'; jointCard.innerHTML = ''; }
   }

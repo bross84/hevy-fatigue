@@ -62,6 +62,10 @@ with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
               window.layoutBar=document.getElementById('bar');
             }""")
             expect(page.locator('#loggerProgress')).to_have_text('8 of 23 sets completed')
+            page.locator('#motivation-level').select_option('2')
+            with page.expect_response(lambda r:r.url.endswith('/session-checkins') and r.request.method=='POST') as checkin:
+                page.locator('#confirmMotivation').click()
+            assert checkin.value.ok,checkin.value.text()
             expect(page.locator('#loggerToolsTitle')).to_have_text('Bench Press (Barbell)')
             assert page.locator('#loggerLoader > .loader').count() == 1
             assert page.get_by_role('textbox', name='Weight in kilograms', exact=True).first.evaluate(

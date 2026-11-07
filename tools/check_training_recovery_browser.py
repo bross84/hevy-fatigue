@@ -38,10 +38,11 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
                 page.goto(URL+'/training/log')
                 page.get_by_role('button',name='Load selected workout',exact=True).click()
                 expect(page.locator('#title')).to_have_value('Mock Workout')
+                page.locator('.mobile-set-gate button').first.click()
                 page.locator('#motivation-level').select_option('2')
                 with page.expect_response(lambda r:r.url.endswith('/session-checkins') and r.request.method=='POST'):
                     page.locator('#confirmMotivation').click()
-                for button in page.get_by_role('button',name='Mark set done',exact=True).all():button.click()
+                for button in page.locator('.set .tick').all():button.click()
             def save():
                 page.locator('#finish').click()
                 with page.expect_response(lambda r:r.url.endswith('/training/hevy/workouts') and r.request.method=='POST') as response:
@@ -52,14 +53,19 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             # Preserve a legacy frozen request to exercise durable rejection and
             # correction even though new check-ins catch stale links before freeze.
             page.evaluate("const d=JSON.parse(localStorage.getItem('training.logDraft'));d.planned_session.mesocycle_id='missing-plan';d.frozenSave={client_workout_id:d.client_workout_id,title:d.title,start_time:d.startedAt,end_time:new Date().toISOString(),planned_session:d.planned_session,exercises:d.exercises.map(e=>({exercise_template_id:e.template_id,title:e.title,sets:e.sets.filter(s=>s.done).map(s=>({type:s.type,weight_kg:s.kg===''?null:Number(s.kg),reps:Number(s.reps),rpe:Number(s.arpe||s.rpe),ts:!!s.ts}))}))};localStorage.setItem('training.logDraft',JSON.stringify(d));")
+            page.set_viewport_size({'width':820,'height':900})
             page.reload();expect(page.locator('#title')).to_have_value('Mock Workout')
             result=save().json();assert result['state']=='rejected',result
+            page.set_viewport_size({'width':390,'height':844})
+            expect(page.locator('#finish')).to_be_hidden()
+            expect(page.locator('#rest')).to_be_visible()
             correction=page.get_by_role('button',name='Correct rejected draft',exact=True)
             expect(correction).to_be_visible()
             page.reload();expect(correction).to_be_visible()  # Rejection survives reload.
             correction.click();page.wait_for_function("old=>JSON.parse(localStorage.getItem('training.logDraft')).client_workout_id!==old",arg=original)
             assert 'frozenSave' not in local_draft()
             page.get_by_role('button',name='Use as unplanned workout',exact=True).click()
+            page.locator('#sessionMotivationHome > summary').click()
             with page.expect_response(lambda r:r.url.endswith('/session-checkins') and r.request.method=='POST'):
                 page.locator('#confirmMotivation').click()
             page.locator('#title').fill('Corrected Mock Workout')
@@ -73,8 +79,11 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             # before journal preparation. Correction discards it, not the sets.
             load();model_id=local_draft()['client_workout_id']
             page.evaluate("const d=JSON.parse(localStorage.getItem('training.logDraft'));d.frozenSave={client_workout_id:d.client_workout_id,title:d.title,start_time:d.startedAt,end_time:new Date().toISOString(),exercises:[{exercise_template_id:'sq',notes:{invalid:true},sets:[{type:'normal',weight_kg:100,reps:1,rpe:8}]}]};localStorage.setItem('training.logDraft',JSON.stringify(d));")
+            page.set_viewport_size({'width':820,'height':900})
             page.reload();expect(page.locator('#title')).to_have_value('Mock Workout')
             response=save();assert response.status==422
+            page.set_viewport_size({'width':390,'height':844})
+            expect(page.locator('#finish')).to_be_hidden()
             expect(correction).to_be_visible()
             page.reload();expect(correction).to_be_visible()
             correction.click();page.wait_for_function("old=>JSON.parse(localStorage.getItem('training.logDraft')).client_workout_id!==old",arg=model_id)
