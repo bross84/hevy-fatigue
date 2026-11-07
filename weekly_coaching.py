@@ -5,7 +5,6 @@ import sqlite3
 from typing import Literal
 from uuid import UUID, NAMESPACE_URL, uuid5
 from pydantic import BaseModel, Field
-from sqlalchemy.exc import IntegrityError
 from database import CoachingConversation, CoachingTurn
 from rackbook.config import database_path
 import coaching
@@ -80,9 +79,4 @@ def prepare(db,data,monitoring):
     if budget<coaching.MAX_CONTEXT_CHARS//2:raise ValueError('The week is too large for automatic review; discuss it in AI Coach instead.')
     evidence=coaching.build_report(db,monitoring_context=monitoring,context_limit=budget)
     evidence['week_context']=context
-    db.add(CoachingConversation(id=review_id,created_at=evidence['captured_at'],evidence=coaching.encode(evidence)))
-    try:db.commit()
-    except IntegrityError:
-        db.rollback()
-        if not db.get(CoachingConversation,review_id):raise
-    return coaching.conversation(db,review_id)
+    return coaching.save_conversation(db,review_id,evidence)

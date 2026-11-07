@@ -303,7 +303,13 @@ server-side history is authoritative. The legacy /api/ai/chat remains compatible
 No trainingUrl calls are needed for these host-owned routes; logger paths and
 network-only worker scope remain unchanged.
 
-coaching.py separates evidence and conversation logic from routes. Reports cover
+coaching.py separates evidence and conversation logic from routes. All three
+conversation creators (review, daily, weekly) save through coaching.save_conversation,
+and finish_turn records turn outcomes in a short-lived session (daily turns without a
+usable recommendation are failed; only pending turns are updated, so Retry stays safe).
+coaching_stream.py decides how a streamed reply ends (complete/failed/interrupted) from
+plain text chunks with no network client; main.py only opens the provider connection.
+Wire format and never-resend behavior are unchanged. Reports cover
 six calendar months, not seven displayed workouts: exact local records override
 imports by remote workout identity. Role/target/provenance gaps remain explicit.
 Full-window summaries precede limits of 12 recent sessions/preserved prescriptions,
