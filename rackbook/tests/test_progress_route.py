@@ -106,7 +106,8 @@ class TestProgressPage(ProgressRouteCase):
             self.assertIn(path, self.client.get("/progress").text)
 
     def test_log_page_links_to_progress(self):
-        self.assertIn('href="/training/progress"', self.client.get("/log").text)
+        self.assertIn('/training/static/app-menu.js', self.client.get("/log").text)
+        self.assertIn("href: '/training/progress'", self.client.get("/static/app-menu.js").text)
 
 
 if __name__ == "__main__":

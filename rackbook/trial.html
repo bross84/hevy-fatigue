@@ -177,12 +177,13 @@
       *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
     }
   </style>
+  <script src="/training/static/app-menu.js"></script>
 </head>
 <body>
 <main>
   <header class="app-header">
     <div class="page-heading"><a href="/training/log" class="page-back">← Log</a><h1>Model trial</h1></div>
-    <nav class="app-nav" aria-label="Pages"><a href="/">Today</a><a href="/training/log">Log Workout</a><a href="/training/microcycles">Plans</a><a href="/training/recent">Recent</a><a href="/training/progress">Progress</a><a href="/training/stress">Stress</a><a href="/training/rpe-charts">RPE Charts</a><a href="/#settings">Settings</a></nav>
+    <nav class="app-nav" aria-label="Pages" data-app-menu="bar"></nav>
   </header>
   <p class="intro note">Compare frozen expectations with saved workout performance. The trial tests fixed experimental rules; it does not change your training.</p>
   <section class="card controls" aria-label="Trial filters">

@@ -177,12 +177,13 @@
       *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
     }
   </style>
+  <script src="/training/static/app-menu.js"></script>
 </head>
 <body>
 <main>
   <header class="app-header">
     <div class="page-heading"><div class="page-title"><span class="eyebrow">Hevy-Fatigue</span><h1 id="stressTitle">Movement stress</h1></div></div>
-    <nav class="app-nav" aria-label="Pages"><a href="/">Today</a><a href="/training/log">Log Workout</a><a href="/training/microcycles">Plans</a><a href="/training/recent">Recent</a><a href="/training/progress">Progress</a><a href="/training/stress" aria-current="page">Stress</a><a href="/training/rpe-charts">RPE Charts</a><a href="/#settings">Settings</a></nav>
+    <nav class="app-nav" aria-label="Pages" data-app-menu="bar"></nav>
   </header>
   <p class="note intro" id="stressIntro" hidden data-details-only>Scores, observations and settings for the selected movement.</p>
   <div class="view-links"><a id="dashboardLink" href="/training/stress" hidden data-details-only>← Back to dashboard</a><a id="detailsLink" href="/training/stress/details">View details →</a></div>

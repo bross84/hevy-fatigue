@@ -38,8 +38,14 @@ class TestFrontDoor(unittest.TestCase):
         self.assertIn("Hevy-Fatigue", r.text)
 
     def test_recent_page_links_to_the_log_page_and_back(self):
-        self.assertIn('href="/training/log"', self.client.get("/recent").text)
-        self.assertIn('href="/training/recent"', self.client.get("/log").text)
+        # Pages draw their menu from one shared script, which must link both ways.
+        menu = self.client.get("/static/app-menu.js").text
+        for page in ("/recent", "/log"):
+            html = self.client.get(page).text
+            self.assertIn('/training/static/app-menu.js', html, page)
+            self.assertIn('data-app-menu', html, page)
+        self.assertIn("href: '/training/log'", menu)
+        self.assertIn("href: '/training/recent'", menu)
 
     def test_pages_tell_browsers_to_recheck_instead_of_reusing_a_stored_copy(self):
         for path in ("/log", "/recent", "/legacy"):

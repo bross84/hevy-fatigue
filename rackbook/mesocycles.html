@@ -100,8 +100,9 @@ dialog {color:var(--text);background:var(--card);border:1px solid var(--line);bo
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
     }
-  </style></head><body><main>
-<header class="app-header"><div class="page-heading"><div class="page-title"><span class="eyebrow">Hevy-Fatigue</span><h1>Microcycle Builder</h1></div></div><nav class="app-nav" aria-label="Pages"><a href="/">Today</a><a href="/training/log">Log Workout</a><a href="/training/microcycles" aria-current="page">Plans</a><a href="/training/recent">Recent</a><a href="/training/progress">Progress</a><a href="/training/stress">Stress</a><a href="/training/rpe-charts">RPE Charts</a><a href="/#settings">Settings</a></nav></header>
+  </style>  <script src="/training/static/app-menu.js"></script>
+</head><body><main>
+<header class="app-header"><div class="page-heading"><div class="page-title"><span class="eyebrow">Hevy-Fatigue</span><h1>Microcycle Builder</h1></div></div><nav class="app-nav" aria-label="Pages" data-app-menu="bar"></nav></header>
 <p class="muted">Plan one week of workouts and train at your own pace. The next workout waits until you finish and save the current one.</p>
 <div id="status" role="status"></div>
 <div class="row editor-tools"><h2 class="grow">Your plans</h2><button id="newPlan" type="button">+ New microcycle</button></div>

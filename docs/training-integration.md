@@ -481,6 +481,12 @@ first and latest five completed turns, bounded to 4000 characters per message.
 Context budgets include the weekly section and retain existing omission notices.
 Motivation is raw engagement context and cannot change fatigue or infer performance.
 
+The app menu is defined once in /training/static/app-menu.js. Every logger page draws it
+(the Log page as the grouped slide-out sidebar; the other pages as a top bar with Dashboard,
+the Training pages and Settings visible, and Monitoring/Tools behind More). The dashboard
+keeps its own sidebar for in-page tab buttons and badges; tests/test_app_menu.cjs fails if
+it drifts from the shared list. Model trial stays out of the main menu.
+
 AICoach is the one shared vanilla script for the Coach's browser code, at
 /training/static/ai-coach.js. It reads every Coach reply stream (dashboard chat, daily and
 weekly reviews) and starts weekly reviews (reviewWeek). Host
