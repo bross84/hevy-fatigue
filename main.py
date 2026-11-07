@@ -2639,6 +2639,9 @@ def coaching_send(conversation_id: UUID, data: CoachingMessage, db: Session = De
         raise HTTPException(409,str(exc)) from exc
 
     def finish(content, status):
+        if status == 'complete' and coaching.needs_daily_recommendation(view):
+            if not coaching.daily_recommendation(content):
+                status = 'failed'
         # Separate short-lived session: provider streaming never holds a database transaction.
         with SessionLocal() as saved:
             # A late response cannot replace a turn explicitly superseded by Retry.

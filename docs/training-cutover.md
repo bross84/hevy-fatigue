@@ -646,3 +646,9 @@ If a daily interpretation remains pending for five minutes, reload its dashboard
 card or saved AI Coach conversation and use Retry. The saved check-in and
 evidence are reused. The Coach conversation can retry a check-in from an earlier
 day. A recent pending attempt should offer status only.
+
+For the compact recommendation release, verify that the dashboard shows an
+action and one sentence of reasoning after a daily check-in. Open Discuss with
+AI Coach for follow-ups and previous saved conversations. A check-in with a
+completed older interpretation can receive the new format once. Check a reload
+reuses the new saved response and Retry remains available after failure.

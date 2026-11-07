@@ -19,14 +19,24 @@ def observation(db, day):
     return dict(date=str(day), **{field:getattr(entry,field) for field in coaching.RATINGS})
 
 
-def identity(observed):
+def identity(observed, version=coaching.DAILY_RECOMMENDATION_VERSION):
     digest = sha256(coaching.encode(observed).encode()).hexdigest()
-    return str(uuid5(NAMESPACE_URL, 'hevy-fatigue:daily-review:v1:'+digest))
+    return str(uuid5(NAMESPACE_URL, 'hevy-fatigue:daily-review:'+version+':'+digest))
 
 
 def current(db, day):
-    review_id = identity(observation(db,day))
-    return coaching.conversation(db,review_id) if db.get(CoachingConversation,review_id) else None
+    observed = observation(db, day)
+    review_id = identity(observed)
+    if db.get(CoachingConversation, review_id):
+        return coaching.conversation(db, review_id)
+    # Let an existing in-flight review finish or be retried explicitly before
+    # starting a recommendation for the same saved ratings.
+    legacy_id = identity(observed, 'v1')
+    if db.get(CoachingConversation, legacy_id):
+        legacy = coaching.conversation(db, legacy_id)
+        if any(turn['status'] == 'pending' for turn in legacy['turns']):
+            return legacy
+    return None
 
 
 def prepare(db, day, history):
@@ -39,12 +49,15 @@ def prepare(db, day, history):
     # Daily readiness keeps the existing same-day training cutoff. Current ratings
     # are supplied explicitly; completed training context ends the previous day.
     report = coaching.build_report(db,today=day-timedelta(days=1))
+    # Raw monitoring stays in the dashboard API. The AI does not see fixed-rule advice.
+    history = [{key: value for key, value in row.items() if not key.startswith('recommendation')}
+               for row in history]
     daily = next((r for r in history if r['date']==str(day)),None)
     recent_exercises=[]
     for ex in report['exercises']:
         if ex['days_since_last'] > 28: continue
         recent_exercises.append({k:v for k,v in ex.items() if k!='recent_exposures'})
-    evidence=dict(version='daily-interpretation-v1', captured_at=coaching.now_iso(),
+    evidence=dict(version=coaching.DAILY_RECOMMENDATION_VERSION, captured_at=coaching.now_iso(),
         window=report['window'],coverage=report['coverage'],references=report['references']+[
             dict(id='SAW2016',title='Saw et al.: Monitoring the athlete training response: subjective self-reported measures trump commonly used objective measures: a systematic review',
                  url='https://pmc.ncbi.nlm.nih.gov/articles/PMC4789708/',year=2016,
