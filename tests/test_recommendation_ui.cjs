@@ -15,7 +15,7 @@ function extract(source, name) {
 }
 const elements = new Map();
 const element = id => {
-  if (!elements.has(id)) elements.set(id, {innerHTML:'', style:{}, getContext:()=>({})});
+  if (!elements.has(id)) elements.set(id, {innerHTML:'', style:{}, querySelector:()=>null, getContext:()=>({})});
   return elements.get(id);
 };
 const context = vm.createContext({
@@ -38,6 +38,8 @@ context._renderTodayCards({today:{checkin_exists:true,recommendation_v2:fallback
 let html=element('dashboard-readiness-card').innerHTML;
 assert.ok(!html.includes('Continue Training as Normal'));
 assert.ok(!html.includes('Legacy rule output'));
+assert.ok(!html.includes('See your AI training recommendation below.'));
+assert.match(html, /<div class="readiness-rec">\s*<section id="daily-coach-review"/);
 assert.ok(html.includes('Combined'));
 assert.ok(html.includes('readiness-score">—'));
 assert.ok(!html.includes('today-state-large_increase'));

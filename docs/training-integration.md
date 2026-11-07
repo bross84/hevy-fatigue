@@ -540,3 +540,7 @@ The first completed turn must contain a recognized action and a single-line
 reason of at most 200 characters. An invalid response is saved as failed and
 can be retried. The conversation presents the validated response as readable
 text. Subsequent messages retain the normal Coach discussion format.
+
+The dashboard reuses the recommendation section inside Readiness when refreshing
+the score card. This keeps the displayed state available while the normal
+daily review lookup refreshes it.

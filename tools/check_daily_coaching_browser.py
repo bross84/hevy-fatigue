@@ -49,7 +49,11 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             with page.expect_response(lambda r:r.url.endswith('/api/readiness') and r.request.method=='POST') as saved:
                 page.locator('#ci-submit').click()
             assert saved.value.ok,saved.value.text()
-            expect(page.locator('#daily-coach-review')).to_contain_text('Continue as planned')
+            card=page.locator('#dashboard-readiness-card')
+            expect(card.locator('.readiness-rec #daily-coach-review')).to_contain_text('Continue as planned')
+            expect(card.get_by_role('link',name='Discuss with AI Coach')).to_be_visible()
+            expect(card).not_to_contain_text('See your AI training recommendation below.')
+            expect(page.locator('#daily-coach-review')).to_have_count(1)
             expect(page.locator('#daily-coach-review')).to_contain_text('Recent effort is steady with tiredness rated 2.')
             assert calls()==1
             assert not page.evaluate('Boolean(window.unsafeAI)')

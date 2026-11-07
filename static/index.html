@@ -3031,19 +3031,8 @@ body.ai-open main {
 .host-workspace #dashboard-readiness-card .readiness-rec { grid-column:1/-1; grid-row:3; margin:12px 0 0; padding:12px 0 0; }
 .host-workspace #dashboard-readiness-card .readiness-score-breakdown { grid-column:1/-1; grid-row:4; }
 .host-workspace #today-readiness-trend-card { order:2; }
-#daily-coach-review {
-  grid-column:1/-1;
-  order:1;
-  min-width:0;
-  overflow-wrap:anywhere;
-}
-#daily-coach-review:not([hidden]) {
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px 24px;
-}
+#daily-coach-review { min-width:0; overflow-wrap:anywhere; }
+#daily-coach-review:not([hidden]) + .readiness-checkin-prompt { display:none; }
 #daily-coach-review h2 {
   color:var(--muted);
   font-size:13px;
@@ -3052,7 +3041,7 @@ body.ai-open main {
 }
 #daily-coach-review .daily-coach-action { display:block; font-size:20px; }
 #daily-coach-review p { margin:4px 0 0; max-width:72ch; }
-#daily-coach-review a { color:var(--accent); text-underline-offset:3px; }
+#daily-coach-review a { display:inline-block; margin-top:6px; color:var(--accent); text-underline-offset:3px; }
 #daily-coach-review button { margin-top:8px; }
 .host-workspace #dashboard-vf-card { order:3; }
 .host-workspace #today-pattern-fatigue-card { order:4; }
@@ -3064,7 +3053,7 @@ body.ai-open main {
   .host-workspace .dashboard-card { grid-column:1/-1; display:flex; flex-direction:column; padding:24px; }
   .host-workspace #dashboard-readiness-card {
     grid-template-columns:84px 90px minmax(0,1fr); grid-template-rows:auto auto;
-    column-gap:16px; padding:20px 24px;
+    column-gap:16px; padding:14px 24px;
   }
   .host-workspace #dashboard-readiness-card .dashboard-card-title { grid-row:1/-1; }
   .host-workspace #dashboard-readiness-card .readiness-rec { grid-column:3; grid-row:1; border:0; padding:0; margin:0; }
@@ -3096,7 +3085,7 @@ body.ai-open main {
   .host-workspace #dashboard-pattern-card,.host-workspace #dashboard-recent-card { grid-column:auto; }
 }
 @media(min-width:1200px) {
-  .host-workspace #dashboard-readiness-card { grid-template-columns:100px 110px minmax(160px,1fr) minmax(300px,480px); column-gap:24px; }
+  .host-workspace #dashboard-readiness-card { grid-template-columns:100px 110px minmax(200px,1.2fr) minmax(260px,1fr); column-gap:24px; }
   .host-workspace #dashboard-readiness-card .readiness-rec { grid-row:1/-1; }
   .host-workspace #dashboard-readiness-card .readiness-score-breakdown { grid-column:4; grid-row:1/-1; border-left:1px solid var(--border); padding:8px 0 8px 24px; }
 }
@@ -3246,8 +3235,6 @@ body.ai-open main {
         <div class="dashboard-card-title">Readiness</div>
         <div class="loading-wrap"><span class="spinner"></span></div>
       </div>
-
-      <section class="card" id="daily-coach-review" aria-label="AI training recommendation" hidden></section>
 
       <div class="dashboard-card" id="today-readiness-trend-card">
         <div class="loading-wrap"><span class="spinner"></span></div>
@@ -7141,11 +7128,16 @@ function _renderTodayCards(data, pendingCount) {
   const combScore = recV2?.combined_score ?? null;
   const readinessScore = recV2?.data_sufficient && recV2?.smoothed_score != null
     ? Number(recV2.smoothed_score).toFixed(1) : '—';
-  document.getElementById('dashboard-readiness-card').innerHTML = `
+  const readinessCard = document.getElementById('dashboard-readiness-card');
+  const savedRecommendation = readinessCard.querySelector('#daily-coach-review');
+  readinessCard.innerHTML = `
     <div class="dashboard-card-title">Readiness</div>
     <div class="readiness-score">${readinessScore}</div>
     <div class="readiness-label">${checkinExists?'Daily monitoring':'No check-in today'}</div>
-    <div class="readiness-rec">${checkinExists?'See your AI training recommendation below.':'Complete your daily check-in for an interpretation.'}</div>
+    <div class="readiness-rec">
+      <section id="daily-coach-review" aria-label="AI training recommendation" hidden></section>
+      ${checkinExists ? '' : '<span class="readiness-checkin-prompt">Complete your daily check-in for a training recommendation.</span>'}
+    </div>
     ${checkinExists ? `
     <div class="readiness-score-breakdown">
       <div class="readiness-breakdown-item">
@@ -7164,6 +7156,8 @@ function _renderTodayCards(data, pendingCount) {
       </div>
     </div>` : ''}
   `;
+
+  if (savedRecommendation) readinessCard.querySelector('#daily-coach-review').replaceWith(savedRecommendation);
 
   const patterns = _safePatternStatus(recV2);
   const META = [

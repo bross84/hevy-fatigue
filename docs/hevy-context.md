@@ -602,3 +602,6 @@ uses a distinct conversation identity, so a check-in with an older completed
 write-up can generate the compact recommendation once. Older conversations
 remain accessible. If the prior review has a pending turn, it retains its
 existing Retry flow before the dashboard starts the new format.
+
+The AI training recommendation appears in the recommendation area of the
+Readiness card, with its reason and Coach link in the same section.

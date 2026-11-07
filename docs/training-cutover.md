@@ -652,3 +652,6 @@ action and one sentence of reasoning after a daily check-in. Open Discuss with
 AI Coach for follow-ups and previous saved conversations. A check-in with a
 completed older interpretation can receive the new format once. Check a reload
 reuses the new saved response and Retry remains available after failure.
+
+Verify the recommendation, reason and Discuss with AI Coach link appear inside
+Readiness on desktop and phone. Check Retry in the same area after a failure.
