@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <script src="/training/static/training.js"></script>
-  <script src="/training/static/save-recovery.js"></script>
+  <script src="/training/static/save-recovery.js?v=2"></script>
   <script src="/training/static/draft-transfer.js"></script>
   <script src="/training/static/session-review.js"></script>
   <script src="/training/static/session-advice.js"></script>
-  <script src="/training/static/session-motivation.js"></script>
+  <script src="/training/static/session-motivation.js?v=2"></script>
   <script src="/training/static/weekly-coach.js?v=2"></script>
-  <script src="/training/static/logger-layout.js"></script>
+  <script src="/training/static/logger-layout.js?v=2"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -396,7 +396,7 @@
     .workout-log.typing main { padding-bottom: 60vh; }
     .workout-log.keypad-open main { padding-bottom: calc(var(--keypad-height, 250px) + 32px); }
   </style>
-  <link rel="stylesheet" href="/training/static/logger-layout.css" />
+  <link rel="stylesheet" href="/training/static/logger-layout.css?v=2" />
 </head>
 <body class="workout-log">
 <button id="loggerNavScrim" type="button" aria-label="Close navigation" hidden></button>
@@ -445,7 +445,10 @@
       <details class="logger-help"><summary>Rx = target · Actual = performed</summary><p class="hint">RPErx is the target; RPEact is what you performed. Tap ✓ after the set; if actual is blank, it uses the target. With LSe1RM on, actual RPE adjusts following weights; your completed weight stays fixed.</p></details>
       <div id="sessionSoreness" hidden></div>
       <div id="trialDaily" class="hint" hidden></div>
-      <div id="sessionMotivation"></div>
+      <details id="sessionMotivationHome" open>
+        <summary>Pre-training check-in</summary>
+        <div id="sessionMotivation"></div>
+      </details>
       <div id="plannedOrigin" class="hint" hidden></div>
     </div>
     <div id="loggerWorkspace">
@@ -638,6 +641,7 @@
   }
   function clearDraft() {
     draft = null; try { localStorage.removeItem(KEY); } catch (e) {} restStop();
+    WorkoutSave.dismiss();
     for (const state of stressStates.values()) clearTimeout(state.timer);
     stressStates.clear();
   }
@@ -961,10 +965,12 @@
     const old = cardEls.get(ex.id);
     if (!old || !old.isConnected) return;
     if (typeof LoggerLayout !== 'undefined') LoggerLayout.release(ex.id);
+    const motivationFocus = typeof LoggerLayout !== 'undefined' ? LoggerLayout.releaseMotivation(ex.id) : null;
     const fresh = renderExercise(ex);
     old.replaceWith(fresh);
     cardEls.set(ex.id, fresh);
     if (typeof LoggerLayout !== 'undefined') LoggerLayout.update();
+    motivationFocus?.focus({ preventScroll: true });
   }
 
   async function loadTs(ex) {
@@ -1360,13 +1366,21 @@
     }
   }
 
+  function mountMotivation(current) {
+    if (typeof SessionMotivation === 'undefined') return;
+    SessionMotivation.mount(current, $("sessionMotivation"), saveMotivationDraft, () => {
+      if (draft === current && typeof LoggerLayout !== 'undefined') LoggerLayout.updateMotivation();
+    });
+  }
+
   function renderWorkout() {
     closeNumberPad();
+    if (!draft.frozenSave) WorkoutSave.dismiss();
     if (typeof LoggerLayout !== 'undefined') LoggerLayout.release();
+    const motivationFocus = typeof LoggerLayout !== 'undefined' ? LoggerLayout.releaseMotivation()?.id : null;
     const stay = !$("workout").hidden, y = window.scrollY;   // redrawing the workout you are already on keeps your place
     show("workout");
     $("title").value = draft.title;
-    if (typeof SessionMotivation !== 'undefined') SessionMotivation.mount(draft,$("sessionMotivation"),saveMotivationDraft);
     const origin = $("plannedOrigin"); origin.hidden = !draft.planned_session; origin.replaceChildren();
     if (draft.planned_session) {
       origin.append(el("span", null, draft.planLabel || "Planned workout"));
@@ -1377,10 +1391,12 @@
     const list = $("exercises"); list.replaceChildren();
     cardEls.clear(); setE1Cells.clear(); setStressCells.clear();
     for (const ex of draft.exercises) { const card = renderExercise(ex); cardEls.set(ex.id, card); list.append(card); }
+    mountMotivation(draft);
     for (const id of new Set(draft.exercises.map(ex => ex.template_id))) paintStress(id);
     tickClock();
     if (typeof LoggerLayout !== 'undefined') LoggerLayout.update();
     if (stay) window.scrollTo(0, y);
+    if (motivationFocus) $(motivationFocus)?.focus({ preventScroll: true });
   }
 
   function fmtShortDate(iso) {
@@ -1574,6 +1590,7 @@
     let x0 = null, y0 = 0, base = 0, cur = 0, dragging = false, id = null;
     row.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
+      if (e.target.closest(".mobile-set-gate, #sessionMotivation")) return;
       x0 = e.clientX; y0 = e.clientY; id = e.pointerId; dragging = false;
       base = wrap.classList.contains("open") ? -SWIPE_W : 0; cur = base;
     });
@@ -1782,7 +1799,11 @@
     left.append(stressBox); queueStress(ex.template_id); fillStress(stressBox, ex.template_id);
     const cols = el("div", "cols");
     const heads = unit === "lb" ? ["Set", "Previous", "Lb", "Kg", "Reps", "RPErx", "RPEact", "e1RM", "Stress", ""] : ["Set", "Previous", "Kg", "Lb", "Reps", "RPErx", "RPEact", "e1RM", "Stress", ""];
-    for (const t of heads) cols.append(el("span", null, t));
+    for (const t of heads) {
+      const heading = el("span", null, t);
+      if (t === "Previous") heading.className = "previous-col";
+      cols.append(heading);
+    }
     right.append(cols);
 
     // Previous: what you did on this set last time, in lb (warm-ups line up with warm-ups, working sets with working sets)
@@ -1793,6 +1814,7 @@
       if (s.type === "warmup") warm += 1; else working += 1;
       const p = s.type === "warmup" ? prevWarm[warm - 1] : prevWork[working - 1];
       const row = el("div", "set" + (s.done ? " done" : ""));
+      if (s.type !== "warmup") row.setAttribute("data-working", "");
       const k = kindOf(s);
       const kind = el("button", "kind" + (k === "ts" ? " ts" : s.type === "warmup" ? " w" : s.type === "failure" ? " f" : s.type === "dropset" ? " d" : ""),
         k === "normal" ? String(working) : k === "ts" ? "TS" : KIND[s.type]);
@@ -1840,8 +1862,15 @@
       const stressCell = el("span", "set-stress", "—");
       setStressCells.set(s, stressCell);
 
-      const tick = el("button", "tick", "✓");
-      tick.type = "button"; tick.setAttribute("aria-label", "Mark set done");
+      const tick = el("button", "tick");
+      const tickLabel = el("span", "tick-label");
+      tick.append(el("span", "tick-icon", "✓"), tickLabel);
+      tick.type = "button";
+      const labelTick = () => {
+        tickLabel.textContent = s.done ? "Undo set" : "Mark set done";
+        tick.setAttribute("aria-label", tickLabel.textContent);
+      };
+      labelTick();
       tick.addEventListener("click", () => {
         if(!s.done&&s.type!=='warmup'&&typeof SessionMotivation!=='undefined'&&!SessionMotivation.ready(draft)){
           say('Confirm your motivation check-in before working sets.');$("motivation-level")?.focus();return;
@@ -1857,6 +1886,7 @@
         if (s.done && !s.arpe) { s.arpe = s.rpe; s.actualSource = s.rpe ? 'copied_target' : 'unrated'; }
         if (s.done) SessionCapture.complete(ex, s);
         row.classList.toggle("done", s.done);
+        labelTick();
         showRpe(actualRpe, s.arpe || "");
         applyAuto(ex); saveDraft();
         if (trialEnabled || ex.trialId) {
@@ -2100,12 +2130,12 @@
       if(!workoutBeingSaved.frozenSave&&typeof SessionMotivation!=='undefined')await SessionMotivation.ensureSaved(workoutBeingSaved);
       entry = WorkoutSave.freeze(workoutBeingSaved, entry);
       if (typeof LoggerLayout !== 'undefined') LoggerLayout.update();
-      if (typeof SessionMotivation !== 'undefined') SessionMotivation.mount(workoutBeingSaved,$("sessionMotivation"),saveMotivationDraft);
+      mountMotivation(workoutBeingSaved);
       const saved = await api("/hevy/workouts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(entry) });
       if (draft !== workoutBeingSaved) return;
       if (saved.state !== 'complete') {
         say(saved.status || 'Save recovery is required.');
-        WorkoutSave.panel(draft, completeRecoveredSave);
+        WorkoutSave.panel(draft, completeRecoveredSave, {initialStatus:saved, focus:true});
         return;
       }
       clearDraft();
@@ -2118,8 +2148,8 @@
       if (draft !== workoutBeingSaved) return;
       say(err.message + " Your frozen workout is retained. Check save status before continuing.");
       WorkoutSave.noteFailure(draft, err);
-      WorkoutSave.panel(draft, completeRecoveredSave);
       window.scrollTo(0, 0);
+      WorkoutSave.panel(draft, completeRecoveredSave, {focus:true});
     } finally {
       saving = false; $("finish").disabled = false; $("finish").textContent = "Finish and save to Hevy";
     }
@@ -2127,7 +2157,7 @@
 
   function completeRecoveredSave(saved) {
     if (!draft || draft.client_workout_id !== saved.client_workout_id) return;
-    clearDraft(); document.getElementById('saveRecovery')?.remove(); show('done');
+    clearDraft(); show('done');
     $('done').querySelector('.msg').textContent='Saved to Hevy and local records. Monitoring refresh '+saved.monitoring_refresh+'.';
     WorkoutSave.monitoring(saved);
     SessionReviewUI.saved(saved);

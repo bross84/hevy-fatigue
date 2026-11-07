@@ -14,27 +14,62 @@ with sync_playwright() as p:
     page=context.new_page();errors=[]
     page.on('pageerror',lambda error:errors.append(str(error)))
     page.goto(URL+'/')
-    # A fresh preview auto-opens the host check-in. Repeated browser checks may
-    # reuse that same disposable server after today's check-in is already saved.
-    current=page.request.get(URL+'/api/readiness/today').json()
-    if not current:
-        page.wait_for_selector('#ci-submit',state='visible')
+    # Repeated browser checks may reuse the same disposable server after
+    # today's check-in is already saved.
+    current=page.request.get(URL+'/api/readiness/today')
+    if current.status == 404:
+        page.get_by_role('button',name='Check in',exact=True).click()
         with page.expect_response(lambda r:r.url.endswith('/api/readiness') and r.request.method=='POST') as checkin:
             page.locator('#ci-submit').click()
         assert checkin.value.ok,checkin.value.text()
+    else:
+        assert current.ok,current.text()
     page.goto(URL+'/training/microcycles')
     page.get_by_role('link',name='Start next workout',exact=True).click()
     expect(page.locator('#title')).to_have_value('Mock Workout')
     expect(page.locator('#motivation-level')).to_have_value('')
-    page.get_by_role('button',name='Mark set done',exact=True).first.click()
-    expect(page.locator('#msg')).to_contain_text('Confirm your motivation')
+    first_set=page.locator('.next-working-set').first
+    first_tick=first_set.get_by_role('button',name='Mark set done',exact=True)
+    gate=first_set.locator('.mobile-set-gate')
+    expect(first_tick).to_be_disabled()
+    expect(gate).to_contain_text('Confirm motivation before working sets')
+    for width in (320, 390, 767):
+        page.set_viewport_size({'width':width,'height':844})
+        bounds=first_tick.bounding_box()
+        assert bounds['height']==48 and bounds['width']>200, (width,bounds)
+        assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'), width
+    page.set_viewport_size({'width':768,'height':844})
+    expect(gate).to_be_hidden()
+    expect(first_tick).to_be_enabled()
+    page.set_viewport_size({'width':390,'height':844})
+    expect(first_tick).to_be_disabled()
+    first_set.evaluate("(row) => row.scrollIntoView({block:'center'})")
+    page.screenshot(path=str(out/'logger-blocked-set-phone.png'),animations='disabled')
+    page.get_by_role('button',name='+ Warm-up sets',exact=True).first.tap()
+    warmups=page.locator('.set:not([data-working]) .tick')
+    assert warmups.count()>0
+    timer_before=page.evaluate("localStorage.getItem('training.restEnd')")
+    for remaining in reversed(range(warmups.count())):
+        warmups.first.tap()
+        expect(warmups).to_have_count(remaining)
+    assert page.evaluate("localStorage.getItem('training.restEnd')")==timer_before
+    expect(first_tick).to_be_disabled()
     assert not page.evaluate("JSON.parse(localStorage.getItem('training.logDraft')).exercises[0].sets[0].done")
     before_motivation=page.evaluate("JSON.parse(localStorage.getItem('training.logDraft')).exercises")
+    gate.get_by_role('button',name='Check in',exact=True).tap()
+    expect(first_set.locator('#motivation-level')).to_be_focused()
     page.locator('#motivation-level').select_option('3')
     page.locator('#motivation-note').fill('Same movements since August')
+    page.evaluate('refreshCard(draft.exercises[0])')
+    expect(first_set.locator('#motivation-note')).to_have_value('Same movements since August')
+    expect(first_set.locator('#motivation-note')).to_be_focused()
     with page.expect_response(lambda r:r.url.endswith('/session-checkins') and r.request.method=='POST') as confirmed:
         page.locator('#confirmMotivation').click()
     assert confirmed.value.ok,confirmed.value.text()
+    expect(first_tick).to_be_enabled()
+    expect(first_tick).to_be_focused()
+    expect(gate).to_be_hidden()
+    page.screenshot(path=str(out/'logger-ready-set-phone.png'),animations='disabled')
     assert page.evaluate("JSON.parse(localStorage.getItem('training.logDraft')).exercises")==before_motivation
     page.reload()
     expect(page.locator('#motivation-level')).to_have_value('3')
@@ -46,6 +81,10 @@ with sync_playwright() as p:
     assert original_prescription['source']=='plan'
     assert original_prescription['exercises'][0]['sets'][1]['reps']==5
     advice_box=page.locator('[data-session-advice]').first
+    advice_summary=page.locator('.mobile-session-advice > summary').first
+    assert advice_summary.bounding_box()['y']>first_tick.bounding_box()['y']
+    expect(advice_box).to_be_hidden()
+    advice_summary.click()
     expect(advice_box.locator('summary').first).to_contain_text('Provisional session advice')
     if advice_box.locator('details').first.get_attribute('open') is None:
         advice_box.locator('summary').first.click()
@@ -77,7 +116,14 @@ with sync_playwright() as p:
     page.locator('[data-pad-key="done"]').tap()
     page.get_by_role('button',name='RPErx 8. Change RPErx',exact=True).tap()
     page.get_by_role('button',name='8',exact=True).tap()
-    page.get_by_role('button',name='Mark set done',exact=True).first.tap()
+    first_row=page.locator('.set[data-working]').first
+    before_tap=first_row.locator('.tick').evaluate('(button) => { window.tappedSet = button; return button.offsetTop; }')
+    first_row.get_by_role('button',name='Mark set done',exact=True).tap()
+    undo=first_row.get_by_role('button',name='Undo set',exact=True)
+    expect(undo).to_be_visible()
+    assert undo.bounding_box()['height']==48
+    assert undo.evaluate('(button, top) => button === window.tappedSet && button.offsetTop === top', before_tap)
+    expect(page.locator('.set[data-working]').nth(1)).to_have_class('set next-working-set')
     page.get_by_role('button',name='RPEact 8. Change RPEact',exact=True).tap()
     page.get_by_role('button',name='7',exact=True).tap()
     expect(page.get_by_role('button',name='RPErx 8. Change RPErx',exact=True)).to_be_visible()

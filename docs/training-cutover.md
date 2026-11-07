@@ -655,3 +655,25 @@ reuses the new saved response and Retry remains available after failure.
 
 Verify the recommendation, reason and Discuss with AI Coach link appear inside
 Readiness on desktop and phone. Check Retry in the same area after a failure.
+
+For the daily check-in dialog, verify on the physical PWA that the missing
+check-in prompt is visible on Today and tapping it opens the form. Dismiss
+using Close or the backdrop, reopen, and submit a normal check-in. Verify a
+direct visit to Settings stays on Settings when today's check-in is missing.
+
+On the physical PWA, verify Readiness groups the missing check-in message
+and action, Log Workout opens the training logger, and current Pattern
+stress appears before Fatigue Trend. On desktop, confirm Fatigue Trend
+still spans the analysis area.
+When a daily score is available, verify that `/ 20` appears beside the value.
+
+On a physical phone, start a normal workout and verify that the next working
+set shows the check-in requirement and that a warm-up can be marked done
+before confirming. Open Check in from the set, confirm, and use the 48px
+Mark set done button. Check that the rest timer starts for the working set
+and that optional advice is available below the set rows.
+
+If a normal workout needs recovery on a physical phone, verify the rest
+timer remains visible and the regular Save action is hidden. Use Finish
+local records for a confirmed Hevy save or Check save status for an unknown
+outcome. Reconcile only an existing workout that matches the retained draft.

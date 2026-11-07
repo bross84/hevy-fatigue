@@ -1021,3 +1021,79 @@ recommendation section inside Readiness, with the Coach link and Retry working.
 The responsive dashboard check passed after tightening tablet card padding.
 Phone and desktop previews and the targeted readiness and daily Coach
 JavaScript checks passed.
+
+## Daily check-in dialog (local, 2026-11-07)
+
+- Mocked Edge at 390 and 1440px verifies that Today waits for explicit opening,
+  Close receives initial focus, Tab wraps in both directions, and Escape, Close
+  and backdrop clicks restore the trigger. A Settings deep link stays usable.
+  The daily coaching check verifies focus returns to the dashboard heading
+  after a save hides the trigger.
+- Host Python ran 113 tests. Rackbook ran 495 with one inherited expected
+  failure. All 31 JavaScript checks passed. The mocked phone workout save,
+  save recovery, and daily, weekly and general coaching checks passed.
+- Existing logger layout browser failure reproduced separately. Its fixture
+  leaves motivation unconfirmed, so the ninth set remains blocked and progress
+  reads 8 of 23. Its assertion was retained.
+- Docker build and startup could not be verified because the Docker Desktop
+  Linux daemon was unavailable. Mock previews initialized both disposable
+  databases. Physical PWA and deployed-data checks remain separate.
+
+## Today overview layout (local, 2026-11-07)
+
+- Mocked Edge verified 320–2560px, including the 1400px overview breakpoint,
+  check-in action proximity, keyboard focus restoration, the mobile Log Workout
+  route, and current Pattern stress before the full-width Fatigue Trend.
+  Real Chart.js range, theme and missing-day checks passed. Reviewed the
+  390px missing and 2560px populated overview captures.
+- Dashboard UI assertions preserve separate pattern signals, exact soreness
+  labels, continuous fills, and unknown observations. Host Python ran 113
+  tests, Rackbook ran 495 with one inherited expected failure, and all 31
+  JavaScript checks passed. The mocked daily check-in and Coach flow passed.
+- The Impeccable detector engine and Docker Desktop Linux daemon were
+  unavailable. Physical PWA and deployed-data checks remain separate.
+
+The follow-up score display passed the dashboard UI and mocked Edge checks.
+The numeric fixture renders `6.0 / 20`, and the unavailable-score assertion
+expects a dash by itself. The mocked daily check-in and Coach flow passed.
+
+## Mobile next set (local, 2026-11-07)
+
+- Mocked Edge checked the 48px completion target at 320, 390 and 767px and
+  the desktop table at the 768px breakpoint. Warm-ups completed before
+  motivation without starting rest. The inline form kept its focus across a
+  card refresh, then returned focus to the enabled completion control.
+  Completing the set retained the same button position and DOM identity.
+- The mocked workout and recovery saves, weekly and daily coaching, general
+  Coach, and responsive dashboard checks passed. The separate 23-set logger
+  layout fixture now uses the real motivation confirmation before attempting
+  its ninth set, resolving the previously recorded fixture failure.
+- Host Python ran 113 tests, Rackbook ran 495 with one inherited expected
+  failure, and all 31 JavaScript checks passed. Docker build and startup
+  remain unverified because the Linux daemon was unavailable. Physical iOS
+  and deployed data remain operator checks.
+
+## Mobile save recovery (local, 2026-11-07)
+
+- Mocked Edge exercised normal save, an acknowledged upload with a failed
+  local transaction, and a lost Hevy acknowledgement. At 320, 390 and 767px
+  the recovery states hid the regular save button, kept the running rest
+  timer visible, and showed the correct 48px primary action after reload.
+- A failed status lookup kept the draft and offered a status check. After
+  reconnection, verification linked the matching workout. Both local
+  finalization and verification completed the original save with one mock
+  workout and one plan advancement. The stale-plan and field-validation
+  correction browser checks passed.
+- Host Python ran 113 tests, Rackbook ran 495 with one inherited expected
+  failure, and all 31 JavaScript checks passed. Docker Desktop’s Linux
+  daemon was unavailable. Physical iOS and deployed data were outside
+  the verification run.
+
+## Combined UI review batch (local, 2026-11-07)
+
+Retested the four UI changes together on main at `d13b521`. The dashboard
+browser checks preserve the AI training recommendation inside Readiness
+alongside the numeric summary. All 31 JavaScript checks, 115 host Python
+tests, and the mocked dashboard, logger, Coach, workout save and recovery
+flows passed. Rackbook retained its inherited expected failure. GitHub
+Integration checks cover the container build and startup.

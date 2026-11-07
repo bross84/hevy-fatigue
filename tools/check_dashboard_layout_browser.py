@@ -23,13 +23,24 @@ def check_card_geometry(page, width):
     by_id = {card['id']: card for card in cards}
     ready, trend = by_id['dashboard-readiness-card'], by_id['today-readiness-trend-card']
     vf, pattern = by_id['dashboard-vf-card'], by_id['today-pattern-fatigue-card']
-    assert abs(ready['width']-trend['width']) < 1, (width,cards)
-    assert trend['y'] >= ready['bottom'], (width,cards)
+    current = by_id['dashboard-pattern-card']
+    if width >= 1400:
+        assert abs(ready['y']-current['y']) < 1 and ready['x'] < current['x'], (width,cards)
+        assert abs(ready['width']-current['width']) < 1, (width,cards)
+    else:
+        assert current['y'] >= ready['bottom'], (width,cards)
+        assert abs(current['width']-trend['width']) < 1, (width,cards)
+    assert trend['y'] >= max(ready['bottom'],current['bottom']), (width,cards)
+    assert trend['width'] == by_id['dashboard-recent-card']['width'], (width,cards)
+    assert current['height'] < 320, (width,cards)
     assert min(vf['y'],pattern['y']) >= trend['bottom'], (width,cards)
-    for ident in ('dashboard-pattern-card','dashboard-recent-card'):
-        assert by_id[ident]['y'] >= max(vf['bottom'],pattern['bottom']), (width,cards)
+    assert by_id['dashboard-recent-card']['y'] >= max(vf['bottom'],pattern['bottom']), (width,cards)
     if width >= 700:
-        assert ready['height'] < 180 and trend['height'] >= 380, (width,cards)
+        # Main keeps the variable-length recommendation inside Readiness.
+        # Check that the score and action area stays compact independently.
+        recommendation = page.locator('#daily-coach-review').bounding_box()
+        recommendation_height = recommendation['height'] if recommendation else 0
+        assert ready['height'] - recommendation_height < 240 and trend['height'] >= 380, (width,cards)
         assert page.locator('.dashboard-card').evaluate_all("""els => els.every(el =>
           el.scrollHeight <= el.clientHeight + 2 && el.scrollWidth <= el.clientWidth + 2)"""), width
     if width >= 2000:
@@ -74,8 +85,52 @@ with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
             errors = []
             page.on('pageerror', lambda error: errors.append(str(error)))
             page.goto(URL + '/')
-            expect(page.locator('#checkin-modal-scrim')).to_have_class('checkin-modal-scrim open')
-            page.locator('#checkin-modal-close').click()
+            prompt = page.get_by_role('button', name='Check in', exact=True)
+            dialog = page.get_by_role('dialog', name='Daily Check-in')
+            workout = page.locator('#dashboard-readiness-card').get_by_role('link', name='Log Workout')
+            expect(prompt).to_be_visible()
+            expect(dialog).to_be_hidden()
+            expect(workout).to_be_hidden()
+            expect(page.locator('#dashboard-readiness-summary')).not_to_contain_text('No check-in')
+            assert page.locator('#checkin-prompt-banner').evaluate("""prompt => {
+              const [explanation, action] = [...prompt.children].map(el => el.getBoundingClientRect());
+              return action.x - explanation.right <= 16 && action.x >= explanation.right;
+            }""")
+            expect(page.get_by_role('table', name='Pattern stress').get_by_role('row')).to_have_count(5)
+            for width, height in [(390, 844), (1440, 900)]:
+                page.set_viewport_size({'width': width, 'height': height})
+                if width < 1100:
+                    expect(workout).to_be_visible()
+                    expect(workout).to_have_attribute('href', '/training/log')
+                    assert workout.bounding_box()['height'] >= 44
+                    check_card_geometry(page, width)
+                    page.screenshot(path=str(OUT/'dashboard-missing-390.png'),animations='disabled')
+                else:
+                    expect(workout).to_be_hidden()
+                prompt.focus()
+                page.keyboard.press('Enter')
+                expect(dialog).to_be_visible()
+                close = dialog.get_by_role('button', name='Close', exact=True)
+                submit = dialog.get_by_role('button', name='Submit Check-in')
+                expect(close).to_be_focused()
+                page.keyboard.press('Shift+Tab')
+                expect(submit).to_be_focused()
+                page.keyboard.press('Tab')
+                expect(close).to_be_focused()
+                page.keyboard.press('Tab')
+                expect(dialog.locator('#ci-date')).to_be_focused()
+                page.keyboard.press('Escape')
+                expect(dialog).to_be_hidden()
+                expect(prompt).to_be_focused()
+                prompt.click()
+                close.click()
+                expect(dialog).to_be_hidden()
+                expect(prompt).to_be_focused()
+                prompt.click()
+                page.mouse.click(4, 4)
+                expect(dialog).to_be_hidden()
+                expect(prompt).to_be_focused()
+            page.set_viewport_size({'width':2560,'height':1440})
             page.wait_for_function('todayReadinessChart && _dashboardVfChart && todayPatternFatigueChart')
             assert page.locator('#dashboard-recent-card .recent-session-item').count() == 7
             assert page.evaluate("getComputedStyle(document.querySelector('.dashboard-wrap')).gridTemplateColumns.split(' ').length") == 2
@@ -105,6 +160,7 @@ with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
             page.wait_for_function('_dashboardVfChart && _dashboardVfChart.canvas.isConnected && document.getElementById("dashboard-vf-note").textContent.length > 0')
             # Keep the browser-only fixture in the cached payload so a pending
             # theme refresh reads the same summary instead of replacing it.
+            page.route('**/api/readiness/today', lambda route: route.fulfill(json={}))
             page.evaluate("""async () => {
               const payload=await ensureTrainingLoadPayload();
               payload.today={...payload.today,checkin_exists:true,
@@ -113,12 +169,16 @@ with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
                   training_state_detail:'Below baseline - good time to add volume or intensity',
                   subjective_score:2.6,objective_score:9.7,combined_score:4}};
               await loadTrainingLoadCard();
+              await checkTodayReadiness();
             }""")
+            expect(prompt).to_be_hidden()
+            page.unroute('**/api/readiness/today')
             page.wait_for_function('_dashboardVfChart && _dashboardVfChart.canvas.isConnected && document.getElementById("dashboard-vf-note").textContent.length > 0')
             expect(page.locator('.readiness-breakdown-item')).to_have_count(3)
+            expect(page.locator('#dashboard-readiness-summary .readiness-score')).to_have_text('6.0 / 20')
             check_card_geometry(page, 2560)
             page.screenshot(path=str(OUT/'dashboard-chart-focus-2560.png'),animations='disabled')
-            for width, height, columns in [(2000,1200,2),(1999,1200,2),(1920,1080,2),(1900,1080,2),(1899,1080,2),(1500,1000,2),(1280,900,2),(1200,900,2),(1199,900,2),
+            for width, height, columns in [(2000,1200,2),(1999,1200,2),(1920,1080,2),(1900,1080,2),(1899,1080,2),(1500,1000,2),(1400,900,2),(1399,900,2),(1280,900,2),(1200,900,2),(1199,900,2),
                                             (1100,900,2),(1099,900,2),(700,900,2),(699,900,1),
                                             (1024,768,2),(820,1180,2),(390,844,1),(320,700,1)]:
                 page.set_viewport_size({'width':width,'height':height})
@@ -151,18 +211,29 @@ with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
             expect(page.locator('#hostMenu')).to_be_focused()
             page.reload()
             expect(page.locator('#tab-settings')).to_have_class('tab-content active')
-            expect(page.locator('#checkin-modal-scrim')).to_have_class('checkin-modal-scrim open')
-            page.locator('#checkin-modal-close').click()
+            page.wait_for_function("document.getElementById('checkin-prompt-banner').style.display === 'flex'")
+            expect(prompt).to_be_hidden()
+            expect(dialog).to_be_hidden()
             page.locator('#hostMenu').click()
             page.locator('#hostSidebar [data-tab="dashboard"]').click()
             expect(page.locator('#tab-dashboard')).to_have_class('tab-content active')
-            page.locator('#checkin-prompt-btn').click()
+            prompt.click()
             expect(page.locator('#ci-submit')).to_be_visible()
-            page.locator('#checkin-modal-close').click()
+            dialog.locator('#ci-date').fill('2020-01-01')
+            page.evaluate("location.hash = '#settings'")
+            expect(page.locator('#tab-settings')).to_have_class('tab-content active')
+            expect(dialog).to_be_hidden()
+            page.locator('#hostMenu').click()
+            expect(page.locator('#hostCloseMenu')).to_be_focused()
+            page.locator('#hostSidebar [data-tab="dashboard"]').click()
+            expect(prompt).to_be_visible()
+            prompt.click()
+            expect(dialog.locator('#ci-date')).to_have_value('2020-01-01')
+            page.keyboard.press('Escape')
+            expect(prompt).to_be_focused()
             # Header/sidebar never fall under the training service worker.
             assert page.evaluate('navigator.serviceWorker.controller===null')
-            page.set_viewport_size({'width':2560,'height':1440})
-            page.locator('#hostSidebar a[href="/training/log"]').click()
+            workout.click()
             expect(page.locator('h1')).to_contain_text('Log Workout')
             host_links = ['/', '/training/log', '/training/microcycles', '/training/recent',
                           '/training/progress', '/training/stress', '/training/rpe-charts',

@@ -35,18 +35,18 @@ const fallback = {training_state:'insufficient_data',training_state_label:'Conti
   training_state_detail:'Insufficient data to recommend a change.', data_sufficient:false,
   combined_score:2, smoothed_score:2};
 context._renderTodayCards({today:{checkin_exists:true,recommendation_v2:fallback}},0);
-let html=element('dashboard-readiness-card').innerHTML;
+let html=element('dashboard-readiness-summary').innerHTML;
 assert.ok(!html.includes('Continue Training as Normal'));
 assert.ok(!html.includes('Legacy rule output'));
 assert.ok(!html.includes('See your AI training recommendation below.'));
-assert.match(html, /<div class="readiness-rec">\s*<section id="daily-coach-review"/);
+assert.match(page, /<div class="readiness-rec">\s*<section id="daily-coach-review"/);
 assert.ok(html.includes('Combined'));
 assert.ok(html.includes('readiness-score">—'));
 assert.ok(!html.includes('today-state-large_increase'));
 context._renderTodayCards({today:{checkin_exists:true,recommendation_v2:{...fallback,
   training_state:'continue',training_state_label:'Continue',data_sufficient:true,
   combined_score:5.52,smoothed_score:9.89}}},0);
-assert.ok(element('dashboard-readiness-card').innerHTML.includes('readiness-score">9.9'));
+assert.ok(element('dashboard-readiness-summary').innerHTML.includes('readiness-score">9.9<span class="readiness-scale"> / 20</span></div>'));
 context.renderTodayReadinessChart([
   {date:'2026-10-28',combined_score:2,smoothed_score:2,data_sufficient:false},
   {date:'2026-10-29',combined_score:null,smoothed_score:null,data_sufficient:false},
@@ -84,10 +84,14 @@ for (let rating=0;rating<=4;rating++) {
     combined_signal:.8,dots_filled:5,data_sufficient:true};
   context._renderTodayCards({today:{checkin_exists:true,recommendation_v2:{...fallback,pattern_status:{knee:profile}}}},0);
   const patternHtml=element('dashboard-pattern-card').innerHTML;
-  const knee=patternHtml.slice(patternHtml.indexOf('pattern-gauge-name">Knee'),patternHtml.indexOf('pattern-gauge-name">Hip'));
-  assert.ok(knee.includes(labels[rating]),`Soreness ${rating} preserves its own label`);
-  assert.ok(knee.includes(`width:${(rating/4*100).toFixed(1)}%`));
-  assert.ok(knee.includes('Trend'));
+  const knee=patternHtml.slice(patternHtml.indexOf('scope="row">Knee'),patternHtml.indexOf('scope="row">Hip'));
+  const cells=[...knee.matchAll(/<td>([\s\S]*?)<\/td>/g)].map(match=>match[1]);
+  assert.equal(cells.length,3);
+  assert.ok(cells[0].includes('Moderate'));
+  assert.ok(cells[2].includes('High'));
+  assert.ok(cells[1].includes(labels[rating]),`Soreness ${rating} preserves its own label`);
+  assert.ok(cells[1].includes(`width:${(rating/4*100).toFixed(1)}%`));
+  assert.match(patternHtml,/<th scope="col">Load<\/th><th scope="col">Soreness<\/th><th scope="col">Trend<\/th>/);
 }
 context._renderTodayCards({today:{checkin_exists:false,recommendation_v2:{...fallback,pattern_status:{knee:{
   load_signal:.5,load_dots:3,load_data_sufficient:true,soreness_rating:null,data_sufficient:false,

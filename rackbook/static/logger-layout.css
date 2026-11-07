@@ -40,6 +40,70 @@
 .logger-outline-name { min-width:0; overflow-wrap:anywhere; }
 .logger-outline-count { color:var(--muted); font-size:12px; white-space:nowrap; font-variant-numeric:tabular-nums; }
 #loggerProgress { color:var(--muted); font-size:13px; font-variant-numeric:tabular-nums; margin:0 0 12px; }
+.tick-label, #sessionMotivationHome > summary { display:none; }
+#saveRecovery h2 { margin:0 0 6px; font-size:19px; }
+#saveRecovery p { margin:0 0 8px; }
+#saveRecovery button { min-height:44px; }
+#saveRecovery .recovery-hint,#saveRecovery .recovery-feedback { color:var(--muted); font-size:13px; }
+#saveRecovery .recovery-feedback:empty { display:none; }
+#saveRecovery details { margin-top:8px; border-top:1px solid var(--line); }
+#saveRecovery summary { min-height:44px; padding:10px 0; color:var(--accent); }
+#saveRecovery form { display:grid; gap:8px; max-width:360px; }
+#saveRecovery form input { width:100%; min-height:44px; }
+#saveRecovery .recovery-settings { display:block; margin-top:8px; }
+@media(max-width:767px) {
+  main[data-save-recovery] #msg,
+  main[data-save-recovery] ~ #bar #finish { display:none; }
+  main[data-save-recovery] ~ #bar #rest { margin-bottom:0; }
+  #saveRecovery { padding:14px; }
+  #saveRecovery[data-state="remote_saved"] h2 { color:var(--ok); }
+  #saveRecovery[data-state="uncertain"] h2 { color:var(--warn); }
+  #saveRecovery .recovery-primary {
+    display:block; width:100%; min-height:48px; margin:8px 0;
+    background:var(--accent); color:var(--bg); border-color:var(--accent); font-weight:650;
+  }
+  #saveRecovery .recovery-secondary { padding-inline:0; border-color:transparent; color:var(--accent); }
+  #sessionMotivationHome > summary, .mobile-session-advice > summary {
+    display:list-item; min-height:44px; padding:11px 0; color:var(--muted); font-size:14px;
+  }
+  .mobile-session-advice { margin-top:8px; border-top:1px solid var(--line); }
+  .workout-log .cols, .workout-log .set {
+    min-width:0;
+    grid-template-columns:20px minmax(0,.9fr) minmax(32px,1.4fr) minmax(0,.8fr) minmax(26px,1fr) 32px 32px minmax(0,.8fr) minmax(0,.9fr);
+    gap:6px 2px;
+  }
+  .workout-log .cols { font-size:10px; }
+  .workout-log .cols > :last-child { display:none; }
+  .workout-log .previous-col { font-size:0; }
+  .workout-log .previous-col::after { content:"Prev."; font-size:10px; }
+  .workout-log .set .prev,.workout-log .set .refcol,.workout-log .set .setE1,.workout-log .set .set-stress {
+    min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px;
+  }
+  .workout-log .set .tick {
+    grid-column:1/-1; width:100%; min-height:48px; height:48px; border-radius:8px;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    padding:0 8px; color:var(--text); background:var(--card); border-color:var(--line); font-size:14px;
+  }
+  .workout-log .set.next-working-set .tick:not(:disabled) {
+    color:var(--bg); background:var(--accent); border-color:var(--accent); font-weight:650;
+  }
+  .workout-log .set .tick:disabled { opacity:1; background:var(--soft); color:var(--muted); }
+  .tick-label { display:inline; }
+  .mobile-set-gate {
+    grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; gap:8px;
+    padding:8px; border-radius:8px; background:var(--warn-bg); color:var(--warn);
+  }
+  .mobile-set-gate p { margin:0; font-size:13px; }
+  .workout-log .mobile-set-gate button, .workout-log .set #sessionMotivation button {
+    min-height:44px; height:auto; padding:6px 12px; border:1px solid var(--line);
+    background:var(--card); color:var(--text);
+  }
+  .mobile-set-gate button { flex:none; }
+  .workout-log .set > #sessionMotivation { grid-column:1/-1; padding:8px 0; }
+  .workout-log .set #sessionMotivation :is(select,input) { min-height:44px; padding:6px 8px; text-align:left; font-weight:400; }
+  .workout-log .set #confirmMotivation:not(:disabled) { background:var(--accent); color:var(--bg); border-color:var(--accent); }
+  .workout-log #finish { background:var(--card); color:var(--text); border-color:var(--line); }
+}
 @media(min-width:1100px) {
   .logger-nav { display:block; position:fixed; inset:0 auto 0 0; width:224px; overflow-y:auto; z-index:3; }
   #loggerCloseMenu,.workout-log #loggerMenu { display:none; }

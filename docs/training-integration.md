@@ -544,3 +544,44 @@ text. Subsequent messages retain the normal Coach discussion format.
 The dashboard reuses the recommendation section inside Readiness when refreshing
 the score card. This keeps the displayed state available while the normal
 daily review lookup refreshes it.
+
+## Daily check-in dialog behavior (local, 2026-11-07)
+
+The Today prompt opens a native modal dialog on request. The dialog owns
+keyboard focus and closes if a host hash change takes the user away from Today.
+Direct links to Settings and other views open without the prompt interrupting
+navigation. The existing check-in and coaching requests are reused.
+
+## Today overview layout (local, 2026-11-07)
+
+The stable Check in button lives inside Readiness, outside the summary renderer,
+so a refresh preserves the dialog's focus target. Pattern stress uses a semantic
+table for the existing continuous gauges, labels and missing observations.
+The original chart sequence, full-width Fatigue Trend and 2000px split for
+the secondary charts are retained. The mobile Log Workout link uses
+`/training/log`, the same route as desktop navigation.
+The Readiness renderer adds `/ 20` beside a numeric daily score and omits
+the denominator when the score is unavailable.
+The AI training recommendation has a stable mount inside Readiness, so
+refreshing the numeric summary preserves the recommendation and its controls.
+
+## Mobile next-set layout (local, 2026-11-07)
+
+The mobile layout moves the existing motivation form between its overview
+disclosure and the next working set. A card refresh returns and reattaches the
+same form, preserving the focused field. The completion button keeps its
+height and DOM identity as the next set advances. Motivation confirmation
+uses the existing device and server paths. Warm-ups still use the existing
+set handler and expire without starting rest. The mobile disclosure reuses
+the session advice panel and desktop returns it to its original location.
+The logger versions its changed assets so a cached script stays paired with
+the corresponding page markup.
+
+## Mobile save recovery (local, 2026-11-07)
+
+The recovery panel follows the logger header and owns the mobile status
+message and save visibility. An acknowledged save offers the existing
+finalize route. An uncertain save offers a status read and explicit
+reconciliation of an existing workout ID. Recovery controls serialize
+requests in the panel, and an unavailable status leaves a read-only check
+available. The rest bar retains its timer and controls.

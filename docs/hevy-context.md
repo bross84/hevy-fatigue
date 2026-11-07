@@ -605,3 +605,35 @@ existing Retry flow before the dashboard starts the new format.
 
 The AI training recommendation appears in the recommendation area of the
 Readiness card, with its reason and Coach link in the same section.
+
+## Daily check-in dialog (local, 2026-11-07)
+
+A missing check-in shows the Check in action on Today. The daily form opens
+from that action, with focus on Close and Tab contained in the dialog. Escape,
+Close, and backdrop dismissal restore the trigger. Saving today's ratings
+hides the trigger and returns focus to the dashboard heading.
+
+## Today overview layout (local, 2026-11-07)
+
+Readiness groups the missing-check-in explanation with its action. Current
+Pattern stress follows Readiness on narrow screens and sits beside it from
+1400px. The table retains separate load, soreness and trend signals. Fatigue
+Trend leads the charts below the overview. Log Workout is available in
+Readiness below the 1100px persistent-navigation breakpoint.
+An available daily fatigue score shows its maximum inline (for example,
+`6.0 / 20`). An unavailable score is shown as a dash when applicable.
+
+## Mobile next set (local, 2026-11-07)
+
+Below 768px the logger uses full-width 48px set buttons and highlights the
+next unfinished working set in each exercise. A blocked working set shows
+the motivation requirement beside its button. Check in opens the live form
+there and confirmation returns focus to the set. Warm-ups remain available
+before confirmation. Session advice is in a disclosure below the set rows.
+
+## Mobile save recovery (local, 2026-11-07)
+
+The mobile logger hides Finish and save to Hevy while its recovery panel is
+present. The rest timer remains in the footer. If Hevy confirmed the upload,
+Finish local records leads. For an unknown outcome, Check save status leads
+and a separate disclosure accepts the ID of an existing Hevy workout.

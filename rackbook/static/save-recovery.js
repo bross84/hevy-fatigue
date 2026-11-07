@@ -29,40 +29,162 @@ const WorkoutSave = (() => {
     draft.client_workout_id=corrected.client_workout_id;
     return true;
   }
-  function panel(draft, onComplete) {
+  function dismiss() {
     document.getElementById('saveRecovery')?.remove();
+    document.querySelector('main').removeAttribute('data-save-recovery');
+  }
+  function panel(draft, onComplete, {initialStatus, focus = false} = {}) {
+    dismiss();
     if (!draft?.frozenSave) return;
-    const box = document.createElement('section'); box.id='saveRecovery'; box.className='card';
-    box.setAttribute('aria-live','polite');
-    const message=document.createElement('p');
-    message.textContent='A frozen save is pending. Check its status before changing or saving this workout.';
-    box.append(message);
+    const main = document.querySelector('main');
+    const node = (tag, text) => {
+      const element = document.createElement(tag);
+      if (text) element.textContent = text;
+      return element;
+    };
+    const box = node('section');
+    box.id = 'saveRecovery';
+    box.className = 'card';
+    box.setAttribute('aria-labelledby', 'saveRecoveryTitle');
+    const heading = node('h2', 'Workout save pending');
+    heading.id = 'saveRecoveryTitle';
+    heading.tabIndex = -1;
+    const message = node('p', 'Check this attempt before continuing. Your draft is retained.');
+    message.setAttribute('aria-live', 'polite');
+    const feedback = node('p');
+    feedback.className = 'recovery-feedback';
+    feedback.setAttribute('role', 'status');
+    box.append(heading, message);
+
+    const controls = [];
+    let busy = false;
+    let statusKnown = false;
+    async function run(label, action) {
+      if (busy) return;
+      busy = true;
+      for (const control of controls) control.disabled = true;
+      feedback.textContent = label;
+      try { await action(); }
+      catch (error) {
+        if (!statusKnown) {
+          heading.textContent = 'Save status unavailable';
+          message.textContent = 'The workout may already be in Hevy. Your draft is retained.';
+        }
+        feedback.textContent = error instanceof TypeError
+          ? 'Connection unavailable. Try again when you’re connected.' : error.message;
+      } finally {
+        busy = false;
+        for (const control of controls) control.disabled = false;
+      }
+    }
+
+    function render(result) {
+      statusKnown = true;
+      const state = result.state;
+      const pending = state === 'remote_saved';
+      const unknown = state === 'uncertain';
+      const verifying = unknown || state === 'sending';
+      box.setAttribute('data-state', state);
+      heading.textContent = pending ? 'Saved to Hevy' : unknown ? 'Save outcome unknown'
+        : state === 'sending' ? 'Save in progress' : 'Workout save recovery';
+      message.textContent = pending
+        ? 'Local records are still pending.' + (draft.frozenSave.planned_session ? ' Your plan will advance after they’re saved.' : '')
+        : unknown ? 'The workout may already be in Hevy. Your draft is still on this device.'
+        : [result.status, result.failure_reason].filter(Boolean).join(' ');
+      retry.hidden = retryHint.hidden = !pending;
+      lookup.hidden = reconcile.hidden = !verifying;
+      settings.hidden = pending || verifying;
+      if (!verifying) reconcile.open = false;
+      corrected.hidden = state !== 'rejected';
+      first.hidden = state !== 'prepared';
+      retry.className = pending ? 'recovery-primary' : '';
+      check.className = pending ? 'recovery-secondary' : 'recovery-primary';
+      if (state === 'complete') onComplete(result);
+    }
+
     async function request(suffix='', body=null) {
       const response=await fetch(trainingUrl('/workout-saves/'+draft.client_workout_id+suffix), body ?
         {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)} : suffix ? {method:'POST'} : {});
       const result=await response.json();
+      if (!box.isConnected) return;
       if (response.status===404 && draft.validationRejected===true) {
-        message.textContent=draft.validationError || 'Request validation rejected this attempt before saving.';
-        corrected.hidden=false;
+        render({state:'rejected', status:draft.validationError || 'Request validation rejected this attempt before saving.'});
+        feedback.textContent = '';
         return;
       }
       if (!response.ok) throw Error(typeof result.detail==='string'?result.detail:'Recovery request failed.');
-      message.textContent=result.status+(result.failure_reason?' '+result.failure_reason:'');
-      retry.hidden=result.state!=='remote_saved'; reconcile.hidden=!['sending','uncertain'].includes(result.state);
-      corrected.hidden=result.state!=='rejected'; first.hidden=result.state!=='prepared';
-      if(result.state==='complete') onComplete(result);
+      render(result);
+      feedback.textContent = '';
       return result;
     }
-    function button(text,fn) {const b=document.createElement('button');b.type='button';b.textContent=text;b.addEventListener('click',async()=>{b.disabled=true;try{await fn();}catch(e){message.textContent=e.message;}finally{b.disabled=false;}});box.append(b);return b;}
-    button('Check save status',()=>request());
-    const first=button('Resume prepared save',async()=>{const r=await fetch(trainingUrl('/hevy/workouts'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(draft.frozenSave)});if(!r.ok)throw Error('Save could not be resumed. Check status.');await request();});first.hidden=true;
-    const retry=button('Finish local records',()=>request('/finalize'));retry.hidden=true;
-    const reconcile=button('Link verified Hevy workout',async()=>{const id=prompt('Existing Hevy workout ID (from Recent workouts or Hevy). This will only read and verify it.');if(id?.trim())await request('/reconcile',{hevy_workout_id:id.trim()});});reconcile.hidden=true;
-    const corrected=button('Correct rejected draft',()=>{if(correct(draft))location.reload();});corrected.hidden=true;
-    const recent=document.createElement('a');recent.href=trainingUrl('/recent');recent.textContent='Recent workouts';box.append(recent);
-    const settings=document.createElement('a');settings.href='/#settings';settings.textContent='Monitoring sync and settings';settings.style.marginLeft='1rem';box.append(settings);
-    document.querySelector('main').prepend(box);
-    request().catch(e=>{message.textContent=e.message+' The frozen draft is retained.';});
+    function button(text, label, action) {
+      const control = node('button', text);
+      control.type = 'button';
+      controls.push(control);
+      control.addEventListener('click', () => run(label, action));
+      box.append(control);
+      return control;
+    }
+    const retry = button('Finish local records', 'Finishing local records…', async () => {
+      const result = await request('/finalize');
+      if (result?.state === 'remote_saved') feedback.textContent = 'Local records are still pending. Try finishing them again.';
+    });
+    const retryHint = node('p', 'Uses the workout already in Hevy.');
+    retryHint.className = 'recovery-hint';
+    box.append(retryHint);
+    const check = button('Check save status', 'Checking save status…', async () => {
+      const result = await request();
+      if (result?.state === 'uncertain') feedback.textContent = 'The save outcome is still unknown.';
+    });
+    check.className = 'recovery-primary';
+    const first = button('Resume prepared save', 'Resuming the prepared save…', async () => {
+      const response = await fetch(trainingUrl('/hevy/workouts'), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(draft.frozenSave)});
+      if (!response.ok) throw Error('Save could not be resumed. Check its status.');
+      await request();
+    });
+    const corrected = button('Correct rejected draft', '', () => { if (correct(draft)) location.reload(); });
+    const recent = node('a', 'Recent workouts');
+    recent.href = trainingUrl('/recent');
+    const lookup = node('p', 'Look for this workout in Hevy or ');
+    lookup.className = 'recovery-hint';
+    lookup.append(recent, '.');
+
+    const reconcile = node('details');
+    reconcile.append(node('summary', 'I found the workout in Hevy'));
+    const form = node('form');
+    const label = node('label', 'Existing Hevy workout ID');
+    label.htmlFor = 'recoveryWorkoutId';
+    const input = node('input');
+    input.id = 'recoveryWorkoutId';
+    input.type = 'text';
+    input.autocomplete = 'off';
+    input.setAttribute('autocapitalize', 'none');
+    input.spellcheck = false;
+    input.required = true;
+    const verify = node('button', 'Verify and link workout');
+    verify.type = 'submit';
+    controls.push(input, verify);
+    form.append(label, input, verify);
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      const id = input.value.trim();
+      if (!id) { feedback.textContent = 'Enter the existing Hevy workout ID.'; input.focus(); return; }
+      return run('Verifying the existing workout…', async () => {
+        const result = await request('/reconcile', {hevy_workout_id:id});
+        if (result?.state === 'remote_saved') feedback.textContent = 'Workout verified. Finish local records to complete the save.';
+      });
+    });
+    reconcile.append(node('p', 'The logger checks that the existing workout matches your draft before linking it.'), form);
+    const settings = node('a', 'Monitoring sync and settings');
+    settings.href = '/#settings';
+    settings.className = 'recovery-settings';
+    box.append(feedback, lookup, reconcile, settings);
+    for (const element of [retry, retryHint, first, corrected, lookup, reconcile]) element.hidden = true;
+    main.querySelector('.app-header').after(box);
+    main.setAttribute('data-save-recovery', '');
+    if (initialStatus) render(initialStatus);
+    else run('Checking save status…', () => request());
+    if (focus) heading.focus();
   }
   function monitoring(saved) {
     document.getElementById('monitoringRefresh')?.remove();
@@ -75,5 +197,5 @@ const WorkoutSave = (() => {
     check.addEventListener('click',async()=>{check.disabled=true;try{const response=await fetch(trainingUrl('/workout-saves/'+saved.client_workout_id));if(!response.ok)throw Error();show((await response.json()).monitoring_refresh);}catch(e){show('pending; status unavailable');}finally{check.disabled=false;}});
     box.append(status,settings,check);document.getElementById('done').append(box);
   }
-  return {freeze,panel,monitoring,noteFailure,correct};
+  return {freeze,panel,dismiss,monitoring,noteFailure,correct};
 })();

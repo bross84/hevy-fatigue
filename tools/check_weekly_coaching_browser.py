@@ -31,12 +31,13 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
                 page.goto(URL+'/training/microcycles')
                 page.get_by_role('link',name='Start next workout',exact=True).click()
             def checkin(level,note=''):
+                page.locator('.mobile-set-gate button').first.click()
                 page.locator('#motivation-level').select_option(str(level));page.locator('#motivation-note').fill(note)
                 with page.expect_response(lambda r:r.url.endswith('/session-checkins') and r.request.method=='POST') as response:
                     page.locator('#confirmMotivation').click()
                 assert response.value.ok,response.value.text()
             def save():
-                for button in page.get_by_role('button',name='Mark set done',exact=True).all():button.click()
+                for button in page.locator('.set .tick').all():button.click()
                 page.locator('#finish').click()
                 with page.expect_response(lambda r:r.url.endswith('/training/hevy/workouts') and r.request.method=='POST') as response:
                     page.locator('#confirmSave').click()
@@ -47,8 +48,8 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             plan=page.request.get(URL+'/training/api/mesocycles').json()[0]
             initial_weeks=plan['weeks']
             before=page.request.get(URL+'/api/diagnostics/snapshot').json()
-            page.get_by_role('button',name='Mark set done',exact=True).first.click()
-            expect(page.locator('#msg')).to_contain_text('Confirm your motivation')
+            expect(page.get_by_role('button',name='Mark set done',exact=True).first).to_be_disabled()
+            expect(page.locator('.mobile-set-gate').first).to_contain_text('Confirm motivation')
             checkin(0,'Tired but excited for pull-ups')
             expect(page.locator('#weeklyOpeningReview')).to_contain_text('Before day 1 · complete')
             assert calls()==1
@@ -59,6 +60,8 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             assert opening['evidence']['week_context']['current_checkin']['motivation']['level']==0
             assert opening['evidence']['week_context']['current_checkin']['motivation']['note']=='Tired but excited for pull-ups'
             page.reload();expect(page.locator('#weeklyOpeningReview')).to_contain_text('Before day 1 · complete')
+            page.locator('#sessionMotivationHome > summary').click()
+            expect(page.get_by_role('link',name='Discuss this week with AI Coach')).to_be_visible()
             assert calls()==1
             page.screenshot(path=str(OUT/'opening-phone.png'),full_page=True)
             save()

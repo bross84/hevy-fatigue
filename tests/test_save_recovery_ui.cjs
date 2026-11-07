@@ -1,14 +1,16 @@
 /* Exercise the real recovery panel, not a stub of its state transitions. */
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');
-function element(tag){return {tag,children:[],events:{},hidden:false,textContent:'',disabled:false,style:{},
-  append(...nodes){this.children.push(...nodes)},prepend(node){this.children.unshift(node)},remove(){},setAttribute(){},
+function element(tag){return {tag,children:[],events:{},attrs:{},hidden:false,textContent:'',disabled:false,style:{},isConnected:true,
+  append(...nodes){this.children.push(...nodes)},remove(){this.isConnected=false;},setAttribute(name,value){this.attrs[name]=value;},
+  removeAttribute(name){delete this.attrs[name];},
   addEventListener(name,fn){this.events[name]=fn}};}
-const main=element('main'),storage=new Map(),sent=[];let response,posts=0,reloads=0,nextId=0,confirmCorrection=true;
+const main=element('main'),storage=new Map(),sent=[],destinations=[];let response,posts=0,reloads=0,nextId=0,confirmCorrection=true;
+main.querySelector=()=>({after(box){main.children.unshift(box);}});
 const context=vm.createContext({
   document:{createElement:element,getElementById:()=>null,querySelector:()=>main},
   trainingUrl:p=>'/training'+p,trainingUUID:()=>`new-save-${++nextId}`,confirm:()=>confirmCorrection,
   localStorage:{setItem:(k,v)=>storage.set(k,v)},location:{reload(){reloads++}},
-  fetch:async(url,options)=>{if(options?.method==='POST'){posts++;sent.push(options.body);}return {status:response.code||200,ok:!(response.code>=400),json:async()=>response.body};}
+  fetch:async(url,options)=>{if(options?.method==='POST'){posts++;sent.push(options.body);destinations.push(url);}return {status:response.code||200,ok:!(response.code>=400),json:async()=>response.body};}
 });
 vm.runInContext(fs.readFileSync(path.join(__dirname,'../rackbook/static/save-recovery.js'),'utf8')+';this.recovery=WorkoutSave',context);
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
@@ -39,22 +41,47 @@ const draft=()=>({client_workout_id:'old-id',title:'Edited title',planned_sessio
   for(const error of [{status:502},{status:422,validationRejected:false}]){
     const uncertain=draft();context.recovery.noteFailure(uncertain,error);
     context.recovery.panel(uncertain,()=>{});await flush();
+    assert.equal(main.children[0].children[0].textContent,'Save status unavailable');
     assert.equal(button(main.children[0],'Correct rejected draft').hidden,true);
     assert.equal(uncertain.client_workout_id,'old-id');assert.ok(uncertain.frozenSave);
   }
   response={body:{state:'uncertain',status:'Verify in Hevy'}};
   const uncertain=draft();context.recovery.panel(uncertain,()=>{});await flush();
-  assert.equal(button(main.children[0],'Correct rejected draft').hidden,true);
-  assert.equal(button(main.children[0],'Link verified Hevy workout').hidden,false);
+  box=main.children[0];
+  const link=box.children.find(n=>n.tag==='details');
+  assert.equal(button(box,'Correct rejected draft').hidden,true);
+  assert.equal(button(box,'Resume prepared save').hidden,true);
+  assert.equal(button(box,'Finish local records').hidden,true);
+  assert.equal(button(box,'Check save status').className,'recovery-primary');
+  assert.equal(link.hidden,false);
+  assert.equal(main.attrs['data-save-recovery'],'');
+  await button(box,'Check save status').events.click();
+  assert.equal(posts,0,'Status checks never post an uncertain save');
+  const form=link.children.find(n=>n.tag==='form');
+  form.children.find(n=>n.tag==='input').value=' existing-1 ';
+  await form.events.submit({preventDefault(){}});
+  assert.equal(destinations[0],'/training/workout-saves/old-id/reconcile');
+  assert.deepEqual(JSON.parse(sent[0]),{hevy_workout_id:'existing-1'});
+  response={body:{state:'remote_saved',status:'Saved to Hevy'}};
+  context.recovery.panel(draft(),()=>{});await flush();
+  box=main.children[0];
+  assert.equal(button(box,'Finish local records').className,'recovery-primary');
+  assert.equal(button(box,'Finish local records').hidden,false);
+  assert.equal(button(box,'Check save status').className,'recovery-secondary');
+  assert.equal(box.children.find(n=>n.tag==='details').hidden,true);
+  await button(box,'Finish local records').events.click();
+  assert.equal(destinations[1],'/training/workout-saves/old-id/finalize');
+  context.recovery.dismiss();
+  assert.equal(main.attrs['data-save-recovery'],undefined);
   // Prepared preflight failures can be resumed and are not offered reconciliation.
   response={body:{state:'prepared',status:'Not sent',failure_reason:'Writes disabled'}};
   const prepared=draft();let completed=0;context.recovery.panel(prepared,()=>completed++);await flush();
   assert.equal(button(main.children[0],'Resume prepared save').hidden,false);
-  assert.equal(button(main.children[0],'Link verified Hevy workout').hidden,true);
+  assert.equal(main.children[0].children.find(n=>n.tag==='details').hidden,true);
   response={body:{state:'complete',status:'Saved'}};
   await button(main.children[0],'Resume prepared save').events.click();
-  assert.equal(posts,1);assert.equal(completed,1);
-  assert.equal(sent[0],JSON.stringify(prepared.frozenSave));assert.equal(prepared.client_workout_id,'old-id');
+  assert.equal(posts,3);assert.equal(completed,1);
+  assert.equal(sent[2],JSON.stringify(prepared.frozenSave));assert.equal(prepared.client_workout_id,'old-id');
   // Failed storage cannot discard the frozen identity while unlocking a draft.
   const quota=draft();context.localStorage.setItem=()=>{throw Error('Quota')};
   assert.throws(()=>context.recovery.correct(quota),/Quota/);
