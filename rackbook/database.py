@@ -133,6 +133,15 @@ def init_db() -> None:
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             CREATE UNIQUE INDEX IF NOT EXISTS one_active_mesocycle ON mesocycles(active) WHERE active = 1;
+            CREATE TABLE IF NOT EXISTS plan_proposals (
+                id TEXT PRIMARY KEY,
+                conversation_id TEXT NOT NULL,
+                turn_id TEXT NOT NULL,
+                plan_id TEXT NOT NULL REFERENCES mesocycles(id),
+                proposed TEXT NOT NULL,
+                saved_at TEXT NOT NULL,
+                UNIQUE(conversation_id, turn_id)
+            );
             CREATE TABLE IF NOT EXISTS mesocycle_completions (
                 mesocycle_id TEXT NOT NULL REFERENCES mesocycles(id),
                 session_id TEXT NOT NULL,

@@ -100,6 +100,7 @@ Routes used by the log, RPE and progress pages (the legacy planner has many more
 | `GET /settings`, `POST /settings/api-key` | Whether a Hevy key is set (never returns it), and saving it (204, empty body) |
 | `GET/POST /api/mesocycles`, `GET/PUT /api/mesocycles/{id}` | List/create/read/update saved local plans with revision checking |
 | `POST /api/mesocycles/{id}/activate`, `/archive` | Choose one active sequence; archival retains its document and completion history |
+| `POST /api/plan-proposals/preview`, `/save` | AI Coach week proposal: validated read-only preview (no writes); save creates one new inactive draft plus a `plan_proposals` provenance row atomically, idempotent per conversation turn |
 | `POST /body-weight/sync`, `GET /body-weight` | Daily body weight from Hevy |
 
 ---
@@ -412,3 +413,22 @@ Charts are destroyed before lift reload/replacement; responses are checked after
 ### Stress chart presentation (2026-10-22)
 
 Stress dashboard and details charts use the same locally bundled Chart.js/zoom libraries and presentation as Progress: responsive canvas sizing, real elapsed-time axes, date ticks, zoom/pan and date controls, hover/tap details and keyboard session inspection. `static/stress-charts.js` renders both stress history and performance/soreness observations. The four observation charts synchronize their date window and selected session. Missing observations remain gaps, 21-day observation breaks remain disconnected, soreness stays categorical, prior-baseline observations remain muted, pain flags remain visible, and historical usual-range shading and above/below markers are retained. Detached charts are destroyed when movement/range views change. No scoring, baseline gates or source data change. Checks: `node tests/test_stress_charts.cjs`, existing fatigue/dashboard UI checks and Progress UI checks.
+
+## AI week proposals as draft microcycles (2026-11-07)
+
+`plan_proposals.py` turns a `plan-proposal-v1` block in an AI Coach reply into an inactive draft
+microcycle only after an explicit Save. The block holds a title, a rationale (500 characters), up to
+14 sessions of movements and sets (reps, RPE in half steps from 4 to 10, optional TS and set type).
+Unknown keys, weights, unknown movement ids, more than one block, non-JSON, oversize input and
+anything `mesocycles.PlanInput` rejects (for example two TS in one movement) are reported as issues
+and cannot be saved. Movement titles come from the exercise cache, then logged sets, then saved
+plans, never from the AI. Preview compares with the active plan (added, removed and changed
+movements) and writes nothing. Save inserts one new inactive plan through `mesocycles.insert_draft`
+and a `plan_proposals` row (proposal id from conversation and turn, canonical frozen proposal, saved
+time) in one transaction, so repeating it returns the first draft and a failure leaves neither. It
+never edits, activates, archives or completes a plan, sets a weight, or contacts Hevy. The plan keeps
+the normal editor: review, adjust and activate on `/microcycles`. The table is additive
+(`CREATE TABLE IF NOT EXISTS`), and the provenance links a draft to its conversation turn for later
+outcome review. The logger cannot read host conversations, so the browser supplies the text; it is
+validated again on save. Tests: `rackbook/tests/test_plan_proposals.py` and
+`rackbook/tests/test_plan_proposal_ui.cjs`. Decision record: `docs/adr/0001-ai-proposals-become-drafts.md`.

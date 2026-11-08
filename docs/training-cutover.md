@@ -340,6 +340,10 @@ Record device/browser/version separately from automated browser results:
    Movement stress is `rackbook-stress-v2` (84-day history-aware reference e1RM):
    back-off-heavy sessions score lower than under v1 and session bands shift. That
    is intended, not a regression. Nothing is stored; rollback restores v1 scoring.
+9. AI Coach week proposals (mocked or disposable data first): ask the coach for a concrete
+   week, confirm the proposal card shows a diff and that Save as draft creates one inactive
+   microcycle (repeat clicks reuse it) and never changes or activates the active plan.
+   The new `plan_proposals` table is additive and harmless to roll back.
 
 ## Rollback
 

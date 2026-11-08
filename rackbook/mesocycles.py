@@ -117,6 +117,18 @@ def _view(conn, row):
                     'SELECT session_id, hevy_workout_id, workout_start FROM mesocycle_completions WHERE mesocycle_id = ?', (row['id'],))])
 
 
+def insert_draft(conn, data: PlanInput):
+    """Insert a new inactive plan on the caller's transaction and return its id. Never activates."""
+    plan_id = str(uuid4())
+    conn.execute('INSERT INTO mesocycles (id, document) VALUES (?, ?)',
+                 (plan_id, json.dumps(data.model_dump(exclude={'revision', 'rpe_assignments'}))))
+    return plan_id
+
+
+def view(conn, plan_id):
+    return _view(conn, _row(conn, plan_id))
+
+
 def list_plans():
     with get_db() as conn:
         return [_view(conn, row) for row in conn.execute(
@@ -178,9 +190,7 @@ def save_plan(data: PlanInput, plan_id=None):
     with get_db() as conn:
         conn.execute('BEGIN IMMEDIATE')
         if plan_id is None:
-            plan_id = str(uuid4())
-            conn.execute('INSERT INTO mesocycles (id, document) VALUES (?, ?)',
-                         (plan_id, json.dumps(document)))
+            plan_id = insert_draft(conn, data)
         else:
             row = _row(conn, plan_id)
             if row['archived']:

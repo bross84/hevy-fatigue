@@ -7,14 +7,17 @@ import json
 import sqlite3
 from statistics import median
 
+import coaching_stress
+from rackbook import plan_proposals
 from sqlalchemy import text
-from database import (WorkoutLog, WorkoutSession, DailyReadiness,
+from database import (WorkoutLog, WorkoutSession, DailyReadiness, ExerciseMapping,
                       CoachingConversation, CoachingTurn)
 from rackbook.config import database_path
 
 VERSION = 'training-review-v1'
 RECENT_SESSIONS = 12
 RECENT_EXPOSURES = 6
+KNOWN_MOVEMENTS = 80
 MAX_CONTEXT_CHARS = 160_000
 MAX_REPLY_CHARS = 60_000
 MAX_TURNS = 40
@@ -110,7 +113,34 @@ reassuring merely because they became typical. State insufficient baseline cover
 Legacy numerical recommendation labels in daily scores are rule outputs, not coaching instructions.
 The daily training cutoff is exclusive: no same-day workout outcomes are included. Daily advice
 is provisional and can be discussed in this conversation; no programming changes are applied.
+Each exercise's stress block is Rackbook stress index (see stress_model): training dose relative to an
+estimated max, split into central (mechanical) and peripheral (metabolic) parts. Compare a session only
+with that movement's own typical range and recent sessions. Never add stress across movements, never call
+it a recovery limit, fatigue measurement or optimal zone, and treat below/usual/elevated as context, not a
+reason by itself to add or remove work. Estimated-RPE sets, unknown-role imported sets (warm-ups cannot be
+separated), unscored sessions and a provisional baseline all lower confidence; say so when relevant.
+pattern_stress_index attributes those totals to knee/hip/push/pull by the exercise mapping percentages and
+sums them by calendar week (Monday start; the current week is partial). It is not the host Pattern Stress
+card. Compare a week only with that pattern's own typical_week and recent weeks, and prefer weeks with
+the same training frequency in mind. A low push or pull week can simply be a lower-body week. Mapping
+guesses (reviewed_share) and unmapped exercises limit confidence. These are totals, never limits or targets.
 The evidence date is frozen for each conversation. If training has changed, suggest a new review.
+"""
+PROPOSAL_EXAMPLE = json.dumps(dict(
+    version=plan_proposals.FENCE, title='Week title', rationale='One to three sentences citing report fields.',
+    sessions=[dict(name='Day name', exercises=[dict(exercise_template_id='<id from known_movements>', notes='',
+        sets=[dict(reps=5, rpe=7.5, ts=False, type='normal')])])]), separators=(',', ':'))
+BRIEF += f"""Only when the athlete asks for a concrete training week or plan, end that reply with exactly one fenced
+code block that opens with three backticks followed by {plan_proposals.FENCE} on the same line and closes with
+three backticks, containing JSON in this shape:
+```{plan_proposals.FENCE}
+{PROPOSAL_EXAMPLE}
+```
+Use only exercise_template_id values listed in known_movements. Propose one week of at most 14 sessions,
+set the rationale (at most 500 characters) from report evidence, and give sets as reps, RPE in half steps
+from 4 to 10, optional ts and type (normal, failure or dropset). Never include weights: loads come from the
+athlete's own TS/TM/RPE loading. The athlete can preview it and save it only as an inactive draft; it is
+never applied, so never say a change has been made. Omit the block when you are only discussing options.
 """
 
 
@@ -270,11 +300,27 @@ def build_report(db, *, today=None, monitoring_context=None, context_limit=None)
                 first=points[0],last=points[-1],load_change_pct=round((last/first-1)*100,2) if first>0 else None))
         ex['matched_load_comparisons']=comparisons
         ex['recent_exposures']=ex.pop('exposures')[-RECENT_EXPOSURES:]
+    known=defaultdict(lambda:dict(last_date=None,exposure_count=0,in_saved_plan=False))
+    for ex in exercises.values():
+        if not str(ex['exercise_id']).startswith('unknown:'):
+            known[ex['exercise_id']].update(title=ex['title'],last_date=ex['last_date'],exposure_count=ex['exposure_count'])
+    for plan in local['plans']:
+        for week in parsed(plan['document'],{}).get('weeks',[]):
+            for planned in week.get('sessions',[]):
+                for movement in planned.get('exercises',[]):
+                    entry=known[movement['exercise_template_id']]
+                    entry.setdefault('title',movement['title'])
+                    entry['in_saved_plan']=True
+    known_movements=[dict(exercise_template_id=k,**v) for k,v in sorted(known.items(),key=lambda x:(x[1]['last_date'] or '',x[0]),reverse=True)][:KNOWN_MOVEMENTS]
+    scored_stress=coaching_stress.attach(exercises,ordered,today)
+    pattern_stress_index=coaching_stress.pattern_rollup(
+        scored_stress,exercises,coaching_stress.mapping_table(db.query(ExerciseMapping).all()),today)
     checkins=[dict(date=str(r.date),**{k:getattr(r,k) for k in RATINGS}) for r in
               db.query(DailyReadiness).filter(DailyReadiness.date.between(start,today)).order_by(DailyReadiness.date).all()]
     dates=[day_of(s['date']) for s in ordered]
     report=dict(version=VERSION,captured_at=now_iso(),window=dict(start=str(start),end=str(today),calendar_days=(today-start).days+1),
-        monitoring_context=monitoring_context,
+        monitoring_context=monitoring_context,stress_model=coaching_stress.DESCRIPTION,
+        pattern_stress_index=pattern_stress_index,known_movements=known_movements,
         coverage=dict(sessions=len(ordered),training_dates=len(set(dates)),first_training_date=str(dates[0]) if dates else None,
             last_training_date=str(dates[-1]) if dates else None,training_span_days=(dates[-1]-dates[0]).days if dates else 0,
             complete_daily_checkins=sum(all(r[k] is not None for k in RATINGS[:6]) for r in checkins),
@@ -294,6 +340,8 @@ def build_report(db, *, today=None, monitoring_context=None, context_limit=None)
             'Saved plans describe current saved intent, not proof of historical block purpose or execution.',
             'Detail caps: latest 12 sessions/preserved prescriptions, six exposures per exercise, 10 saved plans (active first), latest 40 recommendation decision rows. Summary counts use the full window.',
             'Acceptance is intent only. An outcome belongs to its frozen decision, not necessarily the latest decision.',
+            *coaching_stress.LIMITATIONS,
+            f'known_movements lists up to {KNOWN_MOVEMENTS} movements from this window and saved plans (most recent first); proposals may use only these ids.',
         ])
     if local.get('plan_count',0)>len(local['plans']):
         report['limitations'].append(f"Showing {len(local['plans'])} of {local['plan_count']} saved plans, active first.")
@@ -312,6 +360,9 @@ def build_report(db, *, today=None, monitoring_context=None, context_limit=None)
     if len(encode(report))>context_limit:
         for ex in report['exercises']: ex['recent_exposures']=[]
         report['limitations'].append('Per-exercise raw sets omitted for context size; summaries retained.')
+    if len(encode(report))>context_limit:
+        for ex in report['exercises']: (ex.get('stress') or {}).pop('recent_sessions',None)
+        report['limitations'].append('Per-session stress detail omitted for context size; stress summaries retained.')
     if len(encode(report))>context_limit:
         raise ValueError('Training context exceeds the review limit; no incomplete assessment was sent.')
     return report

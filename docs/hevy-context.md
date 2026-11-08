@@ -34,6 +34,7 @@ Hevy Fatigue is a personal training load and fatigue monitoring dashboard. It sy
 |---|---|
 | `main.py` | FastAPI app, all API routes, fatigue engine |
 | `database.py` | SQLAlchemy models, `init_db()`, schema migrations |
+| `coaching.py`, `coaching_stress.py` | Read-only AI coach evidence report; stress-index block per exercise |
 | `index.html` | Entire frontend — HTML, CSS, and JS in one file |
 | `diagnostic.html` | Engine snapshot / diagnostics page |
 | `importer.py` | Hevy API sync logic, session processing pipeline |
@@ -637,3 +638,80 @@ The mobile logger hides Finish and save to Hevy while its recovery panel is
 present. The rest timer remains in the footer. If Hevy confirmed the upload,
 Finish local records leads. For an unknown outcome, Check save status leads
 and a separate disclosure accepts the ID of an existing Hevy workout.
+
+## Stress index in AI coach evidence (local, 2026-11-07)
+
+`coaching_stress.py` adds a read-only `stress` block to every exercise in the
+`build_report` evidence, plus a top-level `stress_model` description and two
+limitation notes. It scores the sessions the report has already merged (exact
+local sets replace the matching import) with `rackbook/stress_index.py`
+(`rackbook-stress-v2`), so the coach, `/log` and `/stress` share one calculation.
+No Hevy request, database write or new table is involved; the module is pure.
+
+Per movement: model version, `as_of`, scored/unscored session counts, days since
+the last scored exposure, the typical session (median, usual low/high, baseline
+session and estimated-session counts, provisional flag), rolling 7/28-day
+totals, the latest session and the last six sessions with their earlier-only
+baseline status. Values are rounded to two decimals. A movement with nothing
+scorable reports `no_scorable_sessions` and an `unscored_sessions` count, never
+a zero.
+
+Rules and limits: imported host start times are naive UTC (the importer strips
+the offset) and are treated as UTC; sessions with no start time are not scored.
+The window is the report's six months, so older history does not feed the 84-day
+reference. Imported Hevy sets carry no set type, so warm-ups cannot be separated
+there and local exact sets are more reliable; blank RPEs are estimated at 5 and
+counted. Report-day sessions are included even when their UTC start falls on the
+next day. Under context pressure per-session stress detail is dropped before the
+summary and the omission is recorded.
+
+`BRIEF` tells the coach to compare a session only with that movement's own range,
+never to add stress across movements or call it a recovery limit, fatigue
+measurement or optimal zone, and not to add or cut work on stress alone. Existing
+frozen conversations keep their original evidence; new reviews carry the block.
+No session-advice rule or automatic programming change uses stress yet. Tests:
+`tests/test_coaching_stress.py`, `tests/test_coaching_patterns.py`.
+
+## Weekly pattern stress index in AI coach evidence (local, 2026-11-07)
+
+`coaching_stress.pattern_rollup` adds `pattern_stress_index` to the report. It
+splits each scored movement session (total, central, peripheral) across Knee,
+Hip, Push and Pull using that exercise's current `exercise_mappings` percentages
+(matched by exercise title) and sums by calendar week. It is read-only and
+stores nothing. The host Pattern Stress card (ATL/CTL, soreness, trend), the
+daily/recovery models and `calculate_stress_scores` are unchanged; this is a
+different quantity and is named to avoid confusion (see `GLOSSARY.md`).
+
+Block contents: model version, `as_of`, nine Monday-start weeks (eight completed
+plus the partial current week) with per-pattern totals and unmapped stress,
+rolling 7/28 local-day totals, per-pattern `typical_week` (median of completed
+weeks that had scored sessions; provisional under four such weeks), unmapped
+exercise titles (at most ten) and `reviewed_share`, the fraction of attributed
+stress from user-reviewed mappings.
+
+Rules: accessories use their full mapping percentage; no discount is invented.
+Conditioning exercises are excluded. A missing mapping, or percentages that do
+not sum to 1.0 (±0.01), put the stress in `unmapped` rather than guessing.
+Empty weeks appear as real zeros but never enter the typical week. Mapping edits
+re-attribute history on the next report because nothing is stored. Frozen
+conversations keep their original evidence. `BRIEF` tells the coach these are
+attributed totals, never recovery limits or targets, and that a low push or pull
+week can simply be a lower-body week. No UI shows this block yet.
+
+## AI week proposals in the AI Coach (local, 2026-11-07)
+
+The coach may now end a reply with one `plan-proposal-v1` fenced JSON block when the athlete
+asks for a concrete week. `BRIEF` shows the exact format (the example is shared with the parser
+and tested against it), limits movements to the report's new `known_movements` (up to 80 ids with
+titles, last date, exposure count and saved-plan flag) and forbids weights: loads still come from
+the athlete's TS/TM/RPE loading. The coach still cannot apply anything.
+
+The AI tab hides the machine block from the reply text and adds a Proposed week card
+(`rackbook/static/plan-proposal.js`, loaded with `training.js` and called through `trainingUrl`):
+rationale, a diff against the active microcycle, the sessions, and validation issues. Everything
+from the AI is shown as text. Preview is read-only. Save as draft is the only write: it creates one
+new inactive microcycle and a provenance row through the logger (`rackbook/docs/rackbook-context.md`),
+repeat saves reuse the first, and the athlete reviews and activates it on `/training/microcycles`.
+No existing plan is edited and nothing is activated. ADR:
+`docs/adr/0001-ai-proposals-become-drafts.md`. Tests: `tests/test_coaching_proposals.py`,
+`rackbook/tests/test_plan_proposals.py`, `rackbook/tests/test_plan_proposal_ui.cjs`.

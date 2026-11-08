@@ -6,7 +6,9 @@
 <title>Hevy Fatigue</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script src="/training/static/training.js"></script>
 <script src="/training/static/ai-coach.js?v=1"></script>
+<script src="/training/static/plan-proposal.js?v=1"></script>
 <script src="/static/daily-coach.js?v=4"></script>
 <link rel="icon" href="/resources/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/resources/apple-touch-icon.png">
@@ -2483,6 +2485,15 @@ body.ai-open main {
   overflow-x: auto;
   margin: 0.25em 0 0.5em 0;
 }
+.plan-proposal { margin: 6px 0 12px; padding: 10px 12px; border: 1px solid var(--accent); border-radius: 8px; max-width: 100%; overflow-wrap: anywhere; }
+.plan-proposal h4, .plan-proposal h5 { margin: 0 0 4px; }
+.plan-proposal h5 { margin-top: 8px; font-size: 0.9em; }
+.plan-proposal p { margin: 0 0 6px; }
+.plan-proposal-note, .plan-proposal-status { font-size: 0.85em; opacity: 0.85; }
+.plan-proposal-list { margin: 0 0 6px 18px; padding: 0; }
+.plan-proposal-save { min-height: 44px; padding: 0 16px; margin: 4px 0; cursor: pointer; }
+.plan-proposal-save:disabled { opacity: 0.6; cursor: default; }
+.plan-proposal-open { display: inline-block; margin-top: 4px; }
 .ai-chat-bubble code {
   font-family: inherit;
   background: var(--surface);
@@ -4741,7 +4752,7 @@ function _aiEscapeHtml(str) {
 
 function _aiMarkdown(content) {
   const template = document.createElement('template');
-  template.innerHTML = marked.parse(content || '');
+  template.innerHTML = marked.parse(PlanProposal.strip(content).text);
   const allowed = new Set(['P','BR','STRONG','EM','UL','OL','LI','H1','H2','H3','H4','BLOCKQUOTE','PRE','CODE','HR','TABLE','THEAD','TBODY','TR','TH','TD','A']);
   const references = new Set((aiConversation?.evidence?.references || []).map(r => r.url));
   for (const el of [...template.content.querySelectorAll('*')]) {
@@ -4768,7 +4779,11 @@ function renderTrainingReview(view) {
   _renderAIChatPlaceholder();
   for (const turn of view.turns) {
     _appendAIMessage('user', turn.message);
-    if (turn.response) _appendAIMessage('assistant', turn.response);
+    if (turn.response) {
+      _appendAIMessage('assistant', turn.response);
+      if (turn.status === 'complete') PlanProposal.mount(document.getElementById('ai-chat-messages'),
+        {text: turn.response, conversationId: view.id, turnId: turn.id});
+    }
     if (turn.status !== 'complete') _appendAIMessage('assistant', 'Recorded response status: '+turn.status+'. This message will not be automatically resent.');
   }
   const e = view.evidence;

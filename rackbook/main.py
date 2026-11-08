@@ -46,6 +46,7 @@ from . import session_advice
 from . import stress_index
 from . import stress_service
 from . import mesocycles
+from . import plan_proposals
 from . import training_max
 from .wave_math import bbb_weight, epley, joker_qualifies, joker_weight, round_weight, session_e1rm, working_weight
 from .workout_payload import build_hevy_workout
@@ -733,6 +734,27 @@ def resolve_microcycle_session(plan_id: str, session_id: str):
 @app.put('/api/mesocycles/{plan_id}', response_model=mesocycles.PlanView)
 def update_mesocycle(plan_id: str, data: mesocycles.PlanInput):
     return _plan_call(mesocycles.save_plan, data, plan_id)
+
+
+class PlanProposalRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=plan_proposals.MAX_REPLY_CHARS)
+    conversation_id: UUID
+    turn_id: UUID
+
+
+@app.post('/api/plan-proposals/preview')
+def preview_plan_proposal(data: PlanProposalRequest):
+    """Read-only: validate the reply's proposal and describe it. Writes nothing."""
+    return plan_proposals.preview(data.text)
+
+
+@app.post('/api/plan-proposals/save')
+def save_plan_proposal(data: PlanProposalRequest):
+    """Explicit user action: save the proposal as one new inactive draft microcycle."""
+    try:
+        return plan_proposals.save_draft(data.text, data.conversation_id, data.turn_id)
+    except plan_proposals.ProposalError as exc:
+        raise HTTPException(status_code=exc.status, detail=str(exc))
 
 
 @app.post('/api/mesocycles/{plan_id}/sessions/{session_id}/complete', response_model=mesocycles.PlanView)
