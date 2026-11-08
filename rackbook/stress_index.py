@@ -1,9 +1,13 @@
-"""Rackbook stress v1: a descriptive training-dose estimate, independent of load planning.
+"""Rackbook stress v2: a descriptive training-dose estimate, independent of load planning.
 
-One reference per movement/session, from its heaviest usable set and the fixed
-default rep-max curve. Blank RPEs are estimated at 5; recorded values are untouched.
-The fitted coefficients and 80/120/150% bands are working conventions, not recovery limits.
-Pure: no database or network access.
+One reference e1RM per movement/session, from the fixed default rep-max curve: the larger
+of the session's heaviest usable set and the best recorded-RPE session e1RM in the
+preceding 84 days (earlier sessions only, no look-ahead). The history term stops a
+session's back-off sets from being re-scored by whichever top set happens to be logged;
+a session that beats its history still raises its own reference. Blank RPEs are
+estimated at 5 for scoring but never set the history reference; recorded values are
+untouched. The fitted coefficients and 80/120/150% bands are working conventions, not
+recovery limits. Pure: no database or network access.
 """
 from __future__ import annotations
 
@@ -12,8 +16,9 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from statistics import median
 
-MODEL_VERSION = "rackbook-stress-v1"
+MODEL_VERSION = "rackbook-stress-v2"
 BASELINE_DAYS = 56
+REFERENCE_DAYS = 84
 ESTIMATED_RPE = 5.0
 CENTRAL_BETA = 14.72311
 PERIPHERAL_SCALE = 0.5365534125622946
@@ -43,15 +48,13 @@ def empty_score() -> dict:
             "sets": 0, "estimated_sets": 0, "skipped_sets": 0}
 
 
-def session_score(sets: list[dict]) -> dict:
-    return score_session_sets(sets)[0]
+def session_score(sets: list[dict], reference_e1rm: float | None = None) -> dict:
+    return score_session_sets(sets, reference_e1rm)[0]
 
 
-def score_session_sets(sets: list[dict]) -> tuple[dict, list[dict | None]]:
-    """Aligned set contributions, all using the same movement/session reference."""
-    out = empty_score()
-    contributions = [None] * len(sets)
-    usable = []
+def _usable_sets(sets: list[dict]) -> tuple[list[tuple], int]:
+    """(weight, reps, rpe, estimated, index) for each scorable working set, plus the skipped count."""
+    usable, skipped = [], 0
     for index, s in enumerate(sets):
         if s.get("type", s.get("set_type")) == "warmup":
             continue
@@ -61,14 +64,40 @@ def score_session_sets(sets: list[dict]) -> tuple[dict, list[dict | None]]:
                 or not isinstance(reps, int) or isinstance(reps, bool) or reps <= 0
                 or not isinstance(rpe, (int, float)) or not math.isfinite(rpe) or not 0 <= rpe <= 10
                 or default_fraction(reps, rpe) is None):
-            out["skipped_sets"] += 1
+            skipped += 1
             continue
         usable.append((weight, reps, rpe, s.get("rpe") is None, index))
+    return usable, skipped
+
+
+def _anchor_e1rm(usable: list[tuple]) -> float | None:
     if not usable:
-        return out, contributions
+        return None
     # Ties: higher RPE, then fewer reps. Deterministic under set reordering.
     anchor = max(usable, key=lambda s: (s[0], s[2], -s[1]))
-    e1rm = anchor[0] / default_fraction(anchor[1], anchor[2])
+    return anchor[0] / default_fraction(anchor[1], anchor[2])
+
+
+def session_e1rm(sets: list[dict]) -> float | None:
+    """A session's e1RM from recorded RPEs only; blank-RPE sets never set a history reference."""
+    return _anchor_e1rm([u for u in _usable_sets(sets)[0] if not u[3]])
+
+
+def score_session_sets(sets: list[dict], reference_e1rm: float | None = None) -> tuple[dict, list[dict | None]]:
+    """Aligned set contributions, all using the same movement/session reference.
+
+    reference_e1rm is the best earlier recorded-RPE e1RM for this movement; the
+    session's own heaviest-set e1RM is used when it is larger or no history exists.
+    """
+    out = empty_score()
+    contributions = [None] * len(sets)
+    usable, out["skipped_sets"] = _usable_sets(sets)
+    if not usable:
+        return out, contributions
+    e1rm = _anchor_e1rm(usable)
+    if (isinstance(reference_e1rm, (int, float)) and not isinstance(reference_e1rm, bool)
+            and math.isfinite(reference_e1rm) and reference_e1rm > e1rm):
+        e1rm = reference_e1rm
     for weight, reps, rpe, estimated, index in usable:
         intensity = weight / e1rm
         central = reps * 1e-6 * math.exp(CENTRAL_BETA * intensity)
@@ -109,6 +138,34 @@ def merge_history(entries: list[dict], local_rows: list[dict]) -> list[dict]:
             and parse_time(s.get("workout_start_time")) not in times] + local
 
 
+def _prior_best(best: list[tuple], start: datetime | None) -> float | None:
+    """Best e1RM from earlier sessions in the 84 days before start. best is sorted by time.
+
+    Sessions at an identical timestamp do not establish precedence for each other.
+    """
+    if start is None:
+        return None
+    floor = start - timedelta(days=REFERENCE_DAYS)
+    found = None
+    for time, e1rm in reversed(best):
+        if time <= floor:
+            break
+        if time < start and e1rm is not None and (found is None or e1rm > found):
+            found = e1rm
+    return found
+
+
+def _score_chronologically(groups: dict) -> tuple[list[tuple], list[tuple]]:
+    """Score each session against only its own earlier history.
+
+    Returns ([(key, sets, score)], [(start, recorded e1RM or None)]), both oldest first.
+    """
+    ordered = sorted(groups.items(), key=lambda item: (item[0][1], item[0][0]))
+    best = [(key[1], session_e1rm(sets)) for key, sets in ordered]
+    scored = [(key, sets, session_score(sets, _prior_best(best, key[1]))) for key, sets in ordered]
+    return scored, best
+
+
 def add_scores(scores) -> dict:
     out = empty_score()
     for score in scores:
@@ -134,11 +191,14 @@ def build_summary(entries: list[dict], current_sets: list[dict], *, now: datetim
         if timestamp is None or timestamp > now:
             continue
         groups[(entry.get("workout_id") or "", timestamp)].append(entry)
-    sessions = [(key[1], session_score(sets)) for key, sets in groups.items()]
-    current, set_scores = score_session_sets(current_sets)
+    scored, best = _score_chronologically(groups)
+    sessions = [(key[1], score) for key, _, score in scored]
+    reference = _prior_best(best, current_at)
+    current, set_scores = score_session_sets(current_sets, reference)
     result = _summary_from_sessions(sessions, current, now, current_at)
     result["set_scores"] = set_scores
-    preview, preview_scores = score_session_sets(preview_sets if preview_sets is not None else current_sets)
+    preview, preview_scores = score_session_sets(
+        preview_sets if preview_sets is not None else current_sets, reference)
     result.update(preview=preview, preview_set_scores=preview_scores,
                   preview_status=stress_status(preview, result["window"]["median"]))
     return result
@@ -192,8 +252,7 @@ def build_dashboard(entries: list[dict], *, now: datetime, days: int = 56) -> di
         start = parse_time(entry.get("workout_start_time"))
         if start is not None and start <= now:
             groups[(entry.get("workout_id") or "", start)].append(entry)
-    ordered = sorted(groups.items(), key=lambda item: (item[0][1], item[0][0]))
-    scored = [(key, sets, session_score(sets)) for key, sets in ordered]
+    scored = _score_chronologically(groups)[0]
     # Warm-up-only workouts are not movement exposures; invalid working sets remain visible.
     scored = [(key, sets, score) for key, sets, score in scored if score["sets"] or score["skipped_sets"]]
     current = _summary_from_sessions([(key[1], score) for key, _, score in scored], empty_score(), now, now)

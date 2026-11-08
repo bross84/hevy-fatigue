@@ -337,6 +337,9 @@ Record device/browser/version separately from automated browser results:
 7. Use disposable mocks to exercise uncertain-save and local-finalization recovery.
 8. Open Progress, Recent, Stress and RPE Charts; return to Today and Check-in History.
    Settings must open the host tab. Revisit the optional trial only through Settings.
+   Movement stress is `rackbook-stress-v2` (84-day history-aware reference e1RM):
+   back-off-heavy sessions score lower than under v1 and session bands shift. That
+   is intended, not a regression. Nothing is stored; rollback restores v1 scoring.
 
 ## Rollback
 

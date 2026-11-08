@@ -175,3 +175,88 @@ class TestRetrospectiveDashboard(unittest.TestCase):
         result=stress.build_dashboard(entries,now=NOW)
         self.assertTrue(all(s['window']['sessions']==0 for s in result['sessions']))
         self.assertEqual(2,result['current']['window']['sessions'])
+
+
+def workout(days, id, sets):
+    start = (NOW - timedelta(days=days)).isoformat()
+    return [{**s, "workout_id": id, "workout_start_time": start} for s in sets]
+
+
+TOP = S(100, 1, 9)
+BACK = [S(80, 5, 8)] * 4
+
+
+class TestHistoryReference(unittest.TestCase):
+    def test_model_version_marks_the_reference_change(self):
+        self.assertEqual('rackbook-stress-v2', stress.MODEL_VERSION)
+        self.assertEqual('rackbook-stress-v2', stress.build_summary([], [], now=NOW)['model_version'])
+
+    def test_adding_a_top_set_no_longer_lowers_the_session(self):
+        alone = stress.session_score(BACK)['total']
+        self.assertLess(stress.session_score([TOP] + BACK)['total'], alone)  # the v1 defect, no history
+        entries = workout(10, 'top', [TOP])
+        without = stress.build_summary(entries, BACK, now=NOW)
+        with_top = stress.build_summary(entries, [TOP] + BACK, now=NOW)
+        self.assertGreater(with_top['session']['total'], without['session']['total'])
+        for before, after in zip(without['set_scores'], with_top['set_scores'][1:]):
+            self.assertAlmostEqual(before['total'], after['total'])
+
+    def test_history_reference_is_the_larger_of_history_and_own_session(self):
+        history_e1rm = stress.session_e1rm([TOP])
+        own = stress.session_score(BACK)
+        self.assertEqual(own, stress.session_score(BACK, history_e1rm * .5))   # lower history ignored
+        self.assertEqual(own, stress.session_score(BACK, None))
+        for bad in (float('nan'), float('inf'), 0, -5, True, 'x'):
+            self.assertEqual(own, stress.session_score(BACK, bad))
+        self.assertLess(stress.session_score(BACK, history_e1rm)['total'], own['total'])
+
+    def test_a_session_that_beats_its_history_sets_its_own_reference(self):
+        entries = workout(10, 'old', [S(60, 5, 8)])
+        self.assertEqual(stress.session_score(BACK),
+                         stress.build_summary(entries, BACK, now=NOW)['session'])
+
+    def test_blank_rpe_history_never_sets_the_reference(self):
+        entries = workout(10, 'imported', [S(100, 5, None)])
+        self.assertIsNone(stress.session_e1rm([S(100, 5, None)]))
+        self.assertEqual(stress.session_score(BACK),
+                         stress.build_summary(entries, BACK, now=NOW)['session'])
+        mixed = workout(10, 'mixed', [S(100, 5, None), S(60, 5, 8)])
+        self.assertEqual(stress.session_e1rm([S(60, 5, 8)]), stress.session_e1rm(mixed))
+
+    def test_reference_window_is_84_days_before_the_session(self):
+        base = stress.session_score(BACK)['total']
+        for days, applies in ((83, True), (84, False), (120, False)):
+            with self.subTest(days=days):
+                total = stress.build_summary(workout(days, 'top', [TOP]), BACK, now=NOW)['session']['total']
+                self.assertEqual(applies, total < base)
+
+    def test_dashboard_sessions_use_only_earlier_history(self):
+        entries = workout(30, 'earlier', BACK) + workout(5, 'later', [TOP])
+        earlier, later = stress.build_dashboard(entries, now=NOW, days=0)['sessions']
+        self.assertEqual(stress.session_score(BACK), earlier['score'])  # later top set cannot lower it
+        entries = workout(30, 'top', [TOP]) + workout(5, 'back', BACK)
+        _, back = stress.build_dashboard(entries, now=NOW, days=0)['sessions']
+        self.assertEqual(stress.session_score(BACK, stress.session_e1rm([TOP])), back['score'])
+
+    def test_draft_started_earlier_ignores_later_saved_sessions(self):
+        entries = workout(2, 'later', [TOP])
+        result = stress.build_summary(entries, BACK, now=NOW, session_start=NOW - timedelta(days=5))
+        self.assertEqual(stress.session_score(BACK), result['session'])
+
+    def test_identical_timestamps_do_not_set_each_others_reference(self):
+        entries = workout(4, 'a', [TOP]) + workout(4, 'b', BACK)
+        scores = {s['workout_id']: s['score'] for s in stress.build_dashboard(entries, now=NOW, days=0)['sessions']}
+        self.assertEqual(stress.session_score([TOP]), scores['a'])
+        self.assertEqual(stress.session_score(BACK), scores['b'])
+
+    def test_history_inputs_and_set_order_are_not_mutated_or_order_dependent(self):
+        entries = workout(10, 'top', [TOP]) + workout(3, 'back', BACK)
+        original = deepcopy(entries)
+        forward = stress.build_dashboard(entries, now=NOW, days=0)
+        self.assertEqual(forward, stress.build_dashboard(list(reversed(entries)), now=NOW, days=0))
+        self.assertEqual(original, entries)
+
+    def test_single_set_scores_still_match_the_published_table(self):
+        for reps, rpe, expected in ((3, 9, 1.23), (12, 10, 1.11), (1, 10, 1.51)):
+            with self.subTest(reps=reps, rpe=rpe):
+                self.assertAlmostEqual(expected, stress.session_score([S(100, reps, rpe)])['total'], places=2)
