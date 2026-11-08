@@ -498,7 +498,8 @@ Motivation is raw engagement context and cannot change fatigue or infer performa
 
 The app menu is defined once in /training/static/app-menu.js. Every logger page draws it
 (the Log page as the grouped slide-out sidebar; the other pages as a top bar with Dashboard,
-the Training pages and Settings visible, and Monitoring/Tools behind More). The dashboard
+AI Coach, the Training pages and Settings visible, and Monitoring and Docs behind More).
+AI Coach sits in Overview, second after Dashboard, rather than under Tools. The dashboard
 keeps its own sidebar for in-page tab buttons and badges; tests/test_app_menu.cjs fails if
 it drifts from the shared list. Model trial stays out of the main menu.
 

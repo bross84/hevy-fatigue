@@ -3,7 +3,7 @@
    sidebar stays hand-written for its tab buttons and badges, and a test keeps it identical. */
 const AppMenu = (() => {
   const groups = [
-    {name: 'Overview', items: [{label: 'Dashboard', href: '/'}]},
+    {name: 'Overview', items: [{label: 'Dashboard', href: '/'}, {label: 'AI Coach', href: '/#ai'}]},
     {name: 'Training', items: [
       {label: 'Log Workout', href: '/training/log'},
       {label: 'Plans', href: '/training/microcycles', also: ['/training/mesocycles']},
@@ -19,7 +19,6 @@ const AppMenu = (() => {
       {label: 'Patterns', href: '/#exercises'},
     ]},
     {name: 'Tools', items: [
-      {label: 'AI Coach', href: '/#ai'},
       {label: 'Docs', href: '/static/docs.html'},
       {label: 'Settings', href: '/#settings', pinned: true},
     ]},

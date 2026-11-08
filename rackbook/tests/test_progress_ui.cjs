@@ -5,7 +5,8 @@ const scripts=[...inlineScriptMatches(html)].map(m=>m[1]);
 for(const source of scripts)new vm.Script(source);
 for(const [,source] of html.matchAll(/<script src="([^"]+)"/g)) {
   assert.ok(source.startsWith('/training/static/'));
-  assert.ok(fs.statSync(path.join(__dirname,'..',source.replace('/training/','/'))).size>(source.includes('/vendor/')?10000:100));
+  // A cache-busting ?v= is not part of the file name.
+  assert.ok(fs.statSync(path.join(__dirname,'..',source.split('?')[0].replace('/training/','/'))).size>(source.includes('/vendor/')?10000:100));
 }
 function node(tag='div') {return {tag,textContent:'',children:[],dataset:{},attrs:{},events:{},style:{},hidden:false,offsetWidth:250,offsetHeight:140,value:'',
   append(...items){this.children.push(...items)},replaceChildren(...items){this.children=items;this.textContent=''},
