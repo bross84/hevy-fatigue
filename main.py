@@ -16,6 +16,7 @@ import threading
 
 from pattern_recovery import build_pattern_history
 import coaching
+import coaching_equipment
 import coaching_stream
 import weekly_coaching
 import daily_coaching
@@ -108,6 +109,11 @@ class CoachingMessage(BaseModel):
     model: str = Field(min_length=1, max_length=200)
     expected_sequence: int = Field(ge=0, le=coaching.MAX_TURNS)
     retry_pending_turn_id: UUID | None = None
+
+class CoachEquipmentInput(BaseModel):
+    items: list[str] = Field(default_factory=list, max_length=len(coaching_equipment.CATALOG))
+    notes: str = Field('', max_length=coaching_equipment.MAX_NOTES * 2)
+
 
 class TrainingStateThresholdsInput(BaseModel):
     tsb_threshold_underloaded: float = Field(8.0, ge=-50.0, le=50.0)
@@ -2513,6 +2519,21 @@ def ai_chat_proxy(data: AIChatRequest, db: Session = Depends(get_db)):
     history = data.history or []
     messages = _openai_compatible_messages(system_prompt, history, message)
     return _stream_openrouter(model, api_key, messages)
+
+
+@app.get('/api/ai/equipment')
+def coach_equipment_get(db: Session = Depends(get_db)):
+    return dict(catalog=coaching_equipment.catalog(), max_notes=coaching_equipment.MAX_NOTES,
+                **coaching_equipment.load(db))
+
+
+@app.put('/api/ai/equipment')
+def coach_equipment_put(data: CoachEquipmentInput, db: Session = Depends(get_db)):
+    try:
+        saved = coaching_equipment.save(db, data.items, data.notes)
+    except coaching_equipment.EquipmentError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    return dict(catalog=coaching_equipment.catalog(), max_notes=coaching_equipment.MAX_NOTES, **saved)
 
 
 @app.get('/api/ai/conversations')

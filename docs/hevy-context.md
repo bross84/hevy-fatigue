@@ -35,6 +35,7 @@ Hevy Fatigue is a personal training load and fatigue monitoring dashboard. It sy
 | `main.py` | FastAPI app, all API routes, fatigue engine |
 | `database.py` | SQLAlchemy models, `init_db()`, schema migrations |
 | `coaching.py`, `coaching_stress.py`, `coaching_progress.py`, `coaching_outcomes.py` | Read-only AI coach evidence report; stress-index and progress blocks per exercise; saved-proposal outcomes |
+| `coaching_equipment.py` | Athlete's available-equipment list (host `app_settings`), given to the coach as `available_equipment` |
 | `index.html` | Entire frontend — HTML, CSS, and JS in one file |
 | `diagnostic.html` | Engine snapshot / diagnostics page |
 | `importer.py` | Hevy API sync logic, session processing pipeline |
@@ -885,3 +886,27 @@ repeat saves reuse the first, and the athlete reviews and activates it on `/trai
 No existing plan is edited and nothing is activated. ADR:
 `docs/adr/0001-ai-proposals-become-drafts.md`. Tests: `tests/test_coaching_proposals.py`,
 `rackbook/tests/test_plan_proposals.py`, `rackbook/tests/test_plan_proposal_ui.cjs`.
+
+## Available equipment for the AI Coach (local, 2026-11-08)
+
+The athlete can save the equipment they train with from a collapsible panel at the top of the
+AI Coach tab: a fixed checklist of 20 items (`coaching_equipment.CATALOG`; ids are the stored
+contract) plus a notes box (1000 characters) for limits such as dumbbell range or no spotter.
+Host only: one JSON value under `app_settings` key `coach_equipment`; nothing is written to the
+logging database or to credentials. `GET`/`PUT /api/ai/equipment` read and save it. Unknown ids
+and over-long notes are rejected with 422 and leave the saved list unchanged. Saving an empty
+list with no notes clears it back to not set.
+
+`coaching.build_report` adds `available_equipment` (`status` set with item labels, notes and
+`saved_at`, or `status` not_set), so the daily, weekly and review conversations all carry it and
+each conversation freezes the list with its other evidence; changes apply to the next review.
+Not set means unknown, not none: `BRIEF` tells the coach not to assume a full gym or a bare
+room and to ask before a proposal or substitution that depends on it. When set, the coach is
+told to propose and substitute only movements doable with those items and notes, to check
+`known_movements` against the list because they are past movements, and to treat the notes as
+the athlete's words, not instructions. This is advice in the brief only: the server does not
+reject proposed exercises by equipment, because Hevy equipment categories are not stored. The
+athlete still previews a proposal and saves it only as an inactive draft.
+
+Tests: `tests/test_coaching_equipment.py`. Mocked preview checked the panel loads as not set,
+saves, scrolls inside the chat card on a short viewport and reloads with the saved list.

@@ -2621,6 +2621,37 @@ body.ai-open main {
   background: var(--card);
   color: var(--text);
 }
+#tab-ai .ai-equipment {
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--text);
+}
+#tab-ai .ai-equipment { flex: 0 0 auto; }
+#tab-ai .ai-equipment[open] { max-height: 45vh; overflow-y: auto; }
+#tab-ai .ai-equipment summary { cursor: pointer; font-weight: 600; }
+#tab-ai .ai-equipment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 6px 12px;
+}
+#tab-ai .ai-equipment-grid label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+#tab-ai .ai-equipment-notes {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  resize: vertical;
+}
 @keyframes aiTypingDotPulse {
   0%, 80%, 100% { opacity: .35; transform: translateY(0); }
   40% { opacity: 1; transform: translateY(-2px); }
@@ -3488,6 +3519,17 @@ body.ai-open main {
       <select id="ai-conversation-select" aria-label="Saved training reviews" onchange="selectTrainingReview(this.value)" style="min-width:0;max-width:100%;"><option value="">No saved review selected</option></select>
       <button class="btn" id="ai-review-reload" type="button" onclick="loadCoachingConversations()">Reload saved review</button>
     </div>
+    <details class="ai-equipment" id="ai-equipment">
+      <summary id="ai-equipment-summary">Available equipment</summary>
+      <div class="ai-chat-helper" style="margin:8px 0;">The coach only proposes movements you can do with what you check here. Not set means the coach asks instead of assuming.</div>
+      <div class="ai-equipment-grid" id="ai-equipment-grid"></div>
+      <label class="ai-settings-label" for="ai-equipment-notes" style="display:block;margin:10px 0 4px;">Limits and notes</label>
+      <textarea id="ai-equipment-notes" class="ai-equipment-notes" rows="2" maxlength="1000" placeholder="e.g. dumbbells to 50 lb, no spotter, rack has no safeties" autocomplete="off"></textarea>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="ai-equipment-save" type="button" onclick="saveCoachEquipment()">Save equipment</button>
+        <span class="ai-chat-helper" id="ai-equipment-status" aria-live="polite"></span>
+      </div>
+    </details>
     <div class="ai-chat-helper" id="ai-evidence-date" style="margin-bottom:8px;">Training context is shared with your selected OpenRouter model when you send a message.</div>
     <div class="ai-chat-top">
       <div class="ai-chat-helper">Review six months of training, then discuss programming. Changes are proposals only.</div>
@@ -4073,7 +4115,7 @@ function activateTab(tabName) {
   if (tabName === 'exercises')                           { if (exercises.length === 0) loadExercises(); }
 if (tabName === 'exercise-metrics')                    { loadExerciseConflicts(); loadExerciseMetrics('all'); }
   if (tabName === 'workouts'  && !workoutsLoaded)        loadWorkouts();
-  if (tabName === 'ai')                                   loadAISettings().then(() => loadAIContext());
+  if (tabName === 'ai')                                   { loadAISettings().then(() => loadAIContext()); loadCoachEquipment(); }
   if (tabName === 'log'       && !logLoaded)             loadLog();
   if (tabName === 'settings')                            loadSettingsTab();
 }
@@ -5060,6 +5102,67 @@ async function loadAISettings() {
     _setSectionResult('ai-settings-result', `✗ ${e.message || 'Could not load AI settings.'}`, false);
     _setAIChatConfiguredState(false);
     return false;
+  }
+}
+
+let coachEquipmentLoaded = false;
+
+function _coachEquipmentSummary(state) {
+  const el = document.getElementById('ai-equipment-summary');
+  if (!el) return;
+  const n = (state.items || []).length;
+  el.textContent = !state.configured ? 'Available equipment: not set'
+    : `Available equipment: ${n} item${n === 1 ? '' : 's'}${state.notes ? ' + notes' : ''}`;
+}
+
+function _renderCoachEquipment(state) {
+  const grid = document.getElementById('ai-equipment-grid');
+  if (!grid) return;
+  const chosen = new Set(state.items || []);
+  grid.innerHTML = (state.catalog || []).map(item =>
+    `<label><input type="checkbox" value="${escHtml(item.id)}" ${chosen.has(item.id) ? 'checked' : ''}> ${escHtml(item.label)}</label>`
+  ).join('');
+  document.getElementById('ai-equipment-notes').value = state.notes || '';
+  _coachEquipmentSummary(state);
+}
+
+async function loadCoachEquipment() {
+  const status = document.getElementById('ai-equipment-status');
+  if (!status) return;
+  try {
+    const r = await fetch('/api/ai/equipment');
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(_extractApiErrorDetail(d.detail, 'Could not load equipment.'));
+    _renderCoachEquipment(d);
+    coachEquipmentLoaded = true;
+    status.textContent = '';
+  } catch (e) {
+    status.textContent = e.message || 'Could not load equipment.';
+  }
+}
+
+async function saveCoachEquipment() {
+  if (!coachEquipmentLoaded) return;
+  const btn = document.getElementById('ai-equipment-save');
+  const status = document.getElementById('ai-equipment-status');
+  const items = [...document.querySelectorAll('#ai-equipment-grid input:checked')].map(i => i.value);
+  const notes = document.getElementById('ai-equipment-notes').value;
+  btn.disabled = true;
+  status.textContent = 'Saving…';
+  try {
+    const r = await fetch('/api/ai/equipment', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items, notes }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(_extractApiErrorDetail(d.detail, 'Save failed.'));
+    _renderCoachEquipment(d);
+    status.textContent = d.configured ? 'Saved. New reviews use this list.' : 'Cleared. The coach will ask instead of assuming.';
+  } catch (e) {
+    status.textContent = e.message || 'Save failed.';
+  } finally {
+    btn.disabled = false;
   }
 }
 
