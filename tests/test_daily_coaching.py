@@ -247,6 +247,25 @@ class DailyCoachingTests(TestCase):
         self.assertEqual(failed['turns'][0]['status'], 'failed')
         self.assertNotIn('daily_recommendation', failed)
 
+    def test_reason_length_tolerates_a_model_overshoot_but_stays_bounded(self):
+        # Reply the model actually produced (215 characters) that was shown as failed.
+        reason = ("Today's check-in is all zeros with smoothed score below usual range, but last "
+                  "session (2026-10-30) showed normal stress levels across squat, bench, and "
+                  "deadlift after 9 days off; proceed at your planned normal dose.")
+        self.assertGreater(len(reason), 200)
+        parsed = coaching.daily_recommendation(json.dumps(dict(action='continue', reason=reason)))
+        self.assertEqual(parsed, dict(action='continue', label='Continue as planned', reason=reason))
+        limit = coaching.DAILY_REASON_MAX_CHARS
+        self.assertIsNotNone(coaching.daily_recommendation(json.dumps(dict(action='reduce', reason='x' * limit))))
+        for bad in (dict(action='reduce', reason='x' * (limit + 1)),
+                    dict(action='reduce', reason='Line one.\nLine two.'),
+                    dict(action='reduce', reason='  '),
+                    dict(action='continue', reason='Fine.', extra='field'),
+                    dict(action='push harder', reason='Fine.')):
+            self.assertIsNone(coaching.daily_recommendation(json.dumps(bad)), bad)
+        self.assertIsNone(coaching.daily_recommendation('Sure! ' + json.dumps(dict(action='continue', reason='Fine.'))))
+        self.assertIn('160 characters', coaching.DAILY_RECOMMENDATION_INSTRUCTIONS)
+
     def test_missing_key_history_and_future_do_not_block_daily_logging(self):
         self.submit();view=self.prepare()
         with patch.object(main,'_get_ai_api_key',return_value=None):
