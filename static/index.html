@@ -9,7 +9,7 @@
 <script src="/training/static/training.js"></script>
 <script src="/training/static/ai-coach.js?v=1"></script>
 <script src="/training/static/plan-proposal.js?v=1"></script>
-<script src="/static/daily-coach.js?v=4"></script>
+<script src="/static/daily-coach.js?v=5"></script>
 <link rel="icon" href="/resources/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/resources/apple-touch-icon.png">
 <style>
@@ -4784,7 +4784,9 @@ function renderTrainingReview(view) {
       if (turn.status === 'complete') PlanProposal.mount(document.getElementById('ai-chat-messages'),
         {text: turn.response, conversationId: view.id, turnId: turn.id});
     }
-    if (turn.status !== 'complete') _appendAIMessage('assistant', 'Recorded response status: '+turn.status+'. This message will not be automatically resent.');
+    if (turn.status !== 'complete') _appendAIMessage('assistant', 'Recorded response status: '+turn.status+'.'+
+      (typeof turn.failure === 'string' && turn.failure.trim() ? ' Reason: '+turn.failure.trim() : '')+
+      ' This message will not be automatically resent.');
   }
   const e = view.evidence;
   document.getElementById('ai-evidence-date').textContent = 'Evidence captured '+new Date(e.captured_at).toLocaleString()+

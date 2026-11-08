@@ -1140,3 +1140,22 @@ is told the day was not trained. Proposal-outcome timing is now reported in days
   skip alone, then the skipped microcycle's review followed by the next opening review (6 mocked calls in
   total).
 - Not run: Docker build/startup (daemon not running), physical phone/tablet, deployed or real data.
+
+## Rolling stress windows and failure reasons — local, 2026-11-08
+
+Pattern stress and workload in the coach evidence moved from Monday calendar weeks to rolling 7-day windows
+ending on the report date, and a failed or interrupted AI turn now stores and shows why.
+
+- Host: `tests/test_coaching_patterns.py` checks windows for a Monday, Thursday and Sunday report date
+  (boundaries, contiguous, none partial, older than 63 days excluded), a Thursday and the previous Friday
+  sharing one window, the typical range excluding the latest window, and the report's `workload_windows`
+  (oldest window `partial`). `tests/test_coaching_stream.py` covers each provider-side reason and that
+  two-parameter recorders are unchanged. `tests/test_daily_coaching.py` covers the exact format rule named,
+  a provider error event through the real relay, an HTTP error before streaming, no reason on a complete
+  turn, and the `coaching_turns` column added to an older table without losing rows.
+- Browser logic: `tests/test_daily_coach_ui.cjs` shows a stored reason, renders it literally, and keeps the
+  old message for a turn with none.
+- Full runs: host 227 tests, logger 549 (1 expected failure, as before), all 35 `.cjs` files.
+- Mocked browser: `tools/check_daily_coaching_browser.py` passes with the changed daily card script and
+  page (it does not itself trigger a failure card; that is covered by the `.cjs` test).
+- Not run: Docker build/startup, physical phone/tablet, deployed or real data, a live model.

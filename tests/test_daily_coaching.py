@@ -8,13 +8,15 @@ from unittest import TestCase
 from unittest.mock import patch, MagicMock
 from uuid import uuid4
 
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import coaching
 import daily_coaching
+import database
 import main
 from database import Base, DailyReadiness, WorkoutSession, WorkoutLog, CoachingConversation, CoachingTurn
 from rackbook import database as logger
@@ -266,6 +268,71 @@ class DailyCoachingTests(TestCase):
         self.assertIsNone(coaching.daily_recommendation('Sure! ' + json.dumps(dict(action='continue', reason='Fine.'))))
         self.assertIn('160 characters', coaching.DAILY_RECOMMENDATION_INSTRUCTIONS)
 
+    def send(self, view, sequence, *, provider=None, remote=None):
+        path = '/api/ai/conversations/' + view['id'] + '/messages'
+        body = dict(id=str(uuid4()), message='What should I do next session?', model='test/model', expected_sequence=sequence)
+        patches = [patch.object(main, '_get_ai_api_key', return_value='mock-only')]
+        patches.append(patch.object(main, '_stream_openrouter', side_effect=provider) if provider
+                       else patch.object(main.httpx, 'Client', return_value=remote))
+        with patches[0], patches[1]:
+            return self.client.post(path, json=body)
+
+    def turns(self, view):
+        return self.client.get('/api/ai/conversations/' + view['id']).json()['turns']
+
+    def test_a_failed_turn_says_which_rule_it_broke_and_a_complete_turn_has_no_reason(self):
+        self.submit()
+        view = self.prepare()
+        too_long = json.dumps(dict(action='continue', reason='x' * (coaching.DAILY_REASON_MAX_CHARS + 1)))
+        self.assertEqual(200, self.send(view, 0, provider=lambda m, k, msgs, on_finish: on_finish(too_long, 'complete')).status_code)
+        valid = json.dumps(dict(action='continue', reason='Recent effort is steady.'))
+        self.assertEqual(200, self.send(view, 1, provider=lambda m, k, msgs, on_finish: on_finish(valid, 'complete')).status_code)
+        failed, complete = self.turns(view)
+        self.assertEqual('failed', failed['status'])
+        self.assertEqual(f'The reason was {coaching.DAILY_REASON_MAX_CHARS + 1} characters; the limit is {coaching.DAILY_REASON_MAX_CHARS}.',
+                         failed['failure'])
+        self.assertEqual(('complete', None), (complete['status'], complete['failure']))
+
+    def test_every_daily_format_problem_is_named(self):
+        cases = {
+            'Sure! {"action":"continue","reason":"ok"}': 'not a single JSON object',
+            '{"action":"continue"}': 'exactly the keys',
+            '{"action":"push harder","reason":"ok"}': 'The action must be one of: continue, reduce, increase, insufficient_evidence.',
+            '{"action":"continue","reason":7}': 'must be text',
+            '{"action":"continue","reason":"  "}': 'was empty',
+            '{"action":"continue","reason":"a\\nb"}': 'single line',
+        }
+        for reply, expected in cases.items():
+            with self.subTest(reply):
+                result, problem = coaching.parse_daily_recommendation(reply)
+                self.assertIsNone(result)
+                self.assertIn(expected, problem)
+        self.assertEqual((None, 'The reply was not a single JSON object (text around the JSON is not accepted).'),
+                         coaching.parse_daily_recommendation(None))
+        self.assertIsNone(coaching.parse_daily_recommendation('{"action":"reduce","reason":"Back off."}')[1])
+
+    def test_an_error_event_from_the_provider_is_recorded_through_the_real_relay(self):
+        self.submit()
+        view = self.prepare()
+        remote = MagicMock()
+        remote.send.return_value.status_code = 200
+        remote.send.return_value.iter_text.return_value = iter(['data: {"error":{"message":"Rate limited"}}\n\ndata: [DONE]\n\n'])
+        self.assertEqual(200, self.send(view, 0, remote=remote).status_code)
+        turn = self.turns(view)[0]
+        self.assertEqual(('failed', 'The AI provider reported an error: Rate limited'), (turn['status'], turn['failure']))
+        self.assertIsNone(self.client.get('/api/ai/daily-reviews/' + str(DAY)).json().get('daily_recommendation'))
+
+    def test_an_http_error_before_streaming_is_recorded_with_the_provider_message(self):
+        self.submit()
+        view = self.prepare()
+
+        def provider(model, key, messages, on_finish):
+            raise HTTPException(status_code=502, detail='OpenRouter error: Insufficient credits')
+        response = self.send(view, 0, provider=provider)
+        self.assertEqual(502, response.status_code)
+        turn = self.turns(view)[0]
+        self.assertEqual(('failed', 'OpenRouter error: Insufficient credits'), (turn['status'], turn['failure']))
+
     def test_missing_key_history_and_future_do_not_block_daily_logging(self):
         self.submit();view=self.prepare()
         with patch.object(main,'_get_ai_api_key',return_value=None):
@@ -282,3 +349,25 @@ class DailyCoachingTests(TestCase):
         partial=self.prepare()['evidence']['daily_context']
         self.assertIsNone(partial['scores']['combined_score'])
         self.assertIsNone(partial['observation']['perceived_recovery'])
+
+
+class FailureColumnMigrationTests(TestCase):
+    def test_an_existing_turns_table_gains_the_failure_column_and_keeps_its_rows(self):
+        with tempfile.TemporaryDirectory() as folder:
+            engine = create_engine('sqlite:///' + str(Path(folder) / 'host.db'))
+            try:
+                Base.metadata.create_all(engine)
+                with engine.begin() as conn:
+                    conn.execute(text('DROP TABLE coaching_turns'))
+                    conn.execute(text('CREATE TABLE coaching_turns (id VARCHAR PRIMARY KEY, conversation_id VARCHAR NOT NULL, '
+                                      'sequence INTEGER NOT NULL, message VARCHAR NOT NULL, response VARCHAR, model VARCHAR NOT NULL, '
+                                      'status VARCHAR NOT NULL, created_at VARCHAR NOT NULL, UNIQUE (conversation_id, sequence))'))
+                    conn.execute(text("INSERT INTO coaching_turns VALUES ('t', 'c', 1, 'm', 'r', 'x', 'complete', '2026-01-01')"))
+                with patch.object(database, 'engine', engine):
+                    database.init_db()
+                    database.init_db()
+                with engine.connect() as conn:
+                    self.assertEqual([('t', 'complete', None)],
+                                     [tuple(row) for row in conn.execute(text('SELECT id, status, failure FROM coaching_turns'))])
+            finally:
+                engine.dispose()

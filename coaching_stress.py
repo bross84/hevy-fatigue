@@ -13,8 +13,9 @@ from rackbook import stress_index
 RECENT_SESSIONS = 6
 PATTERNS = ('knee', 'hip', 'push', 'pull')
 PATTERN_COLUMNS = dict(knee='pct_quad_dom', hip='pct_posterior', push='pct_upper_push', pull='pct_upper_pull')
-WEEKS_SHOWN = 9          # eight completed calendar weeks and the current one
-MIN_TYPICAL_WEEKS = 4
+WINDOW_DAYS = 7          # rolling windows end on the report date; never a calendar week
+WINDOWS_SHOWN = 9        # the latest window (the last 7 days) and the eight before it
+MIN_TYPICAL_WINDOWS = 4
 WEIGHT_TOLERANCE = .01   # mapping percentages must sum to 1.0 within this
 DESCRIPTION = (
     'Rackbook stress index: a descriptive per-movement training-dose estimate relative to an '
@@ -30,11 +31,18 @@ LIMITATIONS = (
     'Pattern stress index: each movement session’s stress is split across knee/hip/push/pull by the '
     'current exercise_mappings percentages (accessories are not discounted; editing a mapping re-attributes '
     'history). Auto-classified mappings may be wrong (see reviewed_share). Mappings that are missing or do '
-    'not sum to 1 are kept in unmapped, and conditioning exercises are excluded. Weeks start Monday and use '
-    'local workout dates; the current week is partial. Attributed totals are not recovery limits.')
+    'not sum to 1 are kept in unmapped, and conditioning exercises are excluded. Windows are rolling 7 local '
+    'days ending on the report date, not calendar weeks; the latest window is the last 7 days. Attributed '
+    'totals are not recovery limits.')
 PATTERN_DESCRIPTION = (
-    'Weekly Rackbook stress index attributed to knee, hip, push and pull from the exercise mapping '
-    'percentages. This is a different quantity from the host Pattern Stress card (ATL/CTL, soreness).')
+    'Rackbook stress index attributed to knee, hip, push and pull from the exercise mapping percentages, '
+    'summed over rolling 7-day windows. This is a different quantity from the host Pattern Stress card '
+    '(ATL/CTL, soreness).')
+
+
+def window_end(day, today):
+    """Last day of the rolling WINDOW_DAYS window that holds `day`, counting back from `today`."""
+    return today - timedelta(days=((today - day).days // WINDOW_DAYS) * WINDOW_DAYS)
 
 
 def utc_start(value):
@@ -145,11 +153,10 @@ def _rounded(value):
 
 
 def pattern_rollup(scored, exercises, mappings, today):
-    """Weekly and rolling stress attributed to patterns. Pure, read-only, nothing stored."""
-    monday = today - timedelta(days=today.weekday())
-    starts = [monday - timedelta(weeks=WEEKS_SHOWN - 1 - i) for i in range(WEEKS_SHOWN)]
-    weeks = {start: dict(bucket=_bucket(), sessions=0) for start in starts}
-    rolling = {7: _bucket(), 28: _bucket()}
+    """Stress attributed to patterns over rolling 7-day windows ending `today`. Pure, read-only, nothing stored."""
+    ends = [today - timedelta(days=WINDOW_DAYS * (WINDOWS_SHOWN - 1 - i)) for i in range(WINDOWS_SHOWN)]
+    windows = {end: dict(bucket=_bucket(), sessions=0) for end in ends}
+    rolling_28 = _bucket()
     unmapped_titles, mapped_total, reviewed_total = set(), 0., 0.
     for key, rows in scored.items():
         title = exercises[key]['title']
@@ -161,28 +168,31 @@ def pattern_rollup(scored, exercises, mappings, today):
             day = _local_day(day_text)
             if day is None or day > today or not score['sets']:
                 continue
-            week = weeks.get(day - timedelta(days=day.weekday()))
-            if week is not None:
-                _add(week['bucket'], score, weights)
-                week['sessions'] += 1
+            window = windows.get(window_end(day, today))
+            if window is not None:
+                _add(window['bucket'], score, weights)
+                window['sessions'] += 1
                 if weights is None:
                     unmapped_titles.add(title)
                 else:
                     mapped_total += score['total']
                     reviewed_total += score['total'] if mapping['reviewed'] else 0.
-            for days, bucket in rolling.items():
-                if (today - day).days < days:
-                    _add(bucket, score, weights)
-    if not any(week['sessions'] for week in weeks.values()):
-        return dict(status='no_scorable_sessions', window_weeks=WEEKS_SHOWN)
-    completed = [w for s, w in weeks.items() if s != monday and w['sessions']]
-    typical = {p: dict(median=round(median(w['bucket']['patterns'][p]['total'] for w in completed), 2) if completed else None,
-                       trained_weeks=len(completed), provisional=len(completed) < MIN_TYPICAL_WEEKS) for p in PATTERNS}
+            if (today - day).days < 28:
+                _add(rolling_28, score, weights)
+    if not any(window['sessions'] for window in windows.values()):
+        return dict(status='no_scorable_sessions', windows_shown=WINDOWS_SHOWN, window_days=WINDOW_DAYS)
+    # The latest window is the one being judged, so it never enters the typical range.
+    earlier = [w for end, w in windows.items() if end != today and w['sessions']]
+    typical = {p: dict(median=round(median(w['bucket']['patterns'][p]['total'] for w in earlier), 2) if earlier else None,
+                       trained_windows=len(earlier), provisional=len(earlier) < MIN_TYPICAL_WINDOWS) for p in PATTERNS}
     return _rounded(dict(
         status='available', model_version=stress_index.MODEL_VERSION, as_of=str(today),
-        description=PATTERN_DESCRIPTION, week_starts='Monday (local workout dates)', patterns=list(PATTERNS),
-        weeks=[dict(week_start=str(start), partial=start == monday, trained=bool(weeks[start]['sessions']),
-                    scored_movement_sessions=weeks[start]['sessions'], **weeks[start]['bucket']) for start in starts],
-        rolling_7_day=rolling[7], rolling_28_day=rolling[28], typical_week=typical,
+        description=PATTERN_DESCRIPTION, window_days=WINDOW_DAYS,
+        window_basis='Rolling 7 local days ending on as_of (local workout dates); the last entry is the last 7 days.',
+        patterns=list(PATTERNS),
+        windows=[dict(window_start=str(end - timedelta(days=WINDOW_DAYS - 1)), window_end=str(end),
+                      trained=bool(windows[end]['sessions']), scored_movement_sessions=windows[end]['sessions'],
+                      **windows[end]['bucket']) for end in ends],
+        rolling_28_day=rolling_28, typical_window=typical,
         unmapped_exercises=sorted(unmapped_titles)[:10],
         reviewed_share=round(reviewed_total / mapped_total, 2) if mapped_total else None))

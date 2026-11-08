@@ -108,6 +108,8 @@ class CoachingTurn(Base):
     model: Mapped[str] = mapped_column(String)
     status: Mapped[str] = mapped_column(String)
     created_at: Mapped[str] = mapped_column(String)
+    # Short plain-text explanation when status is failed or interrupted (never prompt or evidence text).
+    failure: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     __table_args__ = (UniqueConstraint('conversation_id', 'sequence'),)
 
 # --- TABLE 5: Exercise Movement Pattern Mapping ---
@@ -200,6 +202,11 @@ def init_db():
         col_names = {row[1] for row in cols}
         if "modality_note" not in col_names:
             conn.execute(text("ALTER TABLE workout_sessions ADD COLUMN modality_note VARCHAR"))
+            conn.commit()
+
+        turn_columns = {row[1] for row in conn.execute(text("PRAGMA table_info(coaching_turns)")).fetchall()}
+        if "failure" not in turn_columns:
+            conn.execute(text("ALTER TABLE coaching_turns ADD COLUMN failure VARCHAR"))
             conn.commit()
 
         # Ensure workout_logs has a hard unique index on natural set identity.

@@ -36,7 +36,7 @@ class PatternRollupTests(TestCase):
 
     def test_movement_stress_is_split_by_mapping_percentages_and_conserved(self):
         result = self.rollup({'Box Squat': [(str(DAY), score(10.))]}, {'Box Squat': mapping(knee=.35, hip=.65)})
-        week = result['weeks'][-1]
+        week = result['windows'][-1]
         self.assertEqual(3.5, week['patterns']['knee']['total'])
         self.assertEqual(6.5, week['patterns']['hip']['total'])
         self.assertEqual(0, week['patterns']['push']['total'])
@@ -44,46 +44,65 @@ class PatternRollupTests(TestCase):
         self.assertAlmostEqual(5, sum(p['central'] for p in week['patterns'].values()), places=1)
         self.assertEqual(0, week['unmapped']['total'])
 
-    def test_weeks_start_monday_use_local_dates_and_the_current_week_is_partial(self):
-        scored = {'Bench': [(str(MONDAY - timedelta(days=1)), score(4.)), (str(MONDAY), score(6.)), (str(DAY), score(1.))]}
+    def test_windows_are_rolling_7_days_ending_today_whatever_the_weekday(self):
+        for today in (MONDAY, MONDAY + timedelta(days=3), MONDAY + timedelta(days=6)):
+            with self.subTest(weekday=today.weekday()):
+                # days ago: 0 and 6 share the latest window; 7 and 13 the one before; 62 the oldest; 63 is outside.
+                scored = {'Bench': [(str(today - timedelta(days=d)), score(float(v)))
+                                    for d, v in ((0, 1), (6, 2), (7, 4), (13, 8), (62, 16), (63, 32))]}
+                result = self.rollup(scored, {'Bench': mapping(push=1.)}, today=today)
+                self.assertEqual(coaching_stress.WINDOWS_SHOWN, len(result['windows']))
+                self.assertEqual(7, result['window_days'])
+                latest, previous, oldest = result['windows'][-1], result['windows'][-2], result['windows'][0]
+                self.assertEqual((str(today - timedelta(days=6)), str(today)), (latest['window_start'], latest['window_end']))
+                self.assertEqual((str(today - timedelta(days=13)), str(today - timedelta(days=7))),
+                                 (previous['window_start'], previous['window_end']))
+                self.assertEqual(str(today - timedelta(days=62)), oldest['window_start'])
+                self.assertEqual(3, latest['patterns']['push']['total'])
+                self.assertEqual(12, previous['patterns']['push']['total'])
+                self.assertEqual(16, oldest['patterns']['push']['total'])
+                self.assertEqual(2, latest['scored_movement_sessions'])
+                self.assertNotIn('partial', latest)
+                for left, right in zip(result['windows'], result['windows'][1:]):
+                    self.assertEqual(str(date.fromisoformat(left['window_end']) + timedelta(days=1)), right['window_start'])
+
+    def test_thursday_and_the_previous_friday_share_one_window(self):
+        # A Monday calendar week would split these two sessions; the rolling window does not.
+        scored = {'Bench': [(str(DAY), score(5.)), (str(DAY - timedelta(days=6)), score(7.))]}
+        self.assertLess(DAY - timedelta(days=6), MONDAY)
         result = self.rollup(scored, {'Bench': mapping(push=1.)})
-        self.assertEqual(coaching_stress.WEEKS_SHOWN, len(result['weeks']))
-        previous, current = result['weeks'][-2], result['weeks'][-1]
-        self.assertEqual(str(MONDAY), current['week_start'])
-        self.assertTrue(current['partial'])
-        self.assertFalse(previous['partial'])
-        self.assertEqual(4, previous['patterns']['push']['total'])
-        self.assertEqual(7, current['patterns']['push']['total'])
-        self.assertEqual(2, current['scored_movement_sessions'])
-        self.assertEqual(str(MONDAY - timedelta(weeks=coaching_stress.WEEKS_SHOWN - 1)), result['weeks'][0]['week_start'])
+        self.assertEqual(12, result['windows'][-1]['patterns']['push']['total'])
+        self.assertEqual(0, result['windows'][-2]['patterns']['push']['total'])
 
     def test_missing_invalid_and_conditioning_mappings(self):
         scored = {name: [(str(DAY), score(2.))] for name in ('Mystery', 'Half', 'Metcon', 'Row')}
         result = self.rollup(scored, {'Half': mapping(knee=.5), 'Metcon': mapping(knee=1., conditioning=True),
                                       'Row': mapping(pull=1.)})
-        week = result['weeks'][-1]
+        week = result['windows'][-1]
         self.assertEqual(4, week['unmapped']['total'])            # Mystery, plus Half whose weights sum to .5
         self.assertEqual(2, week['patterns']['pull']['total'])
         self.assertEqual(0, week['patterns']['knee']['total'])     # conditioning excluded; invalid weights not used
         self.assertEqual(['Half', 'Mystery'], result['unmapped_exercises'])
         self.assertEqual(3, week['scored_movement_sessions'])
 
-    def test_typical_week_uses_completed_trained_weeks_only(self):
-        rows = [(str(MONDAY - timedelta(weeks=weeks_ago)), score(total))
-                for weeks_ago, total in ((1, 10.), (2, 20.), (3, 30.), (5, 50.))]   # week 4 is empty
-        rows.append((str(DAY), score(99.)))                                         # the partial week is not typical
+    def test_typical_window_uses_earlier_trained_windows_only(self):
+        # Window k holds days ago 7k..7k+6; window 4 is empty.
+        rows = [(str(DAY - timedelta(days=days_ago)), score(total))
+                for days_ago, total in ((10, 10.), (17, 20.), (24, 30.), (38, 50.))]
+        rows.append((str(DAY), score(99.)))                                         # the latest window is not typical
         result = self.rollup({'Bench': rows}, {'Bench': mapping(push=1.)})
-        typical = result['typical_week']['push']
-        self.assertEqual((25., 4, False), (typical['median'], typical['trained_weeks'], typical['provisional']))
-        self.assertEqual(0, result['weeks'][-5]['patterns']['push']['total'])
-        self.assertFalse(result['weeks'][-5]['trained'])
-        few = self.rollup({'Bench': rows[:2]}, {'Bench': mapping(push=1.)})['typical_week']['push']
+        typical = result['typical_window']['push']
+        self.assertEqual((25., 4, False), (typical['median'], typical['trained_windows'], typical['provisional']))
+        self.assertEqual(0, result['windows'][-5]['patterns']['push']['total'])
+        self.assertFalse(result['windows'][-5]['trained'])
+        few = self.rollup({'Bench': rows[:2]}, {'Bench': mapping(push=1.)})['typical_window']['push']
         self.assertTrue(few['provisional'])
 
-    def test_rolling_windows_use_local_calendar_days(self):
+    def test_rolling_28_day_total_uses_local_calendar_days(self):
         scored = {'Bench': [(str(DAY - timedelta(days=d)), score(1.)) for d in (0, 6, 7, 27, 28)]}
         result = self.rollup(scored, {'Bench': mapping(push=1.)})
-        self.assertEqual(2, result['rolling_7_day']['patterns']['push']['total'])
+        self.assertNotIn('rolling_7_day', result)             # the latest window is the last 7 days
+        self.assertEqual(2, result['windows'][-1]['patterns']['push']['total'])
         self.assertEqual(4, result['rolling_28_day']['patterns']['push']['total'])
 
     def test_reviewed_share_and_unscorable_history(self):
@@ -142,7 +161,7 @@ class PatternReportTests(TestCase):
         report = coaching.build_report(self.db, today=DAY)
         block = report['pattern_stress_index']
         session_total = report['exercises'][0]['stress']['latest_session']['total']
-        current = block['weeks'][-1]['patterns']
+        current = block['windows'][-1]['patterns']
         self.assertAlmostEqual(session_total * .4, current['knee']['total'], places=1)
         self.assertAlmostEqual(session_total * .6, current['hip']['total'], places=1)
         self.assertEqual(1., block['reviewed_share'])
@@ -153,7 +172,7 @@ class PatternReportTests(TestCase):
         row = self.db.query(ExerciseMapping).one()
         row.pct_quad_dom, row.pct_posterior = 1., 0.
         self.db.commit()
-        again = coaching.build_report(self.db, today=DAY)['pattern_stress_index']['weeks'][-1]['patterns']
+        again = coaching.build_report(self.db, today=DAY)['pattern_stress_index']['windows'][-1]['patterns']
         self.assertAlmostEqual(session_total, again['knee']['total'], places=1)
         self.assertEqual(0, again['hip']['total'])
 
@@ -161,14 +180,31 @@ class PatternReportTests(TestCase):
         self.imported('a', 3)
         block = coaching.build_report(self.db, today=DAY)['pattern_stress_index']
         self.assertEqual(['Squat'], block['unmapped_exercises'])
-        self.assertGreater(block['weeks'][-1]['unmapped']['total'], 0)
+        self.assertGreater(block['windows'][-1]['unmapped']['total'], 0)
         self.assertIsNone(block['reviewed_share'])
+
+    def test_report_workload_and_pattern_windows_are_rolling_not_calendar_weeks(self):
+        self.imported('fri', 6)      # the Friday before DAY (a Thursday): another calendar week
+        self.imported('thu', 0)
+        self.imported('old', 184)    # the first day of the six-month evidence window
+        report = coaching.build_report(self.db, today=DAY)
+        self.assertNotIn('weekly_workload', report)
+        windows = report['workload_windows']
+        latest, oldest = windows[-1], windows[0]
+        self.assertEqual((str(DAY - timedelta(days=6)), str(DAY), 2, False),
+                         (latest['window_start'], latest['window_end'], latest['sessions'], latest['partial']))
+        self.assertEqual(str(DAY - timedelta(days=182)), oldest['window_end'])
+        self.assertTrue(oldest['partial'])                    # starts before the evidence window
+        self.assertEqual(2, report['pattern_stress_index']['windows'][-1]['scored_movement_sessions'])
+        self.assertIn(coaching_stress.LIMITATIONS[-1], report['limitations'])
+        self.assertTrue(any('rolling 7 local days' in text for text in report['limitations']))
 
     def test_report_without_scorable_sessions_has_an_explicit_empty_block(self):
         self.assertEqual('no_scorable_sessions', coaching.build_report(self.db, today=DAY)['pattern_stress_index']['status'])
 
     def test_brief_separates_pattern_stress_index_from_the_host_card(self):
         brief = ' '.join(coaching.BRIEF.split())
-        for phrase in ('pattern_stress_index attributes', 'It is not the host Pattern Stress card',
+        for phrase in ('pattern_stress_index attributes', 'rolling 7-day windows', 'never calendar weeks',
+                       'It is not the host Pattern Stress card',
                        'These are totals, never limits or targets'):
             self.assertIn(phrase, brief)
