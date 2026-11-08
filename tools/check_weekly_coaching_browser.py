@@ -69,14 +69,33 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             checkin(2)
             assert calls()==1
             save()
+            # The microcycle is finished, but nothing reviews it until the next check-in.
+            page.goto(URL+'/training/microcycles')
+            assert calls()==1
+            second=page.request.post(URL+'/training/api/mesocycles',data=dict(name='Second microcycle',weeks=[dict(name='Week',sessions=[
+                dict(id='b-one',name='Second Workout',exercises=[dict(exercise_template_id='sq',title='Squat (Barbell)',sets=[dict(reps=5,rpe=7)])])])]))
+            assert second.ok,second.text()
+            load();expect(page.locator('#title')).to_have_value('Second Workout')
+            checkin(1)
+            expect(page.locator('#microcycleClosingReview')).to_contain_text('Finished microcycle · complete')
+            expect(page.locator('#weeklyOpeningReview')).to_contain_text('Before day 1 · complete')
+            assert calls()==3  # the finished microcycle first, then the new microcycle's day 1
+            draft=page.evaluate("JSON.parse(localStorage.getItem('training.logDraft'))")
+            auto_closing_id=draft['closing_review_id']
+            page.reload()
+            expect(page.locator('#microcycleClosingReview')).to_contain_text('Finished microcycle · complete')
+            assert calls()==3  # a reload never resends
+            page.screenshot(path=str(OUT/'automatic-closing-phone.png'),full_page=True)
+            save()
             page.goto(URL+'/training/microcycles');page.locator('#completedPlans').evaluate('(el)=>el.open=true')
-            review=page.get_by_role('link',name='Review this week with AI Coach',exact=True)
-            expect(review).to_be_visible();assert calls()==1
+            review=page.locator('a[href*="coaching_week='+plan['id']+'"]')
+            expect(review).to_have_text('Review this microcycle with AI Coach');assert calls()==3
             review.click()
-            expect(page.locator('#ai-chat-messages')).to_contain_text('End-of-week review')
+            expect(page.locator('#ai-chat-messages')).to_contain_text('Microcycle review')
             expect(page.locator('#ai-chat-send')).to_be_enabled()
-            assert calls()==2
+            assert calls()==3  # the request opens the automatic review; it is not generated again
             closing_id=page.locator('#ai-conversation-select').input_value()
+            assert closing_id==auto_closing_id
             closing=page.request.get(URL+'/api/ai/conversations/'+closing_id).json()
             week=closing['evidence']['week_context']
             assert week['saved_workout_count']==2 and week['manually_marked_count']==0
@@ -85,17 +104,48 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             page.locator('#ai-chat-input').fill('Can we discuss changing accessories for next week?')
             page.locator('#ai-chat-send').click();expect(page.locator('#ai-chat-send')).to_be_enabled()
             page.reload();expect(page.locator('#ai-chat-messages')).to_contain_text('Can we discuss changing accessories')
-            assert calls()==3
+            assert calls()==4
             assert len(page.request.get(URL+'/api/ai/conversations/'+closing_id).json()['turns'])==2
-            final=page.request.get(URL+'/training/api/mesocycles').json()[0]
+            final=next(p for p in page.request.get(URL+'/training/api/mesocycles').json() if p['id']==plan['id'])
             assert final['weeks']==initial_weeks
             assert len(final['completed'])==2
+            # Skipping a day finishes the microcycle without counting as trained, and the next check-in reviews it.
+            def make_plan(name,days):
+                made=page.request.post(URL+'/training/api/mesocycles',data=dict(name=name,weeks=[dict(name='Week',sessions=[
+                    dict(id=d,name=d.replace('-',' ').title(),exercises=[dict(exercise_template_id='sq',title='Squat (Barbell)',sets=[dict(reps=5,rpe=7)])]) for d in days])]))
+                assert made.ok,made.text();return made.json()
+            skip_plan=make_plan('Skip microcycle',['skip-one','skip-two'])
+            after_plan=make_plan('After skip microcycle',['after-one'])
+            assert page.request.post(URL+'/training/api/mesocycles/'+skip_plan['id']+'/sessions/skip-one/complete').ok
+            page.goto(URL+'/training/log')
+            page.get_by_label('Select microcycle').select_option(skip_plan['id'])
+            expect(page.get_by_label('Select workout day')).to_have_value('skip-two')
+            page.once('dialog',lambda dialog:dialog.accept('Pull-ups after day 1 of the next microcycle'))
+            page.get_by_role('button',name='Skip this day',exact=True).click()
+            expect(page.locator('#plannedStart')).to_contain_text('Microcycle complete')
+            expect(page.get_by_label('Select workout day')).to_contain_text('Skipped')
+            skipped=next(p for p in page.request.get(URL+'/training/api/mesocycles').json() if p['id']==skip_plan['id'])
+            outcomes={c['session_id']:(c['outcome'],c['note'],c['hevy_workout_id']) for c in skipped['completed']}
+            assert outcomes['skip-two']==('skipped','Pull-ups after day 1 of the next microcycle',None),outcomes
+            assert outcomes['skip-one'][0]=='completed' and not skipped['active']
+            assert calls()==4  # skipping alone starts no AI review
+            page.get_by_label('Select microcycle').select_option(after_plan['id'])
+            page.get_by_role('button',name='Load selected workout',exact=True).click()
+            checkin(1)
+            expect(page.locator('#microcycleClosingReview')).to_contain_text('Finished microcycle · complete')
+            expect(page.locator('#weeklyOpeningReview')).to_contain_text('Before day 1 · complete')
+            assert calls()==6  # the skipped microcycle's review, then the new microcycle's opening review
+            skip_review=page.evaluate("JSON.parse(localStorage.getItem('training.logDraft'))")['closing_review_id']
+            context=page.request.get(URL+'/api/ai/conversations/'+skip_review).json()['evidence']['week_context']
+            assert context['plan_id']==skip_plan['id'] and context['skipped_count']==1 and context['manually_marked_count']==1
+            assert context['skipped_sessions'][0]['note']=='Pull-ups after day 1 of the next microcycle'
+            page.screenshot(path=str(OUT/'skip-day-phone.png'),full_page=True)
             page.set_viewport_size(dict(width=1280,height=900))
             page.screenshot(path=str(OUT/'closing-desktop.png'),full_page=True)
             assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
             assert not errors,errors
             browser.close()
-        print(json.dumps(dict(mandatory_checkin='passed',opening='once before day 1',closing='manual with saved discussion',ai_calls=3,fatigue='unchanged by check-in',programming='unchanged',providers='fully mocked')))
+        print(json.dumps(dict(mandatory_checkin='passed',opening='once before day 1',closing='automatic at the next check-in, once, with saved discussion',skip_day='finishes a microcycle without counting as trained',ai_calls=6,fatigue='unchanged by check-in',programming='unchanged',providers='fully mocked')))
     finally:
         server.terminate()
         try:server.wait(timeout=10)

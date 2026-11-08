@@ -86,6 +86,8 @@ class Completion(BaseModel):
     session_id: str
     hevy_workout_id: str | None
     workout_start: str
+    outcome: Literal['completed', 'skipped'] = 'completed'
+    note: str | None = None
 
 
 class PlanView(PlanInput):
@@ -93,6 +95,9 @@ class PlanView(PlanInput):
     active: bool
     archived: bool
     completed: list[Completion]
+
+
+SKIP_NOTE_CHARS = 200
 
 
 class PlanError(Exception):
@@ -114,7 +119,7 @@ def _view(conn, row):
     return dict(document, id=row['id'], revision=row['revision'], rpe_assignments=rpe_assignments.read(conn, ids),
                 active=bool(row['active']), archived=bool(row['archived']),
                 completed=[dict(r) for r in conn.execute(
-                    'SELECT session_id, hevy_workout_id, workout_start FROM mesocycle_completions WHERE mesocycle_id = ?', (row['id'],))])
+                    'SELECT session_id, hevy_workout_id, workout_start, outcome, note FROM mesocycle_completions WHERE mesocycle_id = ?', (row['id'],))])
 
 
 def insert_draft(conn, data: PlanInput):
@@ -255,16 +260,29 @@ def archive(plan_id):
         conn.execute('UPDATE mesocycles SET archived = 1, active = 0 WHERE id = ?', (plan_id,))
 
 
+def _resolvable_day(conn, plan_id, session_id):
+    """The plan row, after checking the plan is open and the day exists."""
+    row = _row(conn, plan_id)
+    if row['archived']:
+        raise PlanError('This microcycle is archived')
+    if not any(s['id'] == session_id for s in json.loads(row['document'])['weeks'][0]['sessions']):
+        raise PlanError('Workout day not found', 404)
+    return row
+
+
+def _existing(conn, plan_id, session_id):
+    return conn.execute('SELECT hevy_workout_id, outcome FROM mesocycle_completions WHERE mesocycle_id = ? AND session_id = ?',
+                        (plan_id, session_id)).fetchone()
+
+
 def mark_completed(plan_id, session_id):
     """Record a day already trained elsewhere; never create a Hevy workout."""
     with get_db() as conn:
         conn.execute('BEGIN IMMEDIATE')
-        row = _row(conn, plan_id)
-        if row['archived']:
-            raise PlanError('This microcycle is archived')
-        sessions = json.loads(row['document'])['weeks'][0]['sessions']
-        if not any(s['id'] == session_id for s in sessions):
-            raise PlanError('Workout day not found', 404)
+        row = _resolvable_day(conn, plan_id, session_id)
+        existing = _existing(conn, plan_id, session_id)
+        if existing and existing['outcome'] == 'skipped':
+            raise PlanError('This day was skipped. Undo the skip first.')
         conn.execute('INSERT INTO mesocycle_completions (mesocycle_id, session_id, hevy_workout_id, workout_start) VALUES (?, ?, ?, ?) ON CONFLICT(mesocycle_id, session_id) DO NOTHING',
                      (plan_id, session_id, None, datetime.now(timezone.utc).isoformat()))
         if _all_completed(conn, row):
@@ -276,15 +294,41 @@ def undo_manual_completion(plan_id, session_id):
     """Remove only a local prior-training mark, preserving saved workout links."""
     with get_db() as conn:
         conn.execute('BEGIN IMMEDIATE')
-        row = _row(conn, plan_id)
-        if row['archived']:
-            raise PlanError('This microcycle is archived')
-        if not any(s['id'] == session_id for s in json.loads(row['document'])['weeks'][0]['sessions']):
-            raise PlanError('Workout day not found', 404)
-        completion = conn.execute('SELECT hevy_workout_id FROM mesocycle_completions WHERE mesocycle_id = ? AND session_id = ?', (plan_id, session_id)).fetchone()
+        row = _resolvable_day(conn, plan_id, session_id)
+        completion = _existing(conn, plan_id, session_id)
+        if completion and completion['outcome'] == 'skipped':
+            raise PlanError('This day was skipped. Use Undo skip.')
         if completion and completion['hevy_workout_id'] is not None:
             raise PlanError('Only manually marked completion can be undone. Saved workouts retain their history.')
-        conn.execute('DELETE FROM mesocycle_completions WHERE mesocycle_id = ? AND session_id = ? AND hevy_workout_id IS NULL', (plan_id, session_id))
+        conn.execute("DELETE FROM mesocycle_completions WHERE mesocycle_id = ? AND session_id = ? AND hevy_workout_id IS NULL AND outcome = 'completed'", (plan_id, session_id))
+        return _view(conn, row)
+
+
+def skip_day(plan_id, session_id, note=None):
+    """Resolve a day the athlete will not train. It finishes the day for plan progress but is recorded as
+    skipped, not trained. Local only: no Hevy workout is created or changed."""
+    note = (note or '').strip()[:SKIP_NOTE_CHARS] or None
+    with get_db() as conn:
+        conn.execute('BEGIN IMMEDIATE')
+        row = _resolvable_day(conn, plan_id, session_id)
+        if _existing(conn, plan_id, session_id):
+            raise PlanError('This day is already completed or skipped.')
+        conn.execute("INSERT INTO mesocycle_completions (mesocycle_id, session_id, hevy_workout_id, workout_start, outcome, note) VALUES (?, ?, NULL, ?, 'skipped', ?)",
+                     (plan_id, session_id, datetime.now(timezone.utc).isoformat(), note))
+        if _all_completed(conn, row):
+            conn.execute('UPDATE mesocycles SET active = 0 WHERE id = ?', (plan_id,))
+        return _view(conn, _row(conn, plan_id))
+
+
+def undo_skip(plan_id, session_id):
+    """Make a skipped day pending again. Never touches a trained or manually completed day."""
+    with get_db() as conn:
+        conn.execute('BEGIN IMMEDIATE')
+        row = _resolvable_day(conn, plan_id, session_id)
+        existing = _existing(conn, plan_id, session_id)
+        if existing and existing['outcome'] != 'skipped':
+            raise PlanError('Only a skipped day can be restored here.')
+        conn.execute("DELETE FROM mesocycle_completions WHERE mesocycle_id = ? AND session_id = ? AND outcome = 'skipped'", (plan_id, session_id))
         return _view(conn, row)
 
 

@@ -7,6 +7,8 @@ import json
 import sqlite3
 from statistics import median
 
+import coaching_outcomes
+import coaching_progress
 import coaching_stress
 from rackbook import plan_proposals
 from sqlalchemy import text
@@ -100,6 +102,9 @@ For weekly reviews, week_context identifies the planned training week, not a cal
 Opening reviews should discuss the upcoming plan using current check-in, recent response and spacing.
 Closing reviews should compare planned versus actually linked work, motivation and response, revisit
 the opening discussion, and propose specific options to discuss with the athlete like a remote coach.
+A day in week_context.skipped_sessions (or a plan_completions row with outcome skipped) was skipped by the athlete's
+choice and not trained: never count it as performed work, and do not treat it as a failure, a fatigue signal or
+a motivation problem by itself. Its note is the athlete's own words and may explain where the work went instead.
 The athlete will decide changes; never claim a proposed plan or substitution has been applied.
 When daily_context exists, keep the advice focused on the next session. Use the current observation and supplied prior historical range;
 explain what changed, what is uncertain, and what to watch at the next session. Describe
@@ -124,6 +129,21 @@ sums them by calendar week (Monday start; the current week is partial). It is no
 card. Compare a week only with that pattern's own typical_week and recent weeks, and prefer weeks with
 the same training frequency in mind. A low push or pull week can simply be a lower-body week. Mapping
 guesses (reviewed_share) and unmapped exercises limit confidence. These are totals, never limits or targets.
+Each exercise's progress block and progress_summary compare a movement's e1RM (heaviest recorded-RPE set) over the
+last 28 days with the 28 days before: progressing, flat, declining or insufficient_evidence. In a training or
+weekly review (not a daily interpretation), mention the movements in progress_summary.attention even if the athlete
+did not ask, and say plainly when none are flagged or evidence is insufficient. Before suggesting any change, check
+the confounders in the report: rep_range_shift, entered_share, low_effort_exposures, exposure spacing, a recent
+deload or time off, stress and check-in context. Then offer options to discuss, such as holding, a rep-range or
+set-count change, a variation, or a phase change, with what would change your view. A flat or declining status
+shows neither cause nor failure and is not a recommendation; never present it as proof that a block should end.
+proposal_outcomes is the history of week proposals the athlete saved as drafts, newest first: how far each
+plan got (stage, sessions_completed of sessions_planned, edited_since_save) and, once 28 days have passed since its
+first completed session, each proposed movement's progress status before the save and now, with proposed_reps and
+median_anchor_reps showing whether the rep range really changed. Use it to calibrate, not to grade yourself: a plan that
+was never started, edited or only partly done says little about the proposal, later training is included in "after",
+and no outcome shows that a proposal caused a change. Mention an earlier proposal when it bears on a new one, say
+plainly when none exist or it is too early, and never say a proposal was applied or a change was made.
 The evidence date is frozen for each conversation. If training has changed, suggest a new review.
 """
 PROPOSAL_EXAMPLE = json.dumps(dict(
@@ -169,7 +189,8 @@ def day_of(value):
 def local_evidence(start, end):
     """Read only, no initialization, credentials, settings, or frozen-trial rewrites."""
     result = dict(status='unavailable', sets=[], reviews=[], plans=[], completions=[],
-                  pretraining=[], decisions=[], motivation=[], confirmed_checkins=[])
+                  pretraining=[], decisions=[], motivation=[], confirmed_checkins=[],
+                  proposals=[], proposal_plans={}, proposal_completions={})
     try:
         with closing(sqlite3.connect(database_path().as_uri()+'?mode=ro', uri=True, timeout=2)) as conn:
             conn.row_factory = sqlite3.Row
@@ -180,7 +201,7 @@ def local_evidence(start, end):
             result['reviews'] = rows('SELECT * FROM session_reviews WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=? ORDER BY workout_start', (str(start), str(end)))
             result['plans'] = rows('SELECT id,active,archived,revision,document FROM mesocycles ORDER BY active DESC,updated_at DESC LIMIT 10')
             result['plan_count'] = conn.execute('SELECT COUNT(*) FROM mesocycles').fetchone()[0]
-            result['completions'] = rows('SELECT mesocycle_id,session_id,hevy_workout_id,workout_start FROM mesocycle_completions WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=?', (str(start), str(end)))
+            result['completions'] = rows('SELECT mesocycle_id,session_id,hevy_workout_id,workout_start,outcome,note FROM mesocycle_completions WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=?', (str(start), str(end)))
             result['pretraining'] = rows('SELECT * FROM session_soreness WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=? ORDER BY workout_start', (str(start), str(end)))
             result['motivation'] = rows('SELECT hevy_workout_id,workout_start,level,reason,note,recorded_at,timing,saved_at FROM session_motivation WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=? ORDER BY workout_start',(str(start),str(end)))
             result['confirmed_checkins']=rows('SELECT * FROM session_checkins WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=? ORDER BY workout_start',(str(start),str(end)))
@@ -191,6 +212,17 @@ def local_evidence(start, end):
                 row.update(soreness=data.get('soreness'), pain=data.get('pain'), scale='0–3')
                 result['pretraining'].append(row)
             result['decisions'] = rows('SELECT a.created_at,a.snapshot,d.record,o.outcome FROM session_advisories a LEFT JOIN advisory_decisions d ON d.recommendation_id=a.id LEFT JOIN advisory_outcomes o ON o.recommendation_id=a.id WHERE a.local_date>=? AND a.local_date<=? ORDER BY a.created_at DESC,d.sequence DESC LIMIT 40', (str(start), str(end)))
+            try:
+                result['proposals'] = rows('SELECT id,plan_id,proposed,saved_at FROM plan_proposals ORDER BY saved_at DESC,id DESC LIMIT 10')
+            except sqlite3.OperationalError as exc:
+                # A database from before proposals existed simply has none; any other failure is an incomplete read.
+                if 'no such table' not in str(exc): raise
+            plan_ids = sorted({p['plan_id'] for p in result['proposals']})
+            if plan_ids:
+                marks = ','.join('?' * len(plan_ids))
+                result['proposal_plans'] = {r['id']: r for r in rows(f'SELECT id,active,archived,revision,document FROM mesocycles WHERE id IN ({marks})', plan_ids)}
+                for r in rows(f'SELECT mesocycle_id,session_id,workout_start,outcome FROM mesocycle_completions WHERE mesocycle_id IN ({marks}) ORDER BY workout_start', plan_ids):
+                    result['proposal_completions'].setdefault(r['mesocycle_id'], []).append(r)
             result['status'] = 'available'
     except (sqlite3.Error, OSError):
         # Preserve available sections but distinguish incomplete reads from an empty history.
@@ -315,12 +347,14 @@ def build_report(db, *, today=None, monitoring_context=None, context_limit=None)
     scored_stress=coaching_stress.attach(exercises,ordered,today)
     pattern_stress_index=coaching_stress.pattern_rollup(
         scored_stress,exercises,coaching_stress.mapping_table(db.query(ExerciseMapping).all()),today)
+    progress_summary=coaching_progress.attach(exercises,ordered,today)
+    proposal_outcomes=coaching_outcomes.review(local['proposals'],local['proposal_plans'],local['proposal_completions'],ordered,today)
     checkins=[dict(date=str(r.date),**{k:getattr(r,k) for k in RATINGS}) for r in
               db.query(DailyReadiness).filter(DailyReadiness.date.between(start,today)).order_by(DailyReadiness.date).all()]
     dates=[day_of(s['date']) for s in ordered]
     report=dict(version=VERSION,captured_at=now_iso(),window=dict(start=str(start),end=str(today),calendar_days=(today-start).days+1),
         monitoring_context=monitoring_context,stress_model=coaching_stress.DESCRIPTION,
-        pattern_stress_index=pattern_stress_index,known_movements=known_movements,
+        pattern_stress_index=pattern_stress_index,progress_summary=progress_summary,proposal_outcomes=proposal_outcomes,known_movements=known_movements,
         coverage=dict(sessions=len(ordered),training_dates=len(set(dates)),first_training_date=str(dates[0]) if dates else None,
             last_training_date=str(dates[-1]) if dates else None,training_span_days=(dates[-1]-dates[0]).days if dates else 0,
             complete_daily_checkins=sum(all(r[k] is not None for k in RATINGS[:6]) for r in checkins),
@@ -341,6 +375,8 @@ def build_report(db, *, today=None, monitoring_context=None, context_limit=None)
             'Detail caps: latest 12 sessions/preserved prescriptions, six exposures per exercise, 10 saved plans (active first), latest 40 recommendation decision rows. Summary counts use the full window.',
             'Acceptance is intent only. An outcome belongs to its frozen decision, not necessarily the latest decision.',
             *coaching_stress.LIMITATIONS,
+            *coaching_progress.LIMITATIONS,
+            *coaching_outcomes.LIMITATIONS,
             f'known_movements lists up to {KNOWN_MOVEMENTS} movements from this window and saved plans (most recent first); proposals may use only these ids.',
         ])
     if local.get('plan_count',0)>len(local['plans']):
@@ -352,9 +388,9 @@ def build_report(db, *, today=None, monitoring_context=None, context_limit=None)
     report['prior_review_excerpts']=prior
     report['limitations'].append('Prior review excerpts: latest three conversations, last four completed turns each, at most 4000 characters per message/response. They are historical claims, not verified outcomes.')
     # Drop bounded detail first, always record every omitted section. Do not silently send oversized prompts.
-    for section in ('prior_review_excerpts','recommendation_feedback','preserved_sessions','saved_plans','pretraining_checkins','motivation_checkins','confirmed_session_checkins','recent_sessions'):
+    for section in ('prior_review_excerpts','recommendation_feedback','proposal_outcomes','preserved_sessions','saved_plans','pretraining_checkins','motivation_checkins','confirmed_session_checkins','recent_sessions'):
         while len(encode(report))>context_limit and report[section]:
-            report[section].pop(-1 if section in ('prior_review_excerpts','recommendation_feedback','saved_plans') else 0)
+            report[section].pop(-1 if section in ('prior_review_excerpts','recommendation_feedback','proposal_outcomes','saved_plans') else 0)
             note=f'{section}: older detail omitted for context size.'
             if note not in report['limitations']: report['limitations'].append(note)
     if len(encode(report))>context_limit:
@@ -363,6 +399,9 @@ def build_report(db, *, today=None, monitoring_context=None, context_limit=None)
     if len(encode(report))>context_limit:
         for ex in report['exercises']: (ex.get('stress') or {}).pop('recent_sessions',None)
         report['limitations'].append('Per-session stress detail omitted for context size; stress summaries retained.')
+    if len(encode(report))>context_limit:
+        for ex in report['exercises']: (ex.get('progress') or {}).pop('recent_points',None)
+        report['limitations'].append('Per-exposure progress points omitted for context size; progress summaries retained.')
     if len(encode(report))>context_limit:
         raise ValueError('Training context exceeds the review limit; no incomplete assessment was sent.')
     return report

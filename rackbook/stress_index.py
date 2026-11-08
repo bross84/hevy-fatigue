@@ -70,17 +70,31 @@ def _usable_sets(sets: list[dict]) -> tuple[list[tuple], int]:
     return usable, skipped
 
 
-def _anchor_e1rm(usable: list[tuple]) -> float | None:
-    if not usable:
-        return None
+def _anchor(usable: list[tuple]) -> tuple | None:
     # Ties: higher RPE, then fewer reps. Deterministic under set reordering.
-    anchor = max(usable, key=lambda s: (s[0], s[2], -s[1]))
-    return anchor[0] / default_fraction(anchor[1], anchor[2])
+    return max(usable, key=lambda s: (s[0], s[2], -s[1])) if usable else None
+
+
+def _anchor_e1rm(usable: list[tuple]) -> float | None:
+    anchor = _anchor(usable)
+    return None if anchor is None else anchor[0] / default_fraction(anchor[1], anchor[2])
+
+
+def session_anchor(sets: list[dict]) -> dict | None:
+    """The heaviest recorded-RPE working set and the e1RM it implies; blank-RPE sets never anchor.
+
+    index points back into `sets`, so callers can read any extra fields (such as provenance)."""
+    anchor = _anchor([u for u in _usable_sets(sets)[0] if not u[3]])
+    if anchor is None:
+        return None
+    weight, reps, rpe, _, index = anchor
+    return dict(index=index, weight_kg=weight, reps=reps, rpe=rpe, e1rm=weight / default_fraction(reps, rpe))
 
 
 def session_e1rm(sets: list[dict]) -> float | None:
     """A session's e1RM from recorded RPEs only; blank-RPE sets never set a history reference."""
-    return _anchor_e1rm([u for u in _usable_sets(sets)[0] if not u[3]])
+    anchor = session_anchor(sets)
+    return None if anchor is None else anchor["e1rm"]
 
 
 def score_session_sets(sets: list[dict], reference_e1rm: float | None = None) -> tuple[dict, list[dict | None]]:

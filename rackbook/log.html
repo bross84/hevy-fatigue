@@ -1040,27 +1040,41 @@
         const plan = plans.find(p => p.id === select.value); details.replaceChildren();
         if (!plan) return;
         const done = new Set(plan.completed.map(c => c.session_id));
-        const manual = new Set(plan.completed.filter(c => c.hevy_workout_id === null).map(c => c.session_id));
+        const manual = new Set(plan.completed.filter(c => c.hevy_workout_id === null && c.outcome !== "skipped").map(c => c.session_id));
+        const skipped = new Map(plan.completed.filter(c => c.outcome === "skipped").map(c => [c.session_id, c.note || ""]));
         const sessions = plan.weeks.flatMap(week => week.sessions);
         const pending = sessions.filter(session => !done.has(session.id));
         if (!pending.length) {
           details.append(el("p", "muted", sessions.length ? "Microcycle complete. Select another plan or build the next week." : "No days planned yet. Add a day in the builder."));
-          if(sessions.length){const review=el('a',null,'Review this week with AI Coach');review.href=AICoach.endUrl(plan.id);details.append(review);}
-          if (!manual.size) return;
+          if(sessions.length){const review=el('a',null,'Review this microcycle with AI Coach');review.href=AICoach.endUrl(plan.id);details.append(review);}
+          if (!manual.size && !skipped.size) return;
         }
         const dayLabel = el("label", null, "Workout day"), daySelect = el("select", "wide");
         daySelect.setAttribute("aria-label", "Select workout day");
         for (const session of sessions) {
-          const option = el("option", null, session.name + (manual.has(session.id) ? " · Completed manually" : done.has(session.id) ? " · Completed" : ""));
-          option.value = session.id; option.disabled = done.has(session.id) && !manual.has(session.id); daySelect.append(option);
+          const option = el("option", null, session.name + (skipped.has(session.id) ? " · Skipped" : manual.has(session.id) ? " · Completed manually" : done.has(session.id) ? " · Completed" : ""));
+          option.value = session.id; option.disabled = done.has(session.id) && !manual.has(session.id) && !skipped.has(session.id); daySelect.append(option);
         }
-        daySelect.value = (pending[0] || sessions.find(s => manual.has(s.id))).id;
+        daySelect.value = (pending[0] || sessions.find(s => manual.has(s.id) || skipped.has(s.id))).id;
         dayLabel.append(daySelect); const workoutDetails = el("div"); details.append(dayLabel, workoutDetails);
         function showSelectedDay() {
           workoutDetails.replaceChildren();
           const selected = sessions.find(session => session.id === daySelect.value);
           if (!selected) return;
           if (done.has(selected.id)) {
+            if (skipped.has(selected.id)) {
+              const restore = el("button", "wide", "Undo skip"); restore.type = "button";
+              restore.addEventListener("click", async () => {
+                restore.disabled = true; select.disabled = true; daySelect.disabled = true;
+                try {
+                  const updated = await api("/api/mesocycles/" + encodeURIComponent(plan.id) + "/sessions/" + encodeURIComponent(selected.id) + "/skip", { method: "DELETE" });
+                  Object.assign(plan, updated); showSelectedPlan();
+                } catch (err) { say(err.message); }
+                finally { restore.disabled = false; select.disabled = false; daySelect.disabled = false; }
+              });
+              const note = skipped.get(selected.id);
+              workoutDetails.append(el("p", "muted", "This day was skipped. It counts as finished for the microcycle, not as trained." + (note ? " Note: " + note : "")), restore); return;
+            }
             if (!manual.has(selected.id)) return;
             const undo = el("button", "wide", "Undo completion"); undo.type = "button";
             undo.addEventListener("click", async () => {
@@ -1084,18 +1098,31 @@
             } catch (err) { say(err.message); }
             finally { mark.disabled = false; select.disabled = false; daySelect.disabled = false; if (start) start.disabled = false; }
           });
+          const skip = el("button", "wide", "Skip this day"); skip.type = "button";
+          skip.addEventListener("click", async () => {
+            const note = prompt("Skip " + selected.name + "? It counts as finished for this microcycle but not as trained, and it does not create or change a Hevy workout. Add an optional note, such as where the work went instead, or leave it blank:", "");
+            if (note === null) return;
+            skip.disabled = true; mark.disabled = true; select.disabled = true; daySelect.disabled = true;
+            if (start) start.disabled = true;
+            try {
+              const updated = await api("/api/mesocycles/" + encodeURIComponent(plan.id) + "/sessions/" + encodeURIComponent(selected.id) + "/skip",
+                { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note: note.trim() || null }) });
+              Object.assign(plan, updated); showSelectedPlan();
+            } catch (err) { say(err.message); }
+            finally { skip.disabled = false; mark.disabled = false; select.disabled = false; daySelect.disabled = false; if (start) start.disabled = false; }
+          });
           let start = null;
-          if (!selected.exercises.length) { workoutDetails.append(el("p", "muted", "Add movements to this workout in the builder before loading it."), mark); return; }
+          if (!selected.exercises.length) { workoutDetails.append(el("p", "muted", "Add movements to this workout in the builder before loading it."), mark, skip); return; }
           start = el("button", "primary wide", "Load selected workout"); start.type = "button";
           start.addEventListener("click", async () => {
-            start.disabled = true; mark.disabled = true; select.disabled = true; daySelect.disabled = true;
+            start.disabled = true; mark.disabled = true; skip.disabled = true; select.disabled = true; daySelect.disabled = true;
             try {
               if (!plan.active) { await api("/api/mesocycles/" + encodeURIComponent(plan.id) + "/activate", { method: "POST" }); plans.forEach(p => { p.active = p.id === plan.id; }); for (const option of select.children) { const p = plans.find(p => p.id === option.value); option.textContent = p.name + (p.active ? " · Active" : ""); } }
               await loadPlannedWorkout(plan.id, selected.id);
             } catch (err) { say(err.message); }
-            finally { start.disabled = false; mark.disabled = false; select.disabled = false; daySelect.disabled = false; }
+            finally { start.disabled = false; mark.disabled = false; skip.disabled = false; select.disabled = false; daySelect.disabled = false; }
           });
-          workoutDetails.append(start, mark);
+          workoutDetails.append(start, mark, skip);
         }
         daySelect.addEventListener("change", showSelectedDay); showSelectedDay();
       }
