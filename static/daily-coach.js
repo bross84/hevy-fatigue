@@ -92,7 +92,8 @@ const DailyCoach = (() => {
     if(turn.status==='complete')return 'Open AI Coach to view the saved review.';
     if(view.retry_pending_turn_id)return 'The earlier request has been pending for at least five minutes. Retry to send a new request using this check-in.';
     if(turn.status==='pending')return 'AI Coach is preparing a response. Reload to check its status.';
-    return 'Response '+turn.status+'. You can retry the interpretation.';
+    const why=typeof turn.failure==='string'&&turn.failure.trim()?' '+turn.failure.trim():'';
+    return 'Response '+turn.status+'.'+why+' You can retry the interpretation.';
   }
   function run(date,retry=null){
     visibleDate=date;preferredDate=date;

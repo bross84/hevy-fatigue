@@ -19,6 +19,77 @@ class Recorder:
         self.calls.append((content, status))
 
 
+class ReasonRecorder:
+    """A recorder that opts in to the failure reason by declaring a third parameter."""
+    def __init__(self):
+        self.calls = []
+
+    def __call__(self, content, status, reason=None):
+        self.calls.append((content, status, reason))
+
+
+def finish_reason_chunk(text, finish_reason):
+    return 'data: ' + json.dumps({'choices': [{'delta': {'content': text}, 'finish_reason': finish_reason}]}) + '\n\ndata: [DONE]\n\n'
+
+
+class FailureReasonTests(TestCase):
+    def reasons(self, chunks, **kwargs):
+        recorder = ReasonRecorder()
+        ''.join(coaching_stream.relay(iter(chunks), recorder, **kwargs))
+        self.assertEqual(1, len(recorder.calls))
+        return recorder.calls[0]
+
+    def test_each_way_a_reply_fails_has_its_own_plain_reason(self):
+        cases = {
+            'provider error': (['data: {"error":{"message":"Rate limited"}}\n\ndata: [DONE]\n\n'],
+                               'The AI provider reported an error: Rate limited'),
+            'provider error without text': (['data: {"error":{"code":429}}\n\ndata: [DONE]\n\n'],
+                                            'The AI provider reported an error.'),
+            'length': ([finish_reason_chunk('cut', 'length')], "The reply was cut off at the model's length limit."),
+            'content filter': ([finish_reason_chunk('x', 'content_filter')],
+                               "The provider's content filter stopped the reply."),
+            'empty': (['data: [DONE]\n\n'], 'The model returned an empty reply.'),
+            'unreadable': (['data: not-json\n\n' + delta('ok') + 'data: [DONE]\n\n'],
+                           'The provider sent data the app could not read.'),
+        }
+        for name, (chunks, reason) in cases.items():
+            with self.subTest(name):
+                _, status, got = self.reasons(chunks)
+                self.assertEqual('failed', status)
+                self.assertEqual(reason, got)
+
+    def test_the_first_reason_is_kept_and_provider_text_is_one_bounded_line(self):
+        message = 'Line one\n' + 'x' * 400
+        chunk = 'data: ' + json.dumps({'error': {'message': message}}) + '\n\n'
+        _, status, reason = self.reasons([chunk, finish_reason_chunk('cut', 'length')])
+        self.assertEqual('failed', status)
+        self.assertTrue(reason.startswith('The AI provider reported an error: Line one xxx'))
+        self.assertNotIn('\n', reason)
+        self.assertLess(len(reason), 220)
+        self.assertNotIn('length limit', reason)
+
+    def test_interrupted_replies_say_what_stopped(self):
+        self.assertEqual(('Partial', 'interrupted', 'The provider stopped sending before the reply was complete.'),
+                         self.reasons([delta('Partial')]))
+        with patch.object(coaching, 'MAX_REPLY_CHARS', 10):
+            _, status, reason = self.reasons([delta('x' * 25)])
+        self.assertEqual(('interrupted', 'The reply was longer than the saved review limit and was stopped.'), (status, reason))
+
+        def chunks():
+            yield delta('Before the drop')
+            raise ConnectionError('lost')
+        _, status, reason = self.reasons(chunks())
+        self.assertEqual(('interrupted', 'The reply stopped unexpectedly (connection or storage error).'), (status, reason))
+
+    def test_a_complete_reply_has_no_reason(self):
+        self.assertEqual(('Keep going.', 'complete', None), self.reasons([delta('Keep going.') + 'data: [DONE]\n\n']))
+
+    def test_two_parameter_recorders_still_work_without_a_reason(self):
+        recorder = Recorder()
+        ''.join(coaching_stream.relay(iter([finish_reason_chunk('cut', 'length')]), recorder))
+        self.assertEqual([('cut', 'failed')], recorder.calls)
+
+
 class RelayTests(TestCase):
     def run_relay(self, chunks, **kwargs):
         recorder = Recorder()

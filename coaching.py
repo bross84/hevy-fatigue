@@ -129,9 +129,9 @@ it a recovery limit, fatigue measurement or optimal zone, and treat below/usual/
 reason by itself to add or remove work. Estimated-RPE sets, unknown-role imported sets (warm-ups cannot be
 separated), unscored sessions and a provisional baseline all lower confidence; say so when relevant.
 pattern_stress_index attributes those totals to knee/hip/push/pull by the exercise mapping percentages and
-sums them by calendar week (Monday start; the current week is partial). It is not the host Pattern Stress
-card. Compare a week only with that pattern's own typical_week and recent weeks, and prefer weeks with
-the same training frequency in mind. A low push or pull week can simply be a lower-body week. Mapping
+sums them over rolling 7-day windows ending on the report date (never calendar weeks; the last window is
+the last 7 days). It is not the host Pattern Stress card. Compare a window only with that pattern's own
+typical_window and recent windows, and keep in mind how many sessions each window held. A low push or pull week can simply be a lower-body week. Mapping
 guesses (reviewed_share) and unmapped exercises limit confidence. These are totals, never limits or targets.
 Each exercise's progress block and progress_summary compare a movement's e1RM (heaviest recorded-RPE set) over the
 last 28 days with the 28 days before: progressing, flat, declining or insufficient_evidence. In a training or
@@ -287,9 +287,9 @@ def build_report(db, *, today=None, monitoring_context=None, context_limit=None)
     ordered = sorted(sessions.values(), key=lambda r:(r['date'],r.get('start_time') or '',r['id']))
     exercises, weeks = {}, defaultdict(lambda:dict(sessions=0, known_working_sets=0, unknown_role_sets=0))
     for session in ordered:
-        # Calendar week is named by its Monday; count all sessions including zero-set sessions.
-        day = day_of(session['date'])
-        week = str(day-timedelta(days=day.weekday()))
+        # Rolling 7-day windows end on the report date, never a calendar week; count all
+        # sessions including zero-set sessions.
+        week = coaching_stress.window_end(day_of(session['date']), today)
         weeks[week]['sessions'] += 1
         groups = defaultdict(list)
         for s in session['sets']:
@@ -363,7 +363,8 @@ def build_report(db, *, today=None, monitoring_context=None, context_limit=None)
             last_training_date=str(dates[-1]) if dates else None,training_span_days=(dates[-1]-dates[0]).days if dates else 0,
             complete_daily_checkins=sum(all(r[k] is not None for k in RATINGS[:6]) for r in checkins),
             missing_checkin_dates=(today-start).days+1-len(checkins),local_source=local['status']),
-        weekly_workload=[dict(week_start=k,**v) for k,v in sorted(weeks.items())],exercises=list(exercises.values()),
+        workload_windows=[dict(window_start=str(k-timedelta(days=coaching_stress.WINDOW_DAYS-1)),window_end=str(k),
+            partial=k-timedelta(days=coaching_stress.WINDOW_DAYS-1)<start,**v) for k,v in sorted(weeks.items())],exercises=list(exercises.values()),
         recent_sessions=ordered[-RECENT_SESSIONS:],daily_checkins=checkins,
         pretraining_checkins=local['pretraining'],motivation_checkins=local['motivation'],confirmed_session_checkins=local['confirmed_checkins'],saved_plans=[dict(id=p['id'],active=bool(p['active']),archived=bool(p['archived']),revision=p['revision'],document=parsed(p['document'],{})) for p in local['plans']],
         plan_completions=local['completions'],preserved_sessions=[dict(workout_id=k,workout_start=v['workout_start'],prescription=parsed(v['prescription']),review=parsed(v['review'])) for k,v in sorted(reviews.items(),key=lambda x:x[1]['workout_start'])[-RECENT_SESSIONS:]],
@@ -374,7 +375,8 @@ def build_report(db, *, today=None, monitoring_context=None, context_limit=None)
             'Daily check-ins are date-only; pretraining soreness uses a separate 0–3 scale, daily ratings use 0–4 (higher is worse).',
             'Motivation 0–4 is separate from fatigue (0 eager, 4 dreading it). Missing answers are unknown. A confirmed check-in without a linked workout proves neither training nor skipping. Motivation recorded_at/timing are client-reported; check-in recorded_at is server confirmation and saved_at is workout persistence time.',
             'Matched load comparisons require entered effort and the same reps, RPE, set role and automatic weight basis. No e1RM is invented for manual/unknown basis.',
-            'Recent raw detail is bounded; full-window exposure counts, spacing and weekly set summaries are calculated before trimming.',
+            'Recent raw detail is bounded; full-window exposure counts, spacing and 7-day window set summaries are calculated before trimming.',
+            'Workload and pattern windows are rolling 7 local days ending on the report date, not calendar weeks; a workload window marked partial starts before the six-month evidence window.',
             'Saved plans describe current saved intent, not proof of historical block purpose or execution.',
             'Detail caps: latest 12 sessions/preserved prescriptions, six exposures per exercise, 10 saved plans (active first), latest 40 recommendation decision rows. Summary counts use the full window.',
             'Acceptance is intent only. An outcome belongs to its frozen decision, not necessarily the latest decision.',
@@ -411,23 +413,34 @@ def build_report(db, *, today=None, monitoring_context=None, context_limit=None)
     return report
 
 
-def daily_recommendation(response):
+def parse_daily_recommendation(response):
+    """(recommendation, None) for a valid reply, else (None, the one rule it broke, in plain words)."""
     content = (response or '').strip()
     if content.startswith('```') and content.endswith('```'):
         content = content.partition('\n')[2][:-3].strip()
     try:
         result = json.loads(content)
     except (TypeError, ValueError):
-        return None
+        return None, 'The reply was not a single JSON object (text around the JSON is not accepted).'
     if not isinstance(result, dict) or result.keys() != {'action', 'reason'}:
-        return None
+        return None, 'The reply must be one JSON object with exactly the keys "action" and "reason".'
     action, reason = result['action'], result['reason']
-    if not isinstance(action, str) or action not in DAILY_ACTIONS or not isinstance(reason, str):
-        return None
+    if not isinstance(action, str) or action not in DAILY_ACTIONS:
+        return None, 'The action must be one of: ' + ', '.join(DAILY_ACTIONS) + '.'
+    if not isinstance(reason, str):
+        return None, 'The reason must be text.'
     reason = reason.strip()
-    if not reason or len(reason) > DAILY_REASON_MAX_CHARS or len(reason.splitlines()) != 1:
-        return None
-    return dict(action=action, label=DAILY_ACTIONS[action], reason=reason)
+    if not reason:
+        return None, 'The reason was empty.'
+    if len(reason.splitlines()) != 1:
+        return None, 'The reason must be a single line.'
+    if len(reason) > DAILY_REASON_MAX_CHARS:
+        return None, f'The reason was {len(reason)} characters; the limit is {DAILY_REASON_MAX_CHARS}.'
+    return dict(action=action, label=DAILY_ACTIONS[action], reason=reason), None
+
+
+def daily_recommendation(response):
+    return parse_daily_recommendation(response)[0]
 
 
 def needs_daily_recommendation(view):
@@ -441,7 +454,7 @@ def conversation(db, conversation_id):
     turns=db.query(CoachingTurn).filter_by(conversation_id=conversation_id).order_by(CoachingTurn.sequence).all()
     view = dict(id=row.id, created_at=row.created_at, evidence=parsed(row.evidence), turns=[
         dict(id=t.id, sequence=t.sequence, message=t.message, response=t.response,
-             model=t.model, status=t.status, created_at=t.created_at) for t in turns])
+             model=t.model, status=t.status, created_at=t.created_at, failure=t.failure) for t in turns])
     if (view['evidence'] or {}).get('version') == DAILY_RECOMMENDATION_VERSION:
         first_complete = next((turn for turn in view['turns'] if turn['status'] == 'complete'), None)
         if first_complete:
@@ -488,18 +501,21 @@ def save_conversation(db, conversation_id, evidence):
     return conversation(db,conversation_id)
 
 
-def finish_turn(session_factory, turn_id, view, content, status):
+def finish_turn(session_factory, turn_id, view, content, status, reason=None):
     """Record how a turn ended, in its own short-lived session.
 
     Provider streaming never holds a database transaction open. A daily interpretation
     without a usable recommendation is recorded as failed, and a late response cannot
     replace a turn that Retry already superseded (only a pending turn is updated).
+    A failed or interrupted turn keeps a short plain-text reason; a complete one never has one.
     """
-    if status=='complete' and needs_daily_recommendation(view) and not daily_recommendation(content):
-        status='failed'
+    if status=='complete' and needs_daily_recommendation(view):
+        problem=parse_daily_recommendation(content)[1]
+        if problem: status,reason='failed',problem
+    failure=(reason or '').strip()[:300] or None if status in ('failed','interrupted') else None
     with session_factory() as saved:
         saved.query(CoachingTurn).filter_by(id=turn_id,status='pending').update(
-            {'response':content,'status':status},synchronize_session=False)
+            {'response':content,'status':status,'failure':failure},synchronize_session=False)
         saved.commit()
 
 

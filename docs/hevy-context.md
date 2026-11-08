@@ -674,31 +674,67 @@ frozen conversations keep their original evidence; new reviews carry the block.
 No session-advice rule or automatic programming change uses stress yet. Tests:
 `tests/test_coaching_stress.py`, `tests/test_coaching_patterns.py`.
 
-## Weekly pattern stress index in AI coach evidence (local, 2026-11-07)
+## Rolling-window pattern stress index in AI coach evidence (local, 2026-11-07; windows 2026-11-08)
 
 `coaching_stress.pattern_rollup` adds `pattern_stress_index` to the report. It
 splits each scored movement session (total, central, peripheral) across Knee,
 Hip, Push and Pull using that exercise's current `exercise_mappings` percentages
-(matched by exercise title) and sums by calendar week. It is read-only and
+(matched by exercise title) and sums over rolling 7-day windows. It is read-only and
 stores nothing. The host Pattern Stress card (ATL/CTL, soreness, trend), the
 daily/recovery models and `calculate_stress_scores` are unchanged; this is a
 different quantity and is named to avoid confusion (see `GLOSSARY.md`).
 
-Block contents: model version, `as_of`, nine Monday-start weeks (eight completed
-plus the partial current week) with per-pattern totals and unmapped stress,
-rolling 7/28 local-day totals, per-pattern `typical_week` (median of completed
-weeks that had scored sessions; provisional under four such weeks), unmapped
+Windows (2026-11-08): the first version summed by Monday calendar weeks, which
+does not match how training is paced (a microcycle is not a calendar week) and
+made totals jump on a Monday. A window is now the 7 local days ending on the
+report date (`as_of`); the last window is the last 7 days, and there is no
+partial window. `coaching.build_report` uses the same windows for its per-window
+workload counts, which replace `weekly_workload` as `workload_windows`
+(`window_start`, `window_end`, sessions, known and unknown-role working sets, and
+`partial` for the oldest window when it starts before the six-month evidence
+window). Evidence frozen before this change keeps the old Monday shape; nothing
+is regenerated. The host's separate per-movement volume chart is unchanged.
+
+Block contents: model version, `as_of`, `window_days`, nine windows (the last
+7 days and eight before them) with per-pattern totals and unmapped stress,
+the rolling 28-day total (the separate `rolling_7_day` copy is gone because the
+latest window is the same quantity), per-pattern `typical_window` (median of
+the earlier windows that had scored sessions; the latest window is the one being
+judged and never counts; provisional under four such windows), unmapped
 exercise titles (at most ten) and `reviewed_share`, the fraction of attributed
 stress from user-reviewed mappings.
 
 Rules: accessories use their full mapping percentage; no discount is invented.
 Conditioning exercises are excluded. A missing mapping, or percentages that do
 not sum to 1.0 (±0.01), put the stress in `unmapped` rather than guessing.
-Empty weeks appear as real zeros but never enter the typical week. Mapping edits
+Empty windows appear as real zeros but never enter the typical window. Mapping edits
 re-attribute history on the next report because nothing is stored. Frozen
 conversations keep their original evidence. `BRIEF` tells the coach these are
 attributed totals, never recovery limits or targets, and that a low push or pull
-week can simply be a lower-body week. No UI shows this block yet.
+window can simply be a lower-body window. No UI shows this block yet.
+
+## Why an AI turn failed (local, 2026-11-08)
+
+A daily recommendation that failed showed only "Response failed". Two causes were
+indistinguishable: the provider failing, and a reply that was valid in substance but
+broke a format rule (a 215-character reason against a 200 limit, fixed separately by
+accepting up to 300 and asking for 160). Each failed or interrupted turn now keeps a
+short plain-text reason in `coaching_turns.failure` (nullable, at most 300
+characters, never evidence or prompt text), added on first start by a guarded
+`ALTER TABLE` in `database.init_db`. Older turns have none and show the old message.
+
+`coaching_stream.relay` decides the provider-side reasons (an error event with the
+provider's own message clipped to one 160-character line, a reply cut off at the length
+limit, a content-filter stop, an empty reply, unreadable data, a stream that ended early,
+a reply over the saved size limit, a dropped connection) and passes the first one to a
+recorder that declares a third `reason` parameter; two-parameter recorders are unchanged.
+An HTTP error before streaming (bad key, unknown model, no credit) is recorded from the
+provider's message. `coaching.parse_daily_recommendation` names the exact format rule that
+a daily reply broke, and `finish_turn` stores it. The conversation view's turns gain
+`failure`; the daily card shows "Response failed. <reason> You can retry the
+interpretation." and the AI chat page adds "Reason: …" to its recorded-status message, both as
+plain text. Retry, no-automatic-resend and the failed status itself are unchanged. Tests:
+`tests/test_coaching_stream.py`, `tests/test_daily_coaching.py`, `tests/test_daily_coach_ui.cjs`.
 
 ## Movement progress in AI coach evidence (local, 2026-11-07)
 

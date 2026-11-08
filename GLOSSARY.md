@@ -29,8 +29,8 @@ An exercise's percentage split across the four movement patterns, either auto-cl
 _Avoid_: Classification, tag
 
 **Pattern stress index**:
-A movement's stress index divided across movement patterns by its exercise mapping and summed per calendar week.
-_Avoid_: Pattern Stress, weekly SI
+A movement's stress index divided across movement patterns by its exercise mapping and summed over rolling 7-day windows ending on the report date. It is never grouped by calendar week.
+_Avoid_: Pattern Stress, weekly SI, calendar week
 
 **Pattern Stress**:
 The dashboard card showing each movement pattern's decaying training load alongside soreness and a gradual fatigue trend. A different quantity from the stress index.

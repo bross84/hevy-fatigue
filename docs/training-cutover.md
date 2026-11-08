@@ -357,6 +357,14 @@ Record device/browser/version separately from automated browser results:
     microcycle's review should start first and mention the skipped day and note as not trained.
     The two new `mesocycle_completions` columns are added on first start and default to
     `completed`; rolling back leaves them unused and older code would show a skip as a manual mark.
+12. Failure reasons and rolling windows (mocked or disposable data first): make a daily
+    recommendation fail (a mocked provider error, or a reply that breaks the format) and confirm
+    the Readiness card says why instead of only "Response failed", that Retry still works and
+    nothing is resent automatically, and that a turn saved before this build shows the old message.
+    The host `coaching_turns` table gains a nullable `failure` column on first start; rolling back
+    leaves it unused and nothing is lost. Coach evidence now groups pattern stress and workload in
+    rolling 7-day windows ending today (the old Monday weeks and `weekly_workload` are gone from new
+    reports; saved conversations keep the evidence they were frozen with). Nothing else is stored.
 
 ## Rollback
 

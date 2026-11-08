@@ -2589,12 +2589,13 @@ def coaching_send(conversation_id: UUID, data: CoachingMessage, db: Session = De
     except ValueError as exc:
         raise HTTPException(409,str(exc)) from exc
 
-    def finish(content, status):
-        coaching.finish_turn(SessionLocal,str(data.id),view,content,status)
+    def finish(content, status, reason=None):
+        coaching.finish_turn(SessionLocal,str(data.id),view,content,status,reason)
     try:
         return _stream_openrouter(model,api_key,messages,on_finish=finish)
-    except Exception:
-        finish('', 'failed')
+    except Exception as exc:
+        # An HTTP error before streaming (bad key, unknown model, no credit) carries the provider's own message.
+        finish('', 'failed', coaching_stream.clip(getattr(exc,'detail',None) or 'The request to the AI provider failed.'))
         raise
 
 

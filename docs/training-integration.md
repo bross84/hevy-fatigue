@@ -569,7 +569,9 @@ The first completed turn must contain a recognized action and a single-line
 reason of at most 300 characters (the brief asks the model for 160, because models
 overshoot character counts; the reply is stored unchanged, never truncated).
 Any other deviation, such as text around the JSON or extra keys, is saved as
-failed and can be retried. The conversation presents the validated response as readable
+failed and can be retried. A failed or interrupted turn also stores a short plain-text
+`failure` reason (the broken format rule, or what the provider or connection did), which
+the daily card and the AI chat page show; see `docs/hevy-context.md`. The conversation presents the validated response as readable
 text. Subsequent messages retain the normal Coach discussion format.
 
 The dashboard reuses the recommendation section inside Readiness when refreshing
