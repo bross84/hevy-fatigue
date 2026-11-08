@@ -36,6 +36,30 @@ _Avoid_: Pattern Stress, weekly SI
 The dashboard card showing each movement pattern's decaying training load alongside soreness and a gradual fatigue trend. A different quantity from the stress index.
 _Avoid_: Stress index, pattern stress index
 
+**Microcycle**:
+One saved plan of training days, completed in order at the athlete's own pace. It is not a calendar week and has no fixed length in days.
+_Avoid_: Week, calendar week
+
+**Skipped day**:
+A microcycle day the athlete chose not to train. It counts as finished for plan progress but not as trained, and it never creates or changes a Hevy workout.
+_Avoid_: Missed day, completed manually
+
+**Opening review**:
+The AI Coach review that starts by itself when the athlete confirms the check-in for the first day of a microcycle. It looks ahead at that microcycle.
+_Avoid_: Weekly review
+
+**Closing review**:
+The AI Coach review of a finished microcycle. It starts by itself at the first check-in after the last day, or on request, and looks back at what was planned against what was done and what to change next.
+_Avoid_: End-of-week review, weekly review
+
+**Progress status**:
+A movement's label from comparing its estimated max over the last four weeks with the four weeks before: progressing, flat, declining, or insufficient evidence. It describes what the logs show; it does not say why, and it is not a recommendation to change the program.
+_Avoid_: Stall, plateau, regression
+
+**Proposal outcome**:
+What happened after a plan proposal was saved: how far its draft microcycle got, whether the athlete edited it, and how the proposed movements' progress status compared before and after. It is a record, not a grade, and does not show that the proposal caused anything.
+_Avoid_: Result, success, effectiveness
+
 **Plan proposal**:
 A week of training the AI coach suggests in a reply. It is advice until the athlete saves it as a draft microcycle.
 _Avoid_: AI plan, recommendation

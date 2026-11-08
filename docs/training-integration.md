@@ -475,6 +475,20 @@ existing turns, including uncertain/failed ones, are never automatically resent.
 A missing key or interrupted response is visible without changing workout inputs.
 GET /api/settings/ai adds default_model for the logger's fallback selection.
 
+Plan days can be skipped: POST/DELETE /training/api/mesocycles/{plan_id}/sessions/{session_id}/skip
+(optional note, 200 characters) record or restore a skip in mesocycle_completions (new outcome and note
+columns). A skip resolves the day for progress but is not a workout: no Hevy call, null Hevy id, excluded from
+saved-workout and manual-mark counts. The end-kind week review lists skipped_sessions. closing_review compares
+a skip with the check-in's confirmation time, not its workout start.
+
+The check-in response also carries closing_review ({plan_id, name, completed_on} or
+null; additive, absent from old clients' view): the finished microcycle whose look-back
+review is due at this confirmed pre-working-set check-in. It is the most recently
+finished plan (every session has a completion), whose last session started before this
+check-in and within 14 days, with no other check-in started since. The browser then
+requests the normal end-kind review; nothing about the host endpoint, UUIDv5 identity or
+no-resend rule changed. The check-in need not belong to a plan.
+
 Opening evidence includes the confirmed current observation even without a saved
 workout. Closing capture requires all planned sessions completed/explicitly marked;
 actual dose comes only from linked workouts. Its opening discussion includes the
@@ -490,8 +504,8 @@ it drifts from the shared list. Model trial stays out of the main menu.
 
 AICoach is the one shared vanilla script for the Coach's browser code, at
 /training/static/ai-coach.js. It reads every Coach reply stream (dashboard chat, daily and
-weekly reviews) and starts weekly reviews (reviewWeek). Host
-AI requests use /api/ai; logger requests use trainingUrl. Explicit completed-week
+weekly reviews) and starts weekly reviews (reviewWeek), including the automatic closing review. Host
+AI requests use /api/ai; logger requests use trainingUrl. Explicit completed-microcycle
 links use /?coaching_week=...&coaching_kind=end#ai. The host replaces that request
 with a saved conversation link after capture, preserving reload/follow-up behavior.
 Links from opening assessments use coaching_conversation UUID with #ai. No new

@@ -49,6 +49,8 @@ GET /training/api/mesocycles/{plan_id}/sessions/{session_id}
 PUT /training/api/mesocycles/{plan_id}
 POST /training/api/mesocycles/{plan_id}/sessions/{session_id}/complete
 DELETE /training/api/mesocycles/{plan_id}/sessions/{session_id}/complete
+POST /training/api/mesocycles/{plan_id}/sessions/{session_id}/skip
+DELETE /training/api/mesocycles/{plan_id}/sessions/{session_id}/skip
 POST /training/api/mesocycles/{plan_id}/activate
 POST /training/api/mesocycles/{plan_id}/archive
 POST /training/api/mesocycles/{plan_id}/deactivate

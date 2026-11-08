@@ -1097,3 +1097,46 @@ alongside the numeric summary. All 31 JavaScript checks, 115 host Python
 tests, and the mocked dashboard, logger, Coach, workout save and recovery
 flows passed. Rackbook retained its inherited expected failure. GitHub
 Integration checks cover the container build and startup.
+
+## Automatic microcycle review — local, 2026-11-08
+
+The closing review of a finished microcycle now starts at the first confirmed pre-training
+check-in after its last session, with or without a plan on that workout (the opening review
+still follows at a planned day 1). One automatic attempt, never resent, never blocks logging;
+the manual request remains. Evidence changes since the previous record (movement progress
+status, saved-proposal outcomes, stress-index evidence) are also in new coach reports.
+
+- Host/integration: 210 passed (includes the end review accepting the offered plan and the
+  new progress and proposal-outcome evidence).
+- Logger: 534 passed, 1 expected failure (as before). 15 new cases cover the trigger: first
+  check-in only, unplanned workouts, 14-day window edges, unfinished or empty plans, the last
+  day's own check-in, after-working-sets check-ins, reload stability, manual marks, archived
+  plans, most recent of several, offset-aware times and no extra writes.
+- Browser logic: 35 `.cjs` files passed, including `test_closing_review_ui.cjs` (order,
+  no plan needed, once per page load, failure isolation, started and frozen drafts, reload).
+- Mocked browser: `tools/check_weekly_coaching_browser.py` passed at 390px: opening once, no
+  review when the last day was saved, one automatic closing review at the next planned
+  check-in followed by that day's opening review (4 mocked AI calls in total), reload and the
+  manual link reuse it, fatigue snapshot and programming unchanged.
+- Not run: Docker build/startup (daemon not running), physical phone/tablet, deployed or real
+  data. The 14-day window and "first check-in only" rule are product choices to confirm in use.
+
+## Skip day — local, 2026-11-08
+
+A microcycle day can be skipped (finished for plan progress, recorded as skipped, never trained, no
+Hevy call). It lets a microcycle finish so its closing review starts at the next check-in, and the coach
+is told the day was not trained. Proposal-outcome timing is now reported in days.
+
+- Logger: new `rackbook/tests/test_skip_day.py` (15 cases): skip and undo, notes, last-day finish and
+  deactivation, conflicts (completed, skipped, unknown, archived), manual-completion actions never
+  touching a skip, a skipped day not trainable until restored, only its own row written, upgrade of an
+  older table, the routes (no Hevy client call), and the check-in rule (a skip finishes the microcycle,
+  a draft started before the skip still gets the review, no relaxation for real workouts).
+- Host: end review lists `skipped_sessions` and keeps manual-mark counts separate; proposal outcomes show
+  `sessions_skipped` and `finished_with_skips`.
+- Browser logic: `test_log_plan_selection.cjs` extended (cancel, note sent, undo, failure, all days
+  resolved); all `.cjs` files run.
+- Mocked browser: `tools/check_weekly_coaching_browser.py` covers skipping via the UI, no AI call from the
+  skip alone, then the skipped microcycle's review followed by the next opening review (6 mocked calls in
+  total).
+- Not run: Docker build/startup (daemon not running), physical phone/tablet, deployed or real data.

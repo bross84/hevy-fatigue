@@ -34,7 +34,7 @@ Hevy Fatigue is a personal training load and fatigue monitoring dashboard. It sy
 |---|---|
 | `main.py` | FastAPI app, all API routes, fatigue engine |
 | `database.py` | SQLAlchemy models, `init_db()`, schema migrations |
-| `coaching.py`, `coaching_stress.py` | Read-only AI coach evidence report; stress-index block per exercise |
+| `coaching.py`, `coaching_stress.py`, `coaching_progress.py`, `coaching_outcomes.py` | Read-only AI coach evidence report; stress-index and progress blocks per exercise; saved-proposal outcomes |
 | `index.html` | Entire frontend — HTML, CSS, and JS in one file |
 | `diagnostic.html` | Engine snapshot / diagnostics page |
 | `importer.py` | Hevy API sync logic, session processing pipeline |
@@ -539,11 +539,13 @@ A planned week is the saved microcycle identity, not Monday–Sunday. Confirming
 its first session starts one opening AI review using current check-in, saved plan,
 monitoring context, training history/spacing and prior coaching excerpts. Later
 days and reloads reuse it; late confirmations do not generate a supposedly
-pre-training assessment. AI unavailability never blocks logging. End-of-week
-review is explicitly requested from completed Plans or the logger's completed
-week; it includes linked actual workouts, manual-completion uncertainty, and the
-opening discussion. It opens a persistent AI Coach conversation for proposals,
-questions and program development. No recommendations are automatically applied.
+pre-training assessment. AI unavailability never blocks logging. The closing
+review of a finished microcycle starts automatically at the next check-in (see
+"Automatic microcycle review" below) and can still be requested from completed
+Plans or the logger's completed microcycle; it includes linked actual workouts,
+manual-completion uncertainty, and the opening discussion. It opens a persistent
+AI Coach conversation for proposals, questions and program development. No
+recommendations are automatically applied.
 
 Opening and closing reviews have deterministic IDs per plan/kind. Existing host
 conversation/turn persistence protects concurrent or uncertain attempts from
@@ -697,6 +699,138 @@ re-attribute history on the next report because nothing is stored. Frozen
 conversations keep their original evidence. `BRIEF` tells the coach these are
 attributed totals, never recovery limits or targets, and that a low push or pull
 week can simply be a lower-body week. No UI shows this block yet.
+
+## Movement progress in AI coach evidence (local, 2026-11-07)
+
+`coaching_progress.py` adds a read-only `progress` block to every exercise in the
+`build_report` evidence and a top-level `progress_summary`. It is pure: it uses the
+sessions the report already merged, so it makes no Hevy request, database write or
+new table. The question it answers is whether a movement is moving, not what to do
+about it; the coach and the athlete decide that.
+
+Method: each exposure (one movement in one session) is reduced to its anchor, the
+heaviest recorded-RPE working set, via `stress_index.session_anchor` (the same anchor
+the stress index uses, so blank-RPE sets never count) and the e1RM that set implies.
+The last 28 local days are compared with the 28 days before by the median e1RM of each
+period: `progressing` at +2.5% or more, `declining` at −5% or more, `flat` between
+(about one RPE half-step of rounding error), and `insufficient_evidence` with a
+`reason` when there are fewer than three recent or two earlier usable exposures.
+Medians keep one bad day or one mistyped RPE from moving the label. Anchors harder
+than RPE 7 are required; lighter exposures (deloads) are counted in
+`low_effort_exposures` rather than read as a decline. Warm-ups, conditioning sets,
+blank RPEs and unknown loads are excluded and counted (`unusable_exposures`). These
+thresholds are product heuristics, stated as such in the report limitations.
+
+Each block also names the confounders the coach is told to check before suggesting
+anything: `rep_range_shift` (median anchor reps moved by 3 or more), `entered_share`
+(how much of each period used RPEs entered in the logger rather than imported),
+`high_rep_exposures`, the best e1RM in the window and exposures since it, and the
+last six anchor points. `progress_summary` carries the status counts and an
+`attention` list of up to eight `flat` or `declining` movements (declining first),
+with `attention_total` for the full count. Under context pressure the per-exposure
+points are dropped before the summaries and the omission is recorded.
+
+`BRIEF` tells the coach to raise the attention list in a training or weekly review
+even when not asked (not in the daily interpretation), to check the confounders, and
+to offer options such as holding, a rep-range or set-count change, a variation or a
+phase change with what would change its view. A flat or declining label is context,
+never a diagnosis or proof that a block should end. Existing frozen conversations
+keep their original evidence. There is still no block or phase field on microcycles,
+no rule that changes a plan, and no check of whether a past recommendation worked.
+Tests: `tests/test_coaching_progress.py`, `rackbook/tests/test_stress_index.py`.
+
+## Proposal outcomes in AI coach evidence (local, 2026-11-08)
+
+`coaching_outcomes.py` adds a top-level `proposal_outcomes` list to the `build_report`
+evidence: the latest five week proposals the athlete saved as drafts, newest first. It
+is pure and read-only. `coaching.local_evidence` reads the logger's `plan_proposals`
+rows (latest ten), their `mesocycles` rows and all of their `mesocycle_completions`
+over the same `mode=ro` connection; nothing is written, no table is added and Hevy is
+not contacted. A database from before `plan_proposals` existed simply has no proposals;
+any other read failure still marks the local source `unavailable_or_incomplete`.
+
+Per proposal: `stage` (`not_started`, `active_not_started`, `in_progress`, `completed`,
+`archived_unused`, `plan_removed`), `edited_since_save` (plan revision above 1),
+`sessions_planned` and `sessions_completed` (planned counts sessions that have
+exercises), first and last completion dates, and `comparison`: `not_executed`,
+`too_early` (under 28 days since the first completed session) or `available`. Only an
+`available` comparison lists each proposed movement (up to eight) with its
+`proposed_reps` and its progress status before and after: `before` is computed as of the
+day before the save (UTC date) and `after` as of the report day, both with
+`coaching_progress.assess_at` over the merged six-month sessions, so it works for
+proposals saved before this feature and needs no frozen evidence. Each side carries
+status, `change_pct`, `median_anchor_reps` and `entered_share`, so the coach can see
+whether the rep range actually changed.
+
+Limits, also in the report limitations and `BRIEF`: `after` covers everything trained
+since the save, not only the proposed week; a proposal that was never started or was
+edited says little about the proposal; nothing here shows that a proposal caused a
+change. Without about eight weeks of history before the save, the `before` side reads
+`insufficient_evidence`. Under context pressure the oldest outcomes are dropped first
+and the omission is recorded. Existing frozen conversations keep their original
+evidence. There is no UI for outcomes and no rule that changes a plan.
+Tests: `tests/test_coaching_outcomes.py`, `tests/test_coaching_progress.py`.
+
+## Automatic microcycle review (local, 2026-11-08)
+
+A microcycle is one saved plan (one `weeks[0]`); it is not a calendar week and has no
+Sunday/Monday rhythm. Before this change only the opening (look-ahead) review was
+automatic, and only when a check-in belonged to day 1 of a plan. The closing
+(look-back) review is now offered by the logger at the first confirmed pre-training
+check-in after a microcycle's last day, whether or not that workout belongs to a plan.
+
+`POST /training/session-checkins` adds `closing_review` (`{plan_id, name, completed_on}`
+or `null`) beside the unchanged `weekly_review_eligible`. `session_checkins.closing_candidate`
+decides it with reads only, inside the check-in's existing transaction. A microcycle
+qualifies when every session in its document has a completion (the same predicate the
+host's end-review requires; manual marks count and archived plans are allowed), its last
+session started before this check-in but within 14 days of it (older microcycles are never
+resurrected automatically), it is the most recently finished one, and no other check-in
+has started since it finished. The check-in must have been confirmed before working sets.
+That makes one automatic attempt per finished microcycle; the same check-in re-posted
+(reload) gets the same answer, a later check-in gets none, and the manual request remains.
+
+The browser (`rackbook/static/session-motivation.js`) then calls
+`AICoach.reviewWeek(plan, 'end')` exactly like the manual link: the host's deterministic
+conversation identity and the server-owned sequence-zero message mean a review that
+already has turns is never resent. At a planned day 1 the closing review runs first and
+the existing opening review follows (it can see the closing one in its prior coaching
+excerpts). A failure never blocks confirming the check-in, logging or the opening review,
+and shows a message with no automatic resend. If training has already started the review
+is not run; an existing one is only shown. The result appears in the collapsed
+Pre-training check-in card as "Finished microcycle · status" with a link to AI Coach.
+
+The closing prompt and label now say microcycle and point the coach at `progress_summary`
+and `proposal_outcomes`. Stored identities (`hevy-fatigue:weekly-review:<plan>:end`) are
+unchanged. Tests: `rackbook/tests/test_closing_review_trigger.py`,
+`rackbook/tests/test_closing_review_ui.cjs`, `tests/test_coaching.py`, and the mocked
+`tools/check_weekly_coaching_browser.py`. Not changed: review evidence, pattern-stress
+calendar-week grouping, plan activation or any automatic programming change.
+
+## Skipping a day (local, 2026-11-08)
+
+Until now a day you would not train could only be resolved with "Mark already completed", which reads as
+trained, or by editing it out of the plan. Without that the microcycle never finished, so the automatic
+closing review (and the manual one) could not run. The Planned workout box on the log page now offers
+**Skip this day** beside "Mark already completed": one prompt with an optional note (for example where the
+work went instead), local only, never a Hevy call. A skipped day is shown as "Skipped" with its note and
+"Undo skip"; the microcycle cards count "N completed · M skipped".
+
+A skip is stored in `mesocycle_completions` with `outcome = 'skipped'` and the optional `note`, so every "is the
+day resolved" rule (finishing a plan, the end-review predicate, the next-check-in trigger, builder locks) works
+unchanged, while every "was it trained" use (saved-workout and manual-mark counts, first completion date,
+progress comparison) excludes it. The closing review's `week_context` adds `skipped_count` and
+`skipped_sessions` (`session_id`, `name`, `note`, `skipped_at`) next to `manually_marked_count`, which no longer
+counts skips; `plan_completions` and proposal outcomes carry the outcome (`sessions_skipped`, stage
+`finished_with_skips`). `BRIEF` and the closing prompt say a skipped day was the athlete's choice and not
+trained, is not by itself a failure, fatigue signal or motivation problem, and that its note is the athlete's own
+words. A skip is compared with when a check-in was confirmed (not when the workout started), so skipping Day 4,
+loading the next microcycle's Day 1 and confirming the check-in starts the review of the skipped microcycle
+followed by the new opening review. Proposal-outcome timing is now reported in days
+(`days_since_first_completion`). Tests: `rackbook/tests/test_skip_day.py`, `tests/test_coaching.py`,
+`tests/test_coaching_outcomes.py`, `rackbook/tests/test_log_plan_selection.cjs`, and the mocked
+`tools/check_weekly_coaching_browser.py`. Not included: skipping several days at once, automatic skip
+detection, moving a day, or linking work done elsewhere to the skipped day.
 
 ## AI week proposals in the AI Coach (local, 2026-11-07)
 

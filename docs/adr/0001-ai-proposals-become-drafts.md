@@ -16,6 +16,6 @@ Letting the model write plans directly would turn unreviewed, possibly wrong adv
 
 - Proposals carry sets, reps and RPE only. Loads still come from TS/TM/RPE loading, and exact RPEs stay with logging.
 - Movement ids must already exist locally; titles come from local records, not the model.
-- A `plan_proposals` row links each draft to its conversation turn, which later outcome review can use.
+- A `plan_proposals` row links each draft to its conversation turn. The coach's outcome review now reads it (read-only) with the draft's completions to report what happened after each save.
 - The logger cannot read host conversations, so the browser supplies the reply text. That text is validated again on save and only ever produces an inactive draft of the athlete's own data.
 - Adding any path that applies or activates AI output would contradict this decision and should reopen it.

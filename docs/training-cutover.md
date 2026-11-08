@@ -344,6 +344,19 @@ Record device/browser/version separately from automated browser results:
    week, confirm the proposal card shows a diff and that Save as draft creates one inactive
    microcycle (repeat clicks reuse it) and never changes or activates the active plan.
    The new `plan_proposals` table is additive and harmless to roll back.
+10. Automatic microcycle review (mocked or disposable data first): finish every day of a
+    microcycle, then confirm the next pre-training check-in, with or without a plan. One
+    "Finished microcycle" review should start by itself (before the day-1 opening review if
+    the workout is planned), a reload must not resend it, a second check-in must not start
+    another, and AI being unavailable must not block the check-in or logging. This needs no
+    migration: the check-in response gains an additive field and nothing new is stored.
+    Microcycles finished more than 14 days before the check-in are reviewed only on request.
+11. Skip day (mocked or disposable data first): on the log page choose a microcycle with an open
+    day, press "Skip this day" with a note, confirm the microcycle shows as finished with the day
+    marked Skipped, then load the next microcycle's day 1 and confirm its check-in. The skipped
+    microcycle's review should start first and mention the skipped day and note as not trained.
+    The two new `mesocycle_completions` columns are added on first start and default to
+    `completed`; rolling back leaves them unused and older code would show a skip as a manual mark.
 
 ## Rollback
 
