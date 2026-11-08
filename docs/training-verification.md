@@ -1159,3 +1159,18 @@ ending on the report date, and a failed or interrupted AI turn now stores and sh
 - Mocked browser: `tools/check_daily_coaching_browser.py` passes with the changed daily card script and
   page (it does not itself trigger a failure card; that is covered by the `.cjs` test).
 - Not run: Docker build/startup, physical phone/tablet, deployed or real data, a live model.
+
+## AI Coach in the main menu — local, 2026-11-08
+
+AI Coach moved from the Tools group to Overview, directly after Dashboard, in the shared menu
+(`rackbook/static/app-menu.js`) and the dashboard's hand-written sidebar. Logger top bars now show it
+without opening More. Routes, the `#ai` tab and the Coach itself are unchanged. The menu script is
+versioned (`?v=2`) on every logger page so a cached copy cannot keep the old menu.
+
+- `tests/test_app_menu.cjs` (dashboard sidebar identical to the shared list) and all 35 `.cjs` files pass;
+  host 227 and logger 549 (1 expected failure, as before) Python tests pass. `test_progress_ui.cjs` resolved
+  script tags to files without dropping a `?v=` query, so it now strips it for the file lookup only.
+- Mocked preview, checked in the browser pane at phone width: the dashboard drawer lists AI Coach second;
+  a logger page's top bar shows it as the second visible link and it opens `/#ai`, which activates the AI tab.
+  `tools/check_dashboard_layout_browser.py` and `tools/check_logger_layout_browser.py` pass.
+- Not run: Docker build/startup, physical phone/tablet, deployed or real data.
