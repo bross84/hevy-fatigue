@@ -566,8 +566,10 @@ Daily recommendations use a versioned conversation identity and the existing
 training context, including recent performance, session spacing and check-ins.
 Fixed-rule recommendation fields are excluded from the new daily evidence.
 The first completed turn must contain a recognized action and a single-line
-reason of at most 200 characters. An invalid response is saved as failed and
-can be retried. The conversation presents the validated response as readable
+reason of at most 300 characters (the brief asks the model for 160, because models
+overshoot character counts; the reply is stored unchanged, never truncated).
+Any other deviation, such as text around the JSON or extra keys, is saved as
+failed and can be retried. The conversation presents the validated response as readable
 text. Subsequent messages retain the normal Coach discussion format.
 
 The dashboard reuses the recommendation section inside Readiness when refreshing

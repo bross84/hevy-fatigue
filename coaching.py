@@ -31,11 +31,15 @@ DAILY_ACTIONS = {
     'increase': 'Consider a small increase',
     'insufficient_evidence': 'Not enough evidence',
 }
+# The brief asks for 160 characters; models routinely overshoot a character count by
+# a sentence clause, so the accepted size is looser than the requested one. The
+# model's own wording is stored unchanged; it is never truncated.
+DAILY_REASON_MAX_CHARS = 300
 DAILY_RECOMMENDATION_INSTRUCTIONS = """
 For this first daily recommendation, return exactly one JSON object with keys
 "action" and "reason". No Markdown or additional fields. The action must be
 "continue", "reduce", "increase", or "insufficient_evidence". The reason is one
-plain-text sentence of at most 200 characters. Give the strongest reason for
+plain-text sentence of at most 160 characters. Give the strongest reason for
 what to do at the next session, grounded in recent training, actual session
 spacing, performance or repeated check-ins. Never recommend more work based
 only on low fatigue, low volume, or days off. Use "increase" only when repeated
@@ -421,7 +425,7 @@ def daily_recommendation(response):
     if not isinstance(action, str) or action not in DAILY_ACTIONS or not isinstance(reason, str):
         return None
     reason = reason.strip()
-    if not reason or len(reason) > 200 or len(reason.splitlines()) != 1:
+    if not reason or len(reason) > DAILY_REASON_MAX_CHARS or len(reason.splitlines()) != 1:
         return None
     return dict(action=action, label=DAILY_ACTIONS[action], reason=reason)
 
