@@ -148,6 +148,8 @@ def init_db() -> None:
                 hevy_workout_id TEXT,
                 workout_start TEXT NOT NULL,
                 completed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                outcome TEXT NOT NULL DEFAULT 'completed' CHECK(outcome IN ('completed', 'skipped')),
+                note TEXT,
                 PRIMARY KEY (mesocycle_id, session_id)
             );
             CREATE TABLE IF NOT EXISTS mesocycle_session_aliases (
@@ -338,6 +340,13 @@ def init_db() -> None:
                 synced_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
         """)
+
+        # A day can be skipped (resolved for plan progress, not trained). Existing rows are completions.
+        completion_columns = {row[1] for row in conn.execute("PRAGMA table_info(mesocycle_completions)")}
+        if "outcome" not in completion_columns:
+            conn.execute("ALTER TABLE mesocycle_completions ADD COLUMN outcome TEXT NOT NULL DEFAULT 'completed' CHECK(outcome IN ('completed', 'skipped'))")
+        if "note" not in completion_columns:
+            conn.execute("ALTER TABLE mesocycle_completions ADD COLUMN note TEXT")
 
         # Existing movements retain their automatic-weight behavior on upgrade.
         if "auto_weights" not in {row[1] for row in conn.execute("PRAGMA table_info(exercise_refs)")}:

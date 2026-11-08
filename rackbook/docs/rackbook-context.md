@@ -99,6 +99,7 @@ Routes used by the log, RPE and progress pages (the legacy planner has many more
 | `GET /exercises`, `POST /exercises/sync` | The cached Hevy exercise list |
 | `GET /settings`, `POST /settings/api-key` | Whether a Hevy key is set (never returns it), and saving it (204, empty body) |
 | `GET/POST /api/mesocycles`, `GET/PUT /api/mesocycles/{id}` | List/create/read/update saved local plans with revision checking |
+| `POST/DELETE /api/mesocycles/{id}/sessions/{session}/skip` | Skip a day (optional note, 200 chars) or restore it; local only, never a Hevy call |
 | `POST /api/mesocycles/{id}/activate`, `/archive` | Choose one active sequence; archival retains its document and completion history |
 | `POST /api/plan-proposals/preview`, `/save` | AI Coach week proposal: validated read-only preview (no writes); save creates one new inactive draft plus a `plan_proposals` provenance row atomically, idempotent per conversation turn |
 | `POST /body-weight/sync`, `GET /body-weight` | Daily body weight from Hevy |
@@ -432,3 +433,11 @@ the normal editor: review, adjust and activate on `/microcycles`. The table is a
 outcome review. The logger cannot read host conversations, so the browser supplies the text; it is
 validated again on save. Tests: `rackbook/tests/test_plan_proposals.py` and
 `rackbook/tests/test_plan_proposal_ui.cjs`. Decision record: `docs/adr/0001-ai-proposals-become-drafts.md`.
+
+## Check-in offers the closing review of a finished microcycle (2026-11-08)
+
+`POST /session-checkins` returns an additive `closing_review` (`{plan_id, name, completed_on}` or `null`) next to `weekly_review_eligible`. `session_checkins.closing_candidate` computes it with reads only, in the check-in's existing `BEGIN IMMEDIATE`: the most recently finished microcycle (every session in its document has a `mesocycle_completions` row; archived plans count) whose last session started before this check-in but within `CLOSING_WINDOW` (14 days), when no other `session_checkins` row has started since it finished. It is returned only for a check-in confirmed before working sets and does not depend on the check-in having a plan. Datetimes are parsed and compared timezone-aware. Nothing is stored; the host's `weekly_coaching.week_context(kind='end')` still decides whether a review can be built. Tests: `rackbook/tests/test_closing_review_trigger.py`.
+
+## Skipping a microcycle day (2026-11-08)
+
+A day the athlete will not train can be skipped: it counts as resolved for plan progress (a plan whose last open day is skipped is finished and deactivated, exactly like a normal finish) but is recorded as skipped, not trained. `mesocycle_completions` gains `outcome` (`completed` default, or `skipped`) and a nullable `note` (200 characters); both are added by `init_db` with the usual guarded `ALTER`, so existing rows stay `completed`. A skip row has a null Hevy id and the skip time as `workout_start`. `POST /api/mesocycles/{id}/sessions/{session}/skip` takes an optional `{note}`; `DELETE` restores the day. Skipping a day that already has any completion or skip is a 409; marking a skipped day complete is a 409 ("Undo the skip first"); undoing a manual completion never removes a skip; a skipped day cannot be trained until the skip is undone (`validate_save` already rejects it). `PlanView.completed[]` carries `outcome` and `note`. `closing_candidate` compares a skip with the check-in's server confirmation time rather than its workout start, so a workout opened before the skip still triggers the finished-microcycle review. Nothing here calls Hevy. Rollback: older code ignores the columns and would show skips as manual completions. Tests: `rackbook/tests/test_skip_day.py`.

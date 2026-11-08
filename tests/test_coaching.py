@@ -327,6 +327,39 @@ class CoachingTests(TestCase):
         self.assertIn('remote coach',source)
         self.assertIn('varied accessories',source)
 
+    def test_the_next_checkin_after_the_last_day_is_offered_a_review_the_host_accepts(self):
+        from datetime import datetime,timedelta,timezone
+        from rackbook import session_checkins,mesocycles
+        plan,_=self.week()
+        mesocycles.mark_completed(plan['id'],'day1')
+        mesocycles.mark_completed(plan['id'],'day2')
+        later=datetime.now(timezone.utc)+timedelta(hours=1)
+        offer=session_checkins.record(session_checkins.CheckinInput(session_id=str(uuid4()),workout_start=later,
+            motivation=dict(level=2,note='',recorded_at=later,timing='before_working_sets')))
+        self.assertEqual(offer['closing_review']['plan_id'],plan['id'])
+        self.assertFalse(offer['weekly_review_eligible'])  # an unplanned workout: no look-ahead review
+        response=self.client.post('/api/ai/week-reviews',json=dict(plan_id=offer['closing_review']['plan_id'],kind='end'))
+        self.assertEqual(response.status_code,200,response.text)
+        self.assertTrue(response.json()['evidence']['week_context']['label'].endswith('Microcycle review'))
+        self.assertIn('progress_summary',response.json()['evidence'])
+
+    def test_a_skipped_day_finishes_the_microcycle_for_review_and_is_shown_as_not_trained(self):
+        from rackbook import mesocycles
+        plan,_=self.week()
+        body=dict(plan_id=plan['id'],kind='end')
+        mesocycles.mark_completed(plan['id'],'day1')
+        self.assertEqual(self.client.post('/api/ai/week-reviews',json=body).status_code,422,'one day is still open')
+        mesocycles.skip_day(plan['id'],'day2','Pull-ups after day 1 of the next microcycle <b>x</b>')
+        response=self.client.post('/api/ai/week-reviews',json=body)
+        self.assertEqual(response.status_code,200,response.text)
+        context=response.json()['evidence']['week_context']
+        self.assertEqual((context['saved_workout_count'],context['manually_marked_count'],context['skipped_count']),(0,1,1))
+        skipped=context['skipped_sessions'][0]
+        self.assertEqual((skipped['session_id'],skipped['name']),('day2','Day 2'))
+        self.assertIn('Pull-ups after day 1',skipped['note'])
+        self.assertTrue(any('skipped day' in note.lower() for note in context['limitations']))
+        self.assertIn("skipped by the athlete's choice and not trained",' '.join(coaching.BRIEF.split()))
+
     def test_save_conversation_keeps_the_first_saved_evidence_on_duplicates(self):
         identity=str(uuid4())
         first=dict(captured_at='2026-11-05T12:00:00Z',marker='first')

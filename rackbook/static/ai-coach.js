@@ -16,7 +16,7 @@ const AICoach = (() => {
     onPrepared(view);
     const message=kind==='start'
       ? 'Review this planned training week before day 1. Use my confirmed motivation and note, daily check-ins, recent performance, actual spacing and previous coaching discussions. Explain whether to keep the plan or propose a change. Separate engagement from fatigue; ask a focused question where my goal or constraints matter. Do not apply programming changes.'
-      : 'Review the completed training week like my remote coach. Compare the planned work with actual saved sessions, effort, motivation, check-ins and spacing. Revisit our opening discussion, explain what worked and what is uncertain, and propose the next week or phase for us to discuss. Ask focused follow-ups; do not apply changes.';
+      : 'Review the microcycle I just finished like my remote coach. Compare the planned work with actual saved sessions, effort, motivation, check-ins and spacing; a skipped day was not trained. Use the movement progress summary, and how my earlier saved proposals turned out, as context rather than conclusions. Revisit our opening discussion if there was one, explain what worked and what is uncertain, and propose the next microcycle or phase for us to discuss. Ask focused follow-ups; do not apply changes.';
     return reviewPrepared(view,message,onStatus);
   }
   async function reviewPrepared(view,message,onStatus=()=>{},expectedSequence=0,retryPendingTurnId=null) {

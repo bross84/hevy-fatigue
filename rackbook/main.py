@@ -767,6 +767,21 @@ def undo_microcycle_day_completion(plan_id: str, session_id: str):
     return _plan_call(mesocycles.undo_manual_completion, plan_id, session_id)
 
 
+class SkipDayRequest(BaseModel):
+    note: str | None = Field(default=None, max_length=mesocycles.SKIP_NOTE_CHARS)
+
+
+@app.post('/api/mesocycles/{plan_id}/sessions/{session_id}/skip', response_model=mesocycles.PlanView)
+def skip_microcycle_day(plan_id: str, session_id: str, data: SkipDayRequest | None = None):
+    """Resolve a day the athlete will not train: finished for plan progress, recorded as skipped. Local only."""
+    return _plan_call(mesocycles.skip_day, plan_id, session_id, data.note if data else None)
+
+
+@app.delete('/api/mesocycles/{plan_id}/sessions/{session_id}/skip', response_model=mesocycles.PlanView)
+def undo_microcycle_day_skip(plan_id: str, session_id: str):
+    return _plan_call(mesocycles.undo_skip, plan_id, session_id)
+
+
 @app.post('/api/mesocycles/{plan_id}/activate', response_model=mesocycles.PlanView)
 def activate_mesocycle(plan_id: str):
     return _plan_call(mesocycles.activate, plan_id)

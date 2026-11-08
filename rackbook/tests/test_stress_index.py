@@ -223,6 +223,14 @@ class TestHistoryReference(unittest.TestCase):
         mixed = workout(10, 'mixed', [S(100, 5, None), S(60, 5, 8)])
         self.assertEqual(stress.session_e1rm([S(60, 5, 8)]), stress.session_e1rm(mixed))
 
+    def test_session_anchor_names_the_heaviest_recorded_set_and_its_e1rm(self):
+        sets = [S(60, 5, 8), S(100, 5, None), S(90, 3, 9), S(90, 5, 8, type="warmup"), S(90, 4, 9)]
+        anchor = stress.session_anchor(sets)
+        self.assertEqual((2, 90, 3, 9), (anchor["index"], anchor["weight_kg"], anchor["reps"], anchor["rpe"]))
+        self.assertEqual(stress.session_e1rm(sets), anchor["e1rm"])
+        self.assertIsNone(stress.session_anchor([S(100, 5, None), S(80, 5, 8, type="warmup")]))
+        self.assertIsNone(stress.session_anchor([]))
+
     def test_reference_window_is_84_days_before_the_session(self):
         base = stress.session_score(BACK)['total']
         for days, applies in ((83, True), (84, False), (120, False)):
