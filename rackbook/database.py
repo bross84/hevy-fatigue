@@ -142,6 +142,31 @@ def init_db() -> None:
                 saved_at TEXT NOT NULL,
                 UNIQUE(conversation_id, turn_id)
             );
+            CREATE TABLE IF NOT EXISTS plan_changes (
+                id TEXT PRIMARY KEY,
+                conversation_id TEXT NOT NULL,
+                turn_id TEXT NOT NULL,
+                plan_id TEXT NOT NULL REFERENCES mesocycles(id),
+                title TEXT NOT NULL,
+                base_revision INTEGER NOT NULL,
+                applied_revision INTEGER NOT NULL,
+                previous_document TEXT NOT NULL,
+                proposed TEXT NOT NULL,
+                summary TEXT NOT NULL,
+                touched TEXT NOT NULL,
+                applied_at TEXT NOT NULL,
+                undone_at TEXT,
+                UNIQUE(conversation_id, turn_id)
+            );
+            CREATE INDEX IF NOT EXISTS plan_changes_by_plan ON plan_changes(plan_id, applied_at);
+            CREATE TABLE IF NOT EXISTS microcycle_successors (
+                source_plan_id TEXT PRIMARY KEY REFERENCES mesocycles(id),
+                plan_id TEXT NOT NULL UNIQUE REFERENCES mesocycles(id),
+                origin TEXT NOT NULL CHECK (origin IN ('coach', 'repeat')),
+                proposal_id TEXT,
+                previous_active_id TEXT,
+                created_at TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS mesocycle_completions (
                 mesocycle_id TEXT NOT NULL REFERENCES mesocycles(id),
                 session_id TEXT NOT NULL,

@@ -2600,7 +2600,7 @@ def coaching_send(conversation_id: UUID, data: CoachingMessage, db: Session = De
     if not message or not model: raise HTTPException(422,'Message and model must not be blank.')
     try:
         view = coaching.conversation(db,str(conversation_id))
-        messages = coaching.messages(view,message)
+        messages = coaching.messages(view,message,live=coaching.live_planning(str(conversation_id)))
         coaching.begin_turn(
             db, str(conversation_id), str(data.id), message, model, data.expected_sequence,
             retry_pending_turn_id=str(data.retry_pending_turn_id) if data.retry_pending_turn_id else None,

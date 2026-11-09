@@ -47,6 +47,8 @@ from . import stress_index
 from . import stress_service
 from . import mesocycles
 from . import plan_proposals
+from . import plan_changes
+from . import weekly_call
 from . import training_max
 from .wave_math import bbb_weight, epley, joker_qualifies, joker_weight, round_weight, session_e1rm, working_weight
 from .workout_payload import build_hevy_workout
@@ -755,6 +757,79 @@ def save_plan_proposal(data: PlanProposalRequest):
         return plan_proposals.save_draft(data.text, data.conversation_id, data.turn_id)
     except plan_proposals.ProposalError as exc:
         raise HTTPException(status_code=exc.status, detail=str(exc))
+
+
+class PlanChangeRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=plan_changes.MAX_REPLY_CHARS)
+    conversation_id: UUID
+    turn_id: UUID
+
+
+def _change_call(function, *args):
+    try:
+        return function(*args)
+    except plan_changes.ChangeError as exc:
+        raise HTTPException(status_code=exc.status, detail=str(exc))
+
+
+@app.post('/api/plan-changes/preview')
+def preview_plan_change(data: PlanChangeRequest):
+    """Read-only: validate the reply's plan change against the current plan and describe it day by day."""
+    return plan_changes.preview(data.text, data.conversation_id, data.turn_id)
+
+
+@app.post('/api/plan-changes/accept')
+def accept_plan_change(data: PlanChangeRequest):
+    """The athlete's Accept tap: apply the coach's change to that plan, keeping the previous version for undo (ADR 0002)."""
+    return _change_call(plan_changes.accept, data.text, data.conversation_id, data.turn_id)
+
+
+@app.post('/api/plan-changes/{change_id}/undo')
+def undo_plan_change(change_id: UUID):
+    """The athlete's Undo tap: restore the plan as it was before that accepted change."""
+    return _change_call(plan_changes.undo, str(change_id))
+
+
+def _call(function, *args):
+    try:
+        return function(*args)
+    except weekly_call.CallError as exc:
+        raise HTTPException(status_code=exc.status, detail=str(exc))
+
+
+@app.get('/api/weekly-call')
+def weekly_call_due():
+    """Read-only: the finished microcycle whose weekly coaching call is due on the Log page, or null."""
+    return weekly_call.rollover()
+
+
+@app.get('/api/weekly-call/{plan_id}')
+def weekly_call_status(plan_id: str):
+    return _call(weekly_call.status, plan_id)
+
+
+@app.post('/api/weekly-call/{plan_id}/preview')
+def weekly_call_preview(plan_id: str, data: PlanProposalRequest):
+    """Read-only: a proposal in this microcycle's call, described as a candidate next week."""
+    return _call(weekly_call.preview, data.text, data.conversation_id, data.turn_id, plan_id)
+
+
+@app.post('/api/weekly-call/{plan_id}/next-week')
+def weekly_call_accept(plan_id: str, data: PlanProposalRequest):
+    """The athlete's Accept tap in the weekly coaching call: create the next week and make it active (ADR 0002)."""
+    return _call(weekly_call.accept_next_week, data.text, data.conversation_id, data.turn_id, plan_id)
+
+
+@app.post('/api/weekly-call/{plan_id}/run-it-back')
+def weekly_call_run_it_back(plan_id: str):
+    """The athlete's Run it back tap: repeat the finished microcycle unchanged as the active next week. No AI."""
+    return _call(weekly_call.run_it_back, plan_id)
+
+
+@app.post('/api/weekly-call/{plan_id}/undo')
+def weekly_call_undo(plan_id: str):
+    """The athlete's Undo tap: remove the untouched next week and restore what was active before."""
+    return _call(weekly_call.undo, plan_id)
 
 
 @app.post('/api/mesocycles/{plan_id}/sessions/{session_id}/complete', response_model=mesocycles.PlanView)

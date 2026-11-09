@@ -12,7 +12,8 @@ ai_calls=0
 def stream(model, api_key, messages, on_finish=None):
     global ai_calls
     ai_calls+=1
-    report=json.loads(messages[0]['content'].split('FROZEN TRAINING REPORT:\n')[1])
+    # The frozen report is one JSON line; live planning state may follow it on later lines.
+    report=json.loads(messages[0]['content'].split('FROZEN TRAINING REPORT:\n')[1].split('\n',1)[0])
     content=f"Recorded sessions: {report['coverage']['sessions']}. Your goal is not recorded; what would you like this phase to accomplish?"
     if report.get('week_context'):content=report['week_context']['label']+'. '+content
     content+=' <a href="https://pubmed.ncbi.nlm.nih.gov/19204579/">ACSM2009</a>'

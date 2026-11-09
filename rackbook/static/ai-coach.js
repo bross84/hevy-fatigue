@@ -1,6 +1,7 @@
 /* The AI Coach's browser code, shared by the dashboard, the daily card and the logger.
    Host AI requests use /api/ai; logger-owned requests still use trainingUrl. It only reads
-   and requests: whether a reply may be resent is decided by the server, and it never edits a plan. */
+   and requests: whether a reply may be resent is decided by the server, and it never edits a plan. A plan
+   changes only through the athlete's own taps on the proposal/change cards or Run it back (ADR 0002). */
 const AICoach = (() => {
   async function json(path,options) {
     const response=await fetch(path,options),data=await response.json();
@@ -8,16 +9,17 @@ const AICoach = (() => {
     return data;
   }
   const openUrl=id=>'/?coaching_conversation='+encodeURIComponent(id)+'#ai';
-  const endUrl=id=>'/?coaching_week='+encodeURIComponent(id)+'&coaching_kind=end#ai';
+  const callUrl=id=>'/?coaching_week='+encodeURIComponent(id)+'&coaching_kind=call#ai';
+  const MESSAGES={
+    start:'Review this planned training week before day 1. Use my confirmed motivation and note, daily check-ins, recent performance, actual spacing and previous coaching discussions. Explain whether to keep the plan or propose a change. Separate engagement from fatigue; ask a focused question where my goal or constraints matter. Do not apply programming changes.',
+    end:'Review the microcycle I just finished like my remote coach. Compare the planned work with actual saved sessions, effort, motivation, check-ins and spacing; a skipped day was not trained. Use the movement progress summary, and how my earlier saved proposals turned out, as context rather than conclusions. Revisit our opening discussion if there was one, explain what worked and what is uncertain, and propose the next microcycle or phase for us to discuss. Ask focused follow-ups; do not apply changes.',
+    call:'This is our weekly coaching call. Review the microcycle I just finished like my remote coach: planned versus actual sessions, effort, motivation, check-ins and spacing (a skipped day was not trained), the progress summary, and how earlier proposals turned out. Then lay out my next microcycle: if it is not set up yet, give it as one plan proposal, usually this week with any changes the evidence supports; if it already exists, give one plan change or tell me to keep it. Keeping everything the same is a fine answer. If you think I need a new stimulus or phase, explain the idea and why and ask me first. Keep it short; I decide.'};
   async function reviewWeek(planId,kind,sessionId=null,onStatus=()=>{},onPrepared=()=>{}) {
     onStatus('Preparing your weekly coaching context…');
     let view=await json('/api/ai/week-reviews',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({plan_id:planId,kind,session_id:sessionId})});
     onPrepared(view);
-    const message=kind==='start'
-      ? 'Review this planned training week before day 1. Use my confirmed motivation and note, daily check-ins, recent performance, actual spacing and previous coaching discussions. Explain whether to keep the plan or propose a change. Separate engagement from fatigue; ask a focused question where my goal or constraints matter. Do not apply programming changes.'
-      : 'Review the microcycle I just finished like my remote coach. Compare the planned work with actual saved sessions, effort, motivation, check-ins and spacing; a skipped day was not trained. Use the movement progress summary, and how my earlier saved proposals turned out, as context rather than conclusions. Revisit our opening discussion if there was one, explain what worked and what is uncertain, and propose the next microcycle or phase for us to discuss. Ask focused follow-ups; do not apply changes.';
-    return reviewPrepared(view,message,onStatus);
+    return reviewPrepared(view,MESSAGES[kind]||MESSAGES.call,onStatus);
   }
   async function reviewPrepared(view,message,onStatus=()=>{},expectedSequence=0,retryPendingTurnId=null) {
     // A stale daily turn needs explicit Retry and the server's matching turn ID.
@@ -63,5 +65,5 @@ const AICoach = (() => {
       }
     }
   }
-  return {reviewWeek,reviewPrepared,readStream,openUrl,endUrl};
+  return {reviewWeek,reviewPrepared,readStream,openUrl,callUrl,endUrl:callUrl};
 })();

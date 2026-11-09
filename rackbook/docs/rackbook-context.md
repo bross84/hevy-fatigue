@@ -434,6 +434,52 @@ outcome review. The logger cannot read host conversations, so the browser suppli
 validated again on save. Tests: `rackbook/tests/test_plan_proposals.py` and
 `rackbook/tests/test_plan_proposal_ui.cjs`. Decision record: `docs/adr/0001-ai-proposals-become-drafts.md`.
 
+## AI coach plan changes, applied on Accept (2026-11-09)
+
+`plan_changes.py` turns a `plan-change-v1` block in an AI Coach reply into an edit of an existing
+microcycle, applied only when the athlete taps Accept (`docs/adr/0002-coach-plan-changes-need-a-tap.md`).
+The block names a plan id and the revision the coach saw, a title, a rationale (500 characters) and up to
+30 operations by 1-based day number: `set_sets`, `replace` (optionally with new sets and notes), `add`
+(appended) and `remove`. Sets use the proposal set model, so weights and unknown keys are rejected. Preview
+applies the operations to a copy and writes nothing. It refuses a stale revision, a missing or deleted plan,
+a day that is trained or skipped, a day or movement that does not exist, a movement that appears twice in
+the day, an add or swap to a movement already in the day, unknown movement ids (titles come from the
+exercise cache, logged sets or saved plans), and anything `mesocycles.PlanInput` rejects. `set_sets` keeps
+the athlete's own fixed weights by set position; `replace` clears them so loads come from automatic
+planning. Accept re-validates under `BEGIN IMMEDIATE`, writes the new document with `revision + 1`, and
+inserts a `plan_changes` row (id from conversation and turn, previous document, canonical change,
+day-by-day summary, touched session ids) in the same transaction; repeats return the first result. It
+never activates, deactivates, archives or completes a plan and never contacts Hevy. Undo restores the
+previous document (again `revision + 1`) only while the plan revision is still the accepted one and no
+touched day has been trained or skipped since. `mesocycles._view` adds `coach_change` (newest accepted,
+not undone change) for the builder's provenance note, and `/microcycles?plan=<id>` opens that plan unless
+unsaved editor changes were restored. Routes: `POST /api/plan-changes/preview`, `/accept`,
+`/{change_id}/undo`. Tests: `rackbook/tests/test_plan_changes.py`, `rackbook/tests/test_plan_change_ui.cjs`,
+`rackbook/tests/test_microcycle_library.cjs`.
+
+## Weekly coaching call: next week on Accept or Run it back (2026-11-09)
+
+`weekly_call.py` is step 2 of ADR 0002. `rollover()` names the finished microcycle whose call is due on the Log
+page: no active microcycle has a day left, the most recently finished undeleted microcycle (every day trained or
+skipped) finished within 14 days, and it has no next week yet. `call_identity(plan_id)` is the call's conversation
+id, the same uuid5 as the host's `weekly_coaching.identity(plan_id, 'call')`; the logger cannot read host
+conversations, so a proposal may set up a next week only when its conversation id matches. `preview` describes a
+proposal as that candidate (next name, whether a next week exists, whether it came from this turn) and writes
+nothing. `accept_next_week` (Accept as next week) re-validates the proposal, refuses an unfinished or deleted
+source, a second next week and a proposal already saved as a draft, then in one transaction inserts the plan with
+the source's program name and cycle and the next week number, makes it the only active plan, and records a
+`plan_proposals` row (so proposal outcomes still work) and a `microcycle_successors` row (source, new plan, origin
+coach or repeat, proposal id, previously active plan). `run_it_back` copies the finished microcycle with fresh
+session ids and the athlete's own sets, notes and fixed weights, numbered as the next week, and activates it; no AI
+is involved. Both are idempotent for the same tap. `undo` archives the new week and reactivates the previously
+active plan if it still has days left, only while the new week has no completions and is at revision 1; it also
+removes the successor row and the proposal row so the proposal can be accepted again. Routes:
+`GET /api/weekly-call`, `GET /api/weekly-call/{plan_id}`, `POST .../preview`, `.../next-week`, `.../run-it-back`,
+`.../undo`. The Log page shows the call above Planned workout (`loadWeeklyCall`), starting it once per finished
+microcycle, and the pre-training check-in now holds the same call (kind `call`) instead of separate closing and
+opening reviews. Tests: `rackbook/tests/test_weekly_call.py`, `test_weekly_call_card_ui.cjs`,
+`test_closing_review_ui.cjs`, `test_log_plan_selection.cjs`; browser: `tools/check_weekly_coaching_browser.py`.
+
 ## Check-in offers the closing review of a finished microcycle (2026-11-08)
 
 `POST /session-checkins` returns an additive `closing_review` (`{plan_id, name, completed_on}` or `null`) next to `weekly_review_eligible`. `session_checkins.closing_candidate` computes it with reads only, in the check-in's existing `BEGIN IMMEDIATE`: the most recently finished microcycle (every session in its document has a `mesocycle_completions` row; archived plans count) whose last session started before this check-in but within `CLOSING_WINDOW` (14 days), when no other `session_checkins` row has started since it finished. It is returned only for a check-in confirmed before working sets and does not depend on the check-in having a plan. Datetimes are parsed and compared timezone-aware. Nothing is stored; the host's `weekly_coaching.week_context(kind='end')` still decides whether a review can be built. Tests: `rackbook/tests/test_closing_review_trigger.py`.

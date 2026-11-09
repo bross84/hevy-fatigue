@@ -26,7 +26,7 @@ a {color:var(--accent)} h2 {font-size:19px;margin:0} h3 {font-size:16px;margin:0
 .danger {color:var(--danger,#a32d2d);background:var(--danger-bg,#fcebeb)} .message {padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:16px;background:var(--card)} #status:empty {display:none}
 .editor-title {margin-bottom:16px}.editor-title label {margin-bottom:10px} .savebar {position:sticky;bottom:0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;z-index:2;box-shadow:var(--shadow);margin-top:14px}
 dialog {color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;width:min(560px,95vw);max-height:80vh} dialog::backdrop {background:rgba(0,0,0,.4)} #exerciseResults {max-height:50vh;overflow:auto;margin-top:12px} .picker-footer {border-top:1px solid var(--line);margin-top:12px;padding-top:12px}.picker-footer button {font-size:13px} #exerciseResults button {display:block;width:100%;text-align:left;margin-bottom:6px} .empty {padding:24px 0;text-align:center;color:var(--muted)}
-@media(max-width:750px) {.editor-layout{grid-template-columns:1fr}.sidebar{position:static;max-height:250px}.plan-set{min-width:370px}}
+@media(max-width:750px) {.editor-layout{grid-template-columns:minmax(0,1fr)}.sidebar{position:static;max-height:250px}.plan-set{min-width:370px}}
 </style><style id="rackbook-theme">
 
     /* Rackbook visual system: kept inline so every page remains self-contained. */
@@ -135,12 +135,13 @@ function nextSession(p) {const done=new Set(p.completed.map(c=>c.session_id));fo
 function startUrl(p,s) {return trainingUrl('/log')+'?microcycle='+encodeURIComponent(p.id)+'&session='+encodeURIComponent(s.id);}
 function namingNumber(value){if(value===undefined)return 1;return Number.isInteger(value)&&value>=1&&value<=9999?value:'?';}
 function applyNaming(p){if(!(p.program_name||'').trim())return;p.name=p.program_name.trim()+namingNumber(p.cycle)+'.'+namingNumber(p.week);p.weeks[0].name='Week '+namingNumber(p.week);p.weeks[0].sessions.forEach((s,i)=>{if(!(p.completed||[]).some(c=>c.session_id===s.id))s.name=p.name+'.'+(i+1);});}
-function duplicateMicrocycle(p){if(dirty&&!confirm('Replace your unsaved plan edits?'))return;if((p.week||1)>=9999)return message('Week must be below 9999 to advance.');plan=structuredClone(p);delete plan.id;plan.week=(plan.week||1)+1;plan.name=(plan.name+' copy').slice(0,120);plan.revision=0;plan.completed=[];plan.active=false;plan.weeks[0].sessions=plan.weeks[0].sessions.map(cloneSession);applyNaming(plan);wi=si=0;remember();renderEditor();}
+function duplicateMicrocycle(p){if(dirty&&!confirm('Replace your unsaved plan edits?'))return;if((p.week||1)>=9999)return message('Week must be below 9999 to advance.');plan=structuredClone(p);delete plan.id;delete plan.coach_change;plan.week=(plan.week||1)+1;plan.name=(plan.name+' copy').slice(0,120);plan.revision=0;plan.completed=[];plan.active=false;plan.weeks[0].sessions=plan.weeks[0].sessions.map(cloneSession);applyNaming(plan);wi=si=0;remember();renderEditor();}
 function renderLibrary() {
  const box=$('library'),finished=$('completedLibrary');box.replaceChildren();finished.replaceChildren();let finishedCount=0;if(!plans.length)box.append(el('p','muted','No plans yet. Create one, add your movements, and save it here.'));
  for(const p of plans){const card=el('section','card'),next=nextSession(p);card.append(el('h3',null,p.name),el('p','muted',(p.active?'Active · ':'Inactive · ')+p.weeks[0].sessions.length+' workouts · '+p.completed.filter(c=>c.outcome!=='skipped').length+' workouts completed'+(p.completed.some(c=>c.outcome==='skipped')?' · '+p.completed.filter(c=>c.outcome==='skipped').length+' skipped':'')));
   if(next)card.append(el('p','muted','Next: '+next.s.name));else card.append(el('p','muted',p.weeks[0].sessions.length?'Microcycle complete':'No days yet'));
-  if(!next&&p.weeks[0].sessions.length){const review=el('a',null,'Review this microcycle with AI Coach');review.href='/?coaching_week='+encodeURIComponent(p.id)+'&coaching_kind=end#ai';card.append(review);}
+  if(p.coach_change){const note=el('p','muted','Changed by AI Coach on '+new Date(p.coach_change.applied_at).toLocaleDateString()+': '+p.coach_change.title+' · '),talk=el('a',null,'See the conversation');talk.href='/?coaching_conversation='+encodeURIComponent(p.coach_change.conversation_id)+'#ai';note.append(talk);card.append(note);}
+  if(!next&&p.weeks[0].sessions.length){const review=el('a',null,'Weekly coaching call with AI Coach');review.href='/?coaching_week='+encodeURIComponent(p.id)+'&coaching_kind=call#ai';card.append(review);}
   const actions=el('div','row');actions.append(button('Edit plan',()=>openPlan(p)),button('Duplicate microcycle',()=>duplicateMicrocycle(p)),button('Delete',()=>deleteMicrocycle(p),'danger'));
   const toggle=button(p.active?'Deactivate':'Activate',()=>setMicrocycleActive(p,!p.active));toggle.disabled=busy||(!p.active&&!next);actions.prepend(toggle);
   if(next&&next.s.exercises.length){const a=el('a',null,'Start next workout');a.href=startUrl(p,next.s);actions.append(a);}card.append(actions);if(!next&&p.weeks[0].sessions.length){finished.append(card);finishedCount++;}else box.append(card);}
@@ -198,7 +199,8 @@ $('usePlan').addEventListener('click',async()=>{if((dirty||!plan.id)&&!await sav
 $('closeExercisePicker').addEventListener('click',()=>$('exercisePicker').close());$('exerciseSearch').addEventListener('input',renderExercises);
 $('syncExercises').addEventListener('click',async()=>{const b=$('syncExercises');b.disabled=true;try{await api('/exercises/sync',{method:'POST'});await loadPicker();}catch(e){$('pickerStatus').textContent=e.message;}finally{b.disabled=false;}});
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
-refreshPlans().catch(e=>message(e.message));
+// A link such as ?plan=<id> from an AI Coach card opens that plan, unless unsaved edits were restored.
+refreshPlans().then(()=>{const wanted=new URLSearchParams(location.search).get('plan'),target=wanted&&plans.find(p=>p.id===wanted);if(target&&!dirty)openPlan(target);else if(wanted&&!target)message('That plan is no longer available.');}).catch(e=>message(e.message));
 try{const saved=JSON.parse(localStorage.getItem(KEY));if(saved){DraftTransfer.validateEditor(saved);plan=saved.plan;wi=saved.wi;si=saved.si;assignmentCatalog=saved.assignmentCatalog||{};dirty=true;renderEditor();$('saveState').textContent='Restored unsaved changes';}}catch(e){message('Could not restore editor draft: '+e.message);}
 DraftTransfer.install('microcycle-editor');
 </script></body></html>

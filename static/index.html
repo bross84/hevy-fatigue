@@ -7,8 +7,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script src="/training/static/training.js"></script>
-<script src="/training/static/ai-coach.js?v=1"></script>
-<script src="/training/static/plan-proposal.js?v=1"></script>
+<script src="/training/static/ai-coach.js?v=2"></script>
+<script src="/training/static/plan-proposal.js?v=4"></script>
+<script src="/training/static/plan-change.js?v=1"></script>
 <script src="/static/daily-coach.js?v=5"></script>
 <link rel="icon" href="/resources/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/resources/apple-touch-icon.png">
@@ -4794,7 +4795,7 @@ function _aiEscapeHtml(str) {
 
 function _aiMarkdown(content) {
   const template = document.createElement('template');
-  template.innerHTML = marked.parse(PlanProposal.strip(content).text);
+  template.innerHTML = marked.parse(PlanChange.strip(PlanProposal.strip(content).text).text);
   const allowed = new Set(['P','BR','STRONG','EM','UL','OL','LI','H1','H2','H3','H4','BLOCKQUOTE','PRE','CODE','HR','TABLE','THEAD','TBODY','TR','TH','TD','A']);
   const references = new Set((aiConversation?.evidence?.references || []).map(r => r.url));
   for (const el of [...template.content.querySelectorAll('*')]) {
@@ -4823,8 +4824,13 @@ function renderTrainingReview(view) {
     _appendAIMessage('user', turn.message);
     if (turn.response) {
       _appendAIMessage('assistant', turn.response);
-      if (turn.status === 'complete') PlanProposal.mount(document.getElementById('ai-chat-messages'),
-        {text: turn.response, conversationId: view.id, turnId: turn.id});
+      if (turn.status === 'complete') {
+        const host = document.getElementById('ai-chat-messages');
+        const reply = {text: turn.response, conversationId: view.id, turnId: turn.id};
+        const week = view.evidence && view.evidence.week_context;
+        PlanProposal.mount(host, reply, week && week.kind === 'call' ? {call: {sourcePlanId: week.plan_id}} : {});
+        PlanChange.mount(host, reply);
+      }
     }
     if (turn.status !== 'complete') _appendAIMessage('assistant', 'Recorded response status: '+turn.status+'.'+
       (typeof turn.failure === 'string' && turn.failure.trim() ? ' Reason: '+turn.failure.trim() : '')+

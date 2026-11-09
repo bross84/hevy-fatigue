@@ -25,6 +25,12 @@ vm.runInContext(fs.readFileSync(path.join(__dirname,'../static/ai-coach.js'),'ut
   turns=[];configured=false;
   await assert.rejects(()=>ctx.weekly.reviewWeek('plan3','start','session3'),/Configure AI/);
   assert.equal(calls.filter(c=>c.url.endsWith('/messages')).length,2);
-  assert.equal(ctx.weekly.endUrl('a/b'),'/?coaching_week=a%2Fb&coaching_kind=end#ai');
-  console.log('Weekly Coach: selected model, split stream, cached/uncertain no resend, missing settings and safe navigation passed.');
+  assert.equal(ctx.weekly.callUrl('a/b'),'/?coaching_week=a%2Fb&coaching_kind=call#ai');
+  assert.equal(ctx.weekly.endUrl('a/b'),ctx.weekly.callUrl('a/b'),'old review links now open the weekly coaching call');
+  turns=[];configured=true;interrupted=false;calls.length=0;
+  await ctx.weekly.reviewWeek('plan4','call');
+  assert.equal(calls.find(c=>c.url==='/api/ai/week-reviews').body.kind,'call');
+  const sent=calls.find(c=>c.url.endsWith('/messages')).body.message;
+  assert.match(sent,/weekly coaching call/);assert.match(sent,/Keeping everything the same is a fine answer/);assert.match(sent,/ask me first/);
+  console.log('Weekly Coach: selected model, split stream, cached/uncertain no resend, missing settings, weekly call message and safe navigation passed.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

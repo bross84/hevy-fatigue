@@ -73,6 +73,8 @@ models, except additive save-recovery fields. `training-routes.txt` lists them.
 | `/training/log` | Touch keypad, timers, per-exercise units, plate loader, TS/TM, local drafts |
 | `/training/microcycles`, `/training/mesocycles` | Single-week builder, activation, manual and saved completion |
 | `/training/api/plan-proposals/preview`, `/save` | AI Coach week proposals: read-only preview, explicit save as an inactive draft (`docs/adr/0001-ai-proposals-become-drafts.md`) |
+| `/training/api/plan-changes/preview`, `/accept`, `/{change_id}/undo` | AI Coach plan changes to an existing microcycle: read-only preview, applied only on the athlete's Accept tap, one-tap undo (`docs/adr/0002-coach-plan-changes-need-a-tap.md`) |
+| `/training/api/weekly-call`, `/{plan_id}`, `/preview`, `/next-week`, `/run-it-back`, `/undo` | Weekly coaching call: which finished microcycle is due, Accept as next week (creates and activates it on the athlete's tap), Run it back, and Undo while the new week is untouched (ADR 0002) |
 | `/training/recent` | Hevy history with exact local RPE overlay and soreness edits |
 | `/training/progress` | Bodyweight, e1RM and strength score |
 | `/training/rpe-charts` | General and observed charts, assignments and historical chart import |

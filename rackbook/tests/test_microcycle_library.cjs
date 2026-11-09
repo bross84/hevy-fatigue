@@ -22,4 +22,11 @@ assert.equal(elements.get('completedPlans').open,true,'Keep expanded state acros
 context.plans=[plan('current',[day])];context.renderLibrary();
 assert.equal(elements.get('completedPlans').hidden,true);assert.equal(elements.get('completedLibrary').children.length,0);
 context.plans=[];context.renderLibrary();assert.match(elements.get('library').children[0].textContent,/No plans yet/);
-console.log('Completed microcycle grouping, empty plans, actions and collapse state passed.');
+// A plan the athlete changed by accepting an AI Coach suggestion says so and links back to that conversation.
+context.plans=[{...plan('changed',[day]),coach_change:{id:'x',conversation_id:'c 1',title:'Ease day 2',applied_at:'2026-11-08T10:00:00Z'}}];context.renderLibrary();
+const note=elements.get('library').children[0].children.find(n=>String(n.textContent).startsWith('Changed by AI Coach'));
+assert.ok(note&&note.textContent.includes('Ease day 2'));
+assert.equal(note.children[0].href,'/?coaching_conversation=c%201#ai');
+context.plans=[plan('plain',[day])];context.renderLibrary();
+assert.ok(!elements.get('library').children[0].children.some(n=>String(n.textContent).startsWith('Changed by AI Coach')));
+console.log('Completed microcycle grouping, empty plans, actions, collapse state and AI Coach change notes passed.');
