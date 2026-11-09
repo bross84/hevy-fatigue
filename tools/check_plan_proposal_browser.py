@@ -81,8 +81,10 @@ with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
             expect(card).to_contain_text('Already saved as an inactive draft.')
             assert len(plans()) == 2
 
-            link = card.get_by_role('link', name='Open microcycles to review and activate')
+            link = card.get_by_role('link', name='Open the draft to review and activate')
             expect(link).to_be_visible()
+            draft = next(p for p in plans() if not p['active'])
+            assert link.get_attribute('href') == '/training/microcycles?plan=' + draft['id']
             link.click()
             expect(page.locator('body')).to_contain_text('Deload <b>week</b>')
             assert page.locator('body b').count() == 0 or 'Deload' not in page.locator('body b').first.inner_text()

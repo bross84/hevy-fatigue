@@ -68,7 +68,7 @@ const request={text:block,conversationId:'conv',turnId:'turn'};
   assert.equal(save.disabled,true);
   assert.ok(card.textContent.includes('Saved as an inactive draft.'));
   const [link]=find(card,n=>n.tagName==='A');
-  assert.equal(link.href,'/training/microcycles');
+  assert.equal(link.href,'/training/microcycles?plan=new');
   assert.ok(link.textContent.includes('review and activate'));
 
   // Repeat saves are reported honestly.

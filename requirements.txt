@@ -9,5 +9,5 @@ requests==2.34.2
 SQLAlchemy==2.0.50
 typing_extensions==4.15.0
 urllib3==2.8.0
-uvicorn==0.48.0
+uvicorn==0.54.0
 httpx

@@ -107,6 +107,11 @@ def _sets_text(sets):
     return ', '.join(f'{n}×{label}' for label, n in groups)
 
 
+movement_titles = _titles
+sets_text = _sets_text
+problems = _problems
+
+
 def _movements(sessions):
     """{template id: (title, [set signature, ...])} across a plan or proposal, in order."""
     found = {}
@@ -179,6 +184,9 @@ def _analyse(conn, text):
     report.update(valid=True, title=proposal.title, rationale=proposal.rationale, diff=_diff(conn, sessions),
                   sessions=[dict(s, exercises=[dict(e, summary=_sets_text(e['sets'])) for e in s['exercises']]) for s in sessions])
     return report, data, canonical
+
+
+analyse = _analyse  # (report, PlanInput or None, canonical or None) for a reply. Pure reads.
 
 
 def preview(text):

@@ -343,6 +343,30 @@ class CoachingTests(TestCase):
         self.assertTrue(response.json()['evidence']['week_context']['label'].endswith('Microcycle review'))
         self.assertIn('progress_summary',response.json()['evidence'])
 
+    def test_weekly_coaching_call_is_one_conversation_per_finished_week(self):
+        from rackbook import mesocycles,weekly_call
+        plan,_=self.week()
+        body=dict(plan_id=plan['id'],kind='call')
+        self.assertEqual(self.client.post('/api/ai/week-reviews',json=body).status_code,422)  # days left to train
+        mesocycles.mark_completed(plan['id'],'day1')
+        mesocycles.skip_day(plan['id'],'day2','travel')
+        weekly_call.run_it_back(plan['id'])
+        response=self.client.post('/api/ai/week-reviews',json=body)
+        self.assertEqual(response.status_code,200,response.text)
+        view=response.json()
+        self.assertEqual(view['id'],weekly_call.call_identity(plan['id']))
+        context=view['evidence']['week_context']
+        self.assertEqual(context['kind'],'call')
+        self.assertTrue(context['label'].endswith('Weekly coaching call'))
+        self.assertEqual(context['next_week']['origin'],'repeat')
+        self.assertEqual(context['skipped_count'],1)
+        self.assertTrue(any('weekly coaching call' in note for note in context['limitations']))
+        self.assertEqual(self.client.post('/api/ai/week-reviews',json=body).json()['id'],view['id'])
+        live=coaching.live_planning(view['id'])
+        source=coaching.messages(view,'Lay out next week',live=live)[0]['content']
+        self.assertIn('A weekly coaching call (week_context.kind call) replaces both',source)
+        self.assertIn('LIVE PLANNING STATE',source)
+
     def test_a_skipped_day_finishes_the_microcycle_for_review_and_is_shown_as_not_trained(self):
         from rackbook import mesocycles
         plan,_=self.week()

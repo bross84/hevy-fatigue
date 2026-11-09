@@ -344,13 +344,24 @@ Record device/browser/version separately from automated browser results:
    week, confirm the proposal card shows a diff and that Save as draft creates one inactive
    microcycle (repeat clicks reuse it) and never changes or activates the active plan.
    The new `plan_proposals` table is additive and harmless to roll back.
-10. Automatic microcycle review (mocked or disposable data first): finish every day of a
-    microcycle, then confirm the next pre-training check-in, with or without a plan. One
-    "Finished microcycle" review should start by itself (before the day-1 opening review if
-    the workout is planned), a reload must not resend it, a second check-in must not start
-    another, and AI being unavailable must not block the check-in or logging. This needs no
-    migration: the check-in response gains an additive field and nothing new is stored.
-    Microcycles finished more than 14 days before the check-in are reviewed only on request.
+   AI Coach plan changes (mocked or disposable data first): ask the coach to change the active
+   plan, confirm the card lists the change day by day and that nothing changes before Accept.
+   After Accept, the plan shows the change, stays active or inactive as it was, and finished days
+   are untouched; Undo restores it exactly. A change written before a builder edit must be refused
+   as stale. The new `plan_changes` table is additive. Rolling back keeps accepted changes in the
+   plans (they are ordinary plan edits) but removes Undo; the stored previous versions stay in the
+   table if they are needed by hand.
+10. Weekly coaching call (mocked or disposable data first): finish every day of a microcycle and
+    open the Log page with nothing else planned. One "Weekly coaching call" should start by
+    itself above Planned workout; a reload must not resend it, and AI being unavailable must
+    leave Run it back and logging available. Accept as next week (on a proposal in the call)
+    and Run it back must each create one next microcycle (program numbering continues), make it
+    active, and leave the finished week unchanged; Undo must restore the previous state until
+    the new week is trained or edited. If the next week was built by hand instead, the call runs
+    at its day-1 check-in. Day 1 no longer starts a separate opening review. The new
+    `microcycle_successors` table is additive. Rolling back keeps the created weeks as ordinary
+    plans and restores the old opening/closing reviews; saved calls remain readable in AI Coach.
+    Microcycles finished more than 14 days earlier get a call only on request.
 11. Skip day (mocked or disposable data first): on the log page choose a microcycle with an open
     day, press "Skip this day" with a note, confirm the microcycle shows as finished with the day
     marked Skipped, then load the next microcycle's day 1 and confirm its check-in. The skipped

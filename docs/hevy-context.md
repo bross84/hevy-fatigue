@@ -35,6 +35,7 @@ Hevy Fatigue is a personal training load and fatigue monitoring dashboard. It sy
 | `main.py` | FastAPI app, all API routes, fatigue engine |
 | `database.py` | SQLAlchemy models, `init_db()`, schema migrations |
 | `coaching.py`, `coaching_stress.py`, `coaching_progress.py`, `coaching_outcomes.py` | Read-only AI coach evidence report; stress-index and progress blocks per exercise; saved-proposal outcomes |
+| `coaching_equipment.py` | Athlete's available-equipment list (host `app_settings`), given to the coach as `available_equipment` |
 | `index.html` | Entire frontend — HTML, CSS, and JS in one file |
 | `diagnostic.html` | Engine snapshot / diagnostics page |
 | `importer.py` | Hevy API sync logic, session processing pipeline |
@@ -885,3 +886,81 @@ repeat saves reuse the first, and the athlete reviews and activates it on `/trai
 No existing plan is edited and nothing is activated. ADR:
 `docs/adr/0001-ai-proposals-become-drafts.md`. Tests: `tests/test_coaching_proposals.py`,
 `rackbook/tests/test_plan_proposals.py`, `rackbook/tests/test_plan_proposal_ui.cjs`.
+
+## Weekly coaching call (local, 2026-11-09)
+
+Step 2 of `docs/adr/0002-coach-plan-changes-need-a-tap.md`. Planning now happens in one weekly coaching call
+per finished microcycle, like a remote coach's weekly check-in, triggered by the microcycle rolling over rather
+than the calendar. When every day is trained or skipped and nothing else is active with days left, the Log page
+shows a Weekly coaching call panel above Planned workout and starts the call by itself (`AICoach.reviewWeek`
+with kind `call`; the server returns a saved call without resending). The coach reviews the finished week and
+lays out the next one as a plan proposal; the card offers Accept as next week, which creates the next
+microcycle (program numbering continues) and makes it active on that tap. Run it back repeats the finished week
+unchanged without waiting for the AI. Both can be undone from the panel or the AI Coach card until the new week
+is trained or edited. If the next week was built by hand first, the call runs at its day-1 check-in and its
+suggestions come as plan-change cards. The separate opening (before day 1) and closing reviews no longer start
+automatically; saved ones still open, and the builder and Log links now open the call.
+
+Host side: `weekly_coaching` accepts kind `call` (same identity scheme), requires a finished microcycle, labels it
+Weekly coaching call, includes any earlier opening discussion and `next_week` (from the logger's
+`microcycle_successors`, read-only). The brief tells the coach how to run the call: review, then one
+plan-proposal block when no next week exists or one plan-change block when it does; keeping the week the same is
+a good answer; a new stimulus or phase is explained and agreed before it is built. The AI tab passes the call
+context to the proposal card, so Accept as next week also works there. Daily automatic adjustments are not
+built. Tests: `tests/test_coaching.py`, `tests/test_coaching_proposals.py`, `rackbook/tests/test_weekly_call.py`,
+`rackbook/tests/test_weekly_call_card_ui.cjs`, `rackbook/tests/test_closing_review_ui.cjs`,
+`rackbook/tests/test_weekly_coach_ui.cjs`; mocked browser: `tools/check_weekly_coaching_browser.py` and the
+`plan-change-preview` launch entry.
+
+## AI Coach plan changes, applied on Accept (local, 2026-11-09)
+
+Step 1 of `docs/adr/0002-coach-plan-changes-need-a-tap.md`, which reopens ADR 0001. The coach can now
+suggest a change to an existing microcycle, including the active one, in a `plan-change-v1` block: swap a
+movement, change its sets, add or remove a movement on days not yet trained or skipped. The AI tab hides
+the block and adds a Suggested change card (`rackbook/static/plan-change.js`, through `trainingUrl`) that
+lists the change day by day. Nothing changes until the athlete taps Accept; the card then offers Undo and
+a link that opens that plan in the builder. Reloading a review shows whether a change was applied or undone
+and why undo is no longer available. The logger owns validation, the write and the `plan_changes` table
+(`rackbook/docs/rackbook-context.md`). The AI never calls a write route, no weight is set, nothing is
+activated and Hevy is not contacted.
+
+Coach side: `coaching.live_planning` reads the logger read-only for every message (not frozen with the
+evidence): up to five unfinished, undeleted plans with revision and per-day status, this conversation's
+accepted or undone changes, and the local exercise library (up to 1000 `[id, title]` pairs from the Hevy
+exercise cache), with no weight values. `coaching.messages` appends it after the frozen report as LIVE
+PLANNING STATE, except for the first daily-recommendation turn. The brief now says the athlete's own tap
+applies a plan change, that holding the plan unchanged is a valid answer, that declined advice is not
+repeated without new evidence, and that proposals and changes may use `known_movements` or the
+`exercise_library`. Week proposals still save only as inactive drafts; their card link now opens the saved
+draft. The builder's library card notes the newest accepted change with a link back to the conversation.
+
+Not in this step: the weekly coaching call that replaces the opening and closing reviews, Accept making a
+new microcycle active, Run it back, and creating new custom movements. Tests:
+`tests/test_coaching_proposals.py`, `rackbook/tests/test_plan_changes.py`,
+`rackbook/tests/test_plan_change_ui.cjs`, `rackbook/tests/test_plan_proposal_ui.cjs`,
+`rackbook/tests/test_microcycle_library.cjs`. Mocked preview: `tools/plan_change_preview.py`
+(`plan-change-preview` in `.claude/launch.json`).
+
+## Available equipment for the AI Coach (local, 2026-11-08)
+
+The athlete can save the equipment they train with from a collapsible panel at the top of the
+AI Coach tab: a fixed checklist of 20 items (`coaching_equipment.CATALOG`; ids are the stored
+contract) plus a notes box (1000 characters) for limits such as dumbbell range or no spotter.
+Host only: one JSON value under `app_settings` key `coach_equipment`; nothing is written to the
+logging database or to credentials. `GET`/`PUT /api/ai/equipment` read and save it. Unknown ids
+and over-long notes are rejected with 422 and leave the saved list unchanged. Saving an empty
+list with no notes clears it back to not set.
+
+`coaching.build_report` adds `available_equipment` (`status` set with item labels, notes and
+`saved_at`, or `status` not_set), so the daily, weekly and review conversations all carry it and
+each conversation freezes the list with its other evidence; changes apply to the next review.
+Not set means unknown, not none: `BRIEF` tells the coach not to assume a full gym or a bare
+room and to ask before a proposal or substitution that depends on it. When set, the coach is
+told to propose and substitute only movements doable with those items and notes, to check
+`known_movements` against the list because they are past movements, and to treat the notes as
+the athlete's words, not instructions. This is advice in the brief only: the server does not
+reject proposed exercises by equipment, because Hevy equipment categories are not stored. The
+athlete still previews a proposal and saves it only as an inactive draft.
+
+Tests: `tests/test_coaching_equipment.py`. Mocked preview checked the panel loads as not set,
+saves, scrolls inside the chat card on a short viewport and reloads with the saved list.

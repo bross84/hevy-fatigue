@@ -90,11 +90,19 @@ class Completion(BaseModel):
     note: str | None = None
 
 
+class CoachChange(BaseModel):
+    id: str
+    conversation_id: str
+    title: str
+    applied_at: str
+
+
 class PlanView(PlanInput):
     id: str
     active: bool
     archived: bool
     completed: list[Completion]
+    coach_change: CoachChange | None = None
 
 
 SKIP_NOTE_CHARS = 200
@@ -116,8 +124,11 @@ def _row(conn, plan_id):
 def _view(conn, row):
     document = json.loads(row['document'])
     ids = {ex['exercise_template_id'] for w in document['weeks'] for s in w['sessions'] for ex in s['exercises']}
+    # Provenance only: the newest AI coach change the athlete accepted and has not undone (ADR 0002).
+    change = conn.execute('SELECT id, conversation_id, title, applied_at FROM plan_changes WHERE plan_id = ? AND undone_at IS NULL '
+                          'ORDER BY applied_at DESC, id DESC LIMIT 1', (row['id'],)).fetchone()
     return dict(document, id=row['id'], revision=row['revision'], rpe_assignments=rpe_assignments.read(conn, ids),
-                active=bool(row['active']), archived=bool(row['archived']),
+                active=bool(row['active']), archived=bool(row['archived']), coach_change=dict(change) if change else None,
                 completed=[dict(r) for r in conn.execute(
                     'SELECT session_id, hevy_workout_id, workout_start, outcome, note FROM mesocycle_completions WHERE mesocycle_id = ?', (row['id'],))])
 

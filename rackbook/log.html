@@ -6,9 +6,11 @@
   <script src="/training/static/draft-transfer.js"></script>
   <script src="/training/static/session-review.js"></script>
   <script src="/training/static/session-advice.js"></script>
-  <script src="/training/static/session-motivation.js?v=3"></script>
+  <script src="/training/static/session-motivation.js?v=4"></script>
+  <script src="/training/static/plan-proposal.js?v=3"></script>
+  <script src="/training/static/plan-change.js?v=1"></script>
   <script src="/training/static/app-menu.js?v=2"></script>
-  <script src="/training/static/ai-coach.js?v=1"></script>
+  <script src="/training/static/ai-coach.js?v=2"></script>
   <script src="/training/static/logger-layout.js?v=2"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="utf-8" />
@@ -63,6 +65,12 @@
     #plannedStart label {display:grid;gap:6px;margin:12px 0;font-size:13px;color:var(--muted)}
     #plannedStart select {width:100%;min-width:0}
     #plannedStart button + button {margin-top:8px}
+    #weeklyCall .reply {white-space:pre-wrap;margin:8px 0}
+    #weeklyCall .actions {display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+    .plan-proposal {margin:8px 0 12px;padding:10px 12px;border:1px solid var(--accent);border-radius:8px;max-width:100%;overflow-wrap:anywhere}
+    .plan-proposal h4, .plan-proposal h5 {margin:0 0 4px} .plan-proposal h5 {margin-top:8px;font-size:.9em}
+    .plan-proposal p {margin:0 0 6px} .plan-proposal-note, .plan-proposal-status {font-size:.85em;color:var(--muted)}
+    .plan-proposal-list {margin:0 0 6px 18px;padding:0} .plan-proposal-save {margin:4px 0}
     button.link { border: none; background: none; color: var(--muted); min-height: 36px; padding: 6px 4px; font-size: 14px; }
     button:disabled { opacity: .55; }
     input[type=text] { width: 100%; padding: 8px 10px; background: var(--bg); }
@@ -414,6 +422,7 @@
 
   <p id="previewNotice" class="hint" hidden>Local preview · Saving to Hevy is disabled here.</p>
   <section id="start" hidden>
+    <section id="weeklyCall" class="card" hidden aria-live="polite"></section>
     <section id="plannedStart" class="card" hidden></section>
     <button id="empty" class="wide" type="button" style="margin-bottom:12px">Start an empty workout</button>
     <p class="muted" style="margin:0 0 8px">Or copy a recent workout. Its exercises and sets come across as a starting point.</p>
@@ -1004,6 +1013,7 @@
   async function renderStart() {
     show("start");
     loadPlannedStart();
+    loadWeeklyCall();
     const box = $("recent"); box.replaceChildren(el("p", "muted", "Loading recent workouts…"));
     try {
       recentPage = recentPage || (await api("/hevy/workouts?page=1&page_size=10"));
@@ -1020,6 +1030,79 @@
       box.replaceChildren();
       say(err.message + (err.status === 400 ? " Save your Hevy key on the Recent page first." : ""));
     }
+  }
+
+  // Weekly coaching call (ADR 0002): when a microcycle has finished and nothing is planned next, hold one call
+  // for it here before day 1. It starts by itself once per finished microcycle (the server never resends a
+  // saved call). The next week changes only on the athlete's Accept or Run it back tap.
+  const weeklyCallsStarted = new Set();
+  async function loadWeeklyCall() {
+    const box = $("weeklyCall");
+    let due;
+    try { due = await api("/api/weekly-call"); } catch (err) { box.hidden = true; return; }
+    if (!due) { box.hidden = true; box.replaceChildren(); return; }
+    const plan = due.source, status = el("p", "muted"), reply = el("div"), actions = el("div", "actions");
+    const refreshed = async () => {
+      loadPlannedStart();
+      const call = await api("/api/weekly-call/" + encodeURIComponent(plan.id)).catch(() => null);
+      if (call && call.next) showSetUp(box, plan, call); else loadWeeklyCall();
+    };
+    box.hidden = false;
+    box.replaceChildren(el("h2", null, "Weekly coaching call"),
+      el("p", "muted", plan.name + " is finished. Your coach reviews it and lays out next week. Nothing changes until you tap Accept or Run it back."),
+      status, reply, actions);
+    const again = el("button", null, "Run it back"); again.type = "button";
+    again.title = "Repeat " + plan.name + " unchanged as next week, without waiting for the coach.";
+    again.addEventListener("click", async () => {
+      again.disabled = true; status.textContent = "Setting up next week…";
+      try { await api("/api/weekly-call/" + encodeURIComponent(plan.id) + "/run-it-back", { method: "POST" }); refreshed(); }
+      catch (err) { status.textContent = err.message + " Nothing was changed."; again.disabled = false; }
+    });
+    const open = el("a", null, "Continue in AI Coach"); open.href = AICoach.openUrl(due.call_id);
+    actions.append(again, open);
+    function showCall(view) {
+      reply.replaceChildren();
+      const turn = (view.turns || []).filter(t => t.response).at(-1);
+      if (!turn) return;
+      reply.append(el("p", "reply", PlanProposal.plain(turn.response)));
+      if (turn.status !== "complete") { reply.append(el("p", "muted", "This reply did not finish. Open AI Coach to check it; it will not be resent automatically.")); return; }
+      const message = {text: turn.response, conversationId: view.id, turnId: turn.id};
+      PlanProposal.mount(reply, message, {call: {sourcePlanId: plan.id}, onChange: refreshed});
+      PlanChange.mount(reply, message);
+    }
+    try {
+      let view;
+      if (weeklyCallsStarted.has(plan.id)) {
+        view = await fetch("/api/ai/conversations/" + encodeURIComponent(due.call_id)).then(r => r.ok ? r.json() : null);
+      } else {
+        weeklyCallsStarted.add(plan.id);
+        view = await AICoach.reviewWeek(plan.id, "call", null, text => { status.textContent = text; });
+      }
+      status.textContent = view ? "" : "Open AI Coach to start the call.";
+      if (view) showCall(view);
+    } catch (err) {
+      status.textContent = err.message + " You can still Run it back or plan next week in the builder.";
+    }
+  }
+
+  // After Accept or Run it back: confirm what is now active and offer Undo while the new week is untouched.
+  function showSetUp(box, plan, call) {
+    const next = call.next, status = el("p", "muted");
+    box.hidden = false;
+    box.replaceChildren(el("h2", null, "Weekly coaching call"),
+      el("p", null, next.name + " is your active microcycle" + (next.origin === "repeat" ? ", repeating " + plan.name + "." : ", from your coach's proposal.")), status);
+    const actions = el("div", "actions");
+    if (next.can_undo) {
+      const undo = el("button", null, "Undo"); undo.type = "button";
+      undo.addEventListener("click", async () => {
+        undo.disabled = true; status.textContent = "Undoing…";
+        try { await api("/api/weekly-call/" + encodeURIComponent(plan.id) + "/undo", { method: "POST" }); loadWeeklyCall(); loadPlannedStart(); }
+        catch (err) { status.textContent = err.message + " Nothing was changed."; undo.disabled = false; }
+      });
+      actions.append(undo);
+    } else if (next.undo_problem) status.textContent = next.undo_problem;
+    const open = el("a", null, "Continue in AI Coach"); open.href = AICoach.openUrl(call.call_id);
+    actions.append(open); box.append(actions);
   }
 
   async function loadPlannedStart() {
@@ -1046,7 +1129,7 @@
         const pending = sessions.filter(session => !done.has(session.id));
         if (!pending.length) {
           details.append(el("p", "muted", sessions.length ? "Microcycle complete. Select another plan or build the next week." : "No days planned yet. Add a day in the builder."));
-          if(sessions.length){const review=el('a',null,'Review this microcycle with AI Coach');review.href=AICoach.endUrl(plan.id);details.append(review);}
+          if(sessions.length){const review=el('a',null,'Weekly coaching call with AI Coach');review.href=AICoach.callUrl(plan.id);details.append(review);}
           if (!manual.size && !skipped.size) return;
         }
         const dayLabel = el("label", null, "Workout day"), daySelect = el("select", "wide");
