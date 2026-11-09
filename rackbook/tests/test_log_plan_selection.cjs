@@ -10,7 +10,7 @@ const plans=[{id:'first',name:'Week 1',active:false,completed:[{session_id:'done
 const box=node('section'),calls=[],loads=[],errors=[];
 let data=plans,fail=false;
 let allowMark=false,promptValue=null;
-const context=vm.createContext({AICoach:{endUrl:id=>'/?coaching_week='+id+'&coaching_kind=end#ai'},trainingUrl:path=>path.startsWith("/training/")?path:"/training"+path,$:()=>box,el:node,confirm:()=>allowMark,prompt:()=>promptValue,api:async(url,options)=>{calls.push({url,options});if(options&&fail)throw Error('Activation failed');if(url.endsWith('/skip')){const p=data.find(p=>p.id==='first'),id=url.split('/sessions/')[1].split('/')[0];if(options.method==='DELETE')p.completed=p.completed.filter(c=>c.session_id!==id);else p.completed.push({session_id:id,hevy_workout_id:null,outcome:'skipped',note:JSON.parse(options.body).note});return structuredClone(p);}if(url.endsWith('/complete')){const p=data.find(p=>p.id==='first');if(options.method==='DELETE')p.completed=p.completed.filter(c=>c.session_id!=='done');else p.completed.push({session_id:'done',hevy_workout_id:null});return structuredClone(p);}return structuredClone(data);},loadPlannedWorkout:async(...args)=>loads.push(args),say:text=>errors.push(text)});
+const context=vm.createContext({AICoach:{callUrl:id=>'/?coaching_week='+id+'&coaching_kind=call#ai'},trainingUrl:path=>path.startsWith("/training/")?path:"/training"+path,$:()=>box,el:node,confirm:()=>allowMark,prompt:()=>promptValue,api:async(url,options)=>{calls.push({url,options});if(options&&fail)throw Error('Activation failed');if(url.endsWith('/skip')){const p=data.find(p=>p.id==='first'),id=url.split('/sessions/')[1].split('/')[0];if(options.method==='DELETE')p.completed=p.completed.filter(c=>c.session_id!==id);else p.completed.push({session_id:id,hevy_workout_id:null,outcome:'skipped',note:JSON.parse(options.body).note});return structuredClone(p);}if(url.endsWith('/complete')){const p=data.find(p=>p.id==='first');if(options.method==='DELETE')p.completed=p.completed.filter(c=>c.session_id!=='done');else p.completed.push({session_id:'done',hevy_workout_id:null});return structuredClone(p);}return structuredClone(data);},loadPlannedWorkout:async(...args)=>loads.push(args),say:text=>errors.push(text)});
 vm.runInContext(source,context);
 (async()=>{
  await context.loadPlannedStart();const select=find(box,'select')[0];assert.equal(select.value,'second');
@@ -42,7 +42,7 @@ vm.runInContext(source,context);
  assert.equal(find(box,'select')[1].value,'done','Undo must remain available even when every day is complete');
  assert.equal(find(box,'select')[1].children[1].disabled,true,'Saved completions stay protected');
  assert.equal(find(box,'button')[0].textContent,'Undo completion');
- assert.ok(find(box,'a').some(a=>a.href==='/?coaching_week=first&coaching_kind=end#ai'));
+ assert.ok(find(box,'a').some(a=>a.href==='/?coaching_week=first&coaching_kind=call#ai'));
  // Skip a day: cancelling does nothing; a skip posts the note, resolves the day, and can be undone.
  data=structuredClone(plans);data.forEach(p=>p.active=false);data[0].completed=[];await context.loadPlannedStart();
  const skipDays=find(box,'select')[1];skipDays.value='next';skipDays.events.change();
@@ -62,7 +62,7 @@ vm.runInContext(source,context);
  find(box,'select')[1].value='next';find(box,'select')[1].events.change();await find(box,'button').find(b=>b.textContent==='Skip this day').events.click();
  assert.equal(JSON.parse(calls.at(-1).options.body).note,null,'A blank note is sent as null');
  assert.equal(find(box,'select')[1].value,'next','With every day resolved the skipped day stays selectable');
- assert.equal(find(box,'button')[0].textContent,'Undo skip');assert.ok(find(box,'a').some(a=>a.href==='/?coaching_week=first&coaching_kind=end#ai'),'A microcycle finished by a skip offers its review');
+ assert.equal(find(box,'button')[0].textContent,'Undo skip');assert.ok(find(box,'a').some(a=>a.href==='/?coaching_week=first&coaching_kind=call#ai'),'A microcycle finished by a skip offers its review');
  data=[];await context.loadPlannedStart();assert.equal(find(box,'select').length,0);assert.equal(find(box,'a')[0].href,'/training/microcycles');
  console.log('Log microcycle selection, active default, next pending day, activation, failures and empty states passed.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

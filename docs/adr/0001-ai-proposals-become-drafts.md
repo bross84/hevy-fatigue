@@ -19,3 +19,4 @@ Letting the model write plans directly would turn unreviewed, possibly wrong adv
 - A `plan_proposals` row links each draft to its conversation turn. The coach's outcome review now reads it (read-only) with the draft's completions to report what happened after each save.
 - The logger cannot read host conversations, so the browser supplies the reply text. That text is validated again on save and only ever produces an inactive draft of the athlete's own data.
 - Adding any path that applies or activates AI output would contradict this decision and should reopen it.
+  [ADR 0002](0002-coach-plan-changes-need-a-tap.md) reopens it: plan changes may apply to an existing plan, and a weekly coaching call may make the next microcycle active, but only on the athlete's tap, with undo, and never to trained or skipped days.

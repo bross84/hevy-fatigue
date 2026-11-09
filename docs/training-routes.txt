@@ -56,6 +56,15 @@ POST /training/api/mesocycles/{plan_id}/archive
 POST /training/api/mesocycles/{plan_id}/deactivate
 POST /training/api/plan-proposals/preview
 POST /training/api/plan-proposals/save
+POST /training/api/plan-changes/preview
+POST /training/api/plan-changes/accept
+POST /training/api/plan-changes/{change_id}/undo
+GET /training/api/weekly-call
+GET /training/api/weekly-call/{plan_id}
+POST /training/api/weekly-call/{plan_id}/preview
+POST /training/api/weekly-call/{plan_id}/next-week
+POST /training/api/weekly-call/{plan_id}/run-it-back
+POST /training/api/weekly-call/{plan_id}/undo
 GET /training/rpe-table
 GET /training/rpe-charts
 GET /training/rpe-observed

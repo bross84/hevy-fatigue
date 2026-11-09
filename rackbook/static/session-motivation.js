@@ -1,9 +1,13 @@
-/* Required engagement check-in. No fatigue, trial or loading calculations. */
+/* Required engagement check-in. No fatigue, trial or loading calculations.
+   When a microcycle has just finished, confirming the check-in starts its weekly coaching call (ADR 0002)
+   if the Log page has not already held it; the server returns a saved call without resending. The call
+   replaces the separate opening and closing reviews. Its cards act only on the athlete's own taps. */
 const SessionMotivation = (() => {
   const levels=['Eager','Willing','Neutral','Reluctant','Dreading it'],states=new Map();
   const started=d=>d.exercises.some(ex=>ex.trialStarted||ex.sets.some(s=>s.type!=='warmup'&&s.done));
   const signature=d=>JSON.stringify({motivation:d.motivation,plan:d.planned_session || null,start:d.startedAt});
   const ready=d=>!!d.motivation&&Number.isInteger(d.motivation.level)&&d.motivation.level>=0&&d.motivation.level<=4&&d.checkin_confirmation?.signature===signature(d);
+  const cards=()=>typeof PlanProposal!=='undefined'&&typeof PlanChange!=='undefined';
   async function ensureSaved(draft) {
     if(draft.frozenSave)return;
     if(!ready(draft))throw Error('Choose your motivation and confirm the pre-training check-in.');
@@ -15,8 +19,8 @@ const SessionMotivation = (() => {
   function mount(draft,box,save,onState=()=>{}) {
     box.replaceChildren();
     let state=states.get(draft.client_workout_id);
-    if(!state){state={pending:false,reviewRunning:false,reviewChecked:false,closingRunning:false,closingChecked:false,rechecked:false,
-      message:'',view:null,closingMessage:'',closingView:null};states.set(draft.client_workout_id,state);}
+    if(!state){state={pending:false,closingRunning:false,closingChecked:false,closingPlanId:null,rechecked:false,
+      message:'',closingMessage:'',closingView:null};states.set(draft.client_workout_id,state);}
     const node=(tag,text)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;return n;};
     const heading=node('h3','Pre-training check-in'),label=node('label','How do you feel about training today?');label.htmlFor='motivation-level';
     const level=node('select');level.id='motivation-level';level.required=true;level.append(new Option('Choose motivation (required)',''));
@@ -26,7 +30,6 @@ const SessionMotivation = (() => {
     const hint=node('p','Motivation is required before working sets. It measures engagement, separately from tiredness, recovery and your fatigue score.');hint.className='hint';
     const confirm=node('button');confirm.type='button';confirm.id='confirmMotivation';
     const status=node('p');status.className='hint';status.setAttribute('role','status');
-    const reviewBox=node('div');reviewBox.id='weeklyOpeningReview';
     const closingBox=node('div');closingBox.id='microcycleClosingReview';
     function paint() {
       const locked=Boolean(draft.frozenSave)||state.pending;
@@ -34,60 +37,41 @@ const SessionMotivation = (() => {
       confirm.textContent=ready(draft)?'Check-in confirmed':'Confirm check-in';
       status.textContent=state.message || (ready(draft)?'Check-in confirmed. Your workout remains yours to adjust.':'Choose motivation, add a note if useful, then confirm.');
       closingBox.replaceChildren();
-      if(draft.closing_review_id){const link=node('a','Discuss the finished microcycle with AI Coach');link.href=AICoach.openUrl(draft.closing_review_id);closingBox.append(link);}
-      const closingTurn=state.closingView?.turns?.at(-1);
-      if(closingTurn){
-        const details=node('details');details.append(node('summary','Finished microcycle · '+closingTurn.status));
-        if(closingTurn.response){const text=node('p',closingTurn.response);text.style.whiteSpace='pre-wrap';details.append(text);}
-        if(closingTurn.status!=='complete')details.append(node('p','Open AI Coach to check or discuss this attempt. It will not be automatically resent.'));
+      if(draft.closing_review_id){const link=node('a','Continue the weekly coaching call in AI Coach');link.href=AICoach.openUrl(draft.closing_review_id);closingBox.append(link);}
+      const turn=state.closingView?.turns?.at(-1);
+      if(turn){
+        const details=node('details');details.open=true;details.append(node('summary','Weekly coaching call · '+turn.status));
+        if(turn.response){
+          const shown=cards()?PlanProposal.plain(turn.response):turn.response;
+          const text=node('p',shown);text.style.whiteSpace='pre-wrap';details.append(text);
+          if(turn.status==='complete'&&cards()&&state.closingPlanId){
+            const reply={text:turn.response,conversationId:state.closingView.id,turnId:turn.id};
+            PlanProposal.mount(details,reply,{call:{sourcePlanId:state.closingPlanId}});
+            PlanChange.mount(details,reply);
+          }
+        }
+        if(turn.status!=='complete')details.append(node('p','Open AI Coach to check or discuss this attempt. It will not be automatically resent.'));
         closingBox.append(details);
       }
       if(state.closingMessage){const note=node('p',state.closingMessage);note.className='hint';closingBox.append(note);}
-      reviewBox.replaceChildren();
-      if(draft.weekly_review_id){const link=node('a','Discuss this week with AI Coach');link.href=AICoach.openUrl(draft.weekly_review_id);reviewBox.append(link);}
-      const turn=state.view?.turns?.at(-1);
-      if(turn){
-        const details=node('details');details.append(node('summary','Before day 1 · '+turn.status));
-        if(turn.response){const text=node('p',turn.response);text.style.whiteSpace='pre-wrap';details.append(text);}
-        if(turn.status!=='complete')details.append(node('p','Open AI Coach to check or discuss this attempt. It will not be automatically resent.'));
-        reviewBox.append(details);
-      }
       onState();
     }
     state.paint=paint;
-    async function opening(result) {
-      if(state.reviewRunning||state.reviewChecked||!draft.planned_session)return;
-      if(!result?.weekly_review_eligible)return;
-      state.reviewChecked=true;state.reviewRunning=true;
-      try {
-        if(started(draft)){
-          if(draft.weekly_review_id){const r=await fetch('/api/ai/conversations/'+encodeURIComponent(draft.weekly_review_id));if(r.ok)state.view=await r.json();}
-          else state.message='Training has started; no opening assessment will be presented as pre-training evidence. Discuss this session in AI Coach.';
-        } else state.view=await AICoach.reviewWeek(draft.planned_session.mesocycle_id,'start',draft.client_workout_id,
-          text=>{state.message=text;state.paint();},view=>{draft.weekly_review_id=view.id;save();state.paint();});
-        if(state.view)state.message='Opening review '+(state.view.turns.at(-1)?.status || 'saved')+'. Open AI Coach to discuss any proposals. No programming changes were applied.';
-      }catch(error){state.message=error.message+' Logging can continue; no automatic resend.';}
-      finally{state.reviewRunning=false;state.paint();}
-    }
-    // The look-back review of a microcycle just finished. It depends on that microcycle, not on this
+    // The weekly coaching call of the microcycle just finished. It depends on that microcycle, not on this
     // workout having a plan. Never blocks logging; the server decides whether a reply may be resent.
     async function closing(result) {
       const offer=result?.closing_review;
       if(state.closingRunning||state.closingChecked||!offer||draft.frozenSave)return;
-      state.closingChecked=true;state.closingRunning=true;
+      state.closingChecked=true;state.closingRunning=true;state.closingPlanId=offer.plan_id;
       try {
         if(started(draft)){
           if(draft.closing_review_id){const r=await fetch('/api/ai/conversations/'+encodeURIComponent(draft.closing_review_id));if(r.ok)state.closingView=await r.json();}
-          else state.closingMessage='Training has started, so the finished microcycle was not reviewed automatically. Request it from Plans or AI Coach.';
-        } else state.closingView=await AICoach.reviewWeek(offer.plan_id,'end',null,
+          else state.closingMessage='Training has started, so the weekly coaching call did not start automatically. Start it from Plans or AI Coach.';
+        } else state.closingView=await AICoach.reviewWeek(offer.plan_id,'call',null,
           text=>{state.closingMessage=text;state.paint();},view=>{draft.closing_review_id=view.id;save();state.paint();});
-        if(state.closingView)state.closingMessage='Finished-microcycle review '+(state.closingView.turns.at(-1)?.status || 'saved')+'. Open AI Coach to discuss any proposals. No programming changes were applied.';
+        if(state.closingView)state.closingMessage='Weekly coaching call '+(state.closingView.turns.at(-1)?.status || 'saved')+'. Your plan changes only if you tap Accept or Run it back.';
       }catch(error){state.closingMessage=error.message+' Logging can continue; no automatic resend.';}
       finally{state.closingRunning=false;state.paint();}
-    }
-    async function reviews(result) {
-      await closing(result);
-      await opening(result);
     }
     function change(){
       if(draft.frozenSave||state.pending)return;
@@ -108,14 +92,14 @@ const SessionMotivation = (() => {
       try{result=await ensureSaved(draft);state.message='Check-in saved. Motivation does not affect your fatigue score.';}
       catch(error){state.message='Confirmed on this device. '+error.message+' It will be saved before workout upload.';}
       finally{state.pending=false;paint();}
-      if(result){state.rechecked=true;reviews(result);}
+      if(result){state.rechecked=true;closing(result);}
     });
     for(const control of [level,note])control.style.cssText='display:block;width:100%;box-sizing:border-box;margin:6px 0 12px';
-    box.append(heading,label,level,noteLabel,note,hint,confirm,status,closingBox,reviewBox);paint();
-    // After a reload the confirmed check-in is re-posted once (idempotent) to resume any review.
-    if(ready(draft)&&!draft.frozenSave&&!state.pending&&!state.rechecked&&!state.reviewChecked&&!state.closingChecked){
+    box.append(heading,label,level,noteLabel,note,hint,confirm,status,closingBox);paint();
+    // After a reload the confirmed check-in is re-posted once (idempotent) to resume the call.
+    if(ready(draft)&&!draft.frozenSave&&!state.pending&&!state.rechecked&&!state.closingChecked){
       state.rechecked=true;
-      ensureSaved(draft).then(reviews).catch(error=>{state.message=error.message;state.paint();});
+      ensureSaved(draft).then(closing).catch(error=>{state.message=error.message;state.paint();});
     }
   }
   return {mount,ready,ensureSaved};
