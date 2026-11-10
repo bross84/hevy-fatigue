@@ -63,7 +63,7 @@ doc.completed.push({session_id:'b'});assert.equal(context.nextSession(doc).s.id,
 doc.completed.push({session_id:'c'});assert.equal(context.nextSession(doc),null);
 doc.completed=[];
 let snapshots=0, loaded=[];
-const logContext=vm.createContext({trainingUrl:path=>path.startsWith("/training/")?path:"/training"+path,
+const logContext=vm.createContext({WeekText:require(path.join(root,"static","week-text.js")),trainingUrl:path=>path.startsWith("/training/")?path:"/training"+path,
  unit:'kg', sorenessPatterns:null, draft:null, api:async()=>structuredClone(doc), uid:()=>String(++counter),
  refFromServer:()=>({basis:'tm',ls:true}),saveDraft:()=>snapshots++,say(){},renderWorkout(){},
  loadState:ex=>loaded.push(ex.template_id),confirm:()=>false,

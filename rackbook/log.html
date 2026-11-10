@@ -4,6 +4,7 @@
   <script src="/training/static/training.js"></script>
   <script src="/training/static/save-recovery.js?v=2"></script>
   <script src="/training/static/draft-transfer.js"></script>
+  <script src="/training/static/week-text.js?v=1"></script>
   <script src="/training/static/session-review.js"></script>
   <script src="/training/static/session-advice.js"></script>
   <script src="/training/static/session-motivation.js?v=4"></script>
@@ -79,6 +80,7 @@
     .ex-title { font-size: 17px; font-weight: 500; margin: 0 0 2px; }
     .exhead { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
     .exhead .ex-title { margin: 0; order: 1; flex: 1 1 auto; }
+    .plan-callouts { margin: 2px 0 8px; font: 600 13px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--accent); grid-column: 1 / -1; }
     .grip { order: 0; width: 28px; min-height: 36px; padding: 0; border: 0; background: transparent; color: var(--muted); font-size: 18px; line-height: 1; cursor: grab; touch-action: none; }   /* touch-action: none so a drag on the handle never scrolls the page */
     .card.lifted { position: relative; z-index: 5; box-shadow: 0 8px 24px rgba(0,0,0,.35); opacity: .96; }
     .chip { order: 3; min-height: 32px; padding: 3px 12px; border-radius: 16px; font-size: 13px; color: var(--muted); }
@@ -1227,6 +1229,8 @@
       planLabel: plan.name + " · " + session.name,
       exercises: session.exercises.map(ex => ({ id: uid(), template_id: ex.exercise_template_id,
         title: ex.title, notes: ex.notes || "", ref: refFromServer(ex.exercise_template_id),
+        // Callouts from week text (DDP, myo, BO...) are shown as a label only; weights stay the athlete's choice.
+        ...(WeekText.hasCallouts(ex) ? { planCallouts: WeekText.setsText(ex.sets, ex.tm_pct) } : {}),
         sets: ex.sets.map(s => ({type:s.type, ts:s.ts, kg:s.weight_kg == null ? "" : String(s.weight_kg),
           reps:String(s.reps), rpe:s.rpe == null ? "" : String(s.rpe), done:false, manual:s.weight_kg != null}))
       }))
@@ -1833,6 +1837,7 @@
     grip.type = "button"; grip.setAttribute("aria-label", "Drag to reorder " + ex.title);
     makeReorderable(card, grip, ex);
     head.append(grip, el("p", "ex-title", ex.title));
+    if (ex.planCallouts) { const callouts = el("p", "plan-callouts", "Plan: " + ex.planCallouts); callouts.setAttribute("aria-label", "Planned callouts for " + ex.title + ": " + ex.planCallouts); card.insertBefore(callouts, left); }
     const chip = el("button", "chip", "Round to " + trim(stepOf(ex.ref)) + " " + unit + " ▾");
     chip.type = "button"; chip.setAttribute("aria-label", "Round planned weights to this many " + unit);
     chip.addEventListener("click", () => {

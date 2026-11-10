@@ -78,6 +78,7 @@ const DraftTransfer = (() => {
     for(const ex of d.exercises){
       assert(object(ex)&&string(ex.id,200)&&ex.id.length>0&&string(ex.template_id,200)&&ex.template_id.length>0&&string(ex.title,200)&&Array.isArray(ex.sets)&&ex.sets.length<=200);
       if(ex.notes!=null)assert(string(ex.notes));
+      if(ex.planCallouts!=null)assert(string(ex.planCallouts,500));
       if(ex.ref){
         assert(object(ex.ref)&&[undefined,null,'kg','lb'].includes(ex.ref.weightUnit));
         if(ex.ref.autoWeights!==undefined)assert(typeof ex.ref.autoWeights==='boolean');

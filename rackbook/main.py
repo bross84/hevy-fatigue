@@ -4,7 +4,7 @@ import os
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 import httpx
 from cryptography.fernet import InvalidToken
@@ -49,6 +49,8 @@ from . import mesocycles
 from . import plan_proposals
 from . import plan_changes
 from . import weekly_call
+from . import week_entry
+from . import week_text
 from . import training_max
 from .wave_math import bbb_weight, epley, joker_qualifies, joker_weight, round_weight, session_e1rm, working_weight
 from .workout_payload import build_hevy_workout
@@ -756,6 +758,32 @@ def save_plan_proposal(data: PlanProposalRequest):
     try:
         return plan_proposals.save_draft(data.text, data.conversation_id, data.turn_id)
     except plan_proposals.ProposalError as exc:
+        raise HTTPException(status_code=exc.status, detail=str(exc))
+
+
+class WeekTextPreviewRequest(BaseModel):
+    text: str = Field(max_length=week_text.MAX_TEXT_CHARS)
+    # {normalised name as written: movement id} the athlete picked for names that did not match exactly.
+    choices: dict[Annotated[str, Field(max_length=200)], Annotated[str, Field(max_length=200)]] = Field(default_factory=dict, max_length=200)
+
+
+class WeekTextDraftsRequest(WeekTextPreviewRequest):
+    program_name: str = Field(default='', max_length=90)
+    cycle: int = Field(default=1, ge=1, le=9999)
+
+
+@app.post('/api/week-text/preview')
+def preview_week_text(data: WeekTextPreviewRequest):
+    """Read-only: what the written week becomes, with every problem listed by line. Writes nothing."""
+    return week_entry.preview(data.text, data.choices)
+
+
+@app.post('/api/week-text/drafts')
+def save_week_text_drafts(data: WeekTextDraftsRequest):
+    """Explicit user action: save each written week as a new inactive draft microcycle, all or none."""
+    try:
+        return week_entry.save_drafts(data.text, data.choices, data.program_name.strip(), data.cycle)
+    except week_entry.WeekTextError as exc:
         raise HTTPException(status_code=exc.status, detail=str(exc))
 
 

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from .transactions import transaction
 from .database import get_db
@@ -18,6 +18,15 @@ class PlannedSet(BaseModel):
     weight_kg: float | None = Field(default=None, ge=0, le=2000)
     type: Literal['normal', 'failure', 'dropset'] = 'normal'
     ts: bool = False
+    # Callouts written in week text (week_text.py). The Log page shows them as labels; the athlete
+    # still chooses the weights. reps_max is the top of a myo-reps target such as 15-20.
+    amrap: bool = False
+    backoff: bool = False
+    ddp: bool = False
+    myo: bool = False
+    reps_max: int | None = Field(default=None, ge=1, le=100)
+    drops: int | None = Field(default=None, ge=1, le=10)
+    drops_open: bool = False
 
     @field_validator('rpe')
     @classmethod
@@ -26,11 +35,24 @@ class PlannedSet(BaseModel):
             raise ValueError('RPE must use half-point steps')
         return value
 
+    @model_validator(mode='after')
+    def coherent_callouts(self):
+        if self.reps_max is not None and (not self.myo or self.reps_max <= self.reps):
+            raise ValueError('A rep range is only for myo-reps and must end above its start')
+        if self.drops is not None and self.drops_open:
+            raise ValueError('Drop sets are either counted or open, not both')
+        if self.ts and self.backoff:
+            raise ValueError('A set cannot be both TS and back-off')
+        if self.myo and (self.ts or self.amrap or self.backoff or self.ddp or self.drops or self.drops_open):
+            raise ValueError('Myo-reps take only a rep target and an RPE')
+        return self
+
 
 class PlannedMovement(BaseModel):
     exercise_template_id: str = Field(min_length=1, max_length=200)
     title: str = Field(min_length=1, max_length=200)
     notes: str = Field(default='', max_length=2000)
+    tm_pct: int | None = Field(default=None, ge=50, le=100)
     sets: list[PlannedSet] = Field(min_length=1, max_length=50)
 
     @model_validator(mode='after')
@@ -201,6 +223,13 @@ def migrate_single_week_plans():
                 conn.execute('UPDATE mesocycles SET active = 1 WHERE id = ?', (pending,))
 
 
+def _current_shape(session):
+    try:
+        return PlannedSession.model_validate(session).model_dump()
+    except ValidationError:
+        return session  # An old document the current model rejects is compared as stored.
+
+
 def save_plan(data: PlanInput, plan_id=None):
     document = data.model_dump(exclude={'revision', 'rpe_assignments'})
     with get_db() as conn:
@@ -213,7 +242,8 @@ def save_plan(data: PlanInput, plan_id=None):
                 raise PlanError('This microcycle is archived')
             if row['revision'] != data.revision:
                 raise PlanError('This plan changed on another device. Reload it before saving.')
-            old = {s['id']: s for w in json.loads(row['document'])['weeks'] for s in w['sessions']}
+            # Stored documents predate newer optional fields, so compare both sides in the current shape.
+            old = {s['id']: _current_shape(s) for w in json.loads(row['document'])['weeks'] for s in w['sessions']}
             new = {s['id']: s for w in document['weeks'] for s in w['sessions']}
             for done in conn.execute('SELECT session_id FROM mesocycle_completions WHERE mesocycle_id = ?', (plan_id,)):
                 if new.get(done['session_id']) != old.get(done['session_id']):
