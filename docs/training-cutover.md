@@ -716,3 +716,10 @@ If a normal workout needs recovery on a physical phone, verify the rest
 timer remains visible and the regular Save action is hidden. Use Finish
 local records for a confirmed Hevy save or Check save status for an unknown
 outcome. Reconcile only an existing workout that matches the retained draft.
+
+For week text, on the physical PWA open the Microcycle Builder, tap **Write week as text** and
+type a week. Check that `#` opens the movement search above the keyboard and picking one
+writes its full name. Preview a week with a misspelt movement and a `*`: the problem lists its line,
+and the movement can be chosen. Load one week, save it, start Day 1 and check the "Plan: …" label
+under each movement with callouts. Text holding two weeks should save two inactive drafts and leave
+the active microcycle as it was.

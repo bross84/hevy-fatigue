@@ -79,3 +79,11 @@ _Avoid_: Repeat week, copy plan
 **Draft microcycle**:
 An inactive saved week, created from a plan proposal or by hand, that the athlete reviews and activates.
 _Avoid_: Pending plan, AI-applied plan
+
+**Week text**:
+A training week written in the builder's shorthand: `Week N Day N` headings, `#movement` lines and sets such as `1x3@8 TS, 3x5@7 BO`. The app reads it into one microcycle per week; it never guesses a movement.
+_Avoid_: Import, spreadsheet, program parser
+
+**Callout**:
+A word in week text saying how a group of sets is run: TS, BO (back-off), + (AMRAP), DS / DS2 (drop sets), myo, DDP or TM90. For now the Log page shows callouts as a label and the athlete chooses the weights. Effort labels such as ME and RE are not callouts and are ignored.
+_Avoid_: Tag, set type, ME/RE label

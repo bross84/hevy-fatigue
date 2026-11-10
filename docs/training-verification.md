@@ -1174,3 +1174,27 @@ versioned (`?v=2`) on every logger page so a cached copy cannot keep the old men
   a logger page's top bar shows it as the second visible link and it opens `/#ai`, which activates the AI tab.
   `tools/check_dashboard_layout_browser.py` and `tools/check_logger_layout_browser.py` pass.
 - Not run: Docker build/startup, physical phone/tablet, deployed or real data.
+
+## Week text in the builder — local, 2026-11-09
+
+The Microcycle Builder's **Write week as text** reads a typed week (`Week N Day N`, `#movement`, sets
+with RPE and callouts), previews it with every problem by line, and loads one week into the builder
+or saves several as inactive drafts. Callouts are stored on planned sets and shown as labels in the
+builder and on the Log page; weights are unchanged. Details: hevy-context.md, "Writing a week as text".
+
+- Baseline before the change: host 244, logger 579 (1 expected failure), all 34 `.cjs` files passed.
+- After: host 244 passed; logger 626 passed, 1 expected failure (as before). New: 31 reader cases
+  (`test_week_text.py`: notation, callouts, exact matching, never guessing, line-numbered problems),
+  16 route/model cases (`test_week_entry.py`: preview writes nothing, choices, all-or-none drafts,
+  callouts kept through Save plan, an older plan with a completed day still editable). That last
+  case fails without the `save_plan` comparison fix.
+- Browser logic: all 35 `.cjs` files passed, including the new `test_week_text_ui.cjs` (`#` search
+  window, inserting a movement, labels written back in the notation). `test_mesocycle_ui.cjs` now
+  gives its Log-page sandbox the new helper script; its assertions are unchanged.
+- Mocked browser (`tools.preview_app`, browser pane): `#` search listed and inserted the exact
+  name; preview showed the `*` problem on line 5 and a choice for an unmatched name; after fixing,
+  one week loaded unsaved, saved inactive with callouts and TM90 kept, and Day 1 on the Log page
+  showed "Plan: 1x3@8 TS, 3x5@7 BO TM90" and "Plan: 5x4@6 DDP". At 375px the dialog fit with no
+  sideways scroll, and two weeks saved as two inactive drafts with the active plan unchanged. The
+  search list missed movements loaded after typing began; fixed and rechecked.
+- Not run: Docker build/startup (daemon not running), physical phone/tablet, deployed or real data.

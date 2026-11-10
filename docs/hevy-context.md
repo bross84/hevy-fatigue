@@ -869,6 +869,55 @@ followed by the new opening review. Proposal-outcome timing is now reported in d
 `tools/check_weekly_coaching_browser.py`. Not included: skipping several days at once, automatic skip
 detection, moving a day, or linking work done elsewhere to the skipped day.
 
+## Writing a week as text (local, 2026-11-09)
+
+The Microcycle Builder has **Write week as text**: the athlete types a week in a short notation (or
+pastes it from notes), previews what it becomes, and loads it. Brian writes each week as it starts,
+so one week is the usual case.
+
+```
+Week 3 Day 1
+#squat, low bar w/ belt 1x3@8 TS, 3x5@7 BO TM90
+#Bench Press (Barbell) 5x4@6 DDP
+Week 3 Day 2
+#Lateral Raise (Dumbbell) myo 15-20@9
+```
+
+- `Week N Day N` starts a day. Day numbers set the training order, not days of the week.
+- `#name` is a movement. Typing `#` opens a search of the athlete's movements; picking one writes its
+  exact name. Names are matched exactly (case and spacing ignored) against the local movement list
+  (exercise cache, logged sets, saved plans). The longest exact name wins, so names may contain
+  commas or numbers. A name with no exact match, or shared by two movements, is never guessed: the
+  preview asks the athlete to choose, and that choice applies to every use of the name.
+- `3x5` is sets × reps (`x`, `X` or `×`). `@7` is the prescribed RPE (optional), and `@6,7,8` gives one
+  RPE per set. A comma followed by new sets × reps starts another group of sets.
+- Callouts: `TS` top set (one set only, one per movement), `BO` back-off, `+` AMRAP on the group's last
+  set, `DS` (drops chosen on the day) or `DS2` (planned drops after the last set), `myo 15-20@9` (no
+  sets × reps; one set carrying the target), `DDP`, and `TM90` (movement-level, 50–100).
+- ME and RE are accepted and ignored: plans carry no effort labels (ADR 0002). `*`, rep ranges outside
+  myo (`3x5-8`) and any unknown word are reported with their line number; nothing is dropped silently.
+
+Reading is pure (`rackbook/week_text.py`). `POST /training/api/week-text/preview` returns weeks → days →
+movements → sets, every problem by line, the names to choose, and builder-ready sessions once
+everything is resolved. It writes nothing. One week loads into the builder as an unsaved plan
+(program and cycle from the dialog, week from the heading, days named by order), saved with **Save
+plan** as usual. Several weeks in one text are saved by `POST /training/api/week-text/drafts` as one
+inactive draft per week in a single transaction (`rackbook/week_entry.py`); nothing is activated or
+sent to Hevy, and text with any problem saves nothing. The dialog keeps unsent text in the browser's
+local storage until it is loaded.
+
+Planned sets gained optional fields `amrap`, `backoff`, `ddp`, `myo`, `reps_max` (myo target top only),
+`drops`, `drops_open`, and movements gained `tm_pct`; all default to off, so older plans and AI proposals
+are unchanged. The builder shows a movement's callouts in the notation ("Callouts: 1x3@8 TS, 3x5@7 BO
+TM90"), and the Log page shows them under the movement name ("Plan: …"). They are labels only: weights
+are still chosen by the athlete, and the e1RM/TM choice on the Log page is unchanged. Editing a plan
+with a completed day now compares that day in the current shape, so plans saved before these fields
+existed can still be edited. Tests: `rackbook/tests/test_week_text.py`, `test_week_entry.py`,
+`test_week_text_ui.cjs`. Follow-ups (not built): DDP starting weight from last week's best DDP set
+converted to this week's reps and RPE, the myo-reps flow, AMRAP/BO/drop behaviour on the Log page,
+showing a saved week back as text (also for AI Coach), and rep ranges outside myo. The old
+`program_parser.py` (5/3/1 notation) is unrelated and unchanged.
+
 ## AI week proposals in the AI Coach (local, 2026-11-07)
 
 The coach may now end a reply with one `plan-proposal-v1` fenced JSON block when the athlete
