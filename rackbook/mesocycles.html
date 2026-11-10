@@ -2,6 +2,7 @@
 <html lang="en"><head>
   <script src="/training/static/training.js"></script>
   <script src="/training/static/draft-transfer.js"></script>
+  <script src="/training/static/week-text.js?v=1"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="manifest" href="/training/manifest.webmanifest"><link rel="apple-touch-icon" href="/training/static/apple-touch-icon.png">
@@ -26,6 +27,14 @@ a {color:var(--accent)} h2 {font-size:19px;margin:0} h3 {font-size:16px;margin:0
 .danger {color:var(--danger,#a32d2d);background:var(--danger-bg,#fcebeb)} .message {padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:16px;background:var(--card)} #status:empty {display:none}
 .editor-title {margin-bottom:16px}.editor-title label {margin-bottom:10px} .savebar {position:sticky;bottom:0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;z-index:2;box-shadow:var(--shadow);margin-top:14px}
 dialog {color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;width:min(560px,95vw);max-height:80vh} dialog::backdrop {background:rgba(0,0,0,.4)} #exerciseResults {max-height:50vh;overflow:auto;margin-top:12px} .picker-footer {border-top:1px solid var(--line);margin-top:12px;padding-top:12px}.picker-footer button {font-size:13px} #exerciseResults button {display:block;width:100%;text-align:left;margin-bottom:6px} .empty {padding:24px 0;text-align:center;color:var(--muted)}
+#weekTextDialog {width:min(760px,96vw);max-height:92vh} #weekText {font:14px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;min-height:220px;resize:vertical;white-space:pre;overflow-wrap:normal;overflow-x:auto}
+.week-text-wrap {position:relative} #weekTextSuggest {position:absolute;left:0;right:0;z-index:3;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);max-height:260px;overflow:auto}
+#weekTextSuggest button {display:block;width:100%;text-align:left;border:0;border-radius:0} #weekTextSuggest button[aria-selected=true] {background:var(--accent-soft);color:var(--accent)}
+.week-text-help {font-size:13px} .week-text-help code {font-size:12px} .wt-errors {border:1px solid var(--danger);background:var(--danger-bg);color:var(--danger);border-radius:12px;padding:10px 14px;margin:12px 0}
+.wt-errors ul {margin:6px 0 0;padding-left:18px} .wt-week {margin-top:14px} .wt-day {border-top:1px solid var(--line);padding:8px 0} .wt-move {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:8px;padding:4px 0;font-size:14px}
+.wt-move .sets {font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px} .wt-pick {grid-column:1/-1;border:1px solid var(--accent);border-radius:10px;padding:8px 10px;background:var(--accent-soft)}
+.wt-pick .row button {min-height:36px;font-size:13px} .wt-bad {color:var(--danger)} .callouts {font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+@media(max-width:750px) {.wt-move{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:750px) {.editor-layout{grid-template-columns:minmax(0,1fr)}.sidebar{position:static;max-height:250px}.plan-set{min-width:370px}}
 </style><style id="rackbook-theme">
 
@@ -105,7 +114,7 @@ dialog {color:var(--text);background:var(--card);border:1px solid var(--line);bo
 <header class="app-header"><div class="page-heading"><div class="page-title"><span class="eyebrow">Hevy-Fatigue</span><h1>Microcycle Builder</h1></div></div><nav class="app-nav" aria-label="Pages" data-app-menu="bar"></nav></header>
 <p class="muted">Plan one week of workouts and train at your own pace. The next workout waits until you finish and save the current one.</p>
 <div id="status" role="status"></div>
-<div class="row editor-tools"><h2 class="grow">Your plans</h2><button id="newPlan" type="button">+ New microcycle</button></div>
+<div class="row editor-tools"><h2 class="grow">Your plans</h2><button id="weekTextOpen" type="button">Write week as text</button><button id="newPlan" type="button">+ New microcycle</button></div>
 <div id="library" class="library"></div>
 <details id="completedPlans" hidden><summary id="completedPlansSummary">Completed microcycles</summary><div id="completedLibrary" class="library"></div></details>
 <form id="editor" hidden>
@@ -114,6 +123,13 @@ dialog {color:var(--text);background:var(--card);border:1px solid var(--line);bo
  <div class="row savebar"><span id="saveState" class="muted grow"></span><button id="savePlan" class="primary" type="submit">Save plan</button><button id="usePlan" type="button">Use this microcycle</button><button id="cancelPlan" type="button">Cancel</button></div>
 </form>
 <dialog id="exercisePicker" aria-label="Add movement"><div class="row"><h2 class="grow">Add movement</h2><button id="closeExercisePicker" type="button">Close</button></div><label>Find an exercise<input id="exerciseSearch" type="search" placeholder="Search your Hevy exercises"></label><div id="exerciseResults"></div><div class="row picker-footer"><span id="pickerStatus" class="muted grow" role="status">Most recently trained first</span><button id="syncExercises" type="button">Refresh list</button></div></dialog>
+<dialog id="weekTextDialog" aria-label="Write week as text"><div class="row"><h2 class="grow">Write week as text</h2><button id="weekTextClose" type="button">Close</button></div>
+<details class="week-text-help"><summary>How to write it</summary><p><code>Week 3 Day 1</code> starts a training day. Type <code>#</code> to search your movements, then the sets: <code>3x5@7</code> is 3 sets of 5 at RPE 7, and <code>3x3@6,7,8</code> gives one RPE per set. A comma before new sets starts another group: <code>1x3@8 TS, 3x5@7 BO</code>.</p><p>Callouts: <code>TS</code> top set · <code>BO</code> back-off · <code>+</code> AMRAP last set (<code>3x5+</code>) · <code>DS</code> or <code>DS2</code> drop sets · <code>myo 15-20@9</code> · <code>DDP</code> · <code>TM90</code>. ME and RE are ignored. The Log page shows callouts as labels; you choose the weights.</p></details>
+<div class="row"><label class="grow">Program<input id="weekTextProgram" maxlength="90" placeholder="BS-Bridge"></label><label>Cycle<input id="weekTextCycle" type="number" min="1" max="9999" step="1" value="1" style="width:100px"></label></div>
+<div class="week-text-wrap"><label>Your week<textarea id="weekText" rows="12" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Week 1 Day 1&#10;#Squat (Barbell) 1x3@8 TS, 3x5@7 BO&#10;#Bench Press (Barbell) 5x4@6 DDP" aria-describedby="weekTextHint"></textarea></label><div id="weekTextSuggest" role="listbox" aria-label="Matching movements" hidden></div></div>
+<p id="weekTextHint" class="muted">Type # to search your movements. Nothing is saved until you load or save the week.</p>
+<div class="row"><button id="weekTextPreview" type="button">Preview</button><span id="weekTextState" class="muted grow" role="status"></span><button id="weekTextApply" class="primary" type="button" disabled>Load into builder</button></div>
+<div id="weekTextResult"></div></dialog>
 </main><script>
 if ('serviceWorker' in navigator) navigator.serviceWorker.register(trainingUrl('/sw.js')).catch(()=>{});
 const $=id=>document.getElementById(id), KEY='training.mesocycleEditor';
@@ -177,6 +193,7 @@ function renderSession(){const box=$('sessionEditor'),s=session();box.replaceChi
  const scroll=el('div','set-scroll'),labels=el('div','plan-set plan-head');for(const text of ['Set','Reps','RPE','Weight ('+unit+')','TS',''])labels.append(el('span',null,text));scroll.append(labels);
  ex.sets.forEach((set,i)=>{const row=el('div','plan-set');row.append(el('span','muted',String(i+1)),numeric(set.reps,'Reps',{min:1,max:100,step:1,required:''},v=>set.reps=v),numeric(set.rpe,'Target RPE',{min:4,max:10,step:.5,placeholder:'—'},v=>set.rpe=v),numeric(set.weight_kg==null?null:Math.round(set.weight_kg*(unit==='lb'?2.20462262185:1)*100)/100,'Fixed weight in '+unit,{min:0,step:'any',placeholder:'Auto'},v=>set.weight_kg=v==null?null:v/(unit==='lb'?2.20462262185:1)));
  const ts=el('input');ts.type='checkbox';ts.checked=set.ts;ts.setAttribute('aria-label','Mark as TS');ts.addEventListener('change',()=>{ex.sets.forEach(x=>x.ts=false);set.ts=ts.checked;remember();renderSession();});row.append(ts,button('×',()=>{if(ex.sets.length===1)return message('A movement needs at least one set.');ex.sets.splice(i,1);remember();renderSession();}));scroll.append(row);});card.append(scroll,button('+ Set',()=>{if(ex.sets.length>=50)return;ex.sets.push({...ex.sets.at(-1),ts:false});remember();renderSession();}));
+ if(WeekText.hasCallouts(ex))card.append(el('p','muted callouts','Callouts: '+WeekText.setsText(ex.sets,ex.tm_pct)));
  const note=el('label',null,'Movement notes'),text=el('textarea');text.rows=1;text.value=ex.notes;text.maxLength=2000;text.addEventListener('input',()=>{ex.notes=text.value;remember();});note.append(text);card.append(note);if(done)card.querySelectorAll('input,textarea,button').forEach(control=>control.disabled=true);fields.append(card);});
  const addMovement=button('+ Movement',openPicker);addMovement.disabled=done;fields.append(addMovement);box.append(fields,el('p','muted','Leave weight blank to plan from the movement’s current e1RM/TM and target RPE when you load the workout. Fixed weights override automatic loading. TS takes effect only after a checked set is saved.'));
  if(plan.id&&!dirty&&!done&&s.exercises.length){const a=el('a',null,'Load this workout into the log');a.href=startUrl(plan,s);box.append(a);}
@@ -202,5 +219,57 @@ window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.return
 // A link such as ?plan=<id> from an AI Coach card opens that plan, unless unsaved edits were restored.
 refreshPlans().then(()=>{const wanted=new URLSearchParams(location.search).get('plan'),target=wanted&&plans.find(p=>p.id===wanted);if(target&&!dirty)openPlan(target);else if(wanted&&!target)message('That plan is no longer available.');}).catch(e=>message(e.message));
 try{const saved=JSON.parse(localStorage.getItem(KEY));if(saved){DraftTransfer.validateEditor(saved);plan=saved.plan;wi=saved.wi;si=saved.si;assignmentCatalog=saved.assignmentCatalog||{};dirty=true;renderEditor();$('saveState').textContent='Restored unsaved changes';}}catch(e){message('Could not restore editor draft: '+e.message);}
+// Week text: type a week in the notation, preview it on the server, then load one week into the editor
+// (saved later with Save plan) or save several weeks as inactive drafts. Preview writes nothing.
+const WT_KEY='training.weekText';
+let wtChoices={}, wtResult=null, wtHits=[], wtActive=0, wtSearches={};
+function wtStore(){try{localStorage.setItem(WT_KEY,JSON.stringify({text:$('weekText').value,choices:wtChoices}));}catch(e){}}
+async function ensureCatalog(){if(catalog.length)return;const [list,history]=await Promise.allSettled([api('/exercises'),api('/hevy/workouts?page=1&page_size=10')]);if(list.status==='fulfilled')catalog=list.value;if(history.status==='fulfilled')recentWorkouts=history.value.workouts;}
+function openWeekText(){const source=plan||plans[0];$('weekTextProgram').value=source?.program_name||'';$('weekTextCycle').value=source?.cycle||1;
+ try{const saved=JSON.parse(localStorage.getItem(WT_KEY));if(saved&&typeof saved.text==='string'&&!$('weekText').value){$('weekText').value=saved.text.slice(0,20000);wtChoices=saved.choices&&typeof saved.choices==='object'?saved.choices:{};}}catch(e){}
+ $('weekTextDialog').showModal();$('weekText').focus();wtStale();ensureCatalog().then(()=>{if($('weekTextDialog').open&&document.activeElement===$('weekText'))wtSuggest();}).catch(()=>{});}
+function wtHide(){$('weekTextSuggest').hidden=true;wtHits=[];}
+function wtSuggest(){const ta=$('weekText'),found=WeekText.hashQuery(ta.value,ta.selectionStart);if(!found||ta.selectionStart!==ta.selectionEnd||!catalog.length)return wtHide();
+ wtHits=sortedExerciseMatches(catalog,recentWorkouts,found.query).slice(0,8);if(!wtHits.length)return wtHide();wtActive=Math.min(wtActive,wtHits.length-1);
+ const box=$('weekTextSuggest');box.replaceChildren();wtHits.forEach((hit,i)=>{const b=button(hit.title,()=>wtPick(i));b.setAttribute('role','option');b.setAttribute('aria-selected',String(i===wtActive));b.addEventListener('mousedown',e=>e.preventDefault());box.append(b);});box.hidden=false;}
+function wtPick(i){const ta=$('weekText'),found=WeekText.hashQuery(ta.value,ta.selectionStart),hit=wtHits[i];if(!found||!hit)return wtHide();const next=WeekText.insertMovement(ta.value,ta.selectionStart,found,hit.title);ta.value=next.text;ta.setSelectionRange(next.caret,next.caret);ta.focus();wtHide();wtStale();}
+function wtStale(){$('weekTextApply').disabled=true;$('weekTextState').textContent=$('weekText').value.trim()?'Preview to check what this becomes.':'';wtStore();}
+function wtPlural(n,word){return n+' '+word+(n===1?'':'s');}
+function wtCycle(){const value=Number($('weekTextCycle').value);return Number.isInteger(value)&&value>=1&&value<=9999?value:null;}
+async function wtPreview(){const text=$('weekText').value;if(!text.trim()){$('weekTextResult').replaceChildren();return wtStale();}
+ const b=$('weekTextPreview');b.disabled=true;$('weekTextState').textContent='Reading…';
+ try{wtResult=await api('/api/week-text/preview',json('POST',{text,choices:wtChoices}));wtRender();}catch(e){$('weekTextState').textContent=e.message;}finally{b.disabled=false;}}
+function wtChoose(key,id){if(id)wtChoices[key]=id;else delete wtChoices[key];wtStore();wtPreview();}
+function wtPicker(m){const box=el('div','wt-pick'),list=el('div','row');
+ box.append(el('p',null,m.status==='ambiguous'?'More than one movement is called "'+m.name+'". Choose one:':'"'+m.name+'" is not an exact match in your movements. Choose one:'));
+ const show=items=>{list.replaceChildren();for(const c of items)list.append(button(c.title,()=>wtChoose(m.key,c.id)));if(!items.length)list.append(el('span','muted','No matches. Search below.'));};
+ const search=el('input');search.type='search';search.placeholder='Search all movements';search.setAttribute('aria-label','Search all movements for '+m.name);search.value=wtSearches[m.key]||'';
+ const results=()=>search.value.trim()?sortedExerciseMatches(catalog,recentWorkouts,search.value).slice(0,8):m.choices;
+ search.addEventListener('input',()=>{wtSearches[m.key]=search.value;show(results());});show(results());box.append(list,search);return box;}
+function wtWeekName(program,cycle,week){return program?program+(cycle??'?')+'.'+week:'Week '+week;}
+function wtRender(){const r=wtResult,box=$('weekTextResult');box.replaceChildren();if(!r)return;const program=$('weekTextProgram').value.trim(),cycle=wtCycle();
+ if(r.errors.length){const panel=el('div','wt-errors');panel.setAttribute('role','alert');panel.append(el('strong',null,wtPlural(r.errors.length,'problem')+' to fix'));const ul=el('ul');for(const e of r.errors)ul.append(el('li',null,(e.line?'Line '+e.line+': ':'')+e.message));panel.append(ul);box.append(panel);}
+ for(const w of r.weeks){const section=el('section','wt-week'),weekName=wtWeekName(program,cycle,w.week);section.append(el('h3',null,weekName));
+  w.days.forEach((d,index)=>{const day=el('div','wt-day');day.append(el('strong',null,program?weekName+'.'+(index+1)+' · Day '+d.day:'Day '+d.day));
+   for(const m of d.exercises){const row=el('div','wt-move'),name=el('span',m.exercise_template_id?null:'wt-bad',m.title||('#'+m.name));
+    if(m.status==='chosen'){const change=button('Change',()=>wtChoose(m.key,null));change.style.cssText='min-height:28px;padding:2px 8px;font-size:12px;margin-left:6px';name.append(el('span','muted',' (for "'+m.name+'")'),change);}
+    row.append(name,el('span','sets'+(m.valid?'':' wt-bad'),m.valid?WeekText.setsText(m.sets,m.tm_pct):'Line '+m.line+': see the problem above'));
+    if(!m.exercise_template_id)row.append(wtPicker(m));day.append(row);}
+   section.append(day);});
+  box.append(section);}
+ const apply=$('weekTextApply'),many=r.weeks.length>1;apply.textContent=many?'Save '+r.weeks.length+' weeks as drafts':'Load into builder';apply.disabled=!r.ready;
+ $('weekTextState').textContent=r.ready?'Ready: '+wtPlural(r.weeks.length,'week')+', '+wtPlural(r.weeks.reduce((n,w)=>n+w.days.length,0),'day')+'.':[r.errors.length?wtPlural(r.errors.length,'problem')+' to fix':'',r.unresolved.length?wtPlural(r.unresolved.length,'movement')+' to choose':''].filter(Boolean).join(' · ');}
+async function wtApply(){const r=wtResult;if(!r||!r.ready||busy)return;const program=$('weekTextProgram').value.trim(),cycle=wtCycle();if(cycle==null){$('weekTextState').textContent='Cycle must be a whole number from 1 to 9999.';return;}
+ if(r.weeks.length===1){if(dirty&&!confirm('Replace your unsaved plan edits?'))return;const w=r.weeks[0];
+  plan={name:'Week '+w.week,program_name:program,cycle,week:w.week,notes:'',revision:0,completed:[],weeks:[{name:'Week '+w.week,sessions:w.sessions}]};wi=si=0;applyNaming(plan);remember();renderEditor();wtDone();message('Week '+w.week+' is in the builder. Check it, then Save plan.');return;}
+ busy=true;$('weekTextApply').disabled=true;
+ try{const result=await api('/api/week-text/drafts',json('POST',{text:$('weekText').value,choices:wtChoices,program_name:program,cycle}));await refreshPlans();wtDone();message('Saved '+wtPlural(result.saved.length,'draft week')+': '+result.saved.map(p=>p.name).join(', ')+'. They are not active yet.');}
+ catch(e){$('weekTextState').textContent=e.message;$('weekTextApply').disabled=false;}finally{busy=false;}}
+function wtDone(){$('weekText').value='';wtChoices={};wtResult=null;wtSearches={};$('weekTextResult').replaceChildren();try{localStorage.removeItem(WT_KEY);}catch(e){}$('weekTextDialog').close();}
+$('weekTextOpen').addEventListener('click',openWeekText);$('weekTextClose').addEventListener('click',()=>{wtHide();$('weekTextDialog').close();});
+$('weekTextPreview').addEventListener('click',wtPreview);$('weekTextApply').addEventListener('click',wtApply);
+$('weekText').addEventListener('input',()=>{wtActive=0;wtStale();wtSuggest();});$('weekText').addEventListener('click',wtSuggest);$('weekText').addEventListener('blur',()=>setTimeout(wtHide,150));
+$('weekText').addEventListener('keydown',e=>{if($('weekTextSuggest').hidden)return;if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();wtActive=(wtActive+(e.key==='ArrowDown'?1:wtHits.length-1))%wtHits.length;wtSuggest();}else if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();wtPick(wtActive);}else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();wtHide();}});
+for(const key of ['weekTextProgram','weekTextCycle'])$(key).addEventListener('input',wtRender);
 DraftTransfer.install('microcycle-editor');
 </script></body></html>
