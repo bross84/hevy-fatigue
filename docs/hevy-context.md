@@ -1013,3 +1013,12 @@ athlete still previews a proposal and saves it only as an inactive draft.
 
 Tests: `tests/test_coaching_equipment.py`. Mocked preview checked the panel loads as not set,
 saves, scrolls inside the chat card on a short viewport and reloads with the saved list.
+
+## Plan list order (local, 2026-11-09)
+
+The Microcycle Builder's "Your plans" and "Completed microcycles" cards now sort by plan name,
+comparing numbers as numbers (KBR1.1, KBR1.2, … KBR1.10), instead of active-first then most
+recently edited. A duplicated week therefore lands in sequence. Only the page display changed:
+`GET /api/mesocycles` and the AI Coach context keep their active-first order.
+
+Tests: `rackbook/tests/test_microcycle_library.cjs`.
