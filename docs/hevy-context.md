@@ -884,8 +884,9 @@ Week 3 Day 2
 ```
 
 - `Week N Day N` starts a day. Day numbers set the training order, not days of the week.
-- `#name` is a movement. Typing `#` opens a search of the athlete's movements; picking one writes its
-  exact name. Names are matched exactly (case and spacing ignored) against the local movement list
+- `#name` is a movement. Typing `#` (or Ctrl+Space on an empty line) opens a compact list of the
+  athlete's movements just under the line being typed (up to 50, arrow keys/Enter/Tab, Esc closes;
+  it opens above the line when there is no room below); picking one writes its exact name. Names are matched exactly (case and spacing ignored) against the local movement list
   (exercise cache, logged sets, saved plans). The longest exact name wins, so names may contain
   commas or numbers. A name with no exact match, or shared by two movements, is never guessed: the
   preview asks the athlete to choose, and that choice applies to every use of the name.

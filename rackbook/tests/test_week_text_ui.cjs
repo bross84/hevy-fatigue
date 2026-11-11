@@ -39,5 +39,7 @@ const builder = fs.readFileSync(path.join(root, 'mesocycles.html'), 'utf8'), log
 for (const html of [builder, log]) assert.match(html, /<script src="\/training\/static\/week-text\.js\?v=1"><\/script>/);
 assert.match(builder, /api\('\/api\/week-text\/preview'/);
 assert.match(builder, /api\('\/api\/week-text\/drafts'/);
+assert.match(builder, /e\.key===' '&&e\.ctrlKey/, 'Ctrl+Space opens the movement search');
+assert.match(builder, /box\.hidden=false;wtPlace\(found\)/, 'the search list opens at the typed "#"');
 assert.match(log, /planCallouts: WeekText\.setsText\(ex\.sets, ex\.tm_pct\)/);
 console.log('Week text search, insertion, labels and page wiring passed.');

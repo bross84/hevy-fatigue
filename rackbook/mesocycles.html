@@ -28,8 +28,9 @@ a {color:var(--accent)} h2 {font-size:19px;margin:0} h3 {font-size:16px;margin:0
 .editor-title {margin-bottom:16px}.editor-title label {margin-bottom:10px} .savebar {position:sticky;bottom:0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;z-index:2;box-shadow:var(--shadow);margin-top:14px}
 dialog {color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;width:min(560px,95vw);max-height:80vh} dialog::backdrop {background:rgba(0,0,0,.4)} #exerciseResults {max-height:50vh;overflow:auto;margin-top:12px} .picker-footer {border-top:1px solid var(--line);margin-top:12px;padding-top:12px}.picker-footer button {font-size:13px} #exerciseResults button {display:block;width:100%;text-align:left;margin-bottom:6px} .empty {padding:24px 0;text-align:center;color:var(--muted)}
 #weekTextDialog {width:min(760px,96vw);max-height:92vh} #weekText {font:14px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;min-height:220px;resize:vertical;white-space:pre;overflow-wrap:normal;overflow-x:auto}
-.week-text-wrap {position:relative} #weekTextSuggest {position:absolute;left:0;right:0;z-index:3;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);max-height:260px;overflow:auto}
-#weekTextSuggest button {display:block;width:100%;text-align:left;border:0;border-radius:0} #weekTextSuggest button[aria-selected=true] {background:var(--accent-soft);color:var(--accent)}
+.week-text-wrap {position:relative} #weekTextSuggest {position:absolute;left:0;top:0;z-index:3;width:min(380px,100%);background:var(--card);border:1px solid var(--line);border-radius:6px;box-shadow:var(--shadow);max-height:min(300px,45vh);overflow:auto;padding:2px 0;font:13px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace}
+#weekTextSuggest button {display:block;width:100%;min-height:0;padding:3px 10px;text-align:left;border:0;border-radius:0;background:transparent;font:inherit;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} #weekTextSuggest button[aria-selected=true] {background:var(--accent);color:var(--card)}
+@media (pointer:coarse) {#weekTextSuggest button {padding:8px 10px}}
 .week-text-help {font-size:13px} .week-text-help code {font-size:12px} .wt-errors {border:1px solid var(--danger);background:var(--danger-bg);color:var(--danger);border-radius:12px;padding:10px 14px;margin:12px 0}
 .wt-errors ul {margin:6px 0 0;padding-left:18px} .wt-week {margin-top:14px} .wt-day {border-top:1px solid var(--line);padding:8px 0} .wt-move {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:8px;padding:4px 0;font-size:14px}
 .wt-move .sets {font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px} .wt-pick {grid-column:1/-1;border:1px solid var(--accent);border-radius:10px;padding:8px 10px;background:var(--accent-soft)}
@@ -127,7 +128,7 @@ dialog {color:var(--text);background:var(--card);border:1px solid var(--line);bo
 <details class="week-text-help"><summary>How to write it</summary><p><code>Week 3 Day 1</code> starts a training day. Type <code>#</code> to search your movements, then the sets: <code>3x5@7</code> is 3 sets of 5 at RPE 7, and <code>3x3@6,7,8</code> gives one RPE per set. A comma before new sets starts another group: <code>1x3@8 TS, 3x5@7 BO</code>.</p><p>Callouts: <code>TS</code> top set · <code>BO</code> back-off · <code>+</code> AMRAP last set (<code>3x5+</code>) · <code>DS</code> or <code>DS2</code> drop sets · <code>myo 15-20@9</code> · <code>DDP</code> · <code>TM90</code>. ME and RE are ignored. The Log page shows callouts as labels; you choose the weights.</p></details>
 <div class="row"><label class="grow">Program<input id="weekTextProgram" maxlength="90" placeholder="BS-Bridge"></label><label>Cycle<input id="weekTextCycle" type="number" min="1" max="9999" step="1" value="1" style="width:100px"></label></div>
 <div class="week-text-wrap"><label>Your week<textarea id="weekText" rows="12" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Week 1 Day 1&#10;#Squat (Barbell) 1x3@8 TS, 3x5@7 BO&#10;#Bench Press (Barbell) 5x4@6 DDP" aria-describedby="weekTextHint"></textarea></label><div id="weekTextSuggest" role="listbox" aria-label="Matching movements" hidden></div></div>
-<p id="weekTextHint" class="muted">Type # to search your movements. Nothing is saved until you load or save the week.</p>
+<p id="weekTextHint" class="muted">Type # (or press Ctrl+Space on a new line) to search your movements. Nothing is saved until you load or save the week.</p>
 <div class="row"><button id="weekTextPreview" type="button">Preview</button><span id="weekTextState" class="muted grow" role="status"></span><button id="weekTextApply" class="primary" type="button" disabled>Load into builder</button></div>
 <div id="weekTextResult"></div></dialog>
 </main><script>
@@ -231,9 +232,21 @@ function openWeekText(){const source=plan||plans[0];$('weekTextProgram').value=s
  try{const saved=JSON.parse(localStorage.getItem(WT_KEY));if(saved&&typeof saved.text==='string'&&!$('weekText').value){$('weekText').value=saved.text.slice(0,20000);wtChoices=saved.choices&&typeof saved.choices==='object'?saved.choices:{};}}catch(e){}
  $('weekTextDialog').showModal();$('weekText').focus();wtStale();ensureCatalog().then(()=>{if($('weekTextDialog').open&&document.activeElement===$('weekText'))wtSuggest();}).catch(()=>{});}
 function wtHide(){$('weekTextSuggest').hidden=true;wtHits=[];}
+// Where a text position sits inside the textarea, measured with an invisible copy that has the same font and padding.
+function wtCaret(ta,pos){const cs=getComputedStyle(ta),copy=document.createElement('div'),mark=document.createElement('span');
+ for(const p of ['boxSizing','width','fontFamily','fontSize','fontWeight','lineHeight','letterSpacing','tabSize','paddingTop','paddingRight','paddingBottom','paddingLeft','borderTopWidth','borderRightWidth','borderBottomWidth','borderLeftWidth','borderStyle'])copy.style[p]=cs[p];
+ copy.style.cssText+=';position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre;overflow:hidden';copy.textContent=ta.value.slice(0,pos);mark.textContent='​';copy.append(mark);document.body.append(copy);
+ const at={left:ta.clientLeft+mark.offsetLeft-ta.scrollLeft,top:ta.clientTop+mark.offsetTop-ta.scrollTop,height:mark.offsetHeight||parseFloat(cs.lineHeight)||20};copy.remove();return at;}
+// Opens the list under the "#" being typed, or above it when there is no room below.
+function wtPlace(found){const ta=$('weekText'),box=$('weekTextSuggest'),at=wtCaret(ta,found.start),gap=2;
+ const lineTop=Math.min(Math.max(at.top,ta.clientTop),ta.clientTop+ta.clientHeight-at.height);let top=ta.offsetTop+lineTop+at.height+gap;
+ const screenTop=ta.getBoundingClientRect().top-ta.offsetTop;if(screenTop+top+box.offsetHeight>window.innerHeight-8&&screenTop+ta.offsetTop+lineTop-box.offsetHeight-gap>8)top=ta.offsetTop+lineTop-box.offsetHeight-gap;
+ box.style.top=top+'px';box.style.left=Math.max(0,Math.min(ta.offsetLeft+at.left,box.parentElement.clientWidth-box.offsetWidth))+'px';}
+function wtMark(){[...$('weekTextSuggest').children].forEach((b,i)=>b.setAttribute('aria-selected',String(i===wtActive)));}
 function wtSuggest(){const ta=$('weekText'),found=WeekText.hashQuery(ta.value,ta.selectionStart);if(!found||ta.selectionStart!==ta.selectionEnd||!catalog.length)return wtHide();
- wtHits=sortedExerciseMatches(catalog,recentWorkouts,found.query).slice(0,8);if(!wtHits.length)return wtHide();wtActive=Math.min(wtActive,wtHits.length-1);
- const box=$('weekTextSuggest');box.replaceChildren();wtHits.forEach((hit,i)=>{const b=button(hit.title,()=>wtPick(i));b.setAttribute('role','option');b.setAttribute('aria-selected',String(i===wtActive));b.addEventListener('mousedown',e=>e.preventDefault());box.append(b);});box.hidden=false;}
+ wtHits=sortedExerciseMatches(catalog,recentWorkouts,found.query).slice(0,50);if(!wtHits.length)return wtHide();wtActive=Math.min(wtActive,wtHits.length-1);
+ const box=$('weekTextSuggest');box.replaceChildren();wtHits.forEach((hit,i)=>{const b=button('#'+hit.title,()=>wtPick(i));b.title=hit.title;b.setAttribute('role','option');b.addEventListener('mousedown',e=>e.preventDefault());b.addEventListener('mousemove',()=>{if(wtActive!==i){wtActive=i;wtMark();}});box.append(b);});
+ wtMark();box.hidden=false;wtPlace(found);box.children[wtActive].scrollIntoView({block:'nearest'});}
 function wtPick(i){const ta=$('weekText'),found=WeekText.hashQuery(ta.value,ta.selectionStart),hit=wtHits[i];if(!found||!hit)return wtHide();const next=WeekText.insertMovement(ta.value,ta.selectionStart,found,hit.title);ta.value=next.text;ta.setSelectionRange(next.caret,next.caret);ta.focus();wtHide();wtStale();}
 function wtStale(){$('weekTextApply').disabled=true;$('weekTextState').textContent=$('weekText').value.trim()?'Preview to check what this becomes.':'';wtStore();}
 function wtPlural(n,word){return n+' '+word+(n===1?'':'s');}
@@ -271,7 +284,10 @@ function wtDone(){$('weekText').value='';wtChoices={};wtResult=null;wtSearches={
 $('weekTextOpen').addEventListener('click',openWeekText);$('weekTextClose').addEventListener('click',()=>{wtHide();$('weekTextDialog').close();});
 $('weekTextPreview').addEventListener('click',wtPreview);$('weekTextApply').addEventListener('click',wtApply);
 $('weekText').addEventListener('input',()=>{wtActive=0;wtStale();wtSuggest();});$('weekText').addEventListener('click',wtSuggest);$('weekText').addEventListener('blur',()=>setTimeout(wtHide,150));
-$('weekText').addEventListener('keydown',e=>{if($('weekTextSuggest').hidden)return;if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();wtActive=(wtActive+(e.key==='ArrowDown'?1:wtHits.length-1))%wtHits.length;wtSuggest();}else if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();wtPick(wtActive);}else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();wtHide();}});
+$('weekText').addEventListener('scroll',()=>{if(!$('weekTextSuggest').hidden)wtSuggest();});
+$('weekText').addEventListener('keydown',e=>{if(e.key===' '&&e.ctrlKey){e.preventDefault();const ta=e.target,pos=ta.selectionStart,lineStart=ta.value.lastIndexOf('\n',pos-1)+1;
+  if(!WeekText.hashQuery(ta.value,pos)&&!ta.value.slice(lineStart,pos).trim()){ta.setRangeText('#',pos,ta.selectionEnd,'end');wtStale();}wtActive=0;return wtSuggest();}
+ if($('weekTextSuggest').hidden)return;if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();wtActive=(wtActive+(e.key==='ArrowDown'?1:wtHits.length-1))%wtHits.length;wtSuggest();}else if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();wtPick(wtActive);}else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();wtHide();}});
 for(const key of ['weekTextProgram','weekTextCycle'])$(key).addEventListener('input',wtRender);
 DraftTransfer.install('microcycle-editor');
 </script></body></html>
