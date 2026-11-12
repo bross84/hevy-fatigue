@@ -1243,3 +1243,24 @@ hevy-context.md, "Plate strip, numbers line and swap".
 - Passed: host 244; logger 626 with 1 expected failure (as before); all 39 `.cjs` files; mocked browser
   checks for training, recovery, weekly coaching, logger layout and dashboard layout.
 - Not run: Docker build/startup (daemon not running), physical phone/tablet, deployed or real data.
+
+## Day check-in: motivation and pattern soreness — local, 2026-11-12
+
+Pre-workout soreness moves from four exact-title exercise cards to one Squat/Press/Hinge panel in the
+top check-in; motivation stays at the top on phones. Details: hevy-context.md, "Day check-in".
+
+- Reproduced before the change: mocked Log-page run with the real title list showed the rating only on
+  the four exact titles; `Squat (Barbell)`, `Pause Squat (Barbell)`, `Bench Press (Barbell)`,
+  `Deadlift (Barbell)`, `Romanian Deadlift (Barbell)`, `Leg Press`, `Bicep Curl (Dumbbell)` got nothing.
+  The rewritten `test_log_soreness.cjs` failed before the fix.
+- After: host 244 passed; logger 626 passed, 1 expected failure (as before); all 38 `.cjs` files pass.
+- Changed assertions, both stating the new agreed rule: `test_log_soreness.cjs` (per-card controls
+  replaced by the day panel; "do not guess mappings" holds because the panel uses no exercise mapping)
+  and `test_mesocycle_ui.cjs` (a rating for a pattern without its lift was dropped, now kept; added a
+  check that a cleared pattern is never sent).
+- Mocked browser: `tools/check_training_browser.py` (390px touch) now rates Squat and Hinge pain on a
+  `Squat (Barbell)` day, uses Go to check-in, and checks the posted payload and stored
+  `/training/workout-soreness/{id}`; passes. `tools/check_logger_layout_browser.py` passes. Browser
+  pane at 768x1024 and 375x812: one check-in at top, no soreness on cards, no sideways scroll.
+- Not run: Docker build/startup (daemon not running), physical phone/tablet, deployed or real data.
+

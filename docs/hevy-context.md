@@ -1050,3 +1050,35 @@ recently edited. A duplicated week therefore lands in sequence. Only the page di
 `GET /api/mesocycles` and the AI Coach context keep their active-first order.
 
 Tests: `rackbook/tests/test_microcycle_library.cjs`.
+
+## Day check-in: motivation and pattern soreness (local, 2026-11-12)
+
+Bug: pre-movement soreness could only be entered on four exercises, matched by exact title
+(`Squat, Low Bar w/ Belt`, `Bench Press - Close Grip (Barbell)`, `Overhead Press (Barbell)`,
+`Deadlift, Conv. w/ Belt`). Every other exercise, including squat/bench/deadlift variants, showed
+no control and no explanation. Plan vs ad hoc, order, timing and saved state made no difference.
+
+Agreed with the user: soreness is a pattern check-in for the day, not per exercise. The Log page's
+top check-in (`#sessionMotivationHome`, "Before you train · today's check-in") now holds the
+motivation form and a **Pattern soreness** panel: Squat, Press, Hinge, each None–Severe plus
+"Pain or injury", always shown whatever exercises are loaded. Exercise cards no longer carry a
+soreness control. Press and Hinge are labels for the existing `bench_press` and `deadlift` slots;
+storage, routes, 0–3 scale and the unknown-is-not-zero rule are unchanged.
+
+- Every answered pattern is saved, whichever exercises were trained (previously ratings for a
+  pattern with no matching exact-title lift were dropped at save). Untouched/cleared patterns are
+  omitted. The fatigue readout still uses only sessions containing its own lift; its existing
+  21-day pattern pain check now also sees a pain tick from a day without that lift.
+- Motivation is unchanged as one answer per workout. On phones the form no longer moves into the
+  next working set; each locked set shows "Do today's check-in at the top before working sets."
+  with **Go to check-in**, which opens and scrolls to the top check-in.
+- While a save is frozen the soreness panel is inert and ignores taps.
+- The Recent page's soreness edit uses the same Squat/Press/Hinge labels. The Stress page's
+  pattern labels (Bench/Press, Deadlift) are a separate feature and were not changed.
+- Unchanged: the model trial's own per-movement soreness for untracked movements when the trial is
+  enabled (trial inputs must not change mid-trial), session advice pain flag, combined-save flow.
+- No separate "not training today" record: the user declined it.
+
+Tests: `rackbook/tests/test_log_soreness.cjs` (rewritten for the panel),
+`rackbook/tests/test_mesocycle_ui.cjs` (save rule), `tools/check_training_browser.py`.
+
