@@ -33,12 +33,17 @@ with sync_playwright() as p:
     gate=first_set.locator('.mobile-set-gate')
     expect(first_tick).to_be_disabled()
     expect(gate).to_contain_text('Confirm motivation before working sets')
-    for width in (320, 390, 767):
+    for width in (320, 390, 599):
         page.set_viewport_size({'width':width,'height':844})
-        bounds=first_tick.bounding_box()
-        assert bounds['height']==48 and bounds['width']>200, (width,bounds)
+        # Measure all three boxes in one frame so late-loading content above cannot shift them apart.
+        bounds,weight_box,gate_box=first_set.evaluate('''(row) => [row.querySelector('.tick'), row.querySelector('input'),
+          row.querySelector('.mobile-set-gate')].map(e => { const r=e.getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height}; })''')
+        # The done tick is a square at the end of the set's own line, with the reminder below it.
+        assert bounds['height']==48 and bounds['width']==48, (width,bounds)
+        assert abs((bounds['y']+24)-(weight_box['y']+weight_box['height']/2))<4, (width,bounds,weight_box)
+        assert bounds['x']>weight_box['x'] and gate_box['y']>=bounds['y']+bounds['height'], (width,bounds,gate_box)
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'), width
-    page.set_viewport_size({'width':768,'height':844})
+    page.set_viewport_size({'width':600,'height':844})
     expect(gate).to_be_hidden()
     expect(first_tick).to_be_enabled()
     page.set_viewport_size({'width':390,'height':844})
@@ -182,6 +187,10 @@ with sync_playwright() as p:
     fresh.route('https://**/*',lambda route:route.abort())
     fresh_page=fresh.new_page();fresh_page.goto(URL+'/training/log')
     fresh_page.get_by_role('button',name='Load selected workout',exact=True).click()
+    # On a phone the weight-source tiles sit inside the folded numbers line until it is opened.
+    numbers_line=fresh_page.locator('.numbers > summary').first
+    expect(numbers_line).to_contain_text('weights manual')
+    numbers_line.click()
     expect(fresh_page.get_by_role('button',name='Use e1RM for weights',exact=True)).to_have_attribute('aria-pressed','false')
     expect(fresh_page.get_by_role('button',name='Use TM for weights',exact=True)).to_have_attribute('aria-pressed','false')
     assert fresh_page.get_by_role('textbox',name='Weight in kilograms',exact=True).first.input_value()=='100'

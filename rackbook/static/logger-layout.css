@@ -41,6 +41,10 @@
 .logger-outline-count { color:var(--muted); font-size:12px; white-space:nowrap; font-variant-numeric:tabular-nums; }
 #loggerProgress { color:var(--muted); font-size:13px; font-variant-numeric:tabular-nums; margin:0 0 12px; }
 .tick-label, #sessionMotivationHome > summary { display:none; }
+/* Every screen size marks the next unfinished working set: a filled tick and an outlined row. */
+.workout-log .set.next-working-set { box-shadow:inset 0 0 0 1.5px var(--accent); }
+.workout-log .set.next-working-set .tick:not(:disabled) { color:var(--bg); background:var(--accent); border-color:var(--accent); font-weight:650; }
+.workout-log .set .tick { width:48px; min-height:48px; height:48px; border-radius:10px; font-size:20px; }
 #saveRecovery h2 { margin:0 0 6px; font-size:19px; }
 #saveRecovery p { margin:0 0 8px; }
 #saveRecovery button { min-height:44px; }
@@ -51,7 +55,7 @@
 #saveRecovery form { display:grid; gap:8px; max-width:360px; }
 #saveRecovery form input { width:100%; min-height:44px; }
 #saveRecovery .recovery-settings { display:block; margin-top:8px; }
-@media(max-width:767px) {
+@media(max-width:599px) {
   main[data-save-recovery] #msg,
   main[data-save-recovery] ~ #bar #finish { display:none; }
   main[data-save-recovery] ~ #bar #rest { margin-bottom:0; }
@@ -67,28 +71,29 @@
     display:list-item; min-height:44px; padding:11px 0; color:var(--muted); font-size:14px;
   }
   .mobile-session-advice { margin-top:8px; border-top:1px solid var(--line); }
+  /* One line per set with the tick at the end; the second-unit and stress columns stay on wider screens. */
   .workout-log .cols, .workout-log .set {
     min-width:0;
-    grid-template-columns:20px minmax(0,.9fr) minmax(32px,1.4fr) minmax(0,.8fr) minmax(26px,1fr) 32px 32px minmax(0,.8fr) minmax(0,.9fr);
-    gap:6px 2px;
+    grid-template-columns:20px minmax(0,.9fr) minmax(40px,1.4fr) minmax(32px,1fr) 34px 34px minmax(0,.8fr) 48px;
+    gap:6px 3px;
   }
   .workout-log .cols { font-size:10px; }
-  .workout-log .cols > :last-child { display:none; }
+  .workout-log .cols > :nth-child(4), .workout-log .cols > :nth-child(9),
+  .workout-log .set .refcol, .workout-log .set .set-stress { display:none; }
   .workout-log .previous-col { font-size:0; }
   .workout-log .previous-col::after { content:"Prev."; font-size:10px; }
-  .workout-log .set .prev,.workout-log .set .refcol,.workout-log .set .setE1,.workout-log .set .set-stress {
+  .workout-log .set .prev,.workout-log .set .setE1 {
     min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px;
   }
   .workout-log .set .tick {
-    grid-column:1/-1; width:100%; min-height:48px; height:48px; border-radius:8px;
-    display:flex; align-items:center; justify-content:center; gap:8px;
-    padding:0 8px; color:var(--text); background:var(--card); border-color:var(--line); font-size:14px;
-  }
-  .workout-log .set.next-working-set .tick:not(:disabled) {
-    color:var(--bg); background:var(--accent); border-color:var(--accent); font-weight:650;
+    width:48px; min-height:48px; height:48px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    padding:0; color:var(--text); background:var(--card); border:1px solid var(--line); font-size:20px;
   }
   .workout-log .set .tick:disabled { opacity:1; background:var(--soft); color:var(--muted); }
-  .tick-label { display:inline; }
+  /* The gate and the opened check-in sit on their own line below the set row. */
+  .workout-log .set > .mobile-set-gate { order:1; }
+  .workout-log .set > #sessionMotivation { order:2; }
   .mobile-set-gate {
     grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; gap:8px;
     padding:8px; border-radius:8px; background:var(--warn-bg); color:var(--warn);
@@ -159,3 +164,38 @@
   .workout-log.typing .logger-session .bar,.workout-log.keypad-open .logger-session .bar { display:block; }
 }
 @media(prefers-reduced-motion:reduce) { .workout-log *, .workout-log *::before, .workout-log *::after { scroll-behavior:auto!important; } }
+/* Plates for the next set, pinned above the rest timer on phones and tablets. */
+.platestrip {
+  display:block; width:100%; min-height:44px; margin:0 0 8px; padding:8px 12px;
+  border:1px solid var(--line); border-radius:10px; background:var(--soft); color:var(--text);
+  text-align:left;
+}
+.platestrip > span, .platestrip > b { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.platestrip-set { font-size:12px; color:var(--muted); }
+.platestrip-plates { font-size:15px; font-weight:650; }
+.platestrip[hidden] { display:none; }
+/* One fixed-height line on the number pad, so the keys never move as the plates change. */
+.padplates {
+  margin:0 0 6px; height:18px; font-size:13px; line-height:18px; font-weight:550; color:var(--accent);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+@media(max-width:1099px) {
+  .workout-log.has-plate-strip:not(.keypad-open):not(.typing) main { padding-bottom:244px; }
+}
+@media(min-width:900px) and (max-width:1099px) {
+  .workout-log.has-plate-strip:not(.keypad-open):not(.typing) main { padding-bottom:164px; }
+}
+@media(min-width:1100px) { .platestrip { display:none !important; } }
+/* The folded numbers line: e1RM, TM, which drives the weights, and stress. */
+.workout-log .numbers > summary {
+  display:flex; flex-wrap:wrap; align-items:center; gap:4px 14px; min-height:44px; padding:6px 0;
+  cursor:pointer; color:var(--muted); font-size:13px; list-style:none;
+}
+.workout-log .numbers > summary::-webkit-details-marker { display:none; }
+.workout-log .numbers > summary::before { content:'▸'; color:var(--muted); }
+.workout-log .numbers[open] > summary::before { content:'▾'; }
+.workout-log .numbers > summary b { color:var(--text); font-weight:650; font-variant-numeric:tabular-nums; }
+.workout-log .numbers-basis { color:var(--accent); }
+.workout-log .numbers[open] > summary { margin-bottom:8px; }
+.workout-log .swap-note { margin:-4px 0 8px; font-size:12px; color:var(--muted); grid-column:1/-1; }
+.picker-title { margin:0 0 8px; font-weight:600; }

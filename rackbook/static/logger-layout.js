@@ -4,7 +4,7 @@ const LoggerLayout = (() => {
   let inlineExerciseId = null;
   const wide = matchMedia('(min-width: 1900px)');
   const desktop = matchMedia('(min-width: 1100px)');
-  const mobile = matchMedia('(max-width: 767px)');
+  const mobile = matchMedia('(max-width: 599px)');
   const mobileControls = new WeakMap();
   const byId = id => document.getElementById(id);
   const node = (tag, cls, text) => {
@@ -85,7 +85,7 @@ const LoggerLayout = (() => {
     if (mobile.matches && advice.parentElement !== disclosure) disclosure.append(advice);
     else if (!mobile.matches && advice.parentElement === disclosure) {
       const left = card.querySelector('.exleft');
-      left.insertBefore(advice, left.querySelector('.refbar'));
+      left.insertBefore(advice, left.querySelector(':scope > .numbers'));
     }
     disclosure.hidden = !mobile.matches || !card.querySelector('.set[data-working]');
   }

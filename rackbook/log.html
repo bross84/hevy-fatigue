@@ -12,7 +12,7 @@
   <script src="/training/static/plan-change.js?v=1"></script>
   <script src="/training/static/app-menu.js?v=2"></script>
   <script src="/training/static/ai-coach.js?v=2"></script>
-  <script src="/training/static/logger-layout.js?v=2"></script>
+  <script src="/training/static/logger-layout.js?v=4"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -407,7 +407,7 @@
     .workout-log.typing main { padding-bottom: 60vh; }
     .workout-log.keypad-open main { padding-bottom: calc(var(--keypad-height, 250px) + 32px); }
   </style>
-  <link rel="stylesheet" href="/training/static/logger-layout.css?v=2" />
+  <link rel="stylesheet" href="/training/static/logger-layout.css?v=5" />
 </head>
 <body class="workout-log">
 <button id="loggerNavScrim" type="button" aria-label="Close navigation" hidden></button>
@@ -473,6 +473,7 @@
 <div id="bar" class="bar" hidden>
 <div id="restProg" class="restprog"><i></i></div>
 <div>
+  <button id="plateStrip" class="platestrip" type="button" hidden></button>
   <div id="rest" class="rest">
     <button id="restPick" class="restdef" type="button" aria-label="Choose the rest time"></button>
     <span id="restTime" class="resttime" hidden></span>
@@ -489,6 +490,7 @@
       <input id="search" type="text" placeholder="Search exercises" autocomplete="off" style="flex:1" />
       <button id="closePicker" type="button">Cancel</button>
     </div>
+    <p id="pickerTitle" class="picker-title" hidden></p>
     <p id="syncnote" class="hint" hidden>Updating your exercise list from Hevy…</p>
     <div id="results"></div>
   </div>
@@ -497,6 +499,7 @@
 <section id="numberpad" class="numberpad" aria-label="Workout number pad" hidden>
   <div>
     <div class="padheading"><strong id="padField"></strong><span id="padContext"></span></div>
+    <p id="padPlates" class="padplates" aria-live="polite"></p>
     <div class="padkeys">
       <button type="button" data-pad-key="1">1</button><button type="button" data-pad-key="2">2</button><button type="button" data-pad-key="3">3</button><button type="button" class="pad-action" data-pad-key="backspace" aria-label="Backspace">⌫</button>
       <button type="button" data-pad-key="4">4</button><button type="button" data-pad-key="5">5</button><button type="button" data-pad-key="6">6</button><button type="button" class="pad-action" data-pad-key="clear">Clear</button>
@@ -623,6 +626,7 @@
     queueTrialRecording();
     try { localStorage.setItem(KEY, JSON.stringify(draft)); } catch (e) {}
     if (draft) draft.exercises.forEach((ex) => { refreshE1rm(ex); refreshLoader(ex); });
+    paintPlates();
     if (draft) new Set(draft.exercises.map((ex) => ex.template_id)).forEach(queueStress);
     if (typeof LoggerLayout !== 'undefined') LoggerLayout.update();
   }
@@ -660,6 +664,7 @@
     for (const ex of draft.exercises.filter((e) => e.template_id === templateId)) {
       const card = cardEls.get(ex.id), box = card && card.querySelector(".stress");
       if (box) fillStress(box, templateId);
+      paintNumbers(ex, card);
     }
     paintSetStress(templateId);
   }
@@ -760,6 +765,20 @@
     const details = el("details", "stress-extra"), summary = el("summary", null, "About these numbers");
     details.append(summary, el("p", null, "Session stress previews all entered working sets. Only checked sets enter rolling totals and saved history. Rolling totals include checked sets once, dated when the session started. Blank RPEs are estimated @5. Session windows use 80–120% of the median prior session; elevated is above 120%, much higher above 150%. These describe workload, not recovery limits. Stress uses a separate default curve and does not change planned weights."));
     box.append(details);
+  }
+
+  // The folded numbers line: the tile values as shown, which one drives weights, and the session stress.
+  function paintNumbers(ex, card) {
+    const line = card && card.querySelector(".numbers-summary");
+    if (!line) return;
+    const values = [...card.querySelectorAll(".numbers .tile .tv")].map((v) => v.textContent);
+    const auto = ex.ref.autoWeights !== false, basis = ex.ref.basis === "tm" ? "TM" : "e1RM";
+    const state = stressStates.get(ex.template_id), d = state && !state.pending && !state.error ? state.result : null;
+    const stress = d ? (d.preview || d.session).total.toFixed(2) : null;
+    const part = (label, value) => { const span = el("span", null, label + " "); span.append(el("b", null, value)); return span; };
+    line.replaceChildren(part("e1RM", values[0] ?? "–"), part("TM", values[1] ?? "–"),
+      el("span", "numbers-basis", auto ? "weights from " + basis + (ex.ref.ls ? " · LSe1RM" : "") : "weights manual"));
+    if (stress) line.append(part("Stress", stress));
   }
 
   function say(text, kind) {
@@ -901,6 +920,7 @@
     else if (anchorE1rm(ex) == null && cap) cap.remove();
     const cur = currentE1rm(ex);
     tv.textContent = cur ? String(Math.round(cur.value)) : (ex.ref.state ? "–" : "…");
+    paintNumbers(ex, card);
   }
 
   // The movement's TM: the latest saved TS's e1RM x the TM %. Until a TS has been saved it falls back to the
@@ -1490,6 +1510,7 @@
     mountMotivation(draft);
     for (const id of new Set(draft.exercises.map(ex => ex.template_id))) paintStress(id);
     tickClock();
+    paintPlates();
     if (typeof LoggerLayout !== 'undefined') LoggerLayout.update();
     if (stay) window.scrollTo(0, y);
     if (motivationFocus) $(motivationFocus)?.focus({ preventScroll: true });
@@ -1635,6 +1656,47 @@
       (typeof LoggerLayout !== 'undefined' && LoggerLayout.loaderFor(ex.id));
     if (box) fillLoader(ex, box);
   }
+  // The plates stay in sight: a strip above the rest timer for the next set you haven't ticked, and a line on the
+  // number pad for the weight being typed. Both read the same plan as the full loader; neither changes a weight.
+  let plateStripEx = null;
+  function plateLine(ex, i) {
+    const set = i >= 0 ? ex.sets[i] : null, kg = set ? num(set.kg) : NaN;
+    if (isNaN(kg)) return null;
+    const unit = unitFor(ex.ref), plan = platePlan(kg, ex);
+    const bar = unit === "lb" ? BAR_LB + " lb bar" : trim(ex.ref.barKg) + " kg bar" + (ex.ref.chainKg ? " + " + trim(ex.ref.chainKg) + " kg chains" : "");
+    const plates = plan.below ? "Under the bar" : plan.counts.length
+      ? plan.counts.map(([p, n]) => n + "×" + trim(p)).join(" + ") + " per side" : "Bar only";
+    return { set: setName(ex, i) + " · " + primaryText(set, ex) + " " + unit, plates, bar,
+      short: plan.short ? trim(Math.round(plan.short * 100) / 100) + " " + unit + " short" : "" };
+  }
+  function paintPlates() {
+    const strip = $("plateStrip"), pad = $("padPlates");
+    let typed = null;
+    if (draft && padInput) for (const ex of draft.exercises) {
+      const i = ex.sets.findIndex((x) => primaryInputs.get(x) === padInput);
+      if (i >= 0) { typed = plateLine(ex, i); break; }
+    }
+    pad.textContent = typed ? typed.plates + " · " + typed.bar + (typed.short ? " · " + typed.short : "") : " ";   // the line keeps its height so the keys never move
+    // The exercise you are on: the first one still open. Until its set has a weight, the strip says so.
+    plateStripEx = draft && !draft.frozenSave ? draft.exercises.find((ex) => !ex.collapsed && !exerciseComplete(ex)) : null;
+    let line = plateStripEx ? plateLine(plateStripEx, loaderSet(plateStripEx)) : null;
+    if (plateStripEx && !line) {
+      const open = plateStripEx.sets.findIndex((x) => !x.done);
+      line = { set: open >= 0 ? setName(plateStripEx, open) : "Plates", plates: "Enter a weight to see the plates", bar: "", short: "" };
+    }
+    strip.hidden = !line;
+    strip.replaceChildren();
+    if (line) {
+      strip.append(el("span", "platestrip-set", plateStripEx.title + " · " + line.set),
+        el("b", "platestrip-plates", [line.plates, line.bar, line.short].filter(Boolean).join(" · ")));
+      strip.setAttribute("aria-label", "Plates for " + plateStripEx.title + ", " + line.set + ": " + [line.plates, line.bar].filter(Boolean).join(", ") + ". Show the plate loader");
+    } else strip.removeAttribute("aria-label");
+    document.body.classList.toggle("has-plate-strip", Boolean(line));
+  }
+  $("plateStrip").addEventListener("click", () => {
+    const box = plateStripEx && cardEls.get(plateStripEx.id)?.querySelector(".loader");
+    if (box) box.scrollIntoView({ block: "center" });
+  });
   function pickLoadSet(ex) {
     const unit = unitFor(ex.ref);
     const items = [{ v: "auto", label: "Next set", desc: "Follows the next set you haven't ticked", on: ex.loadPin == null }];
@@ -1837,6 +1899,7 @@
     grip.type = "button"; grip.setAttribute("aria-label", "Drag to reorder " + ex.title);
     makeReorderable(card, grip, ex);
     head.append(grip, el("p", "ex-title", ex.title));
+    if (ex.swappedFrom) card.insertBefore(el("p", "swap-note", "Swapped in for " + ex.swappedFrom), left);
     if (ex.planCallouts) { const callouts = el("p", "plan-callouts", "Plan: " + ex.planCallouts); callouts.setAttribute("aria-label", "Planned callouts for " + ex.title + ": " + ex.planCallouts); card.insertBefore(callouts, left); }
     const chip = el("button", "chip", "Round to " + trim(stepOf(ex.ref)) + " " + unit + " ▾");
     chip.type = "button"; chip.setAttribute("aria-label", "Round planned weights to this many " + unit);
@@ -1861,9 +1924,11 @@
     const more = el("button", "more", "⋯");
     more.type = "button"; more.setAttribute("aria-label", "More for " + ex.title);
     more.addEventListener("click", () => openSheet(ex.title, "", [
+      { v: "swap", label: "Swap exercise", desc: "Pick a different movement for the sets you haven't ticked" },
       { v: "last", label: "Remove last set" },
       { v: "all", label: "Remove exercise", cls: "danger" },
     ], 1, (v) => {
+      if (v === "swap") { openPicker(ex); return; }
       if (v === "last") { ex.sets.pop(); saveDraft(); renderWorkout(); return; }
       if (!confirm("Remove " + ex.title + " from this workout?")) return;
       draft.exercises = draft.exercises.filter((e) => e.id !== ex.id); saveDraft(); renderWorkout();
@@ -1890,10 +1955,15 @@
       adviceBox.setAttribute('aria-label','Session advice for '+ex.title);
       SessionAdvice.mount(draft,ex,adviceBox,saveDraft,Boolean(draft.soreness?.[sorenessPatterns?.[ex.title]]?.pain));
     }
-    left.append(renderRefBar(ex));
+    // e1RM, TM, LSe1RM and stress fold into one tappable line; open on a desktop until you choose.
+    const numbers = el("details", "numbers"), numbersLine = el("summary", "numbers-summary");
+    numbers.open = ex.numbersOpen ?? matchMedia("(min-width: 1100px)").matches;
+    numbersLine.addEventListener("click", () => setTimeout(() => { ex.numbersOpen = numbers.open; saveDraft(); }));
     const stressBox = el("section", "stress");
     stressBox.setAttribute("aria-label", "Stress for " + ex.title);
-    left.append(stressBox); queueStress(ex.template_id); fillStress(stressBox, ex.template_id);
+    numbers.append(numbersLine, renderRefBar(ex), stressBox);
+    left.append(numbers); queueStress(ex.template_id); fillStress(stressBox, ex.template_id);
+    paintNumbers(ex, card);
     const cols = el("div", "cols");
     const heads = unit === "lb" ? ["Set", "Previous", "Lb", "Kg", "Reps", "RPErx", "RPEact", "e1RM", "Stress", ""] : ["Set", "Previous", "Kg", "Lb", "Reps", "RPErx", "RPEact", "e1RM", "Stress", ""];
     for (const t of heads) {
@@ -2079,10 +2149,32 @@
     loadState(added);
   }
 
+  // Swapping gives the new movement its own identity, so the saved record shows the original as not done and
+  // the new one as added. Ticked sets stay with the original; unticked working sets move across with their reps,
+  // RPE and top-set mark, and their weights clear so the new lift's own numbers fill them in.
+  function swapExercise(ex, e) {
+    $("picker").hidden = true;
+    if (!draft || !draft.exercises.includes(ex) || e.id === ex.template_id) return;
+    if (draft.frozenSave) { say("This workout is pending save recovery, so its exercises can't change."); return; }
+    const kept = ex.sets.filter((s) => s.done);
+    const moving = ex.sets.filter((s) => !s.done && s.type !== "warmup").map((s) => ({ type: s.type, ...(s.ts ? { ts: true } : {}),
+      kg: "", reps: s.reps, rpe: s.rpe, done: false, manual: false }));
+    if (!moving.length) moving.push({ type: "normal", kg: "", reps: "", rpe: "", done: false, manual: false });
+    const swapped = { id: uid(), template_id: e.id, title: e.title, notes: "", ref: refFromServer(e.id), swappedFrom: ex.title,
+      ...(ex.planCallouts ? { planCallouts: ex.planCallouts } : {}), sets: moving };
+    const at = draft.exercises.indexOf(ex);
+    if (kept.length) { ex.sets = kept; draft.exercises.splice(at + 1, 0, swapped); }
+    else draft.exercises.splice(at, 1, swapped);
+    saveDraft(); renderWorkout();
+    const card = cardEls.get(swapped.id);
+    if (card) card.scrollIntoView({ block: "start" });
+    loadState(swapped);
+  }
+
   function squareCard(e, isRecent, muscle) {
     const b = el("button", "sq" + (isRecent ? " recent" : "")); b.type = "button"; b.title = e.title;
     b.append(el("span", "t", e.title), el("span", "m", muscle || ""));
-    b.addEventListener("click", () => addExercise(e));
+    b.addEventListener("click", () => (swapTarget ? swapExercise(swapTarget, e) : addExercise(e)));
     return b;
   }
 
@@ -2142,7 +2234,11 @@
     renderResults();
   }
 
-  async function openPicker() {
+  let swapTarget = null;   // the exercise being swapped while the picker is open; null when adding
+  async function openPicker(target) {
+    swapTarget = target && target.sets ? target : null;
+    $("pickerTitle").hidden = !swapTarget;
+    $("pickerTitle").textContent = swapTarget ? "Swap " + swapTarget.title + " for…" : "";
     $("picker").hidden = false; $("search").value = "";
     $("results").replaceChildren(el("p", "muted", "Loading exercises…"));
     try { catalog = catalog || (await api("/exercises")); } catch (err) { catalog = []; }
@@ -2151,7 +2247,7 @@
     refreshCatalogIfStale();
   }
 
-  $("addEx").addEventListener("click", openPicker);
+  $("addEx").addEventListener("click", () => openPicker(null));
   $("closePicker").addEventListener("click", () => { $("picker").hidden = true; });
   $("search").addEventListener("input", renderResults);
 
@@ -2418,6 +2514,7 @@
     $("padContext").textContent = input.dataset.padContext;
     numberpad.querySelector('[data-pad-key="."]').disabled = input.dataset.keypad !== "decimal";
     numberpad.querySelector('[data-pad-key="next"]').disabled = padInputs().at(-1) === input;
+    paintPlates();
     input.select();
     requestAnimationFrame(sizeNumberPad);
   }
@@ -2425,6 +2522,7 @@
     padInput = null;
     numberpad.hidden = true;
     document.body.classList.remove("keypad-open");
+    paintPlates();
   }
   numberpad.addEventListener("pointerdown", (e) => {
     if (e.target.closest("button")) e.preventDefault(); // keep input focus, caret and selection
