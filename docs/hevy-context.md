@@ -629,11 +629,38 @@ An available daily fatigue score shows its maximum inline (for example,
 
 ## Mobile next set (local, 2026-11-07)
 
-Below 768px the logger uses full-width 48px set buttons and highlights the
-next unfinished working set in each exercise. A blocked working set shows
-the motivation requirement beside its button. Check in opens the live form
+The phone layout now applies below 600px (2026-11-12; it was below 768px, so
+tablets held upright between 600 and 767px got the phone layout). Below 600px the logger keeps each set on one line with a 48px square done
+tick at the end of the row (2026-11-12; it replaced the full-width Mark set
+done bar, which doubled each set's height and pushed the plate loader off
+screen). Phone rows hide the second-unit and stress columns, which remain
+from 600px. The next unfinished working set in each exercise has an outlined
+row and a filled tick at every width. A blocked working set shows
+the motivation requirement on a line below its row. Check in opens the live form
 there and confirmation returns focus to the set. Warm-ups remain available
 before confirmation. Session advice is in a disclosure below the set rows.
+
+## Plate strip, numbers line and swap (local, 2026-11-12)
+
+- Plate strip: below 1100px a strip above the rest timer shows the plates for
+  the first open (not collapsed, not complete) exercise's loader set. It shows
+  per-side plates, bar and chains, or "Enter a weight to see the plates". Tapping
+  it scrolls to that exercise's full loader. It is hidden at 1100px and above,
+  during save recovery, and once every exercise is complete. The number pad has
+  a fixed-height line with the plates for the weight being typed, so its keys
+  never move. Neither changes a weight.
+- Numbers line: e1RM, TM, LSe1RM and stress fold into one line per exercise
+  showing the tile values, which one drives weights, and session stress.
+  Tapping it opens the tiles and stress details. It starts open at 1100px and
+  above, and the choice is kept per exercise in the draft (`numbersOpen`).
+- Swap exercise ("⋯" menu) opens the movement picker. The new movement gets a
+  new exercise identity, so the session review shows the prescribed movement's
+  unticked sets as omitted and the new one as added. Ticked sets and their
+  evidence stay with the original. Unticked working sets move across with reps,
+  RPE and TS mark, with blank automatic weights. Unticked warm-ups are dropped.
+  With nothing ticked the new movement takes the original's place; otherwise it
+  goes right after it. The plan itself is unchanged. Swapping is blocked during
+  save recovery.
 
 ## Mobile save recovery (local, 2026-11-07)
 

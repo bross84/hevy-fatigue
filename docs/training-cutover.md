@@ -708,9 +708,17 @@ When a daily score is available, verify that `/ 20` appears beside the value.
 
 On a physical phone, start a normal workout and verify that the next working
 set shows the check-in requirement and that a warm-up can be marked done
-before confirming. Open Check in from the set, confirm, and use the 48px
-Mark set done button. Check that the rest timer starts for the working set
-and that optional advice is available below the set rows.
+before confirming. Open Check in from the set, confirm, and tap the 48px
+square tick at the end of the set's line. Check that the rest timer starts,
+the outline and filled tick move to the next set, the set stays on one line,
+and that optional advice is available below the set rows. On the gym tablet,
+held both upright and sideways, check the same tick and next-set outline, and
+that it shows one line per set (the tablet layout), not the phone layout.
+Check the plate strip above the rest timer follows the next set and opens the
+loader when tapped, and that the number pad shows the plates for a typed weight
+without its keys moving. Tap the numbers line to open and close e1RM/TM. Use
+"⋯" → Swap exercise after ticking one set: the ticked set stays and the rest
+move to the new lift. Save, then confirm the session review lists both.
 
 If a normal workout needs recovery on a physical phone, verify the rest
 timer remains visible and the regular Save action is hidden. Use Finish
