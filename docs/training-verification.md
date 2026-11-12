@@ -1198,3 +1198,48 @@ builder and on the Log page; weights are unchanged. Details: hevy-context.md, "W
   sideways scroll, and two weeks saved as two inactive drafts with the active plan unchanged. The
   search list missed movements loaded after typing began; fixed and rechecked.
 - Not run: Docker build/startup (daemon not running), physical phone/tablet, deployed or real data.
+
+## Square done tick on every set row — local, 2026-11-12
+
+The full-width Mark set done bar under each phone set row is replaced by a 48px square tick at the end
+of the set's own line, at every width. Phone rows hide the second-unit and stress columns, which remain
+from 768px. The next unfinished working set gets an outlined row and a filled tick at every width; it
+was previously highlighted only below 768px. The check-in reminder drops to its own line under the row.
+Tapping, the rest timer, the check-in requirement and saving are unchanged.
+
+- Mocked preview at 320, 375, 700, 767, 768 and 1024px: no sideways scroll. Each set takes one line, so
+  a 4-set exercise is about half as tall and its plate loader fits on the first phone screen. Ticking
+  set 3 turned it green, moved the outline to set 4, started rest, and the loader followed to set 4.
+- `tools/check_training_browser.py` now asserts the 48×48 tick on the weight box's line, with the
+  reminder below it (replacing the old full-width >200px assertion). It passes, with no browser errors.
+  `tools/check_weekly_coaching_browser.py` passes.
+- Baseline failure at the time: `tools/check_logger_layout_browser.py` stopped at the
+  `#loggerLoader > .loader` count at 2560px, both on the untouched HEAD files and with this change.
+  It passed in the later run below.
+- Host 244 passed; logger 626 passed with 1 expected failure (as before); all 35 `.cjs` files passed.
+- Not run: Docker build/startup, physical phone/tablet, deployed or real data.
+
+## Tablet layout, plate strip, numbers line and swap — local, 2026-11-12
+
+Approved follow-ups to the workout screen review. Tablets from 600px get the tablet layout (it was
+768px). A plate strip sits above the rest timer, with a fixed-height plates line on the number pad.
+e1RM/TM/LSe1RM/stress fold into one numbers line. "⋯" → Swap exercise is new. Details:
+hevy-context.md, "Plate strip, numbers line and swap".
+
+- Mocked preview and mocked Edge at 320, 375, 390, 599, 600, 700, 768, 1024 and 1280px: no sideways
+  scroll, one line per set, strip shown below 1100px and hidden from 1100px. With touch, typing
+  125 on the number pad showed "2×25 + 1×2.5 per side". The 5 key kept its exact position after typing
+  and after Next moved to Reps. One page error (Session advice re-inserted relative to the moved tiles
+  on a phone→tablet resize) was found and fixed.
+- Swap, mocked: after ticking the top set, swapping to another movement kept the ticked set on Squat
+  and moved three unticked sets with reps/RPE and blank weights. Weights were entered, every set
+  ticked, and the mocked save completed. The session review listed Squat (1 done, 3 omitted) and the
+  new movement separately. New `rackbook/tests/test_log_swap.cjs` covers replace-in-place, the split,
+  all-ticked, same movement and save-recovery cases.
+- Test harness changes: `test_log_collapse.cjs` and `test_log_keypad.cjs` sandboxes gained no-op
+  `paintNumbers`/`matchMedia`/`paintPlates` stubs. Their assertions are unchanged.
+  `check_training_browser.py` uses the 599/600px breakpoint and opens the folded numbers line on the
+  phone before checking the weight-source tiles, which are otherwise hidden there.
+- Passed: host 244; logger 626 with 1 expected failure (as before); all 39 `.cjs` files; mocked browser
+  checks for training, recovery, weekly coaching, logger layout and dashboard layout.
+- Not run: Docker build/startup (daemon not running), physical phone/tablet, deployed or real data.

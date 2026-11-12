@@ -30,7 +30,7 @@ const context = vm.createContext({trainingUrl:path=>path.startsWith("/training/"
   $: id => labels[id], document: doc,
   window: { matchMedia: () => ({ matches: coarse }), addEventListener(name, fn) { windowHandlers[name] = fn; } },
   Event: class { constructor(type) { this.type = type; } },
-  requestAnimationFrame: fn => fn(), setTimeout: fn => timers.push(fn), liftIntoView() {},
+  requestAnimationFrame: fn => fn(), setTimeout: fn => timers.push(fn), liftIntoView() {}, paintPlates() {},
 });
 vm.runInContext(html.slice(html.indexOf('  function numberPadEdit('), html.indexOf('  // Other text fields')), context);
 function field(value, decimal, name) {

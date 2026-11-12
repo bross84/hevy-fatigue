@@ -11,7 +11,7 @@ const noop=()=>{};
 let saved=0, rests=0, redraws=0;
 const context=vm.createContext({trainingUrl:path=>path.startsWith("/training/")?path:"/training"+path,el, unit:'kg', unitFor:()=> 'kg', exerciseUnitControl:()=>el('button'), trim:String, stepOf:()=>2.5, makeReorderable:noop,
   restLabel:String, restFor:()=>60, renderRefBar:()=>el('div'), renderSoreness:noop, renderTrial:noop, trialEnabled:false,
-  queueStress:noop,fillStress:noop,kindOf:s=>s.type,KIND:{warmup:'W'},
+  queueStress:noop,fillStress:noop,paintNumbers:noop,matchMedia:()=>({matches:false}),kindOf:s=>s.type,KIND:{warmup:'W'},
   prepareKeypadInput:noop,primaryText:s=>s.kg,refText:()=>'',primaryInputs:new Map(),refCells:new Map(),
   rpeControl:()=>({reportValidity:()=>true}),setE1rm:()=>null,setE1Cells:new Map(),setStressCells:new Map(),
   makeSwipeable:noop,renderLoader:()=>el('div'),applyAuto:noop,saveDraft:()=>saved++,
