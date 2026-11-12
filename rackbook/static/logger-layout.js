@@ -1,7 +1,6 @@
 /* View-only workspace. The logger owns sets, calculations, timers and save recovery. */
 const LoggerLayout = (() => {
   let hooks, selectedId = null, detached = null, outlineKey = '';
-  let inlineExerciseId = null;
   const wide = matchMedia('(min-width: 1900px)');
   const desktop = matchMedia('(min-width: 1100px)');
   const mobile = matchMedia('(max-width: 599px)');
@@ -28,8 +27,8 @@ const LoggerLayout = (() => {
 
   function loaderFor(id) { return detached?.id === id ? detached.element : null; }
 
-  function releaseMotivation(id) {
-    if (id != null && inlineExerciseId !== id) return null;
+  // The form no longer leaves its home; this returns it if an older page state moved it.
+  function releaseMotivation() {
     const form = byId('sessionMotivation'), home = byId('sessionMotivationHome');
     if (form.parentElement === home) return null;
     const focused = form.contains(document.activeElement) ? document.activeElement : null;
@@ -37,27 +36,26 @@ const LoggerLayout = (() => {
     return focused;
   }
 
+  // Motivation is one check-in for the day and stays at the top of the workout. On phones each card's
+  // next working set explains why its tick is locked and jumps back to that single check-in.
   function updateMotivation() {
     const current = draft();
-    const home = byId('sessionMotivationHome'), form = byId('sessionMotivation');
+    const home = byId('sessionMotivationHome');
     const required = Boolean(current && typeof SessionMotivation !== 'undefined' && !SessionMotivation.ready(current));
     const blocked = mobile.matches && required;
-    let inlineRow = null, returnFocus = null;
+    releaseMotivation();
+    home.hidden = false;
+    if (blocked) home.open = true;
     for (const ex of current?.exercises || []) {
       const card = hooks.getCard(ex.id), controls = mobileControls.get(card);
       if (!controls) continue;
       const rows = [...card.querySelectorAll('.set[data-working]')];
       const next = rows.find(row => !row.classList.contains('done'));
-      const open = blocked && !current.frozenSave && !ex.collapsed && inlineExerciseId === ex.id && next;
-      if (open) inlineRow = next;
-      if (inlineExerciseId === ex.id) returnFocus = next?.querySelector('.tick');
       if (blocked && next && controls.gate.parentElement !== next) next.insertBefore(controls.gate, next.querySelector('.tick'));
       controls.gate.hidden = !(blocked && next);
       controls.reason.textContent = current.frozenSave
-        ? 'This workout is pending save recovery.' : 'Confirm motivation before working sets.';
+        ? 'This workout is pending save recovery.' : "Do today's check-in at the top before working sets.";
       controls.trigger.hidden = Boolean(current.frozenSave);
-      controls.trigger.textContent = open ? 'Close' : 'Check in';
-      controls.trigger.setAttribute('aria-expanded', String(Boolean(open)));
       for (const row of rows) {
         const tick = row.querySelector('.tick');
         row.classList.toggle('next-working-set', row === next);
@@ -66,16 +64,13 @@ const LoggerLayout = (() => {
         else tick.removeAttribute('aria-describedby');
       }
     }
-    if (inlineRow) {
-      home.hidden = true;
-      if (form.parentElement !== inlineRow) inlineRow.insertBefore(form, inlineRow.querySelector('.tick'));
-    } else {
-      home.hidden = false;
-      inlineExerciseId = null;
-      const focused = releaseMotivation();
-      if (focused && !mobile.matches) focused.focus({preventScroll: true});
-      else if (!required) returnFocus?.focus();
-    }
+  }
+
+  function openCheckin() {
+    const home = byId('sessionMotivationHome');
+    home.hidden = false; home.open = true;
+    home.scrollIntoView({block: 'start', behavior: 'instant'});
+    byId('motivation-level')?.focus({preventScroll: true});
   }
 
   function positionAdvice(card) {
@@ -214,14 +209,10 @@ const LoggerLayout = (() => {
     gate.hidden = true;
     const reason = node('p');
     reason.id = 'set-checkin-' + ex.id;
-    const trigger = node('button', null, 'Check in');
+    const trigger = node('button', null, 'Go to check-in');
     trigger.type = 'button';
-    trigger.setAttribute('aria-controls', 'sessionMotivation');
-    trigger.addEventListener('click', () => {
-      inlineExerciseId = inlineExerciseId === ex.id ? null : ex.id;
-      updateMotivation();
-      if (inlineExerciseId === ex.id) byId('motivation-level')?.focus();
-    });
+    trigger.setAttribute('aria-controls', 'sessionMotivationHome');
+    trigger.addEventListener('click', openCheckin);
     gate.append(reason, trigger);
     const advice = card.querySelector('[data-session-advice]');
     const disclosure = node('details', 'mobile-session-advice');

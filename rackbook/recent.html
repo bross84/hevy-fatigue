@@ -272,7 +272,7 @@
       const message = el("p", "note");
       const draw = () => {
         box.replaceChildren(el("p", "note", "Soreness before this workout. These check-ins are saved in Rackbook."));
-        for (const [key, title] of [["squat", "Squat"], ["bench_press", "Bench/Press"], ["deadlift", "Deadlift"]]) {
+        for (const [key, title] of [["squat", "Squat"], ["bench_press", "Press"], ["deadlift", "Hinge"]]) {
           const rating = ratings[key] || (ratings[key] = {level: null, pain: false});
           const group = el("fieldset"), row = el("div", "soreness-levels");
           group.append(el("legend", null, title));

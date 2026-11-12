@@ -132,8 +132,10 @@ vm.runInContext(log.slice(log.indexOf('  function buildEntry()'),log.indexOf('  
  assert.equal(payload.exercises[0].sets[0].ts,true);
  logContext.sorenessPatterns={Squat:'squat',Deadlift:'deadlift'};
  logContext.draft.soreness={squat:{level:2,pain:false},deadlift:{level:1,pain:false}};
- assert.deepEqual(JSON.parse(JSON.stringify(logContext.buildEntry().soreness)),{squat:{level:2,pain:false}},'A check-in for a movement not in the workout must not be saved');
- logContext.draft.soreness={deadlift:{level:1,pain:false}};assert.equal(logContext.buildEntry().soreness,null);delete logContext.draft.soreness;
+ assert.deepEqual(JSON.parse(JSON.stringify(logContext.buildEntry().soreness)),{squat:{level:2,pain:false},deadlift:{level:1,pain:false}},'Pattern soreness is a day check-in: every answered pattern is saved, whichever movements were trained');
+ logContext.draft.soreness={squat:{level:null,pain:false}};
+ assert.equal(logContext.buildEntry().soreness,null,'An untouched or cleared pattern is never saved as zero');
+ logContext.draft.soreness={deadlift:{level:1,pain:false}};assert.deepEqual(JSON.parse(JSON.stringify(logContext.buildEntry().soreness)),{deadlift:{level:1,pain:false}},'A hinge rating on a squat day is kept');delete logContext.draft.soreness;
  const convertedPounds=132.34/2.20462262185;sets[0].kg=String(convertedPounds);
  assert.equal(logContext.buildEntry().exercises[0].sets[0].weight_kg,convertedPounds,'Saving must not round converted weights');
  logContext.unit='lb';assert.equal(logContext.buildEntry().weight_unit,'lb','Upload must carry the currently selected unit');
