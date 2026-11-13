@@ -58,7 +58,8 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             result=save().json();assert result['state']=='rejected',result
             page.set_viewport_size({'width':390,'height':844})
             expect(page.locator('#finish')).to_be_hidden()
-            expect(page.locator('#rest')).to_be_visible()
+            # The rest countdown now lives in the header and stays visible during recovery.
+            expect(page.locator('#restPill')).to_be_visible()
             correction=page.get_by_role('button',name='Correct rejected draft',exact=True)
             expect(correction).to_be_visible()
             page.reload();expect(correction).to_be_visible()  # Rejection survives reload.
