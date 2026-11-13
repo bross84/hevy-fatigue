@@ -32,7 +32,13 @@ with sync_playwright() as p:
     first_tick=first_set.get_by_role('button',name='Mark set done',exact=True)
     gate=first_set.locator('.mobile-set-gate')
     expect(first_tick).to_be_disabled()
-    expect(gate).to_contain_text('Confirm motivation before working sets')
+    expect(gate).to_contain_text("Do today's check-in at the top before working sets.")
+    # One pattern soreness check-in for the day; 'Squat (Barbell)' is not a tracked main-lift title.
+    assert page.locator('.movement-soreness').count()==0
+    checkin_home=page.locator('#sessionMotivationHome')
+    expect(checkin_home).to_have_attribute('open','')
+    soreness_panel=checkin_home.locator('#sessionSoreness')
+    expect(soreness_panel.locator('legend')).to_have_text(['Squat','Press','Hinge'])
     for width in (320, 390, 599):
         page.set_viewport_size({'width':width,'height':844})
         # Measure all three boxes in one frame so late-loading content above cannot shift them apart.
@@ -61,19 +67,24 @@ with sync_playwright() as p:
     expect(first_tick).to_be_disabled()
     assert not page.evaluate("JSON.parse(localStorage.getItem('training.logDraft')).exercises[0].sets[0].done")
     before_motivation=page.evaluate("JSON.parse(localStorage.getItem('training.logDraft')).exercises")
-    gate.get_by_role('button',name='Check in',exact=True).tap()
-    expect(first_set.locator('#motivation-level')).to_be_focused()
+    gate.get_by_role('button',name='Go to check-in',exact=True).tap()
+    expect(checkin_home.locator('#motivation-level')).to_be_focused()
+    assert first_set.locator('#motivation-level').count()==0
     page.locator('#motivation-level').select_option('3')
     page.locator('#motivation-note').fill('Same movements since August')
     page.evaluate('refreshCard(draft.exercises[0])')
-    expect(first_set.locator('#motivation-note')).to_have_value('Same movements since August')
-    expect(first_set.locator('#motivation-note')).to_be_focused()
+    expect(checkin_home.locator('#motivation-note')).to_have_value('Same movements since August')
+    expect(checkin_home.locator('#motivation-note')).to_be_focused()
+    soreness_panel.get_by_role('button',name='Squat soreness: Moderate',exact=True).tap()
+    expect(soreness_panel.get_by_role('button',name='Squat soreness: Moderate',exact=True)).to_have_attribute('aria-pressed','true')
+    soreness_panel.get_by_role('checkbox',name='Hinge: pain or injury',exact=True).check()
+    assert page.evaluate("JSON.parse(localStorage.getItem('training.logDraft')).soreness")=={'squat':{'level':2,'pain':False},'deadlift':{'level':None,'pain':True}}
     with page.expect_response(lambda r:r.url.endswith('/session-checkins') and r.request.method=='POST') as confirmed:
         page.locator('#confirmMotivation').click()
     assert confirmed.value.ok,confirmed.value.text()
     expect(first_tick).to_be_enabled()
-    expect(first_tick).to_be_focused()
     expect(gate).to_be_hidden()
+    expect(checkin_home.locator('#motivation-level')).to_have_value('3')
     page.screenshot(path=str(out/'logger-ready-set-phone.png'),animations='disabled')
     assert page.evaluate("JSON.parse(localStorage.getItem('training.logDraft')).exercises")==before_motivation
     page.reload()
@@ -206,12 +217,15 @@ with sync_playwright() as p:
     saved_result=saved.value.json()
     posted=saved.value.request.post_data_json['exercises'][0]['sets'][0]
     assert posted['target_rpe']==8 and posted['rpe']==7,posted
+    assert saved.value.request.post_data_json['soreness']=={'squat':{'level':2,'pain':False},'deadlift':{'level':None,'pain':True}}
     assert saved_result['state']=='complete',saved_result
     expect(page.locator('#done')).to_be_visible()
     expect(page.locator('#sessionReview')).to_contain_text('Session review')
     expect(page.locator('#sessionReview')).to_contain_text('2 originally planned')
     review=page.request.get(URL+'/training/session-reviews/'+saved_result['id']).json()
     assert review['available'],review
+    stored_soreness=page.request.get(URL+'/training/workout-soreness/'+saved_result['id']).json()
+    assert stored_soreness=={'squat':{'level':2,'pain':False},'bench_press':{'level':None,'pain':False},'deadlift':{'level':None,'pain':True}},stored_soreness
     assert review['prescription']==original_prescription
     assert review['motivation']['level']==3 and review['motivation']['reason'] is None
     assert review['motivation']['timing']=='before_working_sets'

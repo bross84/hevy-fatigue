@@ -604,7 +604,9 @@ refreshing the numeric summary preserves the recommendation and its controls.
 
 ## Mobile next-set layout (local, 2026-11-07)
 
-The mobile layout moves the existing motivation form between its overview
+Superseded 2026-11-12: the motivation form stays in the top check-in; a locked
+set shows Go to check-in instead (see "Day check-in" below).
+The mobile layout moved the existing motivation form between its overview
 disclosure and the next working set. A card refresh returns and reattaches the
 same form, preserving the focused field. The completion button keeps its
 height and DOM identity as the next set advances. Motivation confirmation
@@ -622,3 +624,14 @@ finalize route. An uncertain save offers a status read and explicit
 reconciliation of an existing workout ID. Recovery controls serialize
 requests in the panel, and an unavailable status leaves a read-only check
 available. The rest bar retains its timer and controls.
+
+## Day check-in (local, 2026-11-12)
+
+Pre-workout soreness is one Squat/Press/Hinge panel in the Log page's top
+check-in beside motivation, stored in the existing `session_soreness` slots
+(`squat`, `bench_press`, `deadlift`). `buildEntry` sends every answered pattern
+via `sessionSorenessPayload`, independent of exercise titles; no route, model,
+table or interpretation changed. `logger-layout.js` (v=3) keeps the motivation
+form in place and gives locked mobile sets a Go to check-in button. Details:
+hevy-context.md, "Day check-in".
+

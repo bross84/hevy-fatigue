@@ -50,7 +50,7 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             initial_weeks=plan['weeks']
             before=page.request.get(URL+'/api/diagnostics/snapshot').json()
             expect(page.get_by_role('button',name='Mark set done',exact=True).first).to_be_disabled()
-            expect(page.locator('.mobile-set-gate').first).to_contain_text('Confirm motivation')
+            expect(page.locator('.mobile-set-gate').first).to_contain_text("Do today's check-in at the top")
             # Day 1 of a microcycle no longer has its own opening review: one weekly call per week instead.
             checkin(0,'Tired but excited for pull-ups')
             page.wait_for_timeout(300)

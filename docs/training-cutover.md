@@ -708,7 +708,8 @@ When a daily score is available, verify that `/ 20` appears beside the value.
 
 On a physical phone, start a normal workout and verify that the next working
 set shows the check-in requirement and that a warm-up can be marked done
-before confirming. Open Check in from the set, confirm, and tap the 48px
+before confirming. Tap Go to check-in on the set (it jumps to the check-in
+at the top), confirm, and tap the 48px
 square tick at the end of the set's line. Check that the rest timer starts,
 the outline and filled tick move to the next set, the set stays on one line,
 and that optional advice is available below the set rows. On the gym tablet,
@@ -731,3 +732,10 @@ writes its full name. Preview a week with a misspelt movement and a `*`: the pro
 and the movement can be chosen. Load one week, save it, start Day 1 and check the "Plan: …" label
 under each movement with callouts. Text holding two weeks should save two inactive drafts and leave
 the active microcycle as it was.
+
+For the day check-in, on the physical tablet and phone start a workout whose squat is not
+"Squat, Low Bar w/ Belt" (for example Squat (Barbell)). Check that no exercise card asks about
+soreness or motivation, that the check-in at the top shows motivation then Pattern soreness with
+Squat, Press and Hinge, and that Go to check-in on a locked set jumps there. Rate Squat and tick
+Hinge pain, confirm, finish, then open the saved workout's soreness edit in Recent: Squat and Hinge
+pain are shown and Press is blank.

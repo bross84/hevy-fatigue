@@ -12,7 +12,7 @@
   <script src="/training/static/plan-change.js?v=1"></script>
   <script src="/training/static/app-menu.js?v=2"></script>
   <script src="/training/static/ai-coach.js?v=2"></script>
-  <script src="/training/static/logger-layout.js?v=4"></script>
+  <script src="/training/static/logger-layout.js?v=5"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -436,11 +436,11 @@
       <input id="title" type="text" aria-label="Workout title" autocomplete="off" />
       <p id="clock" class="muted" style="margin:6px 0 0"></p>
       <details class="logger-help"><summary>Rx = target · Actual = performed</summary><p class="hint">RPErx is the target; RPEact is what you performed. Tap ✓ after the set; if actual is blank, it uses the target. With LSe1RM on, actual RPE adjusts following weights; your completed weight stays fixed.</p></details>
-      <div id="sessionSoreness" hidden></div>
       <div id="trialDaily" class="hint" hidden></div>
       <details id="sessionMotivationHome" open>
-        <summary>Pre-training check-in</summary>
+        <summary>Before you train · today's check-in</summary>
         <div id="sessionMotivation"></div>
+        <section id="sessionSoreness" aria-label="Pattern soreness before training"></section>
       </details>
       <div id="plannedOrigin" class="hint" hidden></div>
     </div>
@@ -1424,18 +1424,17 @@
     }
   }
   let sorenessPatterns = null;
-  function renderSoreness(ex, box) {
+  function renderSessionSoreness() {
+    const box = $("sessionSoreness");
+    if (!box || !draft) return;
     box.replaceChildren();
-    if (!sorenessPatterns) {
-      box.append(el("p", "hint", "Soreness controls unavailable. Reload to retry.")); return;
-    }
-    const key = sorenessPatterns[ex.title];
-    if (!key) return;
-    const title = {squat: "Squat", bench_press: "Bench/Press", deadlift: "Deadlift"}[key];
-    box.append(el("p", "hint", "Soreness before this movement · " + title + ". Leave unanswered if unsure."));
-    {
+    const locked = Boolean(draft.frozenSave);
+    box.inert = locked;
+    box.append(el("h3", null, "Pattern soreness"), el("p", "hint", "How do these patterns feel right now? Leave any you're unsure about blank."));
+    const rerender = () => { saveDraft(); renderSessionSoreness(); };
+    for (const [key, title] of SORENESS_PATTERNS) {
       const group = el("fieldset");
-      group.style.cssText = "border:0;padding:0;margin:12px 0";
+      group.style.cssText = "border:0;padding:0;margin:8px 0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px";
       group.append(el("legend", null, title));
       const row = el("div");
       row.style.cssText = "display:flex;flex-wrap:wrap;gap:6px";
@@ -1445,43 +1444,35 @@
         button.setAttribute("aria-pressed", String(selected));
         button.setAttribute("aria-label", title + " soreness: " + label);
         button.style.minHeight = "44px";
+        button.disabled = locked;
         if (selected) button.style.outline = "2px solid currentColor";
         button.addEventListener("click", () => {
+          if (draft.frozenSave) return;
           draft.soreness ||= {};
           draft.soreness[key] ||= { level: null, pain: false };
           draft.soreness[key].level = selected ? null : value;
-          saveDraft();
-          for (const movement of draft.exercises) {
-            const target = cardEls.get(movement.id)?.querySelector(".movement-soreness");
-            if (target) renderSoreness(movement, target);
-          }
+          rerender();
         });
         row.append(button);
       }
       const painLabel = el("label");
-      painLabel.style.cssText = "display:flex;align-items:center;gap:8px;min-height:44px;margin-top:4px";
+      painLabel.style.cssText = "display:flex;align-items:center;gap:8px;min-height:44px";
       const pain = el("input"); pain.type = "checkbox";
       pain.checked = draft.soreness?.[key]?.pain === true;
+      pain.disabled = locked;
       pain.setAttribute("aria-label", title + ": pain or injury");
       pain.addEventListener("change", () => {
+        if (draft.frozenSave) return;
         draft.soreness ||= {};
         draft.soreness[key] ||= { level: null, pain: false };
         draft.soreness[key].pain = pain.checked;
-        saveDraft();
-        for (const movement of draft.exercises) {
-          const target = cardEls.get(movement.id)?.querySelector(".movement-soreness");
-          if (target) renderSoreness(movement, target);
-        }
+        rerender();
       });
       painLabel.append(pain, el("span", null, "Pain or injury"));
       group.append(row, painLabel);
-      if (ex.trialId) {
-        const edit = el("details"), rating = draft.soreness?.[key] || {};
-        edit.append(el("summary",null,"Soreness: " + (["None","Mild","Moderate","Severe"][rating.level] || "Unknown") + " · " + (rating.pain ? "Pain/injury flagged" : "No pain reported")),group); box.append(edit);
-      } else box.append(group);
+      box.append(group);
     }
   }
-
   function mountMotivation(current) {
     if (typeof SessionMotivation === 'undefined') return;
     SessionMotivation.mount(current, $("sessionMotivation"), saveMotivationDraft, () => {
@@ -1507,7 +1498,7 @@
     const list = $("exercises"); list.replaceChildren();
     cardEls.clear(); setE1Cells.clear(); setStressCells.clear();
     for (const ex of draft.exercises) { const card = renderExercise(ex); cardEls.set(ex.id, card); list.append(card); }
-    mountMotivation(draft);
+    mountMotivation(draft); renderSessionSoreness();
     for (const id of new Set(draft.exercises.map(ex => ex.template_id))) paintStress(id);
     tickClock();
     paintPlates();
@@ -1946,8 +1937,6 @@
     };
     toggle.addEventListener("click", () => { ex.collapsed = !ex.collapsed; closeNumberPad(); updateCollapse(); saveDraft(); });
     head.append(exerciseUnitControl(ex), chip, rest, more, complete, toggle);
-    const checkin = el("div", "movement-soreness");
-    renderSoreness(ex, checkin); left.append(checkin);
     const trialBox = el("section"); renderTrial(ex, trialBox); left.append(trialBox);
     if (typeof SessionAdvice !== 'undefined' && draft) {
       const adviceBox=el('section'); left.append(adviceBox);
@@ -2278,15 +2267,25 @@
       if (sets.length) exercises.push({ exercise_template_id: ex.template_id, title: ex.title, notes: ex.notes, ...(ex.ref?.weightUnit ? {weight_unit:ex.ref.weightUnit} : {}), sets });
     }
     if (!exercises.length) throw new Error("Tap ✓ on each set you did before saving.");
-    // Keep check-ins only for movements in the saved workout; one for a removed card would record a movement not trained.
-    const trained = new Set(exercises.map((ex) => sorenessPatterns && sorenessPatterns[ex.title]));
-    const soreness = Object.fromEntries(Object.entries(draft.soreness || {}).filter(([key]) => trained.has(key)));
-    return { soreness: Object.keys(soreness).length ? soreness : null, title: draft.title.trim() || "Workout", weight_unit: unit, start_time: draft.startedAt, end_time: new Date().toISOString(), exercises,
+    // Pattern soreness is a day-level check-in, kept whichever exercises were trained.
+    return { soreness: sessionSorenessPayload(draft.soreness), title: draft.title.trim() || "Workout", weight_unit: unit, start_time: draft.startedAt, end_time: new Date().toISOString(), exercises,
       ...(draft.prescription ? { prescription:draft.prescription } : {}),
       ...(draft.advisory_links?.length ? {advisory_links:draft.advisory_links} : {}),
       ...(draft.motivation != null ? {motivation:draft.motivation} : {}),
       checkin_required:true,
       ...(draft.planned_session ? { planned_session: draft.planned_session } : {}) };
+  }
+
+  // One pre-workout check-in per pattern for the day. Keys are the stored slots; labels are what the athlete sees.
+  const SORENESS_PATTERNS = [["squat", "Squat"], ["bench_press", "Press"], ["deadlift", "Hinge"]];
+  // Answered patterns only; an untouched or cleared pattern is unknown, never zero soreness.
+  function sessionSorenessPayload(ratings) {
+    const out = {};
+    for (const [key] of SORENESS_PATTERNS) {
+      const r = ratings?.[key];
+      if (r && (Number.isInteger(r.level) || r.pain === true)) out[key] = { level: Number.isInteger(r.level) ? r.level : null, pain: r.pain === true };
+    }
+    return Object.keys(out).length ? out : null;
   }
 
   const saveDialog = document.createElement("dialog");
@@ -2323,7 +2322,7 @@
       if(!workoutBeingSaved.frozenSave&&typeof SessionMotivation!=='undefined')await SessionMotivation.ensureSaved(workoutBeingSaved);
       entry = WorkoutSave.freeze(workoutBeingSaved, entry);
       if (typeof LoggerLayout !== 'undefined') LoggerLayout.update();
-      mountMotivation(workoutBeingSaved);
+      mountMotivation(workoutBeingSaved); $("sessionSoreness").inert = true;   // the frozen save already holds the check-in
       const saved = await api("/hevy/workouts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(entry) });
       if (draft !== workoutBeingSaved) return;
       if (saved.state !== 'complete') {

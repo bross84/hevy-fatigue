@@ -65,7 +65,8 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             correction.click();page.wait_for_function("old=>JSON.parse(localStorage.getItem('training.logDraft')).client_workout_id!==old",arg=original)
             assert 'frozenSave' not in local_draft()
             page.get_by_role('button',name='Use as unplanned workout',exact=True).click()
-            page.locator('#sessionMotivationHome > summary').click()
+            # On phones the day check-in starts open at the top, so it is confirmed without opening it.
+            expect(page.locator('#sessionMotivationHome')).to_have_attribute('open','')
             with page.expect_response(lambda r:r.url.endswith('/session-checkins') and r.request.method=='POST'):
                 page.locator('#confirmMotivation').click()
             page.locator('#title').fill('Corrected Mock Workout')
