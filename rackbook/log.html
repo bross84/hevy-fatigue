@@ -12,7 +12,7 @@
   <script src="/training/static/plan-change.js?v=1"></script>
   <script src="/training/static/app-menu.js?v=2"></script>
   <script src="/training/static/ai-coach.js?v=2"></script>
-  <script src="/training/static/logger-layout.js?v=5"></script>
+  <script src="/training/static/logger-layout.js?v=6"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -407,7 +407,7 @@
     .workout-log.typing main { padding-bottom: 60vh; }
     .workout-log.keypad-open main { padding-bottom: calc(var(--keypad-height, 250px) + 32px); }
   </style>
-  <link rel="stylesheet" href="/training/static/logger-layout.css?v=5" />
+  <link rel="stylesheet" href="/training/static/logger-layout.css?v=6" />
 </head>
 <body class="workout-log">
 <button id="loggerNavScrim" type="button" aria-label="Close navigation" hidden></button>
@@ -418,7 +418,7 @@
 <main>
   <header class="app-header">
     <div class="page-heading"><div class="page-title"><span class="eyebrow">Hevy-Fatigue</span><h1>Log Workout</h1></div></div>
-    <div class="header-tools"><span class="units" role="group" aria-label="Weight unit"><button id="unitKg" type="button">kg</button><button id="unitLb" type="button">lb</button></span><button id="loggerMenu" type="button" aria-controls="loggerNav" aria-expanded="false">Menu</button></div>
+    <div class="header-tools"><button id="restPill" class="rest-pill" type="button" hidden aria-label="Rest timer"><span id="restPillTime">Rest</span><i class="rest-pill-prog"><i id="restPillProg"></i></i></button><span class="units" role="group" aria-label="Weight unit"><button id="unitKg" type="button">kg</button><button id="unitLb" type="button">lb</button></span><button id="loggerMenu" type="button" aria-controls="loggerNav" aria-expanded="false">Menu</button></div>
   </header>
   <div id="msg"></div>
 
@@ -445,6 +445,7 @@
       <div id="plannedOrigin" class="hint" hidden></div>
     </div>
     <div id="loggerWorkspace">
+    <nav id="exStrip" class="ex-strip" aria-label="Exercises in this workout"></nav>
     <div id="exercises"></div>
     <aside id="loggerTools" class="logger-tools" aria-label="Selected exercise tools" hidden>
       <section class="card logger-tool-card"><h2>Plate loader</h2><p id="loggerToolsTitle" class="logger-tools-title"></p><div id="loggerLoader"></div></section>
@@ -496,10 +497,13 @@
   </div>
 </div>
 
+<button id="panelScrim" class="panel-scrim" type="button" aria-label="Close" hidden></button>
+
 <section id="numberpad" class="numberpad" aria-label="Workout number pad" hidden>
   <div>
     <div class="padheading"><strong id="padField"></strong><span id="padContext"></span></div>
     <p id="padPlates" class="padplates" aria-live="polite"></p>
+    <div id="padRpe" class="padrpe" role="group" aria-label="RPE for this set"></div>
     <div class="padkeys">
       <button type="button" data-pad-key="1">1</button><button type="button" data-pad-key="2">2</button><button type="button" data-pad-key="3">3</button><button type="button" class="pad-action" data-pad-key="backspace" aria-label="Backspace">⌫</button>
       <button type="button" data-pad-key="4">4</button><button type="button" data-pad-key="5">5</button><button type="button" data-pad-key="6">6</button><button type="button" class="pad-action" data-pad-key="clear">Clear</button>
@@ -565,6 +569,7 @@
     }));
     control.append(input, picker); control.show(value);
     control.reportValidity = () => input.reportValidity();
+    control.choose = (v) => { control.show(v); onChange(v); };   // the number pad's RPE row sets the value the same way
     return control;
   }
   // A bottom sheet of big buttons. items: [{ v, label, desc, on }]; picking one closes the sheet and calls onPick(v).
@@ -591,6 +596,26 @@
     document.addEventListener("keydown", onKey);
     document.body.append(scrim);
   }
+  // Exercise sheets (Info, Targets, Note, Plates) live inside their exercise card, so the live numbers, stress and
+  // plate loader keep updating while open; CSS lifts the open one into a bottom sheet. Redraws reopen it.
+  let openPanelState = null;
+  function openPanel(card, name) {
+    closePanel();
+    const id = [...cardEls].find(([, c]) => c === card)?.[0];
+    if (!id) return;
+    openPanelState = { id, name };
+    if (typeof closeNumberPad === "function") closeNumberPad();
+    reapplyPanel();
+  }
+  function reapplyPanel() {
+    document.querySelectorAll("#exercises .card[data-panel]").forEach((c) => c.removeAttribute("data-panel"));
+    const card = openPanelState && cardEls.get(openPanelState.id);
+    if (!card) { openPanelState = null; }
+    else card.setAttribute("data-panel", openPanelState.name);
+    $("panelScrim").hidden = !openPanelState;
+    document.body.classList.toggle("panel-open", Boolean(openPanelState));
+  }
+  function closePanel() { openPanelState = null; reapplyPanel(); }
   function pickRpe(current, onPick) {
     const items = RPES.map((v) => ({ v: String(v), label: String(v), on: String(v) === String(current) }));
     items.push({ v: "", label: "Clear", on: false });
@@ -614,6 +639,7 @@
   try { if (localStorage.getItem("training.unit") === "lb") unit = "lb"; } catch (e) {}
   let rpeTable = new Map(), refs = {};
   const primaryInputs = new WeakMap(), refCells = new WeakMap(), refTimers = {}, cardEls = new Map();
+  const repsRpe = new WeakMap();   // a reps box -> the RPE-performed control in the same box, for the number pad's RPE row
   const stressStates = new Map(); // transient results, never written into the workout or localStorage
 
   function el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
@@ -789,6 +815,8 @@
   function show(name) {
     for (const id of ["start", "workout", "done"]) $(id).hidden = id !== name;
     $("bar").hidden = name !== "workout";
+    if ($("restPill")) $("restPill").hidden = name !== "workout";
+    if (name !== "workout" && typeof closePanel === "function") closePanel();
     if (typeof LoggerLayout !== 'undefined' && name !== 'workout') LoggerLayout.update();
     if (name === "workout") keepAwake(); else if (wake) { wake.release(); wake = null; }
     window.scrollTo(0, 0);
@@ -983,6 +1011,7 @@
     old.replaceWith(fresh);
     cardEls.set(ex.id, fresh);
     if (typeof LoggerLayout !== 'undefined') LoggerLayout.update();
+    if (typeof reapplyPanel === "function" && openPanelState) reapplyPanel();
     motivationFocus?.focus({ preventScroll: true });
   }
 
@@ -1503,6 +1532,7 @@
     tickClock();
     paintPlates();
     if (typeof LoggerLayout !== 'undefined') LoggerLayout.update();
+    reapplyPanel();
     if (stay) window.scrollTo(0, y);
     if (motivationFocus) $(motivationFocus)?.focus({ preventScroll: true });
   }
@@ -1577,23 +1607,27 @@
   const PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
   const PLATES_LB = [45, 35, 25, 10, 5, 2.5];
   const BAR_LB = 45;
-  const BARS = [[20, "20 kg Barbell"], [30, "30 kg SSB"], [20, "20 kg Buffalo Bar"], [15, "15 kg Neutral Grip Bar"], [10, "10 kg Arch Nem. Bar"]];
+  // "No bar" is for loads where only the plates count (weighted pull-ups, Henny Strap movements): the plates for the
+  // whole weight in one stack, not split per side.
+  const BARS = [[0, "No bar (plates only)"], [20, "20 kg Barbell"], [30, "30 kg SSB"], [20, "20 kg Buffalo Bar"], [15, "15 kg Neutral Grip Bar"], [10, "10 kg Arch Nem. Bar"]];
   const PLATE_CLASSES = ["p25", "p20", "p15", "p10", "p5", "p2", "p1"];
   const plateClass = (p, weightUnit = unit) => PLATE_CLASSES[(weightUnit === "lb" ? PLATES_LB : PLATES_KG).indexOf(p)] || "p1";   // colours by size, biggest first
   function platePlan(kg, ex) {
     const unit = unitFor(ex.ref);
     const inLb = unit === "lb";
     const total = inLb ? lbOfKg(kg) : kg;
-    const bar = inLb ? BAR_LB : ex.ref.barKg;
+    const noBar = ex.ref.barKg === 0;
+    const bar = noBar ? 0 : inLb ? BAR_LB : ex.ref.barKg;
+    const sides = noBar ? 1 : 2;
     const chains = inLb ? lbOfKg(ex.ref.chainKg) : ex.ref.chainKg;
-    let rem = (total - bar - chains) / 2;
-    if (rem < -1e-6) return { below: true, counts: [], short: 0 };
+    let rem = (total - bar - chains) / sides;
+    if (rem < -1e-6) return { below: true, counts: [], short: 0, noBar };
     const counts = [];
     for (const p of inLb ? PLATES_LB : PLATES_KG) {
       const n = Math.floor(rem / p + 1e-9);
       if (n > 0) { counts.push([p, n]); rem -= n * p; }
     }
-    return { below: false, counts, short: rem > 1e-6 ? rem * 2 : 0 };
+    return { below: false, counts, short: rem > 1e-6 ? rem * sides : 0, noBar };
   }
   function setName(ex, index) {
     let warm = 0, work = 0;
@@ -1623,13 +1657,7 @@
     box.append(head);
     if (isNaN(kg)) { box.append(el("p", "loadnote", "Give a set a weight to see its plates.")); return; }
     const plan = platePlan(kg, ex);
-    const list = [];
-    plan.counts.forEach(([p, n]) => { for (let k = 0; k < n; k++) list.push(p); });
-    const left = el("span", "side"), right = el("span", "side");
-    list.forEach((p) => right.append(el("i", "pl " + plateClass(p, unit))));             // largest nearest the middle
-    [...list].reverse().forEach((p) => left.append(el("i", "pl " + plateClass(p, unit))));
-    const barEl = el("div", "barfull");
-    barEl.append(left, el("span", "shaft"), right);
+    const barEl = drawPlates(plan, unit, "barfull");
     box.append(barEl);
     const read = el("div", "readout");
     if (plan.below) read.append("Under the bar");
@@ -1638,8 +1666,23 @@
       if (k) read.append("  ·  ");
       read.append(el("b", null, n + "×"), " " + trim(p) + " " + unit);
     });
+    if (plan.noBar && plan.counts.length) read.append("  ·  total, no bar");
     if (plan.short) read.append(el("div", "short", "(" + trim(Math.round(plan.short * 100) / 100) + " " + unit + " short of " + primaryText(set, ex) + " " + unit + ")"));
     box.append(read);
+  }
+  // The plates drawn on the bar, largest nearest the middle; with no bar, one stack for the whole load.
+  function drawPlates(plan, unit, cls) {
+    const list = [];
+    plan.counts.forEach(([p, n]) => { for (let k = 0; k < n; k++) list.push(p); });
+    const barEl = el("div", cls + (plan.noBar ? " nobar" : ""));
+    barEl.setAttribute("aria-hidden", "true");
+    const right = el("span", "side");
+    list.forEach((p) => right.append(el("i", "pl " + plateClass(p, unit))));
+    if (plan.noBar) { barEl.append(right); return barEl; }
+    const left = el("span", "side");
+    [...list].reverse().forEach((p) => left.append(el("i", "pl " + plateClass(p, unit))));
+    barEl.append(left, el("span", "shaft"), right);
+    return barEl;
   }
   function renderLoader(ex) { const box = el("div", "loader"); fillLoader(ex, box); return box; }
   function refreshLoader(ex) {
@@ -1654,10 +1697,13 @@
     const set = i >= 0 ? ex.sets[i] : null, kg = set ? num(set.kg) : NaN;
     if (isNaN(kg)) return null;
     const unit = unitFor(ex.ref), plan = platePlan(kg, ex);
-    const bar = unit === "lb" ? BAR_LB + " lb bar" : trim(ex.ref.barKg) + " kg bar" + (ex.ref.chainKg ? " + " + trim(ex.ref.chainKg) + " kg chains" : "");
+    const chains = ex.ref.chainKg ? " + " + trim(ex.ref.chainKg) + " kg chains" : "";
+    const bar = plan.noBar ? "No bar" + chains : unit === "lb" ? BAR_LB + " lb bar" : trim(ex.ref.barKg) + " kg bar" + chains;
     const plates = plan.below ? "Under the bar" : plan.counts.length
-      ? plan.counts.map(([p, n]) => n + "×" + trim(p)).join(" + ") + " per side" : "Bar only";
-    return { set: setName(ex, i) + " · " + primaryText(set, ex) + " " + unit, plates, bar,
+      ? plan.counts.map(([p, n]) => n + "×" + trim(p)).join(" + ") + (plan.noBar ? " total" : " per side") : plan.noBar ? "No plates" : "Bar only";
+    // The other unit beside the weight, so pounds are always in sight while lifting in kilograms (and the reverse).
+    const other = refText(set, ex) + " " + (unit === "lb" ? "kg" : "lb");
+    return { set: setName(ex, i) + " · " + primaryText(set, ex) + " " + unit + " · " + other, plates, bar, plan, unit,
       short: plan.short ? trim(Math.round(plan.short * 100) / 100) + " " + unit + " short" : "" };
   }
   function paintPlates() {
@@ -1668,8 +1714,10 @@
       if (i >= 0) { typed = plateLine(ex, i); break; }
     }
     pad.textContent = typed ? typed.plates + " · " + typed.bar + (typed.short ? " · " + typed.short : "") : " ";   // the line keeps its height so the keys never move
-    // The exercise you are on: the first one still open. Until its set has a weight, the strip says so.
-    plateStripEx = draft && !draft.frozenSave ? draft.exercises.find((ex) => !ex.collapsed && !exerciseComplete(ex)) : null;
+    // The exercise on screen (the strip at the top picks it). Until its set has a weight, the strip says so.
+    const onScreen = typeof LoggerLayout !== 'undefined' && LoggerLayout.current ? LoggerLayout.current() : null;
+    plateStripEx = draft && !draft.frozenSave ? (onScreen || draft.exercises.find((ex) => !ex.collapsed && !exerciseComplete(ex))) : null;
+    if (plateStripEx && !usesPlates(plateStripEx)) plateStripEx = null;
     let line = plateStripEx ? plateLine(plateStripEx, loaderSet(plateStripEx)) : null;
     if (plateStripEx && !line) {
       const open = plateStripEx.sets.findIndex((x) => !x.done);
@@ -1678,15 +1726,18 @@
     strip.hidden = !line;
     strip.replaceChildren();
     if (line) {
-      strip.append(el("span", "platestrip-set", plateStripEx.title + " · " + line.set),
-        el("b", "platestrip-plates", [line.plates, line.bar, line.short].filter(Boolean).join(" · ")));
+      const top = el("span", "platestrip-set"); top.append(el("b", null, line.set));
+      if (line.bar) top.append(el("span", "platestrip-barname", line.bar));
+      strip.append(top);
+      if (line.plan && line.plan.counts.length) strip.append(drawPlates(line.plan, line.unit, "platestrip-bar"));
+      strip.append(el("b", "platestrip-plates", [line.plates, line.short].filter(Boolean).join(" · ")));
       strip.setAttribute("aria-label", "Plates for " + plateStripEx.title + ", " + line.set + ": " + [line.plates, line.bar].filter(Boolean).join(", ") + ". Show the plate loader");
     } else strip.removeAttribute("aria-label");
     document.body.classList.toggle("has-plate-strip", Boolean(line));
   }
   $("plateStrip").addEventListener("click", () => {
-    const box = plateStripEx && cardEls.get(plateStripEx.id)?.querySelector(".loader");
-    if (box) box.scrollIntoView({ block: "center" });
+    const card = plateStripEx && cardEls.get(plateStripEx.id);
+    if (card) openPanel(card, "plates");
   });
   function pickLoadSet(ex) {
     const unit = unitFor(ex.ref);
@@ -1881,17 +1932,57 @@
     return work.length > 0 && work.every(s => s.done);
   }
 
+  function panelHead(title, sub) {
+    const head = el("div", "panel-head"), text = el("div");
+    text.append(el("h2", null, title));
+    if (sub) text.append(el("p", "muted", sub));
+    const close = el("button", "panel-close", "✕"); close.type = "button"; close.setAttribute("aria-label", "Close");
+    close.addEventListener("click", () => closePanel());
+    head.append(text, close);
+    return head;
+  }
+  // Dumbbell, cable and machine movements have no plates to load, so they get no plate strip or Plates button.
+  const NO_PLATES = /\b(dumbbells?|kettlebells?|cable|machine|bands?|assisted|bodyweight)\b/i;
+  const usesPlates = (ex) => !NO_PLATES.test(ex.title || "");
+  // What the plan asked for on a set: the planned weight (the automatic suggestion while there is one), the planned
+  // reps and the RPE target. Shown beside the boxes, so changing a box never hides the target.
+  function targetText(ex, s) {
+    const plannedKg = s.autoSuggestion != null ? s.autoSuggestion : s.kg;
+    const weight = primaryText({ kg: String(plannedKg ?? "") }, ex);
+    const reps = s.tReps ?? s.reps;
+    if (!weight && !reps) return "";
+    return (weight || "–") + " × " + (reps || "–") + (s.rpe ? " @" + s.rpe : "");
+  }
+  // The other exercise of a superset pair, if it is still in the workout.
+  function supersetPartner(ex) { return ex.ss && draft ? draft.exercises.find((e) => e.id === ex.ss) || null : null; }
+  function pickSuperset(ex) {
+    if (draft.frozenSave) { say("This workout is pending save recovery, so its exercises can't change."); return; }
+    const partner = supersetPartner(ex);
+    const items = draft.exercises.filter((e) => e !== ex).map((e) => ({ v: e.id, label: e.title,
+      desc: e === partner ? "Paired now" : e.ss ? "In another superset" : "", on: e === partner }));
+    if (partner) items.push({ v: "none", label: "Remove superset", cls: "danger" });
+    openSheet("Superset with " + ex.title, "After each set you go straight to the other exercise. Rest starts once both have done the round.", items, 1, (v) => {
+      for (const e of draft.exercises) if (e === ex || e.id === ex.ss || e.ss === ex.id || e.id === v || e.ss === v) delete e.ss;
+      if (v !== "none") { ex.ss = v; const other = draft.exercises.find((e) => e.id === v); if (other) other.ss = ex.id; }
+      saveDraft(); renderWorkout();
+    });
+  }
+
   function renderExercise(ex) {
     const unit = unitFor(ex.ref);
     const card = el("section", "card");
-    const head = el("div", "exhead"), left = el("div", "exleft"), right = el("div", "exright");   // side by side on a wide screen, stacked otherwise
-    card.append(head, left, right);
+    const head = el("div", "exhead"), left = el("div", "exleft"), right = el("div", "exright");
+    const chips = el("div", "ex-chips");
+    // The sheets: Info is the existing numbers column; the others are built here. Only one opens at a time.
+    const targetsPanel = el("div", "ex-panel ex-targets"), notePanel = el("div", "ex-panel ex-note-panel"), platesPanel = el("div", "ex-panel ex-plates");
+    card.append(head, chips, left, right, targetsPanel, notePanel, platesPanel);
     const grip = el("button", "grip", "⠿");
     grip.type = "button"; grip.setAttribute("aria-label", "Drag to reorder " + ex.title);
     makeReorderable(card, grip, ex);
     head.append(grip, el("p", "ex-title", ex.title));
-    if (ex.swappedFrom) card.insertBefore(el("p", "swap-note", "Swapped in for " + ex.swappedFrom), left);
-    if (ex.planCallouts) { const callouts = el("p", "plan-callouts", "Plan: " + ex.planCallouts); callouts.setAttribute("aria-label", "Planned callouts for " + ex.title + ": " + ex.planCallouts); card.insertBefore(callouts, left); }
+    if (ex.swappedFrom) card.insertBefore(el("p", "swap-note", "Swapped in for " + ex.swappedFrom), chips);
+    if (ex.planCallouts) { const callouts = el("p", "plan-callouts", "Plan: " + ex.planCallouts); callouts.setAttribute("aria-label", "Planned callouts for " + ex.title + ": " + ex.planCallouts); card.insertBefore(callouts, chips); }
+    if (ex.notes) card.insertBefore(el("p", "ex-note", ex.notes), chips);
     const chip = el("button", "chip", "Round to " + trim(stepOf(ex.ref)) + " " + unit + " ▾");
     chip.type = "button"; chip.setAttribute("aria-label", "Round planned weights to this many " + unit);
     chip.addEventListener("click", () => {
@@ -1912,23 +2003,26 @@
         saveDraft(); saveRef(ex); refreshCard(ex);
       });
     });
-    const more = el("button", "more", "⋯");
-    more.type = "button"; more.setAttribute("aria-label", "More for " + ex.title);
-    more.addEventListener("click", () => openSheet(ex.title, "", [
-      { v: "swap", label: "Swap exercise", desc: "Pick a different movement for the sets you haven't ticked" },
+    const moreMenu = () => openSheet(ex.title, "", [
+      { v: "unit", label: "Weight unit", desc: unit + (ex.ref.weightUnit == null ? " (follows the page)" : "") },
+      { v: "round", label: "Round weights to", desc: trim(stepOf(ex.ref)) + " " + unit },
       { v: "last", label: "Remove last set" },
       { v: "all", label: "Remove exercise", cls: "danger" },
     ], 1, (v) => {
-      if (v === "swap") { openPicker(ex); return; }
+      if (v === "unit") { unitChip.click(); return; }
+      if (v === "round") { chip.click(); return; }
       if (v === "last") { ex.sets.pop(); saveDraft(); renderWorkout(); return; }
       if (!confirm("Remove " + ex.title + " from this workout?")) return;
       draft.exercises = draft.exercises.filter((e) => e.id !== ex.id); saveDraft(); renderWorkout();
-    }));
-    const toggle = el("button", "chip");
+    });
+    const more = el("button", "more", "⋯");
+    more.type = "button"; more.setAttribute("aria-label", "More for " + ex.title);
+    more.addEventListener("click", moreMenu);
+    const toggle = el("button", "chip collapse-toggle");
     toggle.type = "button";
     const complete = el("span", "hint");
     const updateCollapse = () => {
-      left.hidden = right.hidden = Boolean(ex.collapsed);
+      left.hidden = right.hidden = chips.hidden = Boolean(ex.collapsed);
       chip.hidden = rest.hidden = more.hidden = Boolean(ex.collapsed);
       toggle.textContent = ex.collapsed ? "Reopen" : "Collapse";
       toggle.setAttribute("aria-expanded", String(!ex.collapsed));
@@ -1936,7 +2030,24 @@
       complete.textContent = exerciseComplete(ex) ? "Completed ✓" : "";
     };
     toggle.addEventListener("click", () => { ex.collapsed = !ex.collapsed; closeNumberPad(); updateCollapse(); saveDraft(); });
-    head.append(exerciseUnitControl(ex), chip, rest, more, complete, toggle);
+    const unitChip = exerciseUnitControl(ex);
+    head.append(unitChip, chip, rest, more, complete, toggle);
+
+    // One row of buttons under the name; everything that used to crowd the card opens from here.
+    const chipButton = (label, action, extra) => {
+      const b = el("button", "ex-chip" + (extra ? " " + extra : ""), label); b.type = "button";
+      b.addEventListener("click", action); chips.append(b); return b;
+    };
+    chipButton("Info", () => openPanel(card, "info"));
+    chipButton("Targets", () => openPanel(card, "targets"));
+    chipButton("Warm-up", () => addWarmups(ex));
+    chipButton("Swap", () => openPicker(ex));
+    chipButton("Superset", () => pickSuperset(ex), ex.ss ? "has-dot" : "");
+    chipButton("Note", () => openPanel(card, "note"), ex.notes ? "has-dot" : "");
+    if (usesPlates(ex)) chipButton("Plates", () => openPanel(card, "plates"));
+    chipButton("⋯", moreMenu, "ex-chip-more").setAttribute("aria-label", "More for " + ex.title);
+
+    left.append(panelHead("Numbers", ex.title));
     const trialBox = el("section"); renderTrial(ex, trialBox); left.append(trialBox);
     if (typeof SessionAdvice !== 'undefined' && draft) {
       const adviceBox=el('section'); left.append(adviceBox);
@@ -1944,22 +2055,49 @@
       adviceBox.setAttribute('aria-label','Session advice for '+ex.title);
       SessionAdvice.mount(draft,ex,adviceBox,saveDraft,Boolean(draft.soreness?.[sorenessPatterns?.[ex.title]]?.pain));
     }
-    // e1RM, TM, LSe1RM and stress fold into one tappable line; open on a desktop until you choose.
+    // e1RM, TM, LSe1RM and stress: open whenever the Info sheet is.
     const numbers = el("details", "numbers"), numbersLine = el("summary", "numbers-summary");
-    numbers.open = ex.numbersOpen ?? matchMedia("(min-width: 1100px)").matches;
-    numbersLine.addEventListener("click", () => setTimeout(() => { ex.numbersOpen = numbers.open; saveDraft(); }));
+    numbers.open = true;
     const stressBox = el("section", "stress");
     stressBox.setAttribute("aria-label", "Stress for " + ex.title);
     numbers.append(numbersLine, renderRefBar(ex), stressBox);
     left.append(numbers); queueStress(ex.template_id); fillStress(stressBox, ex.template_id);
     paintNumbers(ex, card);
+
+    // Targets: today's reps and RPE target per set, and this exercise's rest.
+    targetsPanel.append(panelHead("Today's targets", ex.title));
+    const restRow = el("div", "rest-row"), restValue = el("b", "rest-value", restLabel(restFor(ex)));
+    const restStep = (delta) => {
+      ex.ref.restSec = Math.max(0, Math.min(600, restFor(ex) + delta));
+      restValue.textContent = restLabel(restFor(ex)); saveDraft(); saveRef(ex);
+    };
+    const restLess = el("button", null, "−15"), restMore = el("button", null, "+15");
+    restLess.type = restMore.type = "button";
+    restLess.setAttribute("aria-label", "15 seconds less rest"); restMore.setAttribute("aria-label", "15 seconds more rest");
+    restLess.addEventListener("click", () => restStep(-15)); restMore.addEventListener("click", () => restStep(15));
+    const restControls = el("span", "rest-controls"); restControls.append(restLess, restValue, restMore);
+    restRow.append(el("span", null, "Rest between sets"), restControls);
+    const targetRows = el("div", "target-rows");
+    const targetHead = el("div", "target-row target-head");
+    targetHead.append(el("span", null, "Set"), el("span", null, "Reps"), el("span", null, "RPE target"));
+    targetRows.append(targetHead);
+    targetsPanel.append(targetRows, restRow, el("p", "muted", "Used for every set of this exercise today. The countdown's −15 / +15 only change the rest you're in."));
+
+    // Note: saved with this exercise in the workout.
+    notePanel.append(panelHead("Note", ex.title));
+    const note = el("textarea", "ex-note-input"); note.rows = 4; note.value = ex.notes || "";
+    note.placeholder = "e.g. Left shoulder tight on the last rep"; note.setAttribute("aria-label", "Note for " + ex.title);
+    note.addEventListener("input", () => { if (draft && draft.frozenSave) return; ex.notes = note.value; saveDraft(); });
+    const noteDone = el("button", "primary wide", "Done"); noteDone.type = "button";
+    noteDone.addEventListener("click", () => { closePanel(); refreshCard(ex); });
+    notePanel.append(note, noteDone);
+
+    platesPanel.append(panelHead("Plates", ex.title));
+
     const cols = el("div", "cols");
-    const heads = unit === "lb" ? ["Set", "Previous", "Lb", "Kg", "Reps", "RPErx", "RPEact", "e1RM", "Stress", ""] : ["Set", "Previous", "Kg", "Lb", "Reps", "RPErx", "RPEact", "e1RM", "Stress", ""];
-    for (const t of heads) {
-      const heading = el("span", null, t);
-      if (t === "Previous") heading.className = "previous-col";
-      cols.append(heading);
-    }
+    const heads = [["Set"], ["Previous", "previous-col"], ["Target", "target-col"], [unit === "lb" ? "Lb" : "Kg"], [unit === "lb" ? "Kg" : "Lb", "ref-col"],
+      ["Reps @ RPE", "reps-col"], ["e1RM", "e1-col"], ["Stress", "stress-col"], ["Done", "done-col"]];
+    for (const [t, cls] of heads) cols.append(el("span", cls || null, t));
     right.append(cols);
 
     // Previous: what you did on this set last time, in lb (warm-ups line up with warm-ups, working sets with working sets)
@@ -1968,12 +2106,13 @@
     let working = 0, warm = 0;
     ex.sets.forEach((s, idx) => {
       if (s.type === "warmup") warm += 1; else working += 1;
+      if (s.tReps === undefined) s.tReps = s.reps;   // the planned reps, kept for the Target column
       const p = s.type === "warmup" ? prevWarm[warm - 1] : prevWork[working - 1];
       const row = el("div", "set" + (s.done ? " done" : ""));
       if (s.type !== "warmup") row.setAttribute("data-working", "");
       const k = kindOf(s);
-      const kind = el("button", "kind" + (k === "ts" ? " ts" : s.type === "warmup" ? " w" : s.type === "failure" ? " f" : s.type === "dropset" ? " d" : ""),
-        k === "normal" ? String(working) : k === "ts" ? "TS" : KIND[s.type]);
+      const label = k === "normal" ? String(working) : k === "ts" ? "TS" : KIND[s.type];
+      const kind = el("button", "kind" + (k === "ts" ? " ts" : s.type === "warmup" ? " w" : s.type === "failure" ? " f" : s.type === "dropset" ? " d" : ""), label);
       kind.type = "button";
       kind.setAttribute("aria-label", "Set type: " + (k === "ts" ? "TS, sets your TM when you save" : s.type));
       kind.addEventListener("click", () => pickKind(k, (v) => {
@@ -1981,7 +2120,8 @@
         saveDraft(); renderWorkout();
       }));
 
-      const prevCell = el("span", "prev", p ? trim(p.weight_lb) + "\u00d7" + (p.reps ?? "?") + (p.rpe != null ? " @" + p.rpe : "") : "");
+      const prevCell = el("span", "prev", p ? trim(p.weight_lb) + "×" + (p.reps ?? "?") + (p.rpe != null ? " @" + p.rpe : "") : "");
+      const targetCell = el("span", "target", targetText(ex, s));
       const wt = el("input"); wt.type = "text"; wt.inputMode = "decimal"; wt.setAttribute("aria-label", "Weight in " + (unit === "lb" ? "pounds" : "kilograms"));
       prepareKeypadInput(wt, true, ex.title + " · Set " + (idx + 1));
       const refCell = el("span", "refcol");
@@ -2002,6 +2142,7 @@
       const rpe = rpeControl(s.rpe, (v) => {
         s.rpe = v;
         applyAuto(ex, s);   // only unfinished, automatic weights follow the prescription
+        targetCell.textContent = targetText(ex, s);
         saveDraft();
       }, "RPErx");
       const actualRpe = rpeControl(s.arpe ?? (s.done ? s.rpe : ""), (v) => {
@@ -2010,6 +2151,24 @@
         if (s.done) applyAuto(ex);   // actual effort replans later sets, never the completed weight
         saveDraft();
       }, "RPEact");
+      if (typeof repsRpe !== "undefined") repsRpe.set(reps, actualRpe);
+      // Reps and the RPE you performed share one box: "3 @7".
+      const repCell = el("div", "repcell");
+      repCell.append(reps, actualRpe);
+
+      // The Targets sheet edits this set's planned reps and RPE target.
+      const tRow = el("div", "target-row");
+      const tReps = el("input", "target-reps"); tReps.type = "text"; tReps.inputMode = "numeric"; tReps.value = s.tReps ?? "";
+      tReps.setAttribute("aria-label", "Target reps, " + (k === "normal" ? "set " + working : label));
+      tReps.addEventListener("input", () => {
+        const v = tReps.value.replace(/\D/g, "");
+        s.tReps = v;
+        if (!s.done) { s.reps = v; reps.value = v; applyAuto(ex, s); }
+        targetCell.textContent = targetText(ex, s);
+        saveDraft();
+      });
+      tRow.append(el("span", "target-label", k === "normal" ? String(working) : label), tReps, rpe);
+      targetRows.append(tRow);
 
       const e1Cell = el("span", "setE1");
       setE1Cells.set(s, e1Cell);
@@ -2049,8 +2208,11 @@
           const trialBox = cardEls.get(ex.id)?.querySelector(".trial-panel");
           if (trialBox) { trialBox.replaceChildren(); renderTrial(ex, trialBox); }
         }
+        // Where to go next: the superset partner after each set, else the next exercise with sets left once this one is done.
+        const flow = s.done && s.type !== "warmup" && typeof LoggerLayout !== 'undefined' && LoggerLayout.afterSet ? LoggerLayout.afterSet(ex) : null;
         const rest = restFor(ex);
-        if (s.done && s.type !== "warmup" && rest > 0) restStart(rest);   // the rest timer, this movement's own time; warm-ups don't start it
+        if (s.done && s.type !== "warmup" && rest > 0 && !(flow && flow.skipRest)) restStart(rest);   // the rest timer, this movement's own time; warm-ups don't start it
+        if (flow && flow.next) LoggerLayout.select(flow.next);
         // A ticked warm-up is dropped from the workout (so it is not saved to Hevy either) after a moment, so a mis-tap can be undone.
         // Only its row goes, not a redraw, so a box you have started typing in keeps its keyboard.
         if (s.done && s.type === "warmup") setTimeout(() => {
@@ -2060,7 +2222,7 @@
         }, 800);
       });
 
-      row.append(kind, prevCell, wt, refCell, reps, rpe, actualRpe, e1Cell, stressCell, tick);
+      row.append(kind, prevCell, targetCell, wt, refCell, repCell, e1Cell, stressCell, tick);
       const wrap = el("div", "setwrap");
       const delBtn = el("button", "delbtn", "Delete"); delBtn.type = "button"; delBtn.setAttribute("aria-label", "Delete this set");
       wrap.append(delBtn, row);
@@ -2084,12 +2246,12 @@
       applyAuto(ex, next);
       saveDraft(); renderWorkout();
     });
-    const warmBtn = el("button", "addset", "+ Warm-up sets"); warmBtn.type = "button";
+    const warmBtn = el("button", "addset warmup-add", "+ Warm-up sets"); warmBtn.type = "button";
     warmBtn.addEventListener("click", () => addWarmups(ex));
     const setbar = el("div", "setbar");
     setbar.append(warmBtn, add);
     right.append(setbar);
-    right.append(renderLoader(ex));
+    platesPanel.append(renderLoader(ex));
     updateCollapse();
     if (typeof LoggerLayout !== 'undefined') LoggerLayout.decorate(card, ex);
     return card;
@@ -2292,7 +2454,12 @@
   saveDialog.id = "saveConfirmation";
   saveDialog.setAttribute("aria-labelledby", "saveConfirmationTitle");
   saveDialog.style.cssText = "box-sizing:border-box;width:calc(100% - 32px);max-width:480px;max-height:80dvh;overflow:auto;border:1px solid #64748b;border-radius:16px;padding:20px;color:inherit;background:var(--bg, Canvas)";
-  saveDialog.innerHTML = '<h2 id="saveConfirmationTitle">Save workout to Hevy?</h2><p id="saveWorkoutName"></p><p id="saveSetCount"></p><p id="saveExcludedCount"></p><ul id="saveExcludedSets"></ul><div style="display:flex;flex-wrap:wrap;gap:12px"><button id="keepTraining" type="button" autofocus>Keep training</button><button id="confirmSave" type="button" class="primary">Save to Hevy</button></div>';
+  saveDialog.innerHTML = '<h2 id="saveConfirmationTitle">Finish workout</h2><p id="saveWorkoutName" class="muted"></p>' +
+    '<div id="saveStats" class="finish-stats"></div><div id="saveSummary" class="finish-rows"></div>' +
+    '<button id="saveMore" type="button" class="finish-more" aria-expanded="false">See more ▾</button><div id="saveMoreBox" class="finish-compare" hidden></div>' +
+    '<p id="saveSetCount"></p><p id="saveExcludedCount"></p><ul id="saveExcludedSets"></ul>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:12px"><button id="keepTraining" type="button" autofocus>Keep training</button><button id="confirmSave" type="button" class="primary">Save to Hevy</button></div>' +
+    '<button id="saveDiscard" type="button" class="finish-discard">Discard workout</button>';
   document.body.append(saveDialog);
   let pendingSaveEntry = null;
   $("keepTraining").addEventListener("click", () => saveDialog.close());
@@ -2308,6 +2475,7 @@
     $("saveExcludedCount").textContent = excluded.length + " unticked working sets will be excluded.";
     $("saveExcludedSets").replaceChildren(...excluded.map(text => { const li = document.createElement("li"); li.textContent = text; return li; }));
     pendingSaveEntry = entry;
+    if (typeof paintFinishSummary === "function") paintFinishSummary();
     saveDialog.showModal();
     $("keepTraining").focus();
   });
@@ -2360,6 +2528,70 @@
   // Starts by itself when you tick a working set (warm-ups don't), counts down in the bar, and buzzes and beeps at zero.
   // The end time is kept in localStorage, so a reload doesn't lose it. The screen is kept awake where the browser
   // allows it (HTTPS only), because a sleeping page can't buzz.
+  // The Finish sheet: time, sets and stress, one short line per exercise, and on request a comparison with last time
+  // (e1RM against the last session, stress against your usual session). Reads the workout; changes nothing.
+  function paintFinishSummary() {
+    if (!draft) return;
+    const mins = Math.max(0, Math.round((Date.now() - new Date(draft.startedAt)) / 60000));
+    let sets = 0, done = 0, stressNow = 0, stressUsual = 0, haveStress = false;
+    const seen = new Set(), rows = [], compare = [];
+    const pct = (now, before) => {
+      if (!(before > 0) || !(now > 0)) return { text: "—", cls: "" };
+      const p = Math.round((now - before) / before * 1000) / 10;
+      return { text: (p > 0 ? "▲ " : p < 0 ? "▼ " : "") + Math.abs(p) + "%", cls: p > 0 ? "up" : p < 0 ? "down" : "" };
+    };
+    for (const ex of draft.exercises) {
+      const work = ex.sets.filter((s) => s.type !== "warmup"), ticked = work.filter((s) => s.done);
+      sets += work.length; done += ticked.length;
+      const u = unitFor(ex.ref);
+      let best = null;
+      for (const s of ticked) if (!best || num(s.kg) > num(best.kg)) best = s;
+      rows.push({ title: ex.title, count: ticked.length + "/" + work.length, state: !ticked.length ? "none" : ticked.length === work.length ? "all" : "some",
+        best: best ? (primaryText(best, ex) || "–") + " " + u + " × " + best.reps + ((best.arpe || best.rpe) ? " @" + (best.arpe || best.rpe) : "") : "Not done" });
+      const st = stressStates.get(ex.template_id), d = st && !st.pending && !st.error ? st.result : null;
+      let stNow = null, stUsual = null;
+      if (d && !seen.has(ex.template_id)) {
+        seen.add(ex.template_id);
+        stNow = (d.preview || d.session).total; stUsual = d.window && d.window.median;
+        if (stNow != null) { stressNow += stNow; haveStress = true; }
+        if (stUsual != null) stressUsual += stUsual;
+      }
+      const today = bestSetToday(ex), last = ex.ref.state && ex.ref.state.found ? ex.ref.state.e1rm_lb : null;
+      const toUnit = (lb) => u === "lb" ? Math.round(lb) : Math.round(lb / LB_PER_KG * 2) / 2;
+      compare.push({ title: ex.title, done: ticked.length > 0,
+        e1: pct(today && today.e1, last), st: pct(stNow, stUsual),
+        sub: ticked.length ? (last && today ? "e1RM " + toUnit(last) + " → " + toUnit(today.e1) + " " + u : "e1RM —") +
+          (stNow != null ? " · stress " + (stUsual != null ? stUsual.toFixed(2) + " → " : "") + stNow.toFixed(2) : "") : "Not done today" });
+    }
+    const stat = (value, label) => { const box = el("div"); box.append(el("b", null, value), el("span", null, label)); return box; };
+    $("saveStats").replaceChildren(stat(mins + " min", "time"), stat(done + "/" + sets, "sets"), stat(haveStress ? stressNow.toFixed(2) : "—", "stress"));
+    $("saveSummary").replaceChildren(...rows.map((r) => {
+      const line = el("div", "finish-row " + r.state);
+      line.append(el("i"), el("span", "finish-name", r.title), el("span", "finish-best", r.best), el("b", null, r.count));
+      return line;
+    }));
+    const box = $("saveMoreBox"), total = pct(stressNow, stressUsual);
+    const head = el("div", "finish-session");
+    head.append(el("span", null, "Session stress vs your usual"), el("b", null, haveStress ? stressNow.toFixed(2) : "—"),
+      el("span", "muted", stressUsual ? "usual " + stressUsual.toFixed(2) : "building history"), el("b", total.cls, total.text));
+    const table = el("div", "finish-table");
+    const th = el("div", "finish-trow finish-thead"); th.append(el("span", null, "Movement"), el("span", null, "e1RM"), el("span", null, "Stress")); table.append(th);
+    for (const c of compare) {
+      const tr = el("div", "finish-trow"), name = el("span");
+      name.append(el("span", "finish-name", c.title), el("small", null, c.sub));
+      tr.append(name, el("b", c.done ? c.e1.cls : "", c.done ? c.e1.text : "—"), el("b", c.done ? c.st.cls : "", c.done ? c.st.text : "—"));
+      table.append(tr);
+    }
+    box.replaceChildren(head, table, el("p", "muted", "▲ up / ▼ down: e1RM against your last session, stress against your usual session for each movement."));
+  }
+  $("saveMore").addEventListener("click", () => {
+    const open = $("saveMoreBox").hidden;
+    $("saveMoreBox").hidden = !open;
+    $("saveMore").textContent = open ? "See less ▴" : "See more ▾";
+    $("saveMore").setAttribute("aria-expanded", String(open));
+  });
+  $("saveDiscard").addEventListener("click", () => { saveDialog.close(); $("discard").click(); });
+
   const REST_OPTIONS = [0, 60, 90, 120, 150, 180, 240, 300];
   let restSecs = 180, restEnd = null, restTotal = 0, restDone = false, restTimer = null, audio = null, wake = null;
   try {
@@ -2393,7 +2625,25 @@
       $("restTime").textContent = mmss(Math.ceil(left / 1000));
       $("restProg").firstElementChild.style.width = Math.min(100, Math.max(0, left / (restTotal * 1000) * 100)) + "%";
     } else if (restDone) { $("restTime").textContent = "Rest over"; $("restProg").firstElementChild.style.width = "0%"; }
+    // The countdown in the header's top-right corner mirrors the timer.
+    const pill = $("restPill");
+    pill.classList.toggle("running", running); pill.classList.toggle("over", restDone);
+    $("restPillTime").textContent = running ? $("restTime").textContent : restDone ? "Rest over" : "Rest";
+    $("restPillProg").style.width = running ? $("restProg").firstElementChild.style.width : "0%";
+    pill.setAttribute("aria-label", running ? "Rest " + $("restTime").textContent + " left. Change or skip" : restDone ? "Rest over. Dismiss" : "Rest timer. Start or change the default");
   }
+  $("restPill").addEventListener("click", () => {
+    if (restDone) { restStop(); return; }
+    if (restEnd !== null) {
+      openSheet("Rest " + $("restTime").textContent, "Only changes the rest you're in. Set an exercise's rest under Targets.",
+        [{ v: "minus", label: "−15" }, { v: "plus", label: "+15" }, { v: "skip", label: "Skip", cls: "primary" }], 3,
+        (v) => { if (v === "skip") restStop(); else $(v === "minus" ? "restMinus" : "restPlus").click(); });
+      return;
+    }
+    openSheet("Rest timer", "Starts by itself when you tick a working set.",
+      [{ v: "start", label: "Start " + restLabel(restSecs || 180) }, { v: "default", label: "Default rest " + restLabel(restSecs) }], 1,
+      (v) => { if (v === "start") restStart(restSecs || 180); else $("restPick").click(); });
+  });
   function restBeep() {
     try { if (navigator.vibrate) navigator.vibrate([400, 150, 400, 150, 400, 150, 400]); } catch (e) {}
     try {
@@ -2513,6 +2763,7 @@
     $("padContext").textContent = input.dataset.padContext;
     numberpad.querySelector('[data-pad-key="."]').disabled = input.dataset.keypad !== "decimal";
     numberpad.querySelector('[data-pad-key="next"]').disabled = padInputs().at(-1) === input;
+    if (typeof paintPadRpe === "function") paintPadRpe();
     paintPlates();
     input.select();
     requestAnimationFrame(sizeNumberPad);
@@ -2544,13 +2795,17 @@
     input.setSelectionRange(edit.caret, edit.caret);
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  let padOutsideTap = false;
+  let padOutsideTap = false, padFieldTap = false;
   document.addEventListener("pointerdown", (e) => {
     // Keep the layout steady until the tapped control has handled its click.
     padOutsideTap = Boolean(padInput && !numberpad.contains(e.target) && !e.target.closest("input[data-keypad]"));
+    // A tap that starts on a weight or reps box opens the pad; if the pad scrolls the box up before the tap's
+    // click arrives, that click lands elsewhere and must not close the pad it just opened.
+    padFieldTap = Boolean(e.target.closest && e.target.closest("input[data-keypad]"));
   });
   document.addEventListener("click", (e) => {
     padOutsideTap = false;
+    if (padFieldTap) { padFieldTap = false; return; }
     if (padInput && !numberpad.contains(e.target) && !e.target.closest("input[data-keypad]")) closeNumberPad();
   });
   document.addEventListener("pointercancel", () => { padOutsideTap = false; });
@@ -2560,6 +2815,29 @@
   window.addEventListener("resize", () => { if (padInput) requestAnimationFrame(sizeNumberPad); });
 
   // Other text fields retain the system keyboard and its existing scrolling behavior.
+  // While typing reps, a row of RPE buttons sits above the keys for the RPE you performed. It always keeps its
+  // height (hidden, not removed, for weights) so the keys never move between weight and reps.
+  function paintPadRpe() {
+    const row = $("padRpe"), control = padInput ? repsRpe.get(padInput) : null;
+    row.replaceChildren();
+    row.classList.toggle("off", !control);
+    if (!control) return;
+    const current = control.querySelector(".rpeinput")?.value || "";
+    for (const v of RPES) {
+      const b = el("button", "rpe-pick" + (String(v) === current ? " on" : "") + (v >= 9 ? " hard" : v >= 8 ? " mid" : ""), String(v));
+      b.type = "button"; b.dataset.rpe = String(v); b.setAttribute("aria-label", "RPE " + v);
+      b.setAttribute("aria-pressed", String(String(v) === current));
+      row.append(b);
+    }
+  }
+  $("padRpe").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-rpe]"), control = padInput && repsRpe.get(padInput);
+    if (!b || !control) return;
+    const v = control.querySelector(".rpeinput")?.value === b.dataset.rpe ? "" : b.dataset.rpe;   // tap the chosen one again to clear it
+    control.choose(v);
+    paintPadRpe();
+  });
+
   let typingTimer = null;
   function liftIntoView(input) {
     if (document.activeElement !== input) return;
@@ -2583,6 +2861,9 @@
     clearTimeout(typingTimer);
     typingTimer = setTimeout(() => document.body.classList.remove("typing"), 150);   // moving between boxes is not leaving
   });
+
+  $("panelScrim").addEventListener("click", () => closePanel());
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && openPanelState && !document.querySelector(".scrim")) closePanel(); });
 
   // ── Boot ────────────────────────────────────────────────────────────────────
   if (typeof LoggerLayout !== 'undefined') LoggerLayout.init({
