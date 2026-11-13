@@ -1082,3 +1082,44 @@ storage, routes, 0–3 scale and the unknown-is-not-zero rule are unchanged.
 Tests: `rackbook/tests/test_log_soreness.cjs` (rewritten for the panel),
 `rackbook/tests/test_mesocycle_ui.cjs` (save rule), `tools/check_training_browser.py`.
 
+## Log page redesign: one exercise at a time (local, 2026-11-13)
+
+Issue #110, from the owner's tablet review (#109) and the agreed mockup. Presentation only: sets, weights,
+TS pinning, TM, LSe1RM, low exact RPEs, timers, the check-in rule, save, recovery and microcycle completion
+use the same code paths as before.
+
+- **Exercise strip** (`#exStrip`, built by `LoggerLayout.updateStrip`): one card per exercise with
+  initials, done/working count, a tick when every working set is done and `SS` for a superset, plus `+`
+  to add one. Below 1900px only the picked exercise's card is shown (`data-selected`); the 1900px
+  workspace keeps its list, outline and side tools.
+- **Card**: name, "Set n of m", the planned note, then one row of buttons: Info, Targets, Warm-up, Swap,
+  Superset, Note, Plates (barbell movements only) and ⋯ (unit, rounding, remove set/exercise). The old
+  head chips, collapse toggle and grip stay in the DOM but are hidden (the grip shows at 1900px).
+- **Sheets** live inside the card (`.exleft` is Info; `.ex-targets`, `.ex-note-panel`, `.ex-plates`), so
+  live numbers, stress and the loader keep updating; `openPanel` sets `data-panel` and redraws reopen it.
+  Info holds the e1RM/TM/LSe1RM tiles, stress and session advice. Targets edits each set's planned reps
+  (`s.tReps`, also the unticked reps) and RPE target (the existing RPErx control), and the exercise's rest
+  in 15-second steps (`exercise_refs.rest_sec`, as before). Note edits `ex.notes`, which is already sent
+  to Hevy.
+- **Set rows**: Set · Previous (600px and up) · Target (`planned kg × planned reps @RPE target`) ·
+  weight · Reps @ RPE · tick. The RPE performed (RPEact) shares the reps box. The tick is empty until the
+  set is done; the next set gets an outline only. The second unit, set e1RM and set stress columns are
+  hidden.
+- **Number pad**: an RPE row (4–10 in halves) above the keys while typing reps sets that set's RPE
+  performed; it keeps its height for weights so keys never move. A tap that starts on a weight/reps box
+  no longer lets the same tap close the pad if the pad scrolled the box.
+- **Moving on**: after the last working set of an exercise, the next exercise with sets left is shown
+  (wrapping to a skipped one). Supersets (`ex.ss`, draft only, not sent to Hevy) hand each set to the
+  partner with no rest; rest starts once both have done the round (`LoggerLayout.afterSet`).
+- **Rest countdown** moved to the header's top-right (`#restPill`): tap for −15/+15/Skip while running,
+  or to start the default. The bottom rest block is hidden; its buttons remain as the timer's controls.
+- **Plate strip** follows the exercise on screen and shows `Set · kg · lb`, the plates drawn and the plate
+  list; tapping opens the Plates sheet. Titles naming dumbbells, kettlebells, cables, machines, bands,
+  assisted or bodyweight get no strip or Plates button. A **No bar (plates only)** bar (`bar_kg` 0) loads
+  the whole weight in one stack ("total") for weighted pull-ups and strap movements.
+- **Check-in** folds to one line ("Check-in ✓ · Neutral · Squat none…") once confirmed; tapping reopens it.
+- **Finish sheet** (the save confirmation): time, sets and stress, one line per exercise with its best set,
+  **See more** (e1RM against the last session from `exercise-state`, stress against the movement's usual
+  session window median), and Discard. The model trial panels/results and the long session review are no
+  longer shown; the trial still records automatically where a pattern rating exists and its timing is
+  unchanged, and the session review is still saved.

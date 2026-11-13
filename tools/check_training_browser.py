@@ -56,7 +56,7 @@ with sync_playwright() as p:
     expect(first_tick).to_be_disabled()
     first_set.evaluate("(row) => row.scrollIntoView({block:'center'})")
     page.screenshot(path=str(out/'logger-blocked-set-phone.png'),animations='disabled')
-    page.get_by_role('button',name='+ Warm-up sets',exact=True).first.tap()
+    page.locator('#exercises .card[data-selected="true"] .ex-chip',has_text='Warm-up').tap()
     warmups=page.locator('.set:not([data-working]) .tick')
     assert warmups.count()>0
     timer_before=page.evaluate("localStorage.getItem('training.restEnd')")
@@ -97,10 +97,9 @@ with sync_playwright() as p:
     assert original_prescription['source']=='plan'
     assert original_prescription['exercises'][0]['sets'][1]['reps']==5
     advice_box=page.locator('[data-session-advice]').first
-    advice_summary=page.locator('.mobile-session-advice > summary').first
-    assert advice_summary.bounding_box()['y']>first_tick.bounding_box()['y']
     expect(advice_box).to_be_hidden()
-    advice_summary.click()
+    page.locator('#exercises .card[data-selected="true"] .ex-chip',has_text='Info').click()
+    expect(advice_box).to_be_visible()
     expect(advice_box.locator('summary').first).to_contain_text('Provisional session advice')
     if advice_box.locator('details').first.get_attribute('open') is None:
         advice_box.locator('summary').first.click()
@@ -121,6 +120,8 @@ with sync_playwright() as p:
     if advice_box.locator('details').first.get_attribute('open') is None:
         advice_box.locator('summary').first.click()
     page.screenshot(path=str(out/'session-advice-phone.png'),full_page=True)
+    page.locator('#exercises .card[data-panel] .panel-close:visible').click()
+    expect(advice_box).to_be_hidden()
     page.evaluate('navigator.serviceWorker.ready')
     scopes=page.evaluate('(async()=> (await navigator.serviceWorker.getRegistrations()).map(r=>r.scope))()')
     assert scopes==[URL+'/training/'],scopes
@@ -130,8 +131,10 @@ with sync_playwright() as p:
     page.locator('[data-pad-key="next"]').tap()
     page.locator('[data-pad-key="1"]').tap()
     page.locator('[data-pad-key="done"]').tap()
+    page.locator('#exercises .card[data-selected="true"] .ex-chip',has_text='Targets').tap()
     page.get_by_role('button',name='RPErx 8. Change RPErx',exact=True).tap()
     page.get_by_role('button',name='8',exact=True).tap()
+    page.locator('#exercises .card[data-panel] .panel-close:visible').tap()
     first_row=page.locator('.set[data-working]').first
     before_tap=first_row.locator('.tick').evaluate('(button) => { window.tappedSet = button; return button.offsetTop; }')
     first_row.get_by_role('button',name='Mark set done',exact=True).tap()
@@ -142,7 +145,7 @@ with sync_playwright() as p:
     expect(page.locator('.set[data-working]').nth(1)).to_have_class('set next-working-set')
     page.get_by_role('button',name='RPEact 8. Change RPEact',exact=True).tap()
     page.get_by_role('button',name='7',exact=True).tap()
-    expect(page.get_by_role('button',name='RPErx 8. Change RPErx',exact=True)).to_be_visible()
+    expect(page.locator('#exercises .card[data-selected="true"] .ex-targets .rpebtn[aria-label="RPErx 8. Change RPErx"]')).to_have_count(1)
     page.get_by_role('button',name='Mark set done',exact=True).last.tap()
     draft=page.evaluate("JSON.parse(localStorage.getItem('training.logDraft'))")
     assert all(s['done'] for s in draft['exercises'][0]['sets'])
@@ -171,25 +174,33 @@ with sync_playwright() as p:
     desk.evaluate('(d)=>localStorage.setItem("training.logDraft",JSON.stringify(d))',draft)
     desk.reload()
     desk.get_by_role('textbox',name='RPEact',exact=True).first.fill('6.5')
+    desk.locator('#exercises .card[data-selected="true"] .ex-chip',has_text='Targets').click()
     expect(desk.get_by_role('textbox',name='RPErx',exact=True).first).to_have_value('8')
+    desk.locator('#exercises .card[data-panel] .panel-close:visible').click()
     updated=desk.evaluate("JSON.parse(localStorage.getItem('training.logDraft'))")
     assert updated['exercises'][0]['sets'][0]['arpe']=='6.5'
     assert updated['exercises'][0]['sets'][0]['kg']==draft['exercises'][0]['sets'][0]['kg']
     assert desk.evaluate('document.documentElement.scrollWidth <= innerWidth')
     desk.screenshot(path=str(out/'logger-desktop.png'),full_page=True)
+    desk.locator('#exercises .card[data-selected="true"] .ex-chip',has_text='Info').click()
     with desk.expect_response(lambda r:r.url.endswith('/exercise-refs/sq') and r.request.method=='PUT') as preference:
         desk.get_by_role('button',name='Use e1RM for weights',exact=True).click()
     assert preference.value.ok,preference.value.text()
     expect(desk.get_by_role('button',name='Use e1RM for weights',exact=True)).to_have_attribute('aria-pressed','false')
     expect(desk.get_by_role('button',name='Use TM for weights',exact=True)).to_have_attribute('aria-pressed','false')
     expect(desk.get_by_role('button',name='LSe1RM',exact=True)).to_be_disabled()
+    desk.locator('#exercises .card[data-panel] .panel-close:visible').click()
     desk.get_by_role('button',name='+ Add set',exact=True).click()
     manual_before=desk.get_by_role('textbox',name='Weight in kilograms',exact=True).last.input_value()
+    desk.locator('#exercises .card[data-selected="true"] .ex-chip',has_text='Targets').click()
     desk.get_by_role('textbox',name='RPErx',exact=True).last.fill('7')
+    desk.locator('#exercises .card[data-panel] .panel-close:visible').click()
     expect(desk.get_by_role('textbox',name='Weight in kilograms',exact=True).last).to_have_value(manual_before)
     desk.reload()
+    desk.locator('#exercises .card[data-selected="true"] .ex-chip',has_text='Info').click()
     expect(desk.get_by_role('button',name='Use e1RM for weights',exact=True)).to_have_attribute('aria-pressed','false')
     expect(desk.get_by_role('button',name='Use TM for weights',exact=True)).to_have_attribute('aria-pressed','false')
+    desk.locator('#exercises .card[data-panel] .panel-close:visible').click()
     expect(desk.get_by_role('textbox',name='Weight in kilograms',exact=True).last).to_have_value(manual_before)
     stored=next(r for r in desk.request.get(URL+'/training/exercise-refs').json() if r['exercise_template_id']=='sq')
     assert stored['auto_weights'] is False and stored['ls'] is True,stored
@@ -198,10 +209,11 @@ with sync_playwright() as p:
     fresh.route('https://**/*',lambda route:route.abort())
     fresh_page=fresh.new_page();fresh_page.goto(URL+'/training/log')
     fresh_page.get_by_role('button',name='Load selected workout',exact=True).click()
-    # On a phone the weight-source tiles sit inside the folded numbers line until it is opened.
+    # On a phone the weight-source tiles sit in the exercise's Info sheet until it is opened.
     numbers_line=fresh_page.locator('.numbers > summary').first
     expect(numbers_line).to_contain_text('weights manual')
-    numbers_line.click()
+    expect(fresh_page.get_by_role('button',name='Use e1RM for weights',exact=True)).to_be_hidden()
+    fresh_page.locator('#exercises .card[data-selected="true"] .ex-chip',has_text='Info').click()
     expect(fresh_page.get_by_role('button',name='Use e1RM for weights',exact=True)).to_have_attribute('aria-pressed','false')
     expect(fresh_page.get_by_role('button',name='Use TM for weights',exact=True)).to_have_attribute('aria-pressed','false')
     assert fresh_page.get_by_role('textbox',name='Weight in kilograms',exact=True).first.input_value()=='100'
@@ -209,9 +221,14 @@ with sync_playwright() as p:
     assert desk.request.put(URL+'/training/exercise-refs/sq',data={**stored,'auto_weights':True}).ok
     desktop.close()
     page.reload();expect(page.locator('#title')).to_have_value('Mock Workout')
-    expect(page.get_by_role('button',name='RPErx 8. Change RPErx',exact=True)).to_be_visible()
+    expect(page.locator('#exercises .card[data-selected="true"] .ex-targets .rpebtn[aria-label="RPErx 8. Change RPErx"]')).to_have_count(1)
     expect(page.get_by_role('button',name='RPEact 7. Change RPEact',exact=True)).to_be_visible()
     page.locator('#finish').tap()
+    # The Finish sheet: one line per exercise, and See more compares with last time.
+    expect(page.locator('#saveSummary .finish-row')).to_have_count(1)
+    expect(page.locator('#saveSummary')).to_contain_text('2/2')
+    page.locator('#saveMore').tap()
+    expect(page.locator('#saveMoreBox .finish-trow:not(.finish-thead)')).to_have_count(1)
     with page.expect_response(lambda r:'/training/hevy/workouts' in r.url and r.request.method=='POST') as saved:
         page.locator('#confirmSave').tap()
     saved_result=saved.value.json()
@@ -244,7 +261,7 @@ with sync_playwright() as p:
     expect(page.locator('#sessionReview')).to_contain_text('Saved set count differs from recorded intent')
     evidence=review['review']['movements'][0]['sets']
     assert evidence[0]['rpe_source']=='entered' and evidence[1]['rpe_source']=='copied_target',evidence
-    page.locator('#sessionReview summary').first.click()
+    expect(page.locator('#sessionReview')).to_be_hidden()
     page.screenshot(path=str(out/'session-review-phone.png'),full_page=True)
     assert page.evaluate("localStorage.getItem('training.logDraft')")==None
     history_page=context.new_page()

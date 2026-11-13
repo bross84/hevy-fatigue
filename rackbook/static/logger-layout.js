@@ -20,7 +20,7 @@ const LoggerLayout = (() => {
     if (!detached || (id != null && detached.id !== id)) return;
     // Return the same live control before its exercise is replaced or the viewport narrows.
     const card = hooks.getCard(detached.id);
-    if (card === detached.card && card?.isConnected) card.querySelector('.exright').append(detached.element);
+    if (card === detached.card && card?.isConnected) (card.querySelector('.ex-plates') || card.querySelector('.exright')).append(detached.element);
     else detached.element.remove();
     detached = null;
   }
@@ -38,6 +38,20 @@ const LoggerLayout = (() => {
 
   // Motivation is one check-in for the day and stays at the top of the workout. On phones each card's
   // next working set explains why its tick is locked and jumps back to that single check-in.
+  // Once confirmed, the check-in folds to one line for the rest of the workout; tapping it opens it again.
+  const LEVELS = ['Eager', 'Willing', 'Neutral', 'Reluctant', 'Dreading it'];
+  const SORE = [['squat', 'Squat'], ['bench_press', 'Press'], ['deadlift', 'Hinge']];
+  const SORE_LEVEL = ['none', 'mild', 'moderate', 'severe'];
+  let wasReady = null;
+  function checkinLine(current) {
+    const parts = [];
+    if (current.motivation && LEVELS[current.motivation.level]) parts.push(LEVELS[current.motivation.level]);
+    for (const [key, label] of SORE) {
+      const r = current.soreness?.[key];
+      if (r && (Number.isInteger(r.level) || r.pain)) parts.push(label + ' ' + (Number.isInteger(r.level) ? SORE_LEVEL[r.level] : '') + (r.pain ? ' (pain)' : ''));
+    }
+    return 'Check-in \u2713' + (parts.length ? ' \u00b7 ' + parts.join(' \u00b7 ') : '');
+  }
   function updateMotivation() {
     const current = draft();
     const home = byId('sessionMotivationHome');
@@ -45,6 +59,13 @@ const LoggerLayout = (() => {
     const blocked = mobile.matches && required;
     releaseMotivation();
     home.hidden = false;
+    const ready = Boolean(current) && !required;
+    const summary = home.querySelector(':scope > summary');
+    if (summary) summary.textContent = ready ? checkinLine(current) : 'Before you train \u00b7 today\u2019s check-in';
+    home.classList.toggle('checked-in', ready);
+    if (ready && wasReady !== true) home.open = false;
+    if (current && !ready) home.open = true;
+    wasReady = current ? ready : null;
     if (blocked) home.open = true;
     for (const ex of current?.exercises || []) {
       const card = hooks.getCard(ex.id), controls = mobileControls.get(card);
@@ -73,16 +94,16 @@ const LoggerLayout = (() => {
     byId('motivation-level')?.focus({preventScroll: true});
   }
 
+  // Session advice stays in the exercise's Info sheet at every width, out of the way of the sets.
   function positionAdvice(card) {
     const controls = mobileControls.get(card);
     if (!controls?.advice) return;
     const {advice, disclosure} = controls;
-    if (mobile.matches && advice.parentElement !== disclosure) disclosure.append(advice);
-    else if (!mobile.matches && advice.parentElement === disclosure) {
+    if (advice.parentElement === disclosure) {
       const left = card.querySelector('.exleft');
       left.insertBefore(advice, left.querySelector(':scope > .numbers'));
     }
-    disclosure.hidden = !mobile.matches || !card.querySelector('.set[data-working]');
+    disclosure.hidden = true;
   }
 
   function renderPrevious(ex) {
@@ -141,10 +162,73 @@ const LoggerLayout = (() => {
       if (card) {
         card.dataset.selected = String(ex.id === selectedId);
         const summary = card.querySelector('.exercise-progress');
-        if (summary) summary.textContent = completed + ' of ' + size + ' sets completed';
+        if (summary) summary.textContent = setOf(ex);
       }
     });
     byId('loggerProgress').textContent = done + ' of ' + total + ' sets completed';
+    updateStrip(exercises);
+  }
+
+  const working = ex => ex.sets.filter(s => s.type !== 'warmup');
+  const isOpen = ex => working(ex).some(s => !s.done);
+  function setOf(ex) {
+    const work = working(ex), done = work.filter(s => s.done).length;
+    if (!work.length) return 'No working sets';
+    return done === work.length ? 'All ' + work.length + ' sets done' : 'Set ' + (done + 1) + ' of ' + work.length;
+  }
+  function initials(title) {
+    const words = String(title).replace(/\(.*?\)/g, ' ').split(/[\s,-]+/).filter(Boolean);
+    return words.slice(0, 3).map(w => w[0]).join('').toUpperCase() || '?';
+  }
+  // The exercise strip: one card per exercise, a tick once its working sets are done, SS for a superset.
+  function updateStrip(exercises) {
+    const strip = byId('exStrip');
+    if (!strip) return;
+    strip.replaceChildren();
+    for (const ex of exercises) {
+      const work = working(ex), done = work.filter(s => s.done).length, all = work.length > 0 && done === work.length;
+      const button = node('button', 'ex-card' + (all ? ' complete' : '') + (ex.ss ? ' superset' : ''));
+      button.type = 'button';
+      button.setAttribute('aria-current', ex.id === selectedId ? 'true' : 'false');
+      button.setAttribute('aria-label', ex.title + ', ' + done + ' of ' + work.length + ' sets done' + (ex.ss ? ', in a superset' : ''));
+      button.title = ex.title;
+      button.append(node('span', 'ex-card-short', initials(ex.title)), node('span', 'ex-card-count', done + '/' + work.length));
+      if (all) button.append(node('span', 'ex-card-done', '\u2713'));
+      if (ex.ss) button.append(node('span', 'ex-card-ss', 'SS'));
+      button.addEventListener('click', () => select(ex.id));
+      strip.append(button);
+    }
+    const add = node('button', 'ex-card ex-card-add', '+'); add.type = 'button';
+    add.setAttribute('aria-label', 'Add exercise');
+    add.addEventListener('click', () => byId('addEx').click());
+    strip.append(add);
+  }
+  function current() { return selected() || null; }
+  // Show one exercise. Opening a collapsed one reopens it.
+  function select(id) {
+    const ex = draft()?.exercises.find(e => e.id === id);
+    if (!ex) return;
+    selectedId = id;
+    if (ex.collapsed) { ex.collapsed = false; hooks.save(); hooks.render(); }
+    update();
+    if (typeof paintPlates === 'function') paintPlates();
+    const strip = byId('exStrip');
+    if (strip && strip.getBoundingClientRect().top < 0) strip.scrollIntoView({block: 'start', behavior: 'instant'});
+  }
+  // After a working set is ticked: in a superset, go to the partner (no rest until both have done the round);
+  // otherwise, once this exercise is done, the next exercise that still has sets to do.
+  function afterSet(ex) {
+    const list = draft()?.exercises || [];
+    const doneCount = e => working(e).filter(s => s.done).length;
+    const partner = ex.ss ? list.find(e => e.id === ex.ss) : null;
+    if (partner && isOpen(partner)) return {next: partner.id, skipRest: doneCount(partner) < doneCount(ex)};
+    if (isOpen(ex)) return null;
+    const at = list.indexOf(ex);
+    for (let step = 1; step < list.length; step++) {
+      const e = list[(at + step) % list.length];
+      if (isOpen(e)) return {next: e.id, skipRest: false};
+    }
+    return null;
   }
 
   function update() {
@@ -265,5 +349,5 @@ const LoggerLayout = (() => {
     positionMobile();
     position();
   }
-  return {init, update, release, loaderFor, decorate, releaseMotivation, updateMotivation};
+  return {init, update, release, loaderFor, decorate, releaseMotivation, updateMotivation, current, select, afterSet};
 })();

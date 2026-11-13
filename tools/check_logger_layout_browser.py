@@ -103,7 +103,7 @@ with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
             for width, height in [(1920,1080),(1900,1080),(1899,1080),(1500,1000),(1280,900),(1100,900),(1099,900),(1024,768),(820,1180),(390,844)]:
                 page.set_viewport_size({'width': width, 'height': height})
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), width
-                if width >= 1100:
+                if width >= 1900:
                     boxes = page.locator('#exercises > .card').evaluate_all("""els => els.map(el => {
                       const r=el.getBoundingClientRect(); return {x:r.x,width:r.width};
                     })""")
@@ -111,8 +111,16 @@ with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
                     assert max(b['width'] for b in boxes)-min(b['width'] for b in boxes) < 1, (width,boxes)
                     assert max(b['x'] for b in boxes)-min(b['x'] for b in boxes) < 1, (width,boxes)
                     assert max(b['width'] for b in boxes) <= 880, (width,boxes)
-                    # Existing set grid keeps the weight column at 80px.
+                    # The wide workspace keeps the weight column at 80px.
                     assert page.locator('#exercises .set input').first.evaluate('(el)=>el.getBoundingClientRect().width') <= 80
+                else:
+                    # Below the wide workspace, the strip lists all six and only the picked exercise is on screen.
+                    expect(page.locator('#exStrip .ex-card:not(.ex-card-add)')).to_have_count(6)
+                    visible = page.locator('#exercises > .card').evaluate_all(
+                        "els => els.filter(el => el.getBoundingClientRect().width > 0).map(el => el.getBoundingClientRect().width)")
+                    assert len(visible) == 1 and (width < 1100 or visible[0] <= 880), (width, visible)
+                    weight_width = page.locator('#exercises > .card[data-selected="true"] .set input').first.evaluate('(el)=>el.getBoundingClientRect().width')
+                    assert weight_width >= 52, (width, weight_width)
 
                 if width < 1900:
                     expect(page.locator('#loggerTools')).to_be_hidden()
@@ -129,7 +137,7 @@ with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
             assert not page.evaluate("document.querySelector('main').inert")
             page.set_viewport_size({'width':2560,'height':1440})
             assert page.evaluate("document.getElementById('bar')===window.layoutBar")
-            assert page.locator('#loggerLoader > .loader').count() == 1
+            expect(page.locator('#loggerLoader > .loader')).to_have_count(1)
             page.evaluate('restStop()')
             # Reorder the actual draft/DOM using the existing grip drag.
             page.evaluate('draft.exercises.forEach(e=>e.collapsed=true);renderWorkout()')
