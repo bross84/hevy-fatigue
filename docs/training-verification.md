@@ -1262,5 +1262,13 @@ top check-in; motivation stays at the top on phones. Details: hevy-context.md, "
   `Squat (Barbell)` day, uses Go to check-in, and checks the posted payload and stored
   `/training/workout-soreness/{id}`; passes. `tools/check_logger_layout_browser.py` passes. Browser
   pane at 768x1024 and 375x812: one check-in at top, no soreness on cards, no sideways scroll.
+- Rebased onto the tablet layout/swap change (#104): `logger-layout.js` cache key is now v=5 and the
+  browser check uses the 599px phone breakpoint. After the rebase: host 244 passed; logger 626 passed,
+  1 expected failure (as before); all 36 `.cjs` run by the release list passed. Mocked browser:
+  logger layout, weekly coaching and recovery pass. Two checks changed to fit the new check-in, with no
+  behavior assertion removed: weekly coaching expects the new reminder wording, and recovery confirms
+  the phone check-in is already open rather than tapping its header (that tap now closes it).
+- Baseline failure: `tools/check_training_browser.py` fails at the stored motivation-row assertion
+  both on unchanged main (340670c) and on this branch, so it is not caused by this change.
 - Not run: Docker build/startup (daemon not running), physical phone/tablet, deployed or real data.
 
