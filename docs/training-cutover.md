@@ -706,6 +706,15 @@ stress appears before Fatigue Trend. On desktop, confirm Fatigue Trend
 still spans the analysis area.
 When a daily score is available, verify that `/ 20` appears beside the value.
 
+On the phone and the gym tablet (upright and sideways), check the one-exercise
+layout: the strip lists every exercise and tapping a card switches; the button
+row opens Info, Targets, Note and Plates as sheets; Targets changes the rest in
+15-second steps; ticking the last set moves to the next exercise; a superset
+alternates without rest until both have done the round; the countdown sits in
+the header's top-right; the plate strip shows pounds, is absent on dumbbell
+exercises, and "No bar" shows the total stack; typing reps shows the RPE row
+without moving the keys; Finish shows one line per exercise and See more.
+
 On a physical phone, start a normal workout and verify that the next working
 set shows the check-in requirement and that a warm-up can be marked done
 before confirming. Tap Go to check-in on the set (it jumps to the check-in

@@ -1272,3 +1272,27 @@ top check-in; motivation stays at the top on phones. Details: hevy-context.md, "
   both on unchanged main (340670c) and on this branch, so it is not caused by this change.
 - Not run: Docker build/startup (daemon not running), physical phone/tablet, deployed or real data.
 
+## Log page redesign: one exercise at a time — local, 2026-11-13
+
+Issue #110 on `feat/logger-redesign`; details in hevy-context.md, "Log page redesign".
+
+- Passed: host 244; logger 626 with 1 expected failure (as before); all 37 release-list `.cjs`, including
+  the new `rackbook/tests/test_log_redesign.cjs` (exercise advance, superset hand-off and rest, no-bar
+  plate plans, Target text, plate-free titles).
+- Mocked browser, all passing: training, training recovery, logger layout, dashboard layout, weekly,
+  daily and AI coaching, plan proposal. `check_training_browser.py` passes on a fresh preview server; a
+  rerun on the same server fails at its first step because the mock plan's day is already complete.
+- Browser checks changed to the new screens, with no behavior assertion removed:
+  `check_training_browser.py` reaches warm-ups, session advice, the RPE target and the weight-source tiles
+  through the Warm-up, Info and Targets buttons, checks the Finish sheet's exercise line and See more
+  table, and checks the long session review is hidden (its saved content is still asserted through the
+  API). `check_training_recovery_browser.py` expects the header countdown (`#restPill`) to stay visible in
+  recovery instead of the bottom rest block. `check_logger_layout_browser.py` keeps the six-card, 80px
+  weight-column assertions at 1900px and up; below that it asserts the strip lists six exercises and one
+  card is shown (at most 880px wide from 1100px), and waits for the side loader to return after resizing.
+- Headless Edge screenshots against the mocked preview at 800×1280 and 390×844 (touch): strip, button
+  row, Target column, Reps @ RPE, number pad RPE row, Info, Targets and Plates sheets, header countdown,
+  plate strip with pounds and the Finish sheet with See more. No page errors.
+- Found and fixed while checking: the RPE picker opened under the Targets sheet; a tap on a low weight box
+  could open and immediately close the number pad (now ignored for a tap that started on the box).
+- Not run: Docker build/startup (daemon not running), physical phone/tablet, deployed or real data.
