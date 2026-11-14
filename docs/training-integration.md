@@ -49,6 +49,15 @@ file/environment fallback. Imported credential routes write only to the host;
 old logging credential rows are inactive. The logging key is unnecessary in the
 combined deployment, but stays in the old rollback backup.
 
+Encryption key file protection (2026-11-14): the plaintext migration only rewrites
+values that are not shaped like encrypted tokens. A saved key encrypted with a
+different or missing key file is never overwritten; reads raise
+`StoredKeyUnreadable`, both Settings pages say the key can't be read with the
+current key file, and the key test reports not ok. If the key file is missing
+while encrypted settings exist, a new file is still created (fresh installs are
+unchanged) and a warning is logged without key material; restoring the original
+file recovers every saved value. Covered by `tests/test_shared_credentials.py`.
+
 Monitoring calculation files and input selection are unchanged. A deterministic
 fixture containing same-day training, missing ratings and a monitoring gap was
 run against an isolated archive of `5bef649` and this application; the full daily

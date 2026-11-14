@@ -8,6 +8,7 @@ from typing import Annotated, Any, Literal
 
 import httpx
 from cryptography.fernet import InvalidToken
+from credentials import UNREADABLE_KEY_MESSAGE, StoredKeyUnreadable
 from fastapi import FastAPI, HTTPException, Query, Response, Request
 from fastapi.responses import FileResponse, RedirectResponse
 from pathlib import Path
@@ -253,7 +254,7 @@ def _call_hevy(call):
     except InvalidToken:
         raise HTTPException(
             status_code=400,
-            detail="The stored Hevy API key can't be decrypted. Save it again.",
+            detail=UNREADABLE_KEY_MESSAGE,
         )
     except ValueError as exc:  # no key stored, or a corrupt Fernet key file
         raise HTTPException(status_code=400, detail=str(exc))
@@ -1476,7 +1477,11 @@ def _session_slots_for_active_block(conn, state: dict[str, Any]) -> list[dict[st
 @app.get("/settings")
 def get_settings():
     """Return whether the Hevy API key is configured. Never returns the key itself."""
-    key = hevy_client.get_api_key()
+    try:
+        key = hevy_client.get_api_key()
+    except StoredKeyUnreadable:
+        return {"hevy_api_key_set": False, "hevy_api_key_preview": None,
+                "hevy_api_key_error": UNREADABLE_KEY_MESSAGE}
     if key and len(key) >= 4:
         preview = "···" + key[-4:]
     elif key:

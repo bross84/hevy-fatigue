@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <script src="/training/static/session-review.js"></script>
-  <script src="/training/static/training.js"></script>
+  <script src="/training/static/training.js?v=2"></script>
   <script src="/training/static/draft-transfer.js"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="utf-8" />
@@ -337,7 +337,7 @@
       state.pageCount = body.page_count;
       for (const w of body.workouts) $("list").append(renderWorkout(w));
       if (state.page === 1 && body.workouts.length === 0) {
-        $("list").append(el("p", "empty", "No workouts in Hevy yet."));
+        $("list").append(el("p", "empty", "No recent workouts yet."));
       }
     } catch (err) {
       showError("Couldn't reach this server. Check your connection.");

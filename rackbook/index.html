@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
-  <script src="/training/static/training.js"></script>
+  <script src="/training/static/training.js?v=2"></script>
   <script src="/training/static/draft-transfer.js"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="UTF-8" />
@@ -634,7 +634,7 @@
           refs.apiKeyInput.placeholder = "Enter new key to replace";
           refs.replaceApiKeyBtn.hidden = false;
         } else {
-          refs.apiKeySummary.textContent = "No key saved yet.";
+          refs.apiKeySummary.textContent = data.hevy_api_key_error || "No key saved yet.";
           refs.apiKeyInput.placeholder = "Paste Hevy API key";
           refs.replaceApiKeyBtn.hidden = true;
         }

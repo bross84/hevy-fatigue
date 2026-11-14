@@ -1,6 +1,8 @@
 """Shared host credential storage and original legacy fallback behavior."""
+import base64
+import logging
 import os
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy.orm import Session
 from database import AppSetting, SessionLocal
 
@@ -9,6 +11,38 @@ from database import AppSetting, SessionLocal
 # The API key in the DB is encrypted with it, so a DB dump alone can't expose it.
 _FERNET_KEY_PATH = os.getenv("FERNET_KEY_PATH", "/data/app.key")
 _fernet: Fernet | None = None
+_ENCRYPTED_SETTING_KEYS = ("hevy_api_key", "ai_api_key")
+_log = logging.getLogger(__name__)
+
+
+class StoredKeyUnreadable(InvalidToken):
+    """A saved credential is encrypted, but not with the current key file."""
+
+
+UNREADABLE_KEY_MESSAGE = (
+    "The saved key can't be read with the current encryption key file. "
+    "Restore the original key file, or save the key again."
+)
+
+
+def _looks_encrypted(value: str) -> bool:
+    """True when value has the shape of a Fernet token (never legacy plaintext)."""
+    try:
+        raw = base64.urlsafe_b64decode(value.strip().encode())
+    except (ValueError, TypeError):
+        return False
+    # version byte + timestamp + IV + at least one cipher block + HMAC
+    return len(raw) >= 73 and raw[0] == 0x80
+
+
+def _encrypted_settings_exist() -> bool:
+    try:
+        with SessionLocal() as db:
+            rows = db.query(AppSetting.value).filter(AppSetting.key.in_(_ENCRYPTED_SETTING_KEYS)).all()
+    except Exception:
+        return False
+    return any(value and _looks_encrypted(value) for (value,) in rows)
+
 
 def _get_fernet() -> Fernet:
     global _fernet
@@ -18,6 +52,10 @@ def _get_fernet() -> Fernet:
         with open(_FERNET_KEY_PATH, "rb") as f:
             key = f.read().strip()
     else:
+        if _encrypted_settings_exist():
+            # Saved values stay untouched, so restoring the original file still recovers them.
+            _log.warning("Encryption key file is missing but encrypted settings exist; "
+                         "creating a new key file. Restore the original key file to read them.")
         key = Fernet.generate_key()
         os.makedirs(os.path.dirname(_FERNET_KEY_PATH), exist_ok=True)
         with open(_FERNET_KEY_PATH, "wb") as f:
@@ -42,6 +80,10 @@ def get_db_api_key(db: Session) -> str | None:
     try:
         return _decrypt(row.value)
     except Exception:
+        if _looks_encrypted(row.value):
+            # Encrypted with a different key file: never overwrite it, or the
+            # original key file could no longer recover it.
+            raise StoredKeyUnreadable(UNREADABLE_KEY_MESSAGE) from None
         # One-time compatibility migration from legacy plaintext storage.
         legacy_plaintext = row.value.strip()
         if not legacy_plaintext:

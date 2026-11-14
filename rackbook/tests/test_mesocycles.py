@@ -265,7 +265,7 @@ class MesocycleCase(unittest.TestCase):
         self.assertEqual(1,len(plans));self.assertEqual(1,len(plans[0]['weeks']))
         for url in ('/microcycles','/mesocycles'):
             html=self.client.get(url).text
-            self.assertIn('Microcycle Builder',html)
+            self.assertIn('<h1>Plans</h1>',html)
             self.assertNotIn('id="addWeek"',html)
             self.assertNotIn('Copy to next week',html)
 

@@ -5,6 +5,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from cryptography.fernet import Fernet
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -45,3 +47,55 @@ class SharedCredentialTests(unittest.TestCase):
             db.query(AppSetting).delete();db.commit()
         with patch('hevy_client._load_api_key',return_value='fake-fallback'):
             self.assertEqual(training_client.HevyClient().api_key,'fake-fallback')
+
+    def _key_path(self):
+        return Path(credentials._FERNET_KEY_PATH)
+
+    def _stored_value(self):
+        with self.session() as db:
+            return db.query(AppSetting).filter_by(key='hevy_api_key').one().value
+
+    def _reload_key_file(self):
+        credentials._fernet=None
+
+    def test_wrong_key_file_leaves_saved_key_recoverable(self):
+        credentials.save_api_key('fake-saved-credential')
+        original_file=self._key_path().read_bytes();saved=self._stored_value()
+        self._key_path().write_bytes(Fernet.generate_key());self._reload_key_file()
+        with self.session() as db, self.assertRaises(credentials.StoredKeyUnreadable):
+            credentials.get_db_api_key(db)
+        self.assertEqual(self._stored_value(),saved)
+        self._key_path().write_bytes(original_file);self._reload_key_file()
+        with self.session() as db:
+            self.assertEqual(credentials.get_db_api_key(db),'fake-saved-credential')
+
+    def test_missing_key_file_warns_and_leaves_saved_values_recoverable(self):
+        credentials.save_api_key('fake-saved-credential')
+        original_file=self._key_path().read_bytes();saved=self._stored_value()
+        self._key_path().unlink();self._reload_key_file()
+        with self.session() as db:
+            with self.assertLogs('credentials','WARNING') as logs, self.assertRaises(credentials.StoredKeyUnreadable):
+                credentials.get_db_api_key(db)
+        self.assertNotIn(original_file.decode(),' '.join(logs.output))
+        self.assertEqual(self._stored_value(),saved)
+        self._key_path().write_bytes(original_file);self._reload_key_file()
+        with self.session() as db:
+            self.assertEqual(credentials.get_db_api_key(db),'fake-saved-credential')
+
+    def test_fresh_install_creates_key_file_without_warning(self):
+        with self.assertNoLogs('credentials','WARNING'):
+            credentials.save_api_key('fake-first-credential')
+        self.assertTrue(self._key_path().exists())
+
+    def test_settings_routes_report_unreadable_key_without_failing(self):
+        import main
+        from rackbook import main as training_main
+        credentials.save_api_key('fake-saved-credential')
+        self._key_path().write_bytes(Fernet.generate_key());self._reload_key_file()
+        with self.session() as db:
+            host=main.get_settings(db=db)
+            self.assertFalse(host['api_key_set']);self.assertEqual(host['api_key_error'],credentials.UNREADABLE_KEY_MESSAGE)
+            self.assertEqual(main.test_api_key(db=db),{'ok':False,'detail':credentials.UNREADABLE_KEY_MESSAGE})
+        training=training_main.get_settings()
+        self.assertFalse(training['hevy_api_key_set'])
+        self.assertEqual(training['hevy_api_key_error'],credentials.UNREADABLE_KEY_MESSAGE)

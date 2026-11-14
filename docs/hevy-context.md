@@ -186,6 +186,8 @@ The host retains its monitoring engine, SQLAlchemy database and input selection;
 logging retains sqlite3 and a separate RACKBOOK_DB_PATH. These are explicit
 exceptions to the old host-only ORM/file-layout constraints above. credentials.py
 owns the shared active Hevy credential. Host startup initializes both applications.
+A saved key that the current key file can't decrypt is reported, never rewritten,
+so restoring the original key file always recovers it.
 Log Workout and Plans are separate destinations; the old Log tab label is Check-in
 History. Settings can be opened with /#settings using an allowlisted tab hash.
 
@@ -1089,7 +1091,7 @@ TS pinning, TM, LSe1RM, low exact RPEs, timers, the check-in rule, save, recover
 use the same code paths as before.
 
 - **Exercise strip** (`#exStrip`, built by `LoggerLayout.updateStrip`): one card per exercise with
-  initials, done/working count, a tick when every working set is done and `SS` for a superset, plus `+`
+  initials (larger since "Gym fixes"), done/working count, a tick when every working set is done and `SS` for a superset, plus `+`
   to add one. Below 1900px only the picked exercise's card is shown (`data-selected`); the 1900px
   workspace keeps its list, outline and side tools.
 - **Card**: name, "Set n of m", the planned note, then one row of buttons: Info, Targets, Warm-up, Swap,
@@ -1123,3 +1125,47 @@ use the same code paths as before.
   session window median), and Discard. The model trial panels/results and the long session review are no
   longer shown; the trial still records automatically where a pattern rating exists and its timing is
   unchanged, and the session review is still saved.
+
+## Gym fixes on the Log page (local, 2026-11-14)
+
+From the design review. Presentation and wording only: sets, weights, TS pinning, TM, LSe1RM, low exact
+RPEs, timer behaviour, the check-in rule, save, recovery and microcycle completion are unchanged.
+
+- **Rest countdown in the bottom bar.** `#restPill` moved from the header's top-right into the bottom
+  bar (`.bar-row`), beside the plate strip, so it stays in sight and in thumb reach while scrolled to the
+  sets. It reads larger while running. The header keeps only kg/lb and Menu, so "Log Workout" no longer
+  wraps on a 375px phone.
+- **Slimmer bottom bar.** The plate strip is two short lines (plates in bold; set, weight in both units
+  and bar below) without the drawing; tapping it still opens the plate loader, which draws the plates.
+  On a 375px phone the bar is about 133px instead of about 190px; from 900px it is one 77px row. The
+  page's bottom padding follows (150px phone, 110px tablet).
+- **Larger strip initials.** The strip cards keep their initials (bracketed equipment left out), now
+  24px on 76×70 cards on phones and 28px on 100×80 cards from 600px (were 17px/72px and 20px/96px). The
+  owner tried full names on the phone preview and preferred initials, then picked this size from a
+  mockup. Look-alikes get more letters (`stripLabels`), also approved from the mockup: first the
+  equipment ("Squat (Barbell)" SB, "Squat (Safety Bar)" SSB), then the first word's second letter ("Bench
+  Press" BP, "Barbell Press" BAP). Exercises without a look-alike keep their short initials.
+- **Check-in order: soreness first, Confirm last.** Confirming motivation (the only required answer)
+  folds the check-in box, which used to hide the pattern soreness questions below it before they were
+  seen. Pattern soreness now sits above the motivation form, so **Confirm check-in** is the last control
+  and folds the box with everything answered. The motivation form's own "Pre-training check-in" heading
+  is hidden on the Log page (the box's summary names the check-in). Chosen by the owner from a mockup;
+  the working-set gate and the saved soreness/motivation payload are unchanged.
+  Tapping the button after reopening a confirmed check-in (it reads "Check-in confirmed" and saves nothing
+  new) now folds the box too; before, it did nothing, so the box stayed open after a soreness change.
+- **Button row hint.** The exercise button row fades at its right edge so buttons past the screen edge
+  (Note, Plates, ⋯) read as scrollable.
+- **Bigger targets.** kg/lb 44×44, set-type buttons 40×44, row buttons 44px tall, column headings 12px.
+  Number pad keys are 52px with 8px gaps, and **Clear moved down to the third row** (order: ⌫, Next,
+  Clear, Done) so a slip while deleting can't wipe the field. The pad still measures its own height.
+- **Light/Dark follows the dashboard.** `training.js` reads the dashboard's saved choice
+  (`localStorage` "theme"). Light or Dark rewrites the pages' `prefers-color-scheme` rules to always or
+  never apply, so every /training page and its charts follow it; Auto leaves the phone's setting in
+  charge. The legacy settings page keeps its own theme control. The two halves still use slightly
+  different dark colours.
+- **Wording.** "Finish and save to Hevy" is now **Finish workout**; the saved screen says "Workout
+  saved." and the dashboard line says "The dashboard will update shortly" / "is up to date" / "didn't
+  update; sync it from Settings" instead of "Monitoring refresh pending". Empty lists say "No recent
+  workouts yet." The Microcycle Builder page is titled **Plans**, matching the menu. The server's save
+  status texts and the recovery panel's "Saved to Hevy" (a real partial state) are unchanged.
+- Asset versions bumped (logger-layout v7, save-recovery v3, training.js v2) so phones fetch the new files.
