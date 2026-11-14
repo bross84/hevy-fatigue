@@ -7,7 +7,8 @@ const vm = require('node:vm');
 const html = fs.readFileSync(path.join(__dirname, '..', 'log.html'), 'utf8');
 for (const match of inlineScriptMatches(html)) new vm.Script(match[1]);
 const keys = [...html.matchAll(/<button[^>]*data-pad-key="([^"]+)"/g)].map(m => m[1]);
-assert.deepEqual(keys, ['1', '2', '3', 'backspace', '4', '5', '6', 'clear', '7', '8', '9', 'next', '.', '0', 'done']);
+// Clear sits two rows below Backspace so a slip while deleting can't wipe the whole field.
+assert.deepEqual(keys, ['1', '2', '3', 'backspace', '4', '5', '6', 'next', '7', '8', '9', 'clear', '.', '0', 'done']);
 const buttons = Object.fromEntries(keys.map(key => [key, { dataset: { padKey: key }, disabled: false }]));
 const handlers = {}, documentHandlers = {}, windowHandlers = {}, timers = [];
 const classes = new Set();

@@ -59,4 +59,8 @@ buttons(1)[3].click(); pain(0).checked=true; pain(0).change();
 assert.equal(context.draft.soreness.bench_press.level,1,'Taps during a save change nothing');
 assert.equal(context.draft.soreness.squat.pain,false);
 assert.equal(saves,4);
+// Soreness sits above motivation, so Confirm check-in (the last control) can't fold the box before soreness is seen.
+const home = html.slice(html.indexOf('<details id="sessionMotivationHome"'), html.indexOf('</details>', html.indexOf('<details id="sessionMotivationHome"')));
+assert.ok(home.indexOf('id="sessionSoreness"') > 0 && home.indexOf('id="sessionSoreness"') < home.indexOf('id="sessionMotivation"'),
+  'Pattern soreness comes before the motivation form and its Confirm button');
 console.log('Day soreness check-in passed');

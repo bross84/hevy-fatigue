@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <script src="/training/static/training.js"></script>
-  <script src="/training/static/save-recovery.js?v=2"></script>
+  <script src="/training/static/training.js?v=2"></script>
+  <script src="/training/static/save-recovery.js?v=3"></script>
   <script src="/training/static/draft-transfer.js"></script>
   <script src="/training/static/week-text.js?v=1"></script>
   <script src="/training/static/session-review.js"></script>
@@ -12,7 +12,7 @@
   <script src="/training/static/plan-change.js?v=1"></script>
   <script src="/training/static/app-menu.js?v=2"></script>
   <script src="/training/static/ai-coach.js?v=2"></script>
-  <script src="/training/static/logger-layout.js?v=6"></script>
+  <script src="/training/static/logger-layout.js?v=8"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -39,8 +39,8 @@
     main { max-width: 560px; margin: 0 auto; padding: 12px; padding-bottom: 190px; }
     header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin: 6px 0 12px; }
     .hright { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; }
-    .units { display: inline-flex; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
-    .units button { min-height: 30px; padding: 0 12px; border: 0; border-radius: 0; background: transparent; color: var(--muted); font-size: 13px; }
+    .units { display: inline-flex; border: 1px solid var(--line); border-radius: 22px; overflow: hidden; }
+    .units button { min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 0; background: transparent; color: var(--muted); font-size: 13px; }
     .units button.on { background: var(--accent); color: var(--card); }
     h1 { font-size: 22px; font-weight: 500; margin: 0; }
     a { color: var(--accent); }
@@ -233,8 +233,8 @@
     .padheading { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; font-size: 13px; }
     .padheading span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .padheading strong { flex-shrink: 0; }
-    .padkeys { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(80px, 1fr); gap: 4px; }
-    .padkeys button { height: 44px; min-height: 44px; padding: 0; border: 0; background: var(--chip); font-size: 22px; touch-action: manipulation; user-select: none; }
+    .padkeys { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(80px, 1fr); gap: 8px; }
+    .padkeys button { height: 52px; min-height: 52px; padding: 0; border: 0; background: var(--chip); font-size: 22px; touch-action: manipulation; user-select: none; }
     .padkeys button[data-pad-key="0"] { grid-column: span 2; }
     .padkeys button.pad-action { font-size: 15px; color: var(--accent); }
     .padkeys button:disabled { opacity: .3; }
@@ -407,7 +407,7 @@
     .workout-log.typing main { padding-bottom: 60vh; }
     .workout-log.keypad-open main { padding-bottom: calc(var(--keypad-height, 250px) + 32px); }
   </style>
-  <link rel="stylesheet" href="/training/static/logger-layout.css?v=6" />
+  <link rel="stylesheet" href="/training/static/logger-layout.css?v=8" />
 </head>
 <body class="workout-log">
 <button id="loggerNavScrim" type="button" aria-label="Close navigation" hidden></button>
@@ -418,7 +418,7 @@
 <main>
   <header class="app-header">
     <div class="page-heading"><div class="page-title"><span class="eyebrow">Hevy-Fatigue</span><h1>Log Workout</h1></div></div>
-    <div class="header-tools"><button id="restPill" class="rest-pill" type="button" hidden aria-label="Rest timer"><span id="restPillTime">Rest</span><i class="rest-pill-prog"><i id="restPillProg"></i></i></button><span class="units" role="group" aria-label="Weight unit"><button id="unitKg" type="button">kg</button><button id="unitLb" type="button">lb</button></span><button id="loggerMenu" type="button" aria-controls="loggerNav" aria-expanded="false">Menu</button></div>
+    <div class="header-tools"><span class="units" role="group" aria-label="Weight unit"><button id="unitKg" type="button">kg</button><button id="unitLb" type="button">lb</button></span><button id="loggerMenu" type="button" aria-controls="loggerNav" aria-expanded="false">Menu</button></div>
   </header>
   <div id="msg"></div>
 
@@ -439,8 +439,9 @@
       <div id="trialDaily" class="hint" hidden></div>
       <details id="sessionMotivationHome" open>
         <summary>Before you train · today's check-in</summary>
-        <div id="sessionMotivation"></div>
+        <!-- Soreness first, motivation last: Confirm check-in is the final tap and folds the box with everything answered. -->
         <section id="sessionSoreness" aria-label="Pattern soreness before training"></section>
+        <div id="sessionMotivation"></div>
       </details>
       <div id="plannedOrigin" class="hint" hidden></div>
     </div>
@@ -463,7 +464,7 @@
   </section>
 
   <section id="done" hidden>
-    <div class="msg ok">Saved to Hevy.</div>
+    <div class="msg ok">Workout saved.</div>
     <div id="trialResults"></div>
     <section id="sessionReview" class="card" aria-live="polite"></section>
     <button id="again" class="wide" type="button" style="margin-bottom:8px">Log another workout</button>
@@ -474,7 +475,10 @@
 <div id="bar" class="bar" hidden>
 <div id="restProg" class="restprog"><i></i></div>
 <div>
-  <button id="plateStrip" class="platestrip" type="button" hidden></button>
+  <div class="bar-row">
+    <button id="plateStrip" class="platestrip" type="button" hidden></button>
+    <button id="restPill" class="rest-pill" type="button" hidden aria-label="Rest timer"><span id="restPillTime">Rest</span><i class="rest-pill-prog"><i id="restPillProg"></i></i></button>
+  </div>
   <div id="rest" class="rest">
     <button id="restPick" class="restdef" type="button" aria-label="Choose the rest time"></button>
     <span id="restTime" class="resttime" hidden></span>
@@ -482,7 +486,7 @@
     <button id="restPlus" type="button" hidden aria-label="15 seconds more">+15</button>
     <button id="restMain" type="button"></button>
   </div>
-  <button id="finish" class="primary wide" type="button">Finish and save to Hevy</button>
+  <button id="finish" class="primary wide" type="button">Finish workout</button>
 </div></div>
 
 <div id="picker" class="overlay" hidden>
@@ -506,8 +510,8 @@
     <div id="padRpe" class="padrpe" role="group" aria-label="RPE for this set"></div>
     <div class="padkeys">
       <button type="button" data-pad-key="1">1</button><button type="button" data-pad-key="2">2</button><button type="button" data-pad-key="3">3</button><button type="button" class="pad-action" data-pad-key="backspace" aria-label="Backspace">⌫</button>
-      <button type="button" data-pad-key="4">4</button><button type="button" data-pad-key="5">5</button><button type="button" data-pad-key="6">6</button><button type="button" class="pad-action" data-pad-key="clear">Clear</button>
-      <button type="button" data-pad-key="7">7</button><button type="button" data-pad-key="8">8</button><button type="button" data-pad-key="9">9</button><button type="button" class="pad-action" data-pad-key="next">Next</button>
+      <button type="button" data-pad-key="4">4</button><button type="button" data-pad-key="5">5</button><button type="button" data-pad-key="6">6</button><button type="button" class="pad-action" data-pad-key="next">Next</button>
+      <button type="button" data-pad-key="7">7</button><button type="button" data-pad-key="8">8</button><button type="button" data-pad-key="9">9</button><button type="button" class="pad-action" data-pad-key="clear">Clear</button>
       <button type="button" data-pad-key="." aria-label="Decimal point">.</button><button type="button" data-pad-key="0">0</button><button type="button" class="pad-action primary" data-pad-key="done">Done</button>
     </div>
   </div>
@@ -1076,7 +1080,7 @@
         b.addEventListener("click", () => startFrom(w));
         box.append(b);
       }
-      if (!recentPage.workouts.length) box.replaceChildren(el("p", "muted", "No workouts in Hevy yet."));
+      if (!recentPage.workouts.length) box.replaceChildren(el("p", "muted", "No recent workouts yet."));
     } catch (err) {
       box.replaceChildren();
       say(err.message + (err.status === 400 ? " Save your Hevy key on the Recent page first." : ""));
@@ -1162,7 +1166,7 @@
     try {
       const plans = await api("/api/mesocycles");
       box.replaceChildren();
-      const link = el("a", null, "Open microcycle builder"); link.href = trainingUrl("/microcycles");
+      const link = el("a", null, "Open Plans"); link.href = trainingUrl("/microcycles");
       box.append(el("h2", null, "Planned workout"));
       if (!plans.length) { box.append(el("p", "muted", "Build a microcycle and load your next workout here."), link); return; }
       const label = el("label", null, "Microcycle"), select = el("select", "wide");
@@ -1726,11 +1730,9 @@
     strip.hidden = !line;
     strip.replaceChildren();
     if (line) {
-      const top = el("span", "platestrip-set"); top.append(el("b", null, line.set));
-      if (line.bar) top.append(el("span", "platestrip-barname", line.bar));
-      strip.append(top);
-      if (line.plan && line.plan.counts.length) strip.append(drawPlates(line.plan, line.unit, "platestrip-bar"));
+      // Two short lines keep the bottom bar small; tapping opens the plate loader with the plates drawn.
       strip.append(el("b", "platestrip-plates", [line.plates, line.short].filter(Boolean).join(" · ")));
+      strip.append(el("span", "platestrip-set", [line.set, line.bar].filter(Boolean).join(" · ")));
       strip.setAttribute("aria-label", "Plates for " + plateStripEx.title + ", " + line.set + ": " + [line.plates, line.bar].filter(Boolean).join(", ") + ". Show the plate loader");
     } else strip.removeAttribute("aria-label");
     document.body.classList.toggle("has-plate-strip", Boolean(line));
@@ -2500,7 +2502,7 @@
       }
       clearDraft();
       show("done");
-      $("done").querySelector(".msg").textContent = (saved.plan_warning || "Saved to Hevy.") + (saved.monitoring_refresh !== "complete" ? " Monitoring refresh " + saved.monitoring_refresh + "; use Settings to sync." : "");
+      $("done").querySelector(".msg").textContent = saved.plan_warning || "Workout saved.";
       showTrialResults(saved.trial_results, entry.exercises);
       WorkoutSave.monitoring(saved);
       SessionReviewUI.saved(saved);
@@ -2511,14 +2513,14 @@
       window.scrollTo(0, 0);
       WorkoutSave.panel(draft, completeRecoveredSave, {focus:true});
     } finally {
-      saving = false; $("finish").disabled = false; $("finish").textContent = "Finish and save to Hevy";
+      saving = false; $("finish").disabled = false; $("finish").textContent = "Finish workout";
     }
   });
 
   function completeRecoveredSave(saved) {
     if (!draft || draft.client_workout_id !== saved.client_workout_id) return;
     clearDraft(); show('done');
-    $('done').querySelector('.msg').textContent='Saved to Hevy and local records. Monitoring refresh '+saved.monitoring_refresh+'.';
+    $('done').querySelector('.msg').textContent='Workout saved.';
     WorkoutSave.monitoring(saved);
     SessionReviewUI.saved(saved);
   }

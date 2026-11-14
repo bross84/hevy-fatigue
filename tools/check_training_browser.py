@@ -39,6 +39,8 @@ with sync_playwright() as p:
     expect(checkin_home).to_have_attribute('open','')
     soreness_panel=checkin_home.locator('#sessionSoreness')
     expect(soreness_panel.locator('legend')).to_have_text(['Squat','Press','Hinge'])
+    # Soreness comes before motivation, so Confirm check-in is the last control in the box.
+    assert checkin_home.evaluate("(home) => !!(home.querySelector('#sessionSoreness').compareDocumentPosition(home.querySelector('#confirmMotivation')) & Node.DOCUMENT_POSITION_FOLLOWING)")
     for width in (320, 390, 599):
         page.set_viewport_size({'width':width,'height':844})
         # Measure all three boxes in one frame so late-loading content above cannot shift them apart.
@@ -85,6 +87,13 @@ with sync_playwright() as p:
     expect(first_tick).to_be_enabled()
     expect(gate).to_be_hidden()
     expect(checkin_home.locator('#motivation-level')).to_have_value('3')
+    # Confirming folds the check-in; reopening it and tapping the confirmed button folds it again.
+    expect(checkin_home).not_to_have_attribute('open','')
+    checkin_home.locator(':scope > summary').click()
+    expect(checkin_home).to_have_attribute('open','')
+    expect(page.locator('#confirmMotivation')).to_have_text('Check-in confirmed')
+    page.locator('#confirmMotivation').click()
+    expect(checkin_home).not_to_have_attribute('open','')
     page.screenshot(path=str(out/'logger-ready-set-phone.png'),animations='disabled')
     assert page.evaluate("JSON.parse(localStorage.getItem('training.logDraft')).exercises")==before_motivation
     page.reload()

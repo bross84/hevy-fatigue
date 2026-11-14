@@ -190,11 +190,14 @@ const WorkoutSave = (() => {
     document.getElementById('monitoringRefresh')?.remove();
     const box=document.createElement('section');box.id='monitoringRefresh';box.setAttribute('aria-live','polite');
     const status=document.createElement('p');
-    const show=value=>{status.textContent='Monitoring refresh '+(value||'pending')+'. Your workout is saved.';};
+    const show=value=>{status.textContent=value==='complete'?'Your workout is saved and the dashboard is up to date.'
+      :value==='failed'?"Your workout is saved. The dashboard didn't update; sync it from Settings."
+      :value==='unavailable'?"Your workout is saved. Couldn't check the dashboard update just now."
+      :'Your workout is saved. The dashboard will update shortly.';};
     show(saved.monitoring_refresh);
     const settings=document.createElement('a');settings.href='/#settings';settings.textContent='Open Settings to sync';
-    const check=document.createElement('button');check.type='button';check.textContent='Check monitoring refresh';
-    check.addEventListener('click',async()=>{check.disabled=true;try{const response=await fetch(trainingUrl('/workout-saves/'+saved.client_workout_id));if(!response.ok)throw Error();show((await response.json()).monitoring_refresh);}catch(e){show('pending; status unavailable');}finally{check.disabled=false;}});
+    const check=document.createElement('button');check.type='button';check.textContent='Check dashboard update';
+    check.addEventListener('click',async()=>{check.disabled=true;try{const response=await fetch(trainingUrl('/workout-saves/'+saved.client_workout_id));if(!response.ok)throw Error();show((await response.json()).monitoring_refresh);}catch(e){show('unavailable');}finally{check.disabled=false;}});
     box.append(status,settings,check);document.getElementById('done').append(box);
   }
   return {freeze,panel,dismiss,monitoring,noteFailure,correct};

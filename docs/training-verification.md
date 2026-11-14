@@ -1296,3 +1296,27 @@ Issue #110 on `feat/logger-redesign`; details in hevy-context.md, "Log page rede
 - Found and fixed while checking: the RPE picker opened under the Targets sheet; a tap on a low weight box
   could open and immediately close the number pad (now ignored for a tap that started on the box).
 - Not run: Docker build/startup (daemon not running), physical phone/tablet, deployed or real data.
+
+## Gym fixes on the Log page — local, 2026-11-14
+
+Details in hevy-context.md, "Gym fixes on the Log page".
+
+- Passed: host 248; logger 626 with 1 expected failure (as before); every `tests/*.cjs` and
+  `rackbook/tests/*.cjs`. `test_log_redesign.cjs` adds strip-card initials and look-alike label checks.
+- Assertions changed to the new wording or layout, none removed: `test_log_keypad.cjs` key order (Clear
+  and Next swapped); `test_mesocycles.py` checks the page heading `Plans`.
+- Mocked browser, all passing: logger layout, training recovery (the countdown stays visible, now in the
+  bottom bar), dashboard layout, plan proposal, and training on a fresh preview server.
+- Mocked preview, measured at 375×812: bottom bar 133px; rest countdown 104×56 in the bar and counting;
+  kg/lb 44×44; set-type 40×44; row buttons 44px tall; no sideways scroll. At 1000×760 the bar is one
+  77px row. Dashboard choice Dark with the system light, and Light with the system dark, both applied on
+  Log and Progress; Auto followed the system.
+- Check-in order: `test_log_soreness.cjs` and `check_training_browser.py` assert soreness comes before
+  Confirm check-in (both pass; the browser check on a fresh preview). In the phone preview, answering
+  Squat mild and Hinge none, then motivation and Confirm, folded the box to "Check-in ✓ · Willing · Squat
+  mild · Hinge none".
+  Found on the owner's phone: reopening a confirmed check-in and tapping "Check-in confirmed" left it
+  open. Fixed; `check_training_browser.py` now reopens the check-in, taps the button and expects it folded.
+- Not run: the number pad by touch in the preview (the mouse uses the system keyboard path; the keypad
+  is covered by `test_log_keypad.cjs` and the training browser check), Docker build/startup (daemon not
+  running), physical phone/tablet, deployed or real data.

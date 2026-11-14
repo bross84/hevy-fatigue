@@ -176,28 +176,51 @@ const LoggerLayout = (() => {
     if (!work.length) return 'No working sets';
     return done === work.length ? 'All ' + work.length + ' sets done' : 'Set ' + (done + 1) + ' of ' + work.length;
   }
+  // Strip cards show the title's initials (bracketed equipment left out), large enough to read at the rack.
   function initials(title) {
     const words = String(title).replace(/\(.*?\)/g, ' ').split(/[\s,-]+/).filter(Boolean);
     return words.slice(0, 3).map(w => w[0]).join('').toUpperCase() || '?';
+  }
+  // Look-alikes get more letters so the cards differ: first the equipment ("Squat (Barbell)" SB, "Squat (Safety
+  // Bar)" SSB), then, if still the same, the first word's second letter ("Bench Press" BP, "Barbell Press" BAP).
+  // Exercises without a look-alike keep their short initials.
+  function stripLabels(exercises) {
+    const labels = exercises.map(ex => initials(ex.title));
+    const clash = () => labels.map((l, i) => labels.indexOf(l) !== i || labels.lastIndexOf(l) !== i);
+    const withEquipment = title => {
+      const words = String(title).replace(/[()]/g, ' ').split(/[\s,-]+/).filter(Boolean);
+      return words.slice(0, 4).map(w => w[0]).join('').toUpperCase() || '?';
+    };
+    clash().forEach((same, i) => { if (same) labels[i] = withEquipment(exercises[i].title); });
+    const seen = new Map();
+    labels.forEach((label, i) => {
+      if (!seen.has(label)) { seen.set(label, 1); return; }
+      const words = String(exercises[i].title).replace(/\(.*?\)/g, ' ').split(/[\s,-]+/).filter(Boolean);
+      let next = words.length ? (words[0].slice(0, 2) + words.slice(1, 3).map(w => w[0]).join('')).toUpperCase() : label;
+      if (seen.has(next)) next = label + (seen.get(label) + 1);
+      seen.set(label, seen.get(label) + 1); seen.set(next, 1); labels[i] = next;
+    });
+    return labels;
   }
   // The exercise strip: one card per exercise, a tick once its working sets are done, SS for a superset.
   function updateStrip(exercises) {
     const strip = byId('exStrip');
     if (!strip) return;
     strip.replaceChildren();
-    for (const ex of exercises) {
+    const labels = stripLabels(exercises);
+    exercises.forEach((ex, index) => {
       const work = working(ex), done = work.filter(s => s.done).length, all = work.length > 0 && done === work.length;
       const button = node('button', 'ex-card' + (all ? ' complete' : '') + (ex.ss ? ' superset' : ''));
       button.type = 'button';
       button.setAttribute('aria-current', ex.id === selectedId ? 'true' : 'false');
       button.setAttribute('aria-label', ex.title + ', ' + done + ' of ' + work.length + ' sets done' + (ex.ss ? ', in a superset' : ''));
       button.title = ex.title;
-      button.append(node('span', 'ex-card-short', initials(ex.title)), node('span', 'ex-card-count', done + '/' + work.length));
+      button.append(node('span', 'ex-card-short', labels[index]), node('span', 'ex-card-count', done + '/' + work.length));
       if (all) button.append(node('span', 'ex-card-done', '\u2713'));
       if (ex.ss) button.append(node('span', 'ex-card-ss', 'SS'));
       button.addEventListener('click', () => select(ex.id));
       strip.append(button);
-    }
+    });
     const add = node('button', 'ex-card ex-card-add', '+'); add.type = 'button';
     add.setAttribute('aria-label', 'Add exercise');
     add.addEventListener('click', () => byId('addEx').click());
@@ -346,6 +369,13 @@ const LoggerLayout = (() => {
       updateMotivation();
     };
     mobile.addEventListener('change', positionMobile);
+    // Tapping the check-in button folds the box whenever the check-in is confirmed, including a re-tap after
+    // reopening it to change soreness (the button then reads "Check-in confirmed" and saves nothing new).
+    byId('sessionMotivationHome').addEventListener('click', event => {
+      const current = draft();
+      if (event.target.closest?.('#confirmMotivation') && current && typeof SessionMotivation !== 'undefined'
+        && SessionMotivation.ready(current)) byId('sessionMotivationHome').open = false;
+    });
     positionMobile();
     position();
   }

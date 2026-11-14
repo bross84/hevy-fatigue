@@ -179,11 +179,12 @@
   margin:0 0 6px; height:18px; font-size:13px; line-height:18px; font-weight:550; color:var(--accent);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
+/* Bottom bar room: one row (plates + rest countdown) above Finish on phones, a single row from 900px. */
 @media(max-width:1099px) {
-  .workout-log.has-plate-strip:not(.keypad-open):not(.typing) main { padding-bottom:244px; }
+  .workout-log:not(.keypad-open):not(.typing) main { padding-bottom:calc(150px + env(safe-area-inset-bottom)); }
 }
 @media(min-width:900px) and (max-width:1099px) {
-  .workout-log.has-plate-strip:not(.keypad-open):not(.typing) main { padding-bottom:164px; }
+  .workout-log:not(.keypad-open):not(.typing) main { padding-bottom:110px; }
 }
 @media(min-width:1100px) { .platestrip { display:none !important; } }
 /* The folded numbers line: e1RM, TM, which drives the weights, and stress. */
@@ -216,19 +217,22 @@
 .workout-log .exhead .ex-title { font-size:22px; font-weight:700; letter-spacing:-.02em; flex:1 1 100%; order:0; }
 .workout-log .exercise-progress { order:1; font-size:15px; color:var(--muted); flex-basis:100%; }
 .workout-log .ex-note { margin:0 0 8px; font-size:14px; color:var(--warn); }
-.workout-log .ex-chips { display:flex; gap:8px; overflow-x:auto; padding:2px 0 12px; scrollbar-width:none; }
+/* The right edge fades so buttons past the screen edge show there are more to scroll to; the end padding lets the
+   last button scroll clear of the fade. */
+.workout-log .ex-chips { display:flex; gap:8px; overflow-x:auto; padding:2px 32px 12px 0; scrollbar-width:none;
+  -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 32px),transparent); mask-image:linear-gradient(to right,#000 calc(100% - 32px),transparent); }
 .workout-log .ex-chips::-webkit-scrollbar { display:none; }
-.workout-log .ex-chip { flex:0 0 auto; min-height:40px; padding:0 14px; border-radius:20px; background:var(--chip); border:1px solid var(--line); font-size:14px; font-weight:550; position:relative; }
+.workout-log .ex-chip { flex:0 0 auto; min-height:44px; padding:0 14px; border-radius:20px; background:var(--chip); border:1px solid var(--line); font-size:14px; font-weight:550; position:relative; }
 .workout-log .ex-chip.has-dot::after { content:""; position:absolute; top:6px; right:6px; width:7px; height:7px; border-radius:4px; background:var(--warn); }
 
 /* Exercise strip */
 .ex-strip { display:flex; gap:8px; overflow-x:auto; padding:2px 2px 14px; scrollbar-width:none; }
 .ex-strip::-webkit-scrollbar { display:none; }
 .ex-strip:empty { display:none; }
-.ex-card { flex:0 0 72px; height:64px; min-height:0; padding:0; border-radius:12px; border:2px solid var(--line); background:var(--card);
+.ex-card { flex:0 0 76px; height:70px; min-height:0; padding:0; border-radius:12px; border:2px solid var(--line); background:var(--card);
   position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; }
 .ex-card[aria-current="true"] { border-color:var(--accent); box-shadow:0 4px 0 -1px var(--accent); }
-.ex-card-short { font-size:17px; font-weight:700; letter-spacing:.02em; }
+.ex-card-short { font-size:24px; font-weight:700; line-height:1; letter-spacing:.02em; }
 .ex-card-count { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; }
 .ex-card-done { position:absolute; top:4px; right:4px; width:18px; height:18px; border-radius:9px; background:var(--done-line); color:#fff; font-size:11px; line-height:18px; text-align:center; }
 .ex-card-ss { position:absolute; top:4px; left:4px; padding:0 4px; height:16px; border-radius:8px; background:var(--warn); color:var(--card); font-size:10px; font-weight:700; line-height:16px; }
@@ -236,10 +240,13 @@
 
 /* Set rows: Set · (Previous on tablets) · Target · Weight · Reps @ RPE · tick */
 .workout-log #exercises .cols, .workout-log #exercises .set {
-  grid-template-columns:36px minmax(0,1.3fr) minmax(52px,1fr) minmax(76px,1.15fr) 48px; gap:8px; min-width:0; }
+  grid-template-columns:40px minmax(0,1.3fr) minmax(52px,1fr) minmax(76px,1.15fr) 48px; gap:8px; min-width:0; }
 .workout-log #exercises :is(.prev, .previous-col, .refcol, .ref-col, .setE1, .e1-col, .set-stress, .stress-col) { display:none; }
 .workout-log #exercises .cols { font-size:11px; text-transform:uppercase; letter-spacing:.05em; text-align:center; }
 .workout-log #exercises .cols .target-col { text-align:left; }
+.workout-log #exercises .set .kind { width:100%; min-width:40px; min-height:44px; padding:0; }
+/* Column headings readable at arm's length (older phone rules shrank some to 10px). */
+.workout-log #exercises .cols, .workout-log #exercises .cols > span { font-size:12px; }
 .workout-log #exercises .set .target { min-width:0; font-size:13px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-variant-numeric:tabular-nums; }
 .workout-log #exercises .set { min-height:56px; border:2px solid transparent; border-radius:12px; padding:0 4px; }
 .workout-log #exercises .set.done { background:var(--done); border-color:var(--done-line); }
@@ -267,8 +274,8 @@
   .workout-log #exercises .set { min-height:68px; }
   .workout-log #exercises .set input, .workout-log #exercises .repcell { height:52px; min-height:52px; font-size:19px; }
   .workout-log #exercises .set .tick { width:54px; height:54px; min-height:54px; }
-  .ex-card { flex-basis:96px; height:76px; }
-  .ex-card-short { font-size:20px; }
+  .ex-card { flex-basis:100px; height:80px; }
+  .ex-card-short { font-size:28px; }
 }
 
 /* Sheets inside the exercise card */
@@ -301,26 +308,27 @@
 .workout-log .ex-plates .loader { margin:0; }
 body.panel-open { overflow:hidden; }
 
-/* Header countdown (top-right) replaces the bottom rest block */
+/* Rest countdown sits in the bottom bar beside the plates, so it stays in sight and in thumb reach mid-set.
+   It replaces the older bottom rest block. */
 .workout-log #rest, .workout-log #restProg { display:none !important; }
-.rest-pill { display:flex; flex-direction:column; justify-content:center; gap:4px; min-width:96px; min-height:44px; padding:4px 12px;
+.bar-row { display:flex; align-items:stretch; gap:8px; margin:0 0 8px; }
+.bar-row .platestrip { flex:1 1 auto; min-width:0; margin:0; }
+.bar-row .rest-pill { flex:none; margin-left:auto; }
+@media (min-width:900px) { .workout-log .bar-row { flex:1; margin:0; } }
+.rest-pill { display:flex; flex-direction:column; justify-content:center; gap:4px; min-width:104px; min-height:48px; padding:4px 12px;
   border-radius:12px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--muted); }
 .rest-pill[hidden] { display:none; }
+.rest-pill.running, .rest-pill.over { font-size:22px; line-height:1; }
 .rest-pill.running { color:var(--text); border-color:var(--accent); }
 .rest-pill.over { color:var(--accent); border-color:var(--accent); animation:restflash 1s steps(1,end) infinite; }
 .rest-pill-prog { display:block; height:3px; border-radius:2px; background:var(--line); overflow:hidden; }
 .rest-pill-prog > i { display:block; height:100%; width:0; background:var(--accent); transition:width .25s linear; }
 
-/* Plate strip: the set and both units, the plates drawn, then the plate list */
-.workout-log .platestrip { padding:8px 12px; text-align:center; }
-.workout-log .platestrip-set { display:flex; justify-content:space-between; gap:8px; font-size:13px; color:var(--muted); white-space:normal; }
-.workout-log .platestrip-set b { color:var(--text); font-weight:650; }
-.workout-log .platestrip-barname { white-space:nowrap; }
-.workout-log .platestrip-bar { display:flex; align-items:center; justify-content:center; height:46px; margin:4px 0 2px; }
-.workout-log .platestrip-bar .side { display:flex; align-items:center; }
-.workout-log .platestrip-bar .shaft { flex:0 1 120px; height:8px; margin:0 4px; background:#888; border-radius:2px; }
-.workout-log .platestrip-bar .pl { width:9px; height:42px; margin:0 1px; }
+/* Plate strip: the plates in bold, then the set, weight in both units and the bar on one small line.
+   Tapping it opens the plate loader, which draws the plates. */
+.workout-log .platestrip { padding:6px 12px; text-align:left; }
 .workout-log .platestrip-plates { display:block; font-size:16px; }
+.workout-log .platestrip-set { font-size:12px; color:var(--muted); }
 @media (min-width:1100px) { .workout-log .platestrip:not([hidden]) { display:block !important; max-width:560px; } }
 
 /* Number pad RPE row: always the same height so the keys never move */
@@ -335,6 +343,10 @@ body.panel-open { overflow:hidden; }
 /* Check-in folds to one line once confirmed */
 .workout-log #sessionMotivationHome > summary { display:list-item; min-height:40px; padding:9px 0; font-size:14px; color:var(--muted); cursor:pointer; }
 .workout-log #sessionMotivationHome.checked-in > summary { color:var(--ok); font-weight:600; }
+/* Soreness comes first in the box, so the motivation form's own "Pre-training check-in" heading is left out;
+   the box's summary already names the check-in. */
+.workout-log #sessionMotivationHome #sessionMotivation h3 { display:none; }
+.workout-log #sessionMotivationHome #sessionSoreness + #sessionMotivation { margin-top:16px; }
 
 /* Finish sheet */
 #saveConfirmation .finish-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:12px 0; }

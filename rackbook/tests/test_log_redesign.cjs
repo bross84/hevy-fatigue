@@ -76,3 +76,16 @@ assert.equal(usesPlates('Bulgarian Split Squat (Dumbbell)'), false, 'Dumbbells: 
 assert.equal(usesPlates('Lat Pulldown (Cable)'), false);
 assert.equal(usesPlates('Leg Extension (Machine)'), false);
 console.log('Target column and plate-free movement checks passed.');
+
+// ── Strip cards: initials ─────────────────────────────────────────────────────
+const n = vm.createContext({});
+vm.runInContext(layout.slice(layout.indexOf('  function initials('), layout.indexOf('  // The exercise strip:')) + ';this.initials = initials;this.stripLabels = stripLabels;', n);
+assert.deepEqual(['Squat (Barbell)', 'Bench Press (Barbell)', 'Romanian Deadlift (Dumbbell)', 'Lat Pulldown (Cable)'].map(n.initials),
+  ['S', 'BP', 'RD', 'LP'], 'Initials leave out the bracketed equipment');
+assert.equal(n.initials(''), '?');
+const labels = titles => [...n.stripLabels(titles.map(title => ({title})))];
+assert.deepEqual(labels(['Squat (Barbell)', 'Bench Press (Barbell)', 'Leg Curl (Machine)']), ['S', 'BP', 'LC'], 'No look-alikes: plain initials');
+assert.deepEqual(labels(['Squat (Barbell)', 'Squat (Safety Bar)', 'Leg Curl']), ['SB', 'SSB', 'LC'], 'Same name: the equipment tells them apart');
+assert.deepEqual(labels(['Bench Press', 'Barbell Press', 'Squat']), ['BP', 'BAP', 'S'], 'Same initials: the first word gets its second letter');
+assert.deepEqual(labels(['Squat (Barbell)', 'Squat (Barbell)']), ['SB', 'SQ'], 'Even the same exercise twice gets two labels');
+console.log('Strip card initials checks passed.');
