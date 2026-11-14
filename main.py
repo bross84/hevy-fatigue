@@ -26,7 +26,10 @@ from recommendations import build_history as build_recommendation_history, RATIN
 
 from database import SessionLocal, DailyReadiness, WorkoutLog, WorkoutSession, ExerciseMapping, ExerciseCanonical, ExerciseConflict, AppSetting, CoachingConversation, CoachingTurn, init_db
 
-from credentials import _encrypt, _decrypt, get_db_api_key as _get_db_api_key
+from credentials import (
+    UNREADABLE_KEY_MESSAGE, StoredKeyUnreadable, _encrypt, _decrypt,
+    get_db_api_key as _get_db_api_key,
+)
 from rpe_table import get_set_central_stress, get_set_peripheral_stress, seed_rpe_table, calculate_e1rm
 from importer import import_hevy_data, reclassify_existing_sessions
 
@@ -997,7 +1000,10 @@ def get_last_sync(db: Session = Depends(get_db)):
 @app.get("/api/settings")
 def get_settings(db: Session = Depends(get_db)):
     """Return whether the Hevy API key is configured, and a masked preview."""
-    key = _get_db_api_key(db)
+    try:
+        key = _get_db_api_key(db)
+    except StoredKeyUnreadable:
+        return {"api_key_set": False, "api_key_preview": None, "api_key_error": UNREADABLE_KEY_MESSAGE}
     if key and len(key) >= 4:
         preview = "···" + key[-4:]
     elif key:
@@ -1054,7 +1060,10 @@ def save_ai_settings(data: AISettingsInput, db: Session = Depends(get_db)):
 def test_api_key(db: Session = Depends(get_db)):
     """Test whether the stored API key can reach the Hevy API."""
     from hevy_client import HevyClient
-    key = _get_db_api_key(db)
+    try:
+        key = _get_db_api_key(db)
+    except StoredKeyUnreadable:
+        return {"ok": False, "detail": UNREADABLE_KEY_MESSAGE}
     client = HevyClient(api_key=key)
     ok = client.test_connection()
     return {"ok": ok}

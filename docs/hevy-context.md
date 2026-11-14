@@ -186,6 +186,8 @@ The host retains its monitoring engine, SQLAlchemy database and input selection;
 logging retains sqlite3 and a separate RACKBOOK_DB_PATH. These are explicit
 exceptions to the old host-only ORM/file-layout constraints above. credentials.py
 owns the shared active Hevy credential. Host startup initializes both applications.
+A saved key that the current key file can't decrypt is reported, never rewritten,
+so restoring the original key file always recovers it.
 Log Workout and Plans are separate destinations; the old Log tab label is Check-in
 History. Settings can be opened with /#settings using an allowlisted tab hash.
 

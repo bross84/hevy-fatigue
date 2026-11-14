@@ -4524,7 +4524,7 @@ async function loadSettingsTab() {
     if (d.api_key_set) {
       el.textContent = `Current key: ${d.api_key_preview}`;
     } else {
-      el.textContent = 'No API key saved yet.';
+      el.textContent = d.api_key_error || 'No API key saved yet.';
     }
     // Clear result box whenever the tab refreshes
     _setKeyResult('', null);

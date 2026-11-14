@@ -146,7 +146,7 @@ class TestListHevyWorkouts(WorkoutsRouteCase):
         self.hevy_cls.side_effect = InvalidToken()
         r = self.client.get("/hevy/workouts")
         self.assertEqual(400, r.status_code)
-        self.assertIn("Save it again", r.json()["detail"])
+        self.assertEqual(main.UNREADABLE_KEY_MESSAGE, r.json()["detail"])
 
     def test_hevy_rejecting_the_key_is_a_502_that_mentions_the_key(self):
         self.hevy.list_workouts.side_effect = _status_error(401)

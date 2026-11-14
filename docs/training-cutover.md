@@ -258,7 +258,11 @@ message.
    runtime that can read the volume. It refuses to overwrite a destination and
    runs `PRAGMA integrity_check`. Keep each matching key file with its respective
    backup, with restrictive permissions. Never print key contents. A database
-   dump alone is insufficient to restore encrypted host settings.
+   dump alone is insufficient to restore encrypted host settings. If Settings
+   says the saved key can't be read with the current key file, the wrong or a
+   new key file is mounted: restore the matching file and restart. The saved
+   values are left untouched, so this always recovers them; saving the key again
+   also works but leaves older encrypted settings tied to the old file.
 3. Finish/export each device's drafts using the preceding instructions. Save
    unsaved old microcycle edits before navigating away. Record daily/pattern
    outputs from the current host for the same cutoff date and data.
