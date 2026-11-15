@@ -1169,3 +1169,53 @@ RPEs, timer behaviour, the check-in rule, save, recovery and microcycle completi
   workouts yet." The Microcycle Builder page is titled **Plans**, matching the menu. The server's save
   status texts and the recovery panel's "Saved to Hevy" (a real partial state) are unchanged.
 - Asset versions bumped (logger-layout v7, save-recovery v3, training.js v2) so phones fetch the new files.
+
+## Gym-night fixes on the Log page (local, 2026-11-14)
+
+From the owner's first full session on a phone (iPhone) with the merged gym fixes (1a79ac2).
+
+- **Actual RPE is never filled in for you.** Ticking a set with a blank actual RPE leaves it blank and
+  records it as `unrated`; the RPE target is no longer copied in (`copied_target` is no longer written by
+  the tick, but older drafts and records may still carry it). A TS set still needs an RPE to save, so
+  Finish asks for one.
+- **Warm-ups are not rebuilt.** Ticked warm-ups still leave the list (and are not sent to Hevy), but the
+  exercise remembers the heaviest one done (`ex.warmupDoneKg`); Warm-up then only builds the lighter
+  steps still to do, or says they are done.
+- **Moving on after the last set.** `LoggerLayout.afterSet` chose the next exercise, but the same tap then
+  reached the card's own click handler and reselected the finished exercise. Tick clicks are now ignored
+  by that handler.
+- **Rest sheet.** −15 / +15 keep the running-rest sheet open, and its title follows the countdown. After
+  any sheet closes, real taps for the next 0.45 s are ignored, so a quick second tap cannot land on
+  Finish workout underneath.
+- **End-of-rest sound.** The beep is booked on the audio clock when rest starts and re-booked after −15 /
+  +15, so it is on time even if page timers are slowed; if the audio clock was paused it beeps on return.
+  On Safari 16.4+ the page sets `navigator.audioSession.type = "playback"` so the beep is not muted by the
+  silent switch. Needs a check on the owner's iPhone, including with music playing.
+- **Plates.** 0.5 and 0.25 kg plates added (for weighted pull-ups and small jumps), drawn smaller.
+- **No flashing** when rest is over; "Rest over" stays in the accent colour.
+
+- **From the owner's phone photos.** The TM % box in Info was 11px text, so an iPhone zoomed the page
+  when it was tapped; it is now 16px (any smaller box triggers the zoom). The number pad no longer
+  selects the number (an iPhone drew drag handles that pushed it sideways): the number turns blue and
+  the first key replaces it, and the focus ring goes round the whole reps-and-RPE box. The weight-unit
+  sheet uses 15px text so its three buttons fit. The doubled "Rest over" box in a photo did not appear in
+  the preview once the flashing was removed; to be confirmed on the phone.
+
+Approved on a mockup (2026-11-15) and built:
+
+- **Next rest.** Before rest starts, the rest box in the bottom bar shows "Next rest" over the rest of the
+  exercise on screen (its own rest, else the default). It follows the selected exercise
+  (`LoggerLayout` calls the page's `onUpdate` hook on every update).
+- **Rest sheet.** Before rest: Start (the next rest), "<exercise> rest ▾" (the same sheet as the
+  exercise's Rest chip, `openExerciseRest`) and "Default rest ▾". While running: −15 / +15 / Skip, and
+  once the time has been changed, "Keep 3:15 for <exercise>", which saves it as that exercise's rest
+  (remembered for future workouts) and then reads "3:15 kept for <exercise> ✓". The running rest
+  remembers which exercise started it (`training.restEx` in local storage, beside the end time). −15 /
+  +15 on their own still change only the rest in progress.
+- **Workout clock.** The "Started 4:59 PM · 47 min" line is replaced by a clock beside the title that
+  counts every second (m:ss, h:mm:ss after an hour); the start time is in its screen-reader label. It
+  sits in the top card, so it scrolls out of view with the title.
+- **Progression chip.** The separate "Plan: …" line under the exercise name is gone. Its callouts become
+  the first chip in the button row (DDP, Myo, BO, DS, AMRAP, TM90; TS is a set label and is left out).
+  Tapping it shows the full plan line and what each one means. Still labels only: weights are unchanged.
+  There is no "density" callout in week text yet, so nothing shows for it.

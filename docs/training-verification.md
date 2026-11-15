@@ -1320,3 +1320,38 @@ Details in hevy-context.md, "Gym fixes on the Log page".
 - Not run: the number pad by touch in the preview (the mouse uses the system keyboard path; the keypad
   is covered by `test_log_keypad.cjs` and the training browser check), Docker build/startup (daemon not
   running), physical phone/tablet, deployed or real data.
+
+## Gym-night fixes on the Log page — local, 2026-11-14
+
+Details in hevy-context.md, "Gym-night fixes on the Log page".
+
+- Passed: host 248; logger 626 with 1 expected failure (as before); every `tests/*.cjs` and
+  `rackbook/tests/*.cjs`.
+- Assertions changed to the requested behavior, none removed: `test_log_collapse.cjs` now expects a
+  blank, `unrated` actual RPE after ticking; `test_log_redesign.cjs` uses 0.1 kg for "cannot be loaded"
+  (1 kg now loads as 2×0.5) and adds pull-up (1.75 kg) and 0.5 + 0.25 kg barbell checks;
+  `check_logger_layout_browser.py` expects a blank actual RPE; `check_training_recovery_browser.py`
+  enters actual RPEs before ticking (its TS set needs one to save).
+- Mocked browser passing: logger layout, training recovery.
+- Baseline failure, also on unchanged main with a fresh preview server: `check_training_browser.py`
+  times out tapping "Mark set done" after the Targets sheet (line 149).
+- Mocked preview at 375×812: ticking the last Squat set moved to Bench (it stayed on Squat before the
+  fix); the rest sheet stayed open through two +15 taps with a live title; a tap on Finish workout right
+  after Skip was ignored; ticking two of four warm-ups then Warm-up rebuilt only the remaining two; a
+  3 s rest booked the beep, re-booked after ±15 and ended cleanly with no page errors.
+- Phone-photo fixes: `test_log_keypad.cjs` fake input gains a `classList` stub and two checks (the number
+  is marked for replacement; no text selection); replacement typing (105 → 12.5, 5 → 8) passes unchanged.
+  Preview at 375×812: no visible or hidden input under 16px; the reps box ring covers reps and RPE; typing
+  5 replaced 2; the unit buttons fit at 52px with no overflow; one clean "Rest over" box with and without
+  a plate strip.
+- Mockup changes (approved 2026-11-15): `test_log_redesign.cjs` adds progression-chip checks (DDP, Myo,
+  BO + TM90 with TS left out, DS + AMRAP, none) and clock checks (0:00, 47:12, 1:05:09, ticks every second).
+  All suites above re-run and passing; logger layout and training recovery browser checks passing.
+  Preview at 375×812: clock "47:12" beside the title; rest box "Next rest 3:00"; its sheet offered Start,
+  "Squat (Barbell) rest 3:00 ▾" and "Default rest 3:00 ▾"; choosing 2:30 there saved Squat's rest and
+  the box read 2:30; in a running rest, Keep stayed hidden until +15 twice, then "Keep 3:00 for Squat
+  (Barbell)" saved 180 s and read "kept ✓" with the sheet still open; with a second exercise at 1:30,
+  selecting it showed "Next rest 1:30" and going back showed 3:00; the chip row started "DDP", then
+  "BO · TM90", and the DDP chip opened the plan line with its meaning.
+- Not run: Docker build/startup (daemon not running), physical iPhone (sound with silent switch and with
+  music, lock screen, page zoom and the rest box), deployed or real data.

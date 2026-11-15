@@ -57,7 +57,9 @@ assert.deepEqual(JSON.parse(JSON.stringify(plan(57.5, 20).counts)), [[15, 1], [2
 const noBar = plan(30, 0);
 assert.equal(noBar.noBar, true);
 assert.deepEqual(JSON.parse(JSON.stringify(noBar.counts)), [[25, 1], [5, 1]], 'No bar: plates for the whole 30 kg');
-assert.equal(plan(1, 0).short, 1, 'What cannot be loaded is reported, not split per side');
+assert.ok(Math.abs(plan(0.1, 0).short - 0.1) < 1e-9, 'What cannot be loaded is reported, not split per side');
+assert.deepEqual(JSON.parse(JSON.stringify(plan(1.75, 0).counts)), [[1.25, 1], [0.5, 1]], 'Small plates load a weighted pull-up');
+assert.deepEqual(JSON.parse(JSON.stringify(plan(21.5, 20).counts)), [[0.5, 1], [0.25, 1]], 'A barbell can take 0.5 and 0.25 kg plates');
 assert.equal(plan(20, 20).counts.length, 0, 'An empty bar still works');
 console.log('No-bar plate plan checks passed.');
 
@@ -89,3 +91,25 @@ assert.deepEqual(labels(['Squat (Barbell)', 'Squat (Safety Bar)', 'Leg Curl']), 
 assert.deepEqual(labels(['Bench Press', 'Barbell Press', 'Squat']), ['BP', 'BAP', 'S'], 'Same initials: the first word gets its second letter');
 assert.deepEqual(labels(['Squat (Barbell)', 'Squat (Barbell)']), ['SB', 'SQ'], 'Even the same exercise twice gets two labels');
 console.log('Strip card initials checks passed.');
+
+// ── Progression chip and workout clock (gym-night follow-up) ─────────────────
+const pg = vm.createContext({});
+vm.runInContext(html.slice(html.indexOf('  const PROGRESSIONS = ['), html.indexOf('  function renderExercise(ex) {')) + ';this.progressionTypes = progressionTypes;', pg);
+const shorts = text => [...pg.progressionTypes(text).map(t => t.short)];
+assert.deepEqual(shorts('5x4@6 DDP'), ['DDP'], 'DDP becomes the chip');
+assert.deepEqual(shorts('myo 15-20@9'), ['Myo']);
+assert.deepEqual(shorts('1x3@8 TS, 3x5@7 BO TM90'), ['BO', 'TM90'], 'TS is a set label, not a progression');
+assert.deepEqual(shorts('3x8@8, 1x8+@9 DS2'), ['DS', 'AMRAP']);
+assert.deepEqual(shorts(''), [], 'No plan callouts: no chip');
+assert.deepEqual(shorts(undefined), []);
+assert.match(html, /chipButton\(progression\.map/, 'The progression chip is added before Info');
+assert.ok(html.indexOf('const progression = progressionTypes(') < html.indexOf('chipButton("Info"'));
+assert.doesNotMatch(html, /"Plan: " \+ ex\.planCallouts\); callouts/, 'The separate Plan line under the name is gone');
+
+const ck = vm.createContext({});
+vm.runInContext(html.slice(html.indexOf('  function clockText('), html.indexOf('  function tickClock(')) + ';this.clockText = clockText;', ck);
+assert.equal(ck.clockText(0), '0:00');
+assert.equal(ck.clockText(47 * 60 + 12), '47:12');
+assert.equal(ck.clockText(3600 + 5 * 60 + 9), '1:05:09', 'After an hour the clock shows hours');
+assert.match(html, /setInterval\(\(\) => \{ if \(!\$\("workout"\)\.hidden\) tickClock\(\); \}, 1000\)/, 'The clock ticks every second');
+console.log('Progression chip and workout clock checks passed.');

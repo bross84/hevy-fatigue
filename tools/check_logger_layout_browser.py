@@ -90,7 +90,7 @@ with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
             assert page.locator('#loggerLoader > .loader').count() == 1
             page.locator('#exercises [data-exercise-id="layout-1"] .tick').nth(2).click()
             expect(page.locator('#loggerProgress')).to_have_text('9 of 23 sets completed')
-            assert page.evaluate('draft.exercises[1].sets[2].arpe') == '5'
+            assert page.evaluate('draft.exercises[1].sets[2].arpe') == ''   # a blank actual RPE stays blank
             timer = page.evaluate("localStorage.getItem('training.restEnd')")
             assert timer
             page.locator('#exercises [data-exercise-id="layout-1"] .tick').nth(2).click()

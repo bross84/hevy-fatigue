@@ -256,6 +256,7 @@ const LoggerLayout = (() => {
 
   function update() {
     if (!hooks) return;
+    hooks.onUpdate?.();   // e.g. the rest box's "Next rest" follows the exercise on screen
     const current = draft();
     const exercises = current?.exercises || [];
     if (!exercises.some(ex => ex.id === selectedId)) {
@@ -351,6 +352,8 @@ const LoggerLayout = (() => {
     });
     const selectCard = event => {
       const card = event.target.closest('[data-exercise-id]');
+      // a tick has already chosen where to go next (afterSet); its click must not pull the view back to this card
+      if (event.type === 'click' && event.target.closest('.tick')) return;
       if (!card || card.dataset.exerciseId === selectedId) return;
       selectedId = card.dataset.exerciseId;
       update();

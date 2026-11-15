@@ -38,6 +38,7 @@ function field(value, decimal, name) {
   const events = {};
   const input = {
     value, dataset: {}, selectionStart: 0, selectionEnd: 0, isConnected: true, edits: [],
+    cls: new Set(), get classList() { const c = this.cls; return { add: (x) => c.add(x), remove: (x) => c.delete(x), contains: (x) => c.has(x) }; },
     addEventListener(name, fn) { events[name] = fn; },
     getAttribute() { return name; },
     focus() { doc.activeElement = this; events.focus(); },
@@ -69,6 +70,8 @@ touch(weight);
 assert.equal(pad.hidden, false); assert.equal(height, '220px');
 assert.equal(labels.padField.textContent, 'Weight in kilograms');
 assert.equal(buttons['.'].disabled, false);
+assert.equal(weight.classList.contains('pad-replace'), true, 'The number is marked for replacement');
+assert.equal(weight.selectionStart, weight.selectionEnd, 'No text selection, so an iPhone draws no drag handles');
 tap('1'); tap('2'); tap('.'); tap('5');
 assert.equal(weight.value, '12.5'); assert.equal(weight.edits.at(-1), '12.5');
 tap('backspace'); assert.equal(weight.value, '12.');

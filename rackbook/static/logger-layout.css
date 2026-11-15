@@ -258,6 +258,9 @@
 .workout-log #exercises .repcell { display:flex; align-items:center; min-width:0; height:44px; border-radius:8px; background:var(--chip); }
 .workout-log #exercises .set.done .repcell { background:transparent; }
 .workout-log #exercises .repcell > input { flex:1 1 auto; min-width:0; background:transparent; text-align:right; padding-right:2px; }
+/* the focus ring goes round the whole reps-and-RPE box, not just the narrow reps part */
+.workout-log #exercises .repcell > input:focus { box-shadow:none; }
+.workout-log #exercises .repcell:focus-within { box-shadow:0 0 0 1.5px var(--accent); }
 .workout-log #exercises .repcell .rpecontrol { flex:0 0 auto; min-width:0; background:transparent; }
 .workout-log #exercises .repcell .rpebtn { width:auto; min-width:36px; height:40px; min-height:40px; padding:0 6px; background:transparent; color:var(--warn); font-size:13px; font-weight:650; }
 .workout-log #exercises .repcell .rpebtn:not(.none) .rpevalue::before { content:"@"; }
@@ -318,9 +321,13 @@ body.panel-open { overflow:hidden; }
 .rest-pill { display:flex; flex-direction:column; justify-content:center; gap:4px; min-width:104px; min-height:48px; padding:4px 12px;
   border-radius:12px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--muted); }
 .rest-pill[hidden] { display:none; }
+/* Before rest starts: "Next rest" over the time it will run for. */
+.rest-pill-label { font-size:11px; font-weight:600; line-height:1; color:var(--muted); }
+.rest-pill-label[hidden] { display:none; }
+.rest-pill:not(.running):not(.over) #restPillTime { font-size:18px; line-height:1; color:var(--text); }
 .rest-pill.running, .rest-pill.over { font-size:22px; line-height:1; }
 .rest-pill.running { color:var(--text); border-color:var(--accent); }
-.rest-pill.over { color:var(--accent); border-color:var(--accent); animation:restflash 1s steps(1,end) infinite; }
+.rest-pill.over { color:var(--accent); border-color:var(--accent); }
 .rest-pill-prog { display:block; height:3px; border-radius:2px; background:var(--line); overflow:hidden; }
 .rest-pill-prog > i { display:block; height:100%; width:0; background:var(--accent); transition:width .25s linear; }
 

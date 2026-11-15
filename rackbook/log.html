@@ -12,7 +12,7 @@
   <script src="/training/static/plan-change.js?v=1"></script>
   <script src="/training/static/app-menu.js?v=2"></script>
   <script src="/training/static/ai-coach.js?v=2"></script>
-  <script src="/training/static/logger-layout.js?v=8"></script>
+  <script src="/training/static/logger-layout.js?v=11"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -80,7 +80,6 @@
     .ex-title { font-size: 17px; font-weight: 500; margin: 0 0 2px; }
     .exhead { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
     .exhead .ex-title { margin: 0; order: 1; flex: 1 1 auto; }
-    .plan-callouts { margin: 2px 0 8px; font: 600 13px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--accent); grid-column: 1 / -1; }
     .grip { order: 0; width: 28px; min-height: 36px; padding: 0; border: 0; background: transparent; color: var(--muted); font-size: 18px; line-height: 1; cursor: grab; touch-action: none; }   /* touch-action: none so a drag on the handle never scrolls the page */
     .card.lifted { position: relative; z-index: 5; box-shadow: 0 8px 24px rgba(0,0,0,.35); opacity: .96; }
     .chip { order: 3; min-height: 32px; padding: 3px 12px; border-radius: 16px; font-size: 13px; color: var(--muted); }
@@ -91,6 +90,7 @@
     .set.done { background: var(--done); }
     .set input, .set select { width: 100%; text-align: center; padding: 0 2px; min-height: 34px; height: 34px; font-size: 16px; font-weight: 500; border: 0; background: var(--chip); border-radius: 8px; }
     .set input:focus { outline: none; box-shadow: 0 0 0 1.5px var(--accent); }
+    input.pad-replace { color: var(--accent); }   /* the number pad's next key replaces this number */
     .set.done input { background: transparent; }
     .set button { min-height: 34px; height: 34px; padding: 0; border: 0; background: transparent; }
     .set .kind { font-size: 14px; font-weight: 500; color: var(--muted); }
@@ -115,7 +115,7 @@
     .tiles .tile, .tiles .pill { flex: 1; min-width: 0; min-height: 56px; justify-content: center; }
     .tile.on { border-color: var(--accent); background: transparent; }
     .tile.on .tv { color: var(--accent); }
-    .tile .pctin { width: 34px; min-height: 0; height: 20px; padding: 0 2px; font-size: 11px; text-align: center; border-radius: 6px; background: var(--bg); }
+    .tile .pctin { width: 40px; min-height: 0; height: 24px; padding: 0 2px; font-size: 16px;   /* 16px: an iPhone zooms the page into any smaller box */ text-align: center; border-radius: 6px; background: var(--bg); }
     .pill { align-self: stretch; display: flex; align-items: center; justify-content: center; padding: 4px 8px; min-height: 36px; border-radius: 10px; font-size: 12px; color: var(--muted); }
     .pill.on { color: var(--accent); border-color: var(--accent); }
     /* the RPE box is the same box as the weight and reps boxes */
@@ -145,6 +145,10 @@
     .sheetgrid button.on { background: var(--accent); color: var(--bg); border-color: transparent; font-weight: 500; }
     .sheetgrid.list button { text-align: left; padding: 8px 14px; font-size: 17px; }
     .sheetgrid.list button.danger { color: var(--danger); }
+    .sheetgrid button.compact { font-size: 15px; line-height: 1.25; padding: 4px 6px; }
+    .sheetgrid button.keep { grid-column: 1 / -1; font-size: 16px; padding: 4px 8px; }
+    .sheetgrid button.keep:disabled { opacity: 1; color: var(--accent); }
+    .ex-chip.progression { color: var(--accent); border-color: var(--accent); font-weight: 650; }
     /* swipe a set left to reveal Delete */
     .setwrap { position: relative; overflow: hidden; border-radius: 8px; margin: 0 0 8px; }
     .setwrap .set { margin: 0; position: relative; touch-action: pan-y; transition: transform .18s ease; }
@@ -164,6 +168,7 @@
     .pl { display: inline-block; width: 12px; height: 52px; border-radius: 2px; margin: 0 1px; }
     .p25 { background: #FF2D00; } .p20 { background: #004CFF; } .p15 { background: #FFF12B; } .p10 { background: #16CC00; }
     .p5 { background: #ffffff; box-shadow: inset 0 0 0 1px #888; } .p2 { background: #000000; box-shadow: inset 0 0 0 1px #666; } .p1 { background: #9e9e9e; }
+    .p05 { background: #c9c9c9; height: 30px; width: 8px; } .p025 { background: #e0e0e0; box-shadow: inset 0 0 0 1px #999; height: 24px; width: 7px; }
     .readout { text-align: center; font-size: 15px; line-height: 1.5; }
     .readout b { font-weight: 600; }
     .readout .short { color: var(--danger); font-size: 13px; }
@@ -194,8 +199,7 @@
     .rest.active { display: grid; grid-template-columns: 1fr 1fr 1.4fr; }
     .rest.active .resttime { grid-column: 1 / -1; text-align: center; font-size: 36px; }
     .rest.active #restMain { background: var(--accent); color: var(--card); border-color: transparent; font-weight: 500; }
-    .rest.done .resttime { color: var(--accent); animation: restflash 1s steps(1, end) infinite; }
-    @keyframes restflash { 50% { opacity: .3; } }
+    .rest.done .resttime { color: var(--accent); }
     .overlay { position: fixed; inset: 0; background: var(--bg); z-index: 5; overflow-y: auto; padding: 12px; }
     .overlay > div { max-width: 560px; margin: 0 auto; }
     /* Wide screens (a tablet on its side): each exercise is one band, the e1RM, TM and buttons on the left and the
@@ -329,7 +333,11 @@
     .workout-log .card { padding: 16px; }
     #workout > .card { padding: 16px 18px; }
     #title { background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 0 0 10px; font-size: 19px; font-weight: 650; letter-spacing: -.02em; }
-    #clock { font-size: 12px; }
+    /* The workout clock sits beside the title and counts every second. */
+    .titlerow { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+    .titlerow #title { flex: 1 1 auto; min-width: 0; border-bottom: 0; padding-bottom: 0; }
+    .workout-clock { flex: none; font-size: 17px; font-weight: 650; font-variant-numeric: tabular-nums; color: var(--muted); }
+    .workout-clock::before { content: "\23F1\FE0E"; margin-right: 4px; font-weight: 400; }
     .workout-log .hint { line-height: 1.55; }
 
     .exhead { padding-bottom: 12px; border-bottom: 1px solid var(--line); margin-bottom: 14px; gap: 8px; }
@@ -407,7 +415,7 @@
     .workout-log.typing main { padding-bottom: 60vh; }
     .workout-log.keypad-open main { padding-bottom: calc(var(--keypad-height, 250px) + 32px); }
   </style>
-  <link rel="stylesheet" href="/training/static/logger-layout.css?v=8" />
+  <link rel="stylesheet" href="/training/static/logger-layout.css?v=11" />
 </head>
 <body class="workout-log">
 <button id="loggerNavScrim" type="button" aria-label="Close navigation" hidden></button>
@@ -433,9 +441,11 @@
 
   <section id="workout" hidden>
     <div id="workoutOverview" class="card">
-      <input id="title" type="text" aria-label="Workout title" autocomplete="off" />
-      <p id="clock" class="muted" style="margin:6px 0 0"></p>
-      <details class="logger-help"><summary>Rx = target · Actual = performed</summary><p class="hint">RPErx is the target; RPEact is what you performed. Tap ✓ after the set; if actual is blank, it uses the target. With LSe1RM on, actual RPE adjusts following weights; your completed weight stays fixed.</p></details>
+      <div class="titlerow">
+        <input id="title" type="text" aria-label="Workout title" autocomplete="off" />
+        <span id="clock" class="workout-clock" role="timer" aria-label="Workout time"></span>
+      </div>
+      <details class="logger-help"><summary>Rx = target · Actual = performed</summary><p class="hint">RPErx is the target; RPEact is what you performed. Tap ✓ after the set; a blank actual RPE stays blank and is saved as unrated. With LSe1RM on, actual RPE adjusts following weights; your completed weight stays fixed.</p></details>
       <div id="trialDaily" class="hint" hidden></div>
       <details id="sessionMotivationHome" open>
         <summary>Before you train · today's check-in</summary>
@@ -477,7 +487,7 @@
 <div>
   <div class="bar-row">
     <button id="plateStrip" class="platestrip" type="button" hidden></button>
-    <button id="restPill" class="rest-pill" type="button" hidden aria-label="Rest timer"><span id="restPillTime">Rest</span><i class="rest-pill-prog"><i id="restPillProg"></i></i></button>
+    <button id="restPill" class="rest-pill" type="button" hidden aria-label="Rest timer"><span id="restPillLabel" class="rest-pill-label">Next rest</span><span id="restPillTime">Rest</span><i class="rest-pill-prog"><i id="restPillProg"></i></i></button>
   </div>
   <div id="rest" class="rest">
     <button id="restPick" class="restdef" type="button" aria-label="Choose the rest time"></button>
@@ -577,21 +587,29 @@
     return control;
   }
   // A bottom sheet of big buttons. items: [{ v, label, desc, on }]; picking one closes the sheet and calls onPick(v).
-  function openSheet(title, hint, items, cols, onPick) {
+  // After a sheet closes, a quick second tap would land on whatever was under it (such as Finish workout).
+  // Taps in the next moment are ignored.
+  let ghostUntil = 0;
+  function swallowGhostTaps() { ghostUntil = Date.now() + 450; }
+  document.addEventListener("click", (e) => { if (e.isTrusted && Date.now() < ghostUntil) { e.preventDefault(); e.stopPropagation(); } }, true);
+  function openSheet(title, hint, items, cols, onPick, onClose) {
     const scrim = el("div", "scrim");
     const sheet = el("div", "sheet");
     sheet.setAttribute("role", "dialog"); sheet.setAttribute("aria-label", title);
     sheet.append(el("h2", null, title));
     if (hint) sheet.append(el("p", "muted", hint));
-    const grid = el("div", "sheetgrid" + (cols === 1 ? " list" : ""));
+    const grid = el("div", "sheetgrid" + (cols === 1 ? " list" : "")), buttons = {};
     grid.style.gridTemplateColumns = "repeat(" + cols + ", 1fr)";
     const onKey = (e) => { if (e.key === "Escape") close(); };
-    const close = () => { scrim.remove(); document.removeEventListener("keydown", onKey); };
+    const close = () => { scrim.remove(); document.removeEventListener("keydown", onKey); swallowGhostTaps(); if (onClose) onClose(); };
     for (const it of items) {
       const b = el("button", ((it.on ? "on " : "") + (it.cls || "")).trim() || null, it.label);
       b.type = "button";
       if (it.desc) b.append(el("small", null, it.desc));
-      b.addEventListener("click", () => { close(); onPick(it.v); });
+      if (it.hidden) b.hidden = true;
+      buttons[it.v] = b;
+      // a "stay" button (such as −15 / +15) keeps the sheet open so it can be tapped again
+      b.addEventListener("click", () => { if (!it.stay) close(); onPick(it.v); });
       grid.append(b);
     }
     sheet.append(grid);
@@ -599,6 +617,7 @@
     scrim.addEventListener("click", (e) => { if (e.target === scrim) close(); });
     document.addEventListener("keydown", onKey);
     document.body.append(scrim);
+    return { close, buttons, setTitle: (text) => { sheet.firstElementChild.textContent = text; sheet.setAttribute("aria-label", text); } };
   }
   // Exercise sheets (Info, Targets, Note, Plates) live inside their exercise card, so the live numbers, stress and
   // plate loader keep updating while open; CSS lifts the open one into a bottom sheet. Redraws reopen it.
@@ -1608,13 +1627,13 @@
   // ── The plate loader ──────────────────────────────────────────────────────────
   // Which plates go on each end of the bar for a set, drawn like the Barbell Loader. It follows the next set you have
   // not ticked, or the one you pick. The bar and chains are remembered for each movement (kg only; in lb mode it is a 45 lb bar).
-  const PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
+  const PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25, 0.5, 0.25];   // 0.5 and 0.25 for small jumps such as weighted pull-ups
   const PLATES_LB = [45, 35, 25, 10, 5, 2.5];
   const BAR_LB = 45;
   // "No bar" is for loads where only the plates count (weighted pull-ups, Henny Strap movements): the plates for the
   // whole weight in one stack, not split per side.
   const BARS = [[0, "No bar (plates only)"], [20, "20 kg Barbell"], [30, "30 kg SSB"], [20, "20 kg Buffalo Bar"], [15, "15 kg Neutral Grip Bar"], [10, "10 kg Arch Nem. Bar"]];
-  const PLATE_CLASSES = ["p25", "p20", "p15", "p10", "p5", "p2", "p1"];
+  const PLATE_CLASSES = ["p25", "p20", "p15", "p10", "p5", "p2", "p1", "p05", "p025"];
   const plateClass = (p, weightUnit = unit) => PLATE_CLASSES[(weightUnit === "lb" ? PLATES_LB : PLATES_KG).indexOf(p)] || "p1";   // colours by size, biggest first
   function platePlan(kg, ex) {
     const unit = unitFor(ex.ref);
@@ -1903,6 +1922,11 @@
       made.push({ type: "warmup", kg: String(Math.round(kg * 1e6) / 1e6), reps: String(reps), rpe: "", done: false, manual: true });
     }
     if (!made.length) { say("The first working set is too light to warm up for."); return; }
+    // ticked warm-ups leave the list, so remember how heavy you have already warmed up and only build what is left
+    const doneKg = Number(ex.warmupDoneKg) || 0;
+    const left = made.filter((w) => num(w.kg) > doneKg + 1e-6);
+    if (!left.length) { say("Warm-ups are done for " + ex.title + "."); return; }
+    made.splice(0, made.length, ...left);
     say("");
     // warm-ups you already ticked stay; the ones not done yet are replaced
     const keep = ex.sets.filter((s) => s.type !== "warmup" || s.done);
@@ -1925,7 +1949,7 @@
     button.type='button';button.setAttribute('aria-label','Weight unit for '+ex.title);
     button.addEventListener('click',()=>openSheet('Weight unit · '+ex.title,
       'Remembered for this exercise in future workouts. Entered and completed weights keep their value; automatic planned weights use the selected rounding step.',
-      [{v:'page',label:'Follow page ('+unit+')',on:current===null},{v:'kg',label:'Kilograms (kg)',on:current==='kg'},{v:'lb',label:'Pounds (lb)',on:current==='lb'}],3,
+      [{v:'page',label:'Follow page ('+unit+')',on:current===null,cls:'compact'},{v:'kg',label:'Kilograms (kg)',on:current==='kg',cls:'compact'},{v:'lb',label:'Pounds (lb)',on:current==='lb',cls:'compact'}],3,
       value=>setExerciseUnit(ex,value==='page'?null:value)));
     return button;
   }
@@ -1970,6 +1994,21 @@
     });
   }
 
+  const PROGRESSIONS = [
+    [/\bDDP\b/, "DDP", "DDP", "Planned DDP sets. You choose the weights for now."],
+    [/\bmyo\b/i, "Myo", "Myo-reps", "One activation set, then short mini-sets to the target."],
+    [/\bBO\b/, "BO", "Back-off sets", "Lighter sets after the top work."],
+    [/\bDS\d*\b/, "DS", "Drop sets", "Lower the weight and keep going after the set."],
+    [/\d\+/, "AMRAP", "AMRAP", "As many reps as you can on the group's last set."],
+  ];
+  function progressionTypes(text) {
+    if (!text) return [];
+    const found = PROGRESSIONS.filter(([re]) => re.test(text)).map(([, short, name, desc]) => ({ short, name, desc }));
+    const tm = /\bTM(\d+)\b/.exec(text);
+    if (tm) found.push({ short: "TM" + tm[1], name: "Training max " + tm[1] + "%", desc: "The plan sets this movement's training max at " + tm[1] + "%. You choose the weights for now." });
+    return found;
+  }
+
   function renderExercise(ex) {
     const unit = unitFor(ex.ref);
     const card = el("section", "card");
@@ -1983,7 +2022,6 @@
     makeReorderable(card, grip, ex);
     head.append(grip, el("p", "ex-title", ex.title));
     if (ex.swappedFrom) card.insertBefore(el("p", "swap-note", "Swapped in for " + ex.swappedFrom), chips);
-    if (ex.planCallouts) { const callouts = el("p", "plan-callouts", "Plan: " + ex.planCallouts); callouts.setAttribute("aria-label", "Planned callouts for " + ex.title + ": " + ex.planCallouts); card.insertBefore(callouts, chips); }
     if (ex.notes) card.insertBefore(el("p", "ex-note", ex.notes), chips);
     const chip = el("button", "chip", "Round to " + trim(stepOf(ex.ref)) + " " + unit + " ▾");
     chip.type = "button"; chip.setAttribute("aria-label", "Round planned weights to this many " + unit);
@@ -1997,14 +2035,7 @@
     });
     const rest = el("button", "chip", "Rest " + restLabel(restFor(ex)) + " ▾");
     rest.type = "button"; rest.setAttribute("aria-label", "Rest time after each working set of " + ex.title);
-    rest.addEventListener("click", () => {
-      const items = REST_OPTIONS.map((v) => ({ v, label: restLabel(v), on: v === ex.ref.restSec }));
-      items.unshift({ v: "default", label: "Default (" + restLabel(restSecs) + ")", on: ex.ref.restSec == null });
-      openSheet("Rest after " + ex.title, "Starts when you tick a working set of this exercise. Default is the time set in the bottom bar.", items, 4, (v) => {
-        ex.ref.restSec = v === "default" ? null : Number(v);
-        saveDraft(); saveRef(ex); refreshCard(ex);
-      });
-    });
+    rest.addEventListener("click", () => openExerciseRest(ex));
     const moreMenu = () => openSheet(ex.title, "", [
       { v: "unit", label: "Weight unit", desc: unit + (ex.ref.weightUnit == null ? " (follows the page)" : "") },
       { v: "round", label: "Round weights to", desc: trim(stepOf(ex.ref)) + " " + unit },
@@ -2040,6 +2071,12 @@
       const b = el("button", "ex-chip" + (extra ? " " + extra : ""), label); b.type = "button";
       b.addEventListener("click", action); chips.append(b); return b;
     };
+    const progression = progressionTypes(ex.planCallouts);
+    if (progression.length) {
+      const b = chipButton(progression.map((t) => t.short).join(" \u00b7 "), () => openSheet(
+        ex.title, "Plan: " + ex.planCallouts, progression.map((t) => ({ v: t.short, label: t.name, desc: t.desc })), 1, () => {}), "progression");
+      b.setAttribute("aria-label", "Progression for " + ex.title + ": " + progression.map((t) => t.name).join(", ") + ". Plan " + ex.planCallouts);
+    }
     chipButton("Info", () => openPanel(card, "info"));
     chipButton("Targets", () => openPanel(card, "targets"));
     chipButton("Warm-up", () => addWarmups(ex));
@@ -2071,7 +2108,7 @@
     const restRow = el("div", "rest-row"), restValue = el("b", "rest-value", restLabel(restFor(ex)));
     const restStep = (delta) => {
       ex.ref.restSec = Math.max(0, Math.min(600, restFor(ex) + delta));
-      restValue.textContent = restLabel(restFor(ex)); saveDraft(); saveRef(ex);
+      restValue.textContent = restLabel(restFor(ex)); saveDraft(); saveRef(ex); restRender();
     };
     const restLess = el("button", null, "−15"), restMore = el("button", null, "+15");
     restLess.type = restMore.type = "button";
@@ -2200,7 +2237,8 @@
         }
         if (!s.done) ex.collapsed = false;
         updateCollapse();
-        if (s.done && !s.arpe) { s.arpe = s.rpe; s.actualSource = s.rpe ? 'copied_target' : 'unrated'; }
+        // a blank actual RPE stays blank (unrated); the target is never copied in
+        if (s.done && !s.arpe) { s.arpe = ""; s.actualSource = 'unrated'; }
         if (s.done) SessionCapture.complete(ex, s);
         row.classList.toggle("done", s.done);
         labelTick();
@@ -2213,13 +2251,15 @@
         // Where to go next: the superset partner after each set, else the next exercise with sets left once this one is done.
         const flow = s.done && s.type !== "warmup" && typeof LoggerLayout !== 'undefined' && LoggerLayout.afterSet ? LoggerLayout.afterSet(ex) : null;
         const rest = restFor(ex);
-        if (s.done && s.type !== "warmup" && rest > 0 && !(flow && flow.skipRest)) restStart(rest);   // the rest timer, this movement's own time; warm-ups don't start it
+        if (s.done && s.type !== "warmup" && rest > 0 && !(flow && flow.skipRest)) restStart(rest, ex);   // the rest timer, this movement's own time; warm-ups don't start it
         if (flow && flow.next) LoggerLayout.select(flow.next);
         // A ticked warm-up is dropped from the workout (so it is not saved to Hevy either) after a moment, so a mis-tap can be undone.
         // Only its row goes, not a redraw, so a box you have started typing in keeps its keyboard.
         if (s.done && s.type === "warmup") setTimeout(() => {
           const i = ex.sets.indexOf(s);
           if (!s.done || i < 0) return;
+          const kg = num(s.kg);
+          if (kg > (Number(ex.warmupDoneKg) || 0)) ex.warmupDoneKg = kg;
           ex.sets.splice(i, 1); saveDraft(); if (openSwipe === wrap) openSwipe = null; wrap.remove();
         }, 800);
       });
@@ -2259,13 +2299,19 @@
     return card;
   }
 
+  // Total workout time beside the title: m:ss, then h:mm:ss after an hour. The start time is kept for screen readers.
+  function clockText(secs) {
+    const h = Math.floor(secs / 3600), m = Math.floor(secs / 60) % 60, sec = String(secs % 60).padStart(2, "0");
+    return h ? h + ":" + String(m).padStart(2, "0") + ":" + sec : m + ":" + sec;
+  }
   function tickClock() {
     if (!draft) return;
     const start = new Date(draft.startedAt);
-    const mins = Math.max(0, Math.round((Date.now() - start) / 60000));
-    $("clock").textContent = "Started " + start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) + " · " + mins + " min";
+    const secs = Math.max(0, Math.floor((Date.now() - start) / 1000));
+    $("clock").textContent = clockText(secs);
+    $("clock").setAttribute("aria-label", "Workout time " + clockText(secs) + ", started " + start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }));
   }
-  setInterval(() => { if (!$("workout").hidden) tickClock(); }, 30000);
+  setInterval(() => { if (!$("workout").hidden) tickClock(); }, 1000);
 
   $("title").addEventListener("input", () => { draft.title = $("title").value; saveDraft(); });
   $("empty").addEventListener("click", startEmpty);
@@ -2549,7 +2595,7 @@
       let best = null;
       for (const s of ticked) if (!best || num(s.kg) > num(best.kg)) best = s;
       rows.push({ title: ex.title, count: ticked.length + "/" + work.length, state: !ticked.length ? "none" : ticked.length === work.length ? "all" : "some",
-        best: best ? (primaryText(best, ex) || "–") + " " + u + " × " + best.reps + ((best.arpe || best.rpe) ? " @" + (best.arpe || best.rpe) : "") : "Not done" });
+        best: best ? (primaryText(best, ex) || "–") + " " + u + " × " + best.reps + ((best.arpe ?? best.rpe) ? " @" + (best.arpe ?? best.rpe) : "") : "Not done" });
       const st = stressStates.get(ex.template_id), d = st && !st.pending && !st.error ? st.result : null;
       let stNow = null, stUsual = null;
       if (d && !seen.has(ex.template_id)) {
@@ -2595,21 +2641,40 @@
   $("saveDiscard").addEventListener("click", () => { saveDialog.close(); $("discard").click(); });
 
   const REST_OPTIONS = [0, 60, 90, 120, 150, 180, 240, 300];
+  let restSheet = null;   // the open −15 / +15 sheet, kept in step with the countdown
   let restSecs = 180, restEnd = null, restTotal = 0, restDone = false, restTimer = null, audio = null, wake = null;
+  let restExId = null, restKept = false;   // the exercise this rest is for, and whether "Keep" was tapped during it
   try {
     const saved = Number(localStorage.getItem("training.restSecs"));
     if (localStorage.getItem("training.restSecs") !== null && REST_OPTIONS.includes(saved)) restSecs = saved;
     const end = Number(localStorage.getItem("training.restEnd"));
-    if (end > Date.now()) { restEnd = end; restTotal = Number(localStorage.getItem("training.restTotal")) || Math.ceil((end - Date.now()) / 1000); }
+    if (end > Date.now()) { restEnd = end; restTotal = Number(localStorage.getItem("training.restTotal")) || Math.ceil((end - Date.now()) / 1000); restExId = localStorage.getItem("training.restEx"); }
   } catch (e) {}
   const mmss = (secs) => Math.floor(secs / 60) + ":" + String(secs % 60).padStart(2, "0");
   const restLabel = (secs) => (secs ? mmss(secs) : "Off");
   const restFor = (ex) => (ex.ref.restSec == null ? restSecs : ex.ref.restSec);   // this movement's own rest time, else the default
+  // The exercise on screen: its rest is the one shown as "Next rest" and the one Start uses.
+  const restNextEx = () => (typeof LoggerLayout !== "undefined" && LoggerLayout.current ? LoggerLayout.current() : null) || draft?.exercises?.[0] || null;
+  const restNext = () => { const ex = restNextEx(); return ex ? restFor(ex) : restSecs; };
+  const restExercise = () => (restExId == null ? null : draft?.exercises?.find((e) => String(e.id) === String(restExId)) || null);
+  // The length of the rest in progress after any −15 / +15, rounded to whole seconds.
+  const restAdjusted = () => Math.max(0, Math.min(600, Math.round(restTotal)));
+  function openExerciseRest(ex) {
+    const items = REST_OPTIONS.map((v) => ({ v, label: restLabel(v), on: v === ex.ref.restSec }));
+    items.unshift({ v: "default", label: "Default (" + restLabel(restSecs) + ")", on: ex.ref.restSec == null });
+    openSheet(ex.title + " rest", "Starts when you tick a working set of " + ex.title + ". Remembered for future workouts. Default uses the default rest.", items, 4, (v) => {
+      ex.ref.restSec = v === "default" ? null : Number(v);
+      saveDraft(); saveRef(ex); refreshCard(ex); restRender();
+    });
+  }
+  function restStartNext() { const ex = restNextEx(); restStart(restNext() || restSecs || 180, ex); }
   function restSave() {
     try {
       localStorage.setItem("training.restSecs", String(restSecs));
-      if (restEnd !== null) { localStorage.setItem("training.restEnd", String(restEnd)); localStorage.setItem("training.restTotal", String(restTotal)); }
-      else { localStorage.removeItem("training.restEnd"); localStorage.removeItem("training.restTotal"); }
+      if (restEnd !== null) {
+        localStorage.setItem("training.restEnd", String(restEnd)); localStorage.setItem("training.restTotal", String(restTotal));
+        if (restExId != null) localStorage.setItem("training.restEx", String(restExId)); else localStorage.removeItem("training.restEx");
+      } else { localStorage.removeItem("training.restEnd"); localStorage.removeItem("training.restTotal"); localStorage.removeItem("training.restEx"); }
     } catch (e) {}
   }
   function restRender() {
@@ -2630,29 +2695,70 @@
     // The countdown in the header's top-right corner mirrors the timer.
     const pill = $("restPill");
     pill.classList.toggle("running", running); pill.classList.toggle("over", restDone);
-    $("restPillTime").textContent = running ? $("restTime").textContent : restDone ? "Rest over" : "Rest";
+    const next = restLabel(restNext());
+    $("restPillLabel").hidden = active;
+    $("restPillTime").textContent = running ? $("restTime").textContent : restDone ? "Rest over" : next;
     $("restPillProg").style.width = running ? $("restProg").firstElementChild.style.width : "0%";
-    pill.setAttribute("aria-label", running ? "Rest " + $("restTime").textContent + " left. Change or skip" : restDone ? "Rest over. Dismiss" : "Rest timer. Start or change the default");
+    if (restSheet) {
+      if (!running) restSheet.close();
+      else {
+        restSheet.setTitle("Rest " + $("restTime").textContent);
+        const keep = restSheet.buttons.keep, ex = restExercise(), secs = restAdjusted();
+        if (keep) {
+          const same = !ex || secs === restFor(ex);
+          keep.hidden = !ex || (same && !restKept);
+          keep.disabled = same;
+          if (ex) keep.textContent = same ? restLabel(secs) + " kept for " + ex.title + " \u2713" : "Keep " + restLabel(secs) + " for " + ex.title;
+        }
+      }
+    }
+    pill.setAttribute("aria-label", running ? "Rest " + $("restTime").textContent + " left. Change or skip" : restDone ? "Rest over. Dismiss" : "Next rest " + next + ". Start or change it");
   }
   $("restPill").addEventListener("click", () => {
     if (restDone) { restStop(); return; }
     if (restEnd !== null) {
-      openSheet("Rest " + $("restTime").textContent, "Only changes the rest you're in. Set an exercise's rest under Targets.",
-        [{ v: "minus", label: "−15" }, { v: "plus", label: "+15" }, { v: "skip", label: "Skip", cls: "primary" }], 3,
-        (v) => { if (v === "skip") restStop(); else $(v === "minus" ? "restMinus" : "restPlus").click(); });
+      restSheet = openSheet("Rest " + $("restTime").textContent, "\u221215 and +15 change only this rest. Keep makes it the exercise's rest from now on.",
+        [{ v: "minus", label: "\u221215", stay: true }, { v: "plus", label: "+15", stay: true }, { v: "skip", label: "Skip", cls: "primary" },
+          { v: "keep", label: "Keep", stay: true, cls: "keep", hidden: true }], 3,
+        (v) => {
+          if (v === "skip") restStop();
+          else if (v === "keep") {
+            const ex = restExercise(); if (!ex) return;
+            ex.ref.restSec = restAdjusted(); restKept = true;
+            saveDraft(); saveRef(ex); refreshCard(ex); restRender();
+          } else restNudge(v === "minus" ? -15 : 15);
+        }, () => { restSheet = null; });
+      restRender();
       return;
     }
-    openSheet("Rest timer", "Starts by itself when you tick a working set.",
-      [{ v: "start", label: "Start " + restLabel(restSecs || 180) }, { v: "default", label: "Default rest " + restLabel(restSecs) }], 1,
-      (v) => { if (v === "start") restStart(restSecs || 180); else $("restPick").click(); });
+    const ex = restNextEx(), items = [{ v: "start", label: "Start " + restLabel(restNext() || restSecs || 180) }];
+    if (ex) items.push({ v: "exercise", label: ex.title + " rest " + restLabel(restFor(ex)) + " \u25BE" });
+    items.push({ v: "default", label: "Default rest " + restLabel(restSecs) + " \u25BE" });
+    openSheet("Rest timer", "Starts by itself when you tick a working set.", items, 1,
+      (v) => { if (v === "start") restStartNext(); else if (v === "exercise") openExerciseRest(ex); else $("restPick").click(); });
   });
+  // The end-of-rest beep is booked on the audio clock the moment rest starts (and re-booked after −15 / +15), so it
+  // sounds on time even when the page's own timers are slowed. restBooked holds the booked tones so they can be cancelled.
+  let restBooked = [], restBookedAt = 0;
+  function restUnbook() { for (const n of restBooked) { try { n.stop(); } catch (e) {} } restBooked = []; }
+  function restBook() {
+    restUnbook();
+    if (!audio || restEnd === null) return;
+    try { restBookedAt = audio.currentTime + Math.max(0, (restEnd - Date.now()) / 1000); restBooked = restBeepAt(restBookedAt); } catch (e) { restBooked = []; }
+  }
   function restBeep() {
     try { if (navigator.vibrate) navigator.vibrate([400, 150, 400, 150, 400, 150, 400]); } catch (e) {}
-    try {
-      if (!audio) return;
+    // already sounding from the booking, unless the audio clock was paused (page in the background) and it would be late
+    if (restBooked.length && audio && audio.currentTime >= restBookedAt - 0.25) { restBooked = []; return; }
+    restUnbook();
+    try { if (audio) restBeepAt(audio.currentTime); } catch (e) {}
+  }
+  function restBeepAt(start) {
+    const nodes = [];
+    {
       // Loud on purpose: square waves (much harsher than a sine) at full gain, two alternating tones, about 3 seconds.
       // A compressor in front keeps the stacked tones from clipping. The phone's media volume still sets the ceiling.
-      const t0 = audio.currentTime, comp = audio.createDynamicsCompressor();
+      const t0 = start, comp = audio.createDynamicsCompressor();
       comp.threshold.value = -30; comp.ratio.value = 12; comp.attack.value = 0.003; comp.release.value = 0.1;
       comp.connect(audio.destination);
       for (let i = 0; i < 8; i++) {
@@ -2661,23 +2767,26 @@
           const osc = audio.createOscillator(), gain = audio.createGain();
           osc.type = "square"; osc.frequency.value = f; osc.connect(gain); gain.connect(comp);
           gain.gain.setValueAtTime(1, at); gain.gain.setValueAtTime(0, at + 0.3);
-          osc.start(at); osc.stop(at + 0.32);
+          osc.start(at); osc.stop(at + 0.32); nodes.push(osc);
         }
       }
-    } catch (e) {}
+    }
+    return nodes;
   }
   function restLoop() {
     if (restEnd === null) return;
     if (Date.now() >= restEnd) { restEnd = null; restDone = true; clearInterval(restTimer); restSave(); restBeep(); }
     restRender();
   }
-  function restStart(secs) {
+  function restStart(secs, ex) {
     // the sound is set up here, inside a tap, because the browser only lets a page beep later if it was allowed to now
+    // On an iPhone, "playback" lets the beep sound with the silent switch on, the way a media app does (Safari 16.4+).
+    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {}
     try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === "suspended") audio.resume(); } catch (e) {}
-    restEnd = Date.now() + secs * 1000; restTotal = secs; restDone = false; restSave();
+    restEnd = Date.now() + secs * 1000; restTotal = secs; restDone = false; restKept = false; restExId = ex ? ex.id : null; restSave(); restBook();
     clearInterval(restTimer); restTimer = setInterval(restLoop, 250); restRender();
   }
-  function restStop() { restEnd = null; restDone = false; clearInterval(restTimer); restSave(); restRender(); }
+  function restStop() { restEnd = null; restDone = false; restUnbook(); clearInterval(restTimer); restSave(); restRender(); }
   async function keepAwake() {
     try {
       if (navigator.wakeLock && !document.hidden && !wake) {
@@ -2686,9 +2795,16 @@
       }
     } catch (e) {}
   }
-  $("restMain").addEventListener("click", () => { if (restEnd !== null || restDone) restStop(); else restStart(restSecs || 180); });
-  $("restMinus").addEventListener("click", () => { if (restEnd !== null) { const was = restEnd; restEnd = Math.max(Date.now() + 1000, restEnd - 15000); restTotal = Math.max(1, restTotal - (was - restEnd) / 1000); restSave(); restRender(); } });
-  $("restPlus").addEventListener("click", () => { if (restEnd !== null) { restEnd += 15000; restTotal += 15; restSave(); restRender(); } });
+  $("restMain").addEventListener("click", () => { if (restEnd !== null || restDone) restStop(); else restStartNext(); });
+  function restNudge(secs) {
+    if (restEnd === null) return;
+    const was = restEnd;
+    restEnd = Math.max(Date.now() + 1000, restEnd + secs * 1000);
+    restTotal = Math.max(1, restTotal + (restEnd - was) / 1000);
+    restSave(); restBook(); restRender();
+  }
+  $("restMinus").addEventListener("click", () => restNudge(-15));
+  $("restPlus").addEventListener("click", () => restNudge(15));
   $("restPick").addEventListener("click", () => openSheet(
     "Default rest", "For exercises without their own rest time (set on each exercise). Starts when you tick a working set. Warm-ups don't start it.",
     REST_OPTIONS.map((v) => ({ v, label: restLabel(v), on: v === restSecs })), 4,
@@ -2767,10 +2883,15 @@
     numberpad.querySelector('[data-pad-key="next"]').disabled = padInputs().at(-1) === input;
     if (typeof paintPadRpe === "function") paintPadRpe();
     paintPlates();
-    input.select();
+    // The first key replaces the number. This is marked with a highlight instead of a text selection, which an
+    // iPhone draws with drag handles that push the number sideways.
+    document.querySelectorAll("input.pad-replace").forEach((x) => x.classList.remove("pad-replace"));
+    if (input.value) input.classList.add("pad-replace");
+    try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) {}
     requestAnimationFrame(sizeNumberPad);
   }
   function closeNumberPad() {
+    if (padInput) padInput.classList.remove("pad-replace");
     padInput = null;
     numberpad.hidden = true;
     document.body.classList.remove("keypad-open");
@@ -2791,7 +2912,9 @@
       return;
     }
     input.focus({ preventScroll: true });
-    const edit = numberPadEdit(input.value, input.selectionStart ?? input.value.length, input.selectionEnd ?? input.value.length, key, input.dataset.keypad === "decimal");
+    const replace = input.classList.contains("pad-replace");
+    input.classList.remove("pad-replace");
+    const edit = numberPadEdit(input.value, replace ? 0 : input.selectionStart ?? input.value.length, replace ? input.value.length : input.selectionEnd ?? input.value.length, key, input.dataset.keypad === "decimal");
     if (!edit) return;
     input.value = edit.value;
     input.setSelectionRange(edit.caret, edit.caret);
@@ -2870,7 +2993,7 @@
   // ── Boot ────────────────────────────────────────────────────────────────────
   if (typeof LoggerLayout !== 'undefined') LoggerLayout.init({
     getDraft: () => draft, getCard: id => cardEls.get(id), save: saveDraft,
-    render: renderWorkout, unitFor, format: trim,
+    render: renderWorkout, unitFor, format: trim, onUpdate: () => restRender(),
   });
   window.addEventListener('pageshow',async event=>{
     if(!event.persisted)return;

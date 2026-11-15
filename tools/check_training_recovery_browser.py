@@ -42,6 +42,8 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
                 page.locator('#motivation-level').select_option('2')
                 with page.expect_response(lambda r:r.url.endswith('/session-checkins') and r.request.method=='POST'):
                     page.locator('#confirmMotivation').click()
+                # Ticking no longer copies the RPE target, so enter actual RPEs first (a TS set needs one to save).
+                page.evaluate("draft.exercises.forEach(e=>e.sets.forEach(s=>{s.arpe=s.rpe;s.actualSource='entered'}));renderWorkout();saveDraft()")
                 for button in page.locator('.set .tick').all():button.click()
             def save():
                 page.locator('#finish').click()
