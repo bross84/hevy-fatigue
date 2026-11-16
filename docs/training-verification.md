@@ -1355,3 +1355,16 @@ Details in hevy-context.md, "Gym-night fixes on the Log page".
   "BO · TM90", and the DDP chip opened the plan line with its meaning.
 - Not run: Docker build/startup (daemon not running), physical iPhone (sound with silent switch and with
   music, lock screen, page zoom and the rest box), deployed or real data.
+
+## Tap guard after a sheet closes — local, 2026-11-15
+
+- `rackbook/tests/test_log_ghost_taps.cjs`: taps inside the closed sheet's area are ignored for 0.45 s; a ✕
+  above it, scripted clicks, and taps after 0.45 s work; opening a sheet clears the guard.
+- `tools/check_training_browser.py` updated for the intended d07b3e9 change: a ticked set's blank actual RPE
+  shows "Choose RPEact" and is saved as `unrated` (not `copied_target`). A 0.5 s pause before ticking a set
+  where the RPE sheet just closed matches the guard.
+- With those, the check passes end to end, except one assertion skipped in a scratch copy: after about
+  7–8 pm Eastern the AI evidence window (local "today") misses the check-in because the workout start is in
+  UTC (the known evening-date issue, not from this change; the line itself is unchanged).
+- Every .cjs, rackbook Python tests (1 expected failure, baseline), check_logger_layout_browser and
+  check_training_recovery_browser passed. Not checked on a phone.
