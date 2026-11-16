@@ -55,8 +55,8 @@ class CoachingTests(TestCase):
                                set_number=1,weight_lbs=220.462262185,reps=reps,rpe=7))
         self.db.commit()
 
-    def exact(self, identity, day, *, reps=5, rpe=7, kg=100, basis='e1rm', source='entered'):
-        at=str(day)+'T12:00:00Z'
+    def exact(self, identity, day, *, reps=5, rpe=7, kg=100, basis='e1rm', source='entered', at=None):
+        at=at or str(day)+'T12:00:00Z'
         raw=dict(exercise_template_id='sq',sets=[dict(review=dict(basis=basis,rpe_source=source))])
         with logger.get_db() as conn:
             conn.execute('INSERT INTO logged_sets (hevy_workout_id,workout_start,exercise_template_id,exercise_title,set_number,set_type,weight_kg,reps,rpe,is_ts,target_rpe) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
@@ -140,6 +140,25 @@ class CoachingTests(TestCase):
         self.assertEqual(main._build_diagnostics_snapshot(self.db),monitoring)
         self.assertIn('Motivation is separate from fatigue',coaching.BRIEF)
         self.assertIn('One low-motivation day is not evidence',coaching.BRIEF)
+
+    def test_late_evening_eastern_workout_belongs_to_its_local_day(self):
+        # 11:35 pm Eastern on 5 November is stored by the logger as 04:35 UTC on 6 November.
+        from rackbook.motivation import record
+        late='2026-11-06T04:35:00.000Z'
+        with patch.dict(os.environ,TZ='America/New_York'):
+            self.exact('late',DAY,at=late)
+            with logger.get_db() as conn:
+                record(dict(start_time=late,motivation=dict(level=2,reason='fatigue',note='Late session',
+                    timing='before_working_sets',recorded_at='2026-11-06T04:30:00Z')),'late',conn)
+            report=coaching.build_report(self.db,today=DAY)
+            self.assertEqual([r['note'] for r in report['motivation_checkins']],['Late session'])
+            self.assertEqual([x['last_date'] for x in report['exercises']],[str(DAY)])
+            # Daily readiness for the 5th keeps its same-day cutoff: training ends the day before.
+            earlier=coaching.build_report(self.db,today=DAY-timedelta(days=1))
+            self.assertEqual(earlier['motivation_checkins'],[])
+            self.assertEqual(earlier['exercises'],[])
+            # Evidence read the logging database without changing it.
+            self.assertEqual(coaching.local_evidence(DAY,DAY)['status'],'available')
 
     def create(self):
         identity=str(uuid4())

@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Any
 
+from .local_day import local_day_text
 from .exercise_state import LB_PER_KG, PctLookup, reference_set, sessions_newest_first
 from .strength_score import Sex, dots_score, smooth_body_weight, weight_on
 
@@ -33,7 +34,7 @@ def e1rm_by_session(entries: list[dict[str, Any]], pct: PctLookup) -> list[dict[
         start = ref and ref["entry"].get("workout_start_time")
         if ref is None or not start:
             continue
-        points.append({"date": start[:10], "e1rm_lb": ref["e1rm_lb"]})
+        points.append({"date": local_day_text(start), "e1rm_lb": ref["e1rm_lb"]})
     points.reverse()
     return points
 

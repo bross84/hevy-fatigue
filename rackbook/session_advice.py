@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field, model_validator
 
 from .database import get_db
+from .local_day import local_today
 
 VERSION = 'provisional-session-v1'
 HISTORY_DAYS = 90
@@ -383,7 +384,7 @@ def outcomes(workout_id):
     for row in rows:
         outcome=json.loads(row['outcome'])
         day=date.fromisoformat(row['local_date'])
-        window_end=min(date.today(),day+timedelta(days=CHECKIN_DAYS-1))
+        window_end=min(local_today(),day+timedelta(days=CHECKIN_DAYS-1))
         next_rows=host_context(window_end)['checkins'] if window_end>day else []
         outcome['next_checkin']=next((r for r in next_rows if str(r['date'])>day.isoformat()),None)
         result.append(outcome)
