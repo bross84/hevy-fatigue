@@ -4,7 +4,7 @@
 # ─────────────────────────────────────────────────────────
 
 # Stage 1: install dependencies
-FROM python:3.14-slim AS builder
+FROM python:3.15-slim AS builder
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ RUN pip install --upgrade pip \
 
 
 # Stage 2: final runtime image
-FROM python:3.14-slim
+FROM python:3.15-slim
 
 WORKDIR /app
 
