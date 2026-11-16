@@ -15,3 +15,22 @@ def validate_database_paths(host_path=None):
     training = database_path()
     if host == training or (host.exists() and training.exists() and os.path.samefile(host, training)):
         raise RuntimeError('DB_PATH and RACKBOOK_DB_PATH must identify different SQLite files.')
+
+
+def monitoring_read_path_problem(host_path=None):
+    """Explain why session advice and trial inputs would quietly read nothing.
+
+    HEVY_FATIGUE_DB_PATH is the read-only path the logging side uses for the
+    host's check-ins and sessions. It is set on purpose rather than derived, so
+    startup only reports a missing or different value; it never changes it."""
+    host = Path(host_path or os.environ.get('DB_PATH', './hevy_fatigue.db')).resolve()
+    configured = os.environ.get('HEVY_FATIGUE_DB_PATH')
+    if not configured:
+        return ('HEVY_FATIGUE_DB_PATH is not set, so session advice and model-trial inputs '
+                'will show as unavailable.')
+    monitoring = Path(configured).resolve()
+    same = monitoring == host or (monitoring.exists() and host.exists() and os.path.samefile(monitoring, host))
+    if not same:
+        return ('HEVY_FATIGUE_DB_PATH points at a different file from DB_PATH, so session advice '
+                "and model-trial inputs will not see the dashboard's check-ins and sessions.")
+    return None

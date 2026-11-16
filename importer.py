@@ -1,4 +1,5 @@
 from collections import defaultdict
+import json
 import re
 
 from database import SessionLocal, WorkoutLog, WorkoutSession, ExerciseMapping, ExerciseCanonical, ExerciseConflict, AppSetting, init_db
@@ -37,6 +38,8 @@ _MIXED_SESSION_NOTE = "Mixed session detected - consider splitting by modality"
 _SRPE_TITLE_TAG_PATTERN = re.compile(r"@(?P<value>\d+(?:\.\d+)?)")
 _IMPORT_CONTEXT_KEY = "importer_sync_context"
 _LAST_SYNC_SETTING_KEY = "last_sync"
+_PRESERVED_SESSIONS_SETTING_KEY = "full_sync_preserved_sessions"
+_FULL_SYNC_ERROR_SETTING_KEY = "sync_full_error_state"
 _AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT = 0.87
 _LOCAL_TZ = zoneinfo.ZoneInfo(os.environ.get("TZ", "UTC"))
 
@@ -235,6 +238,76 @@ def _set_setting_value(db, key: str, value: str) -> None:
         row.value = value
     else:
         db.add(AppSetting(key=key, value=value))
+
+
+def _session_user_fields(row) -> dict:
+    """Fields a person may have typed in or confirmed for one session.
+
+    Every session keeps its status and sRPE. A verified session also keeps the
+    modality and duration that were confirmed, so a rebuild cannot replace them
+    with fresh guesses."""
+    fields = {
+        "verification_status": row.verification_status,
+        "verified_at": row.verified_at.isoformat() if row.verified_at else None,
+        "srpe": row.srpe,
+    }
+    if row.verification_status == "verified":
+        fields.update({
+            "modality": row.modality,
+            "modality_confidence": row.modality_confidence,
+            "modality_note": row.modality_note,
+            "duration_minutes": row.duration_minutes,
+        })
+    return fields
+
+
+def _stored_preserved_session_fields(db) -> dict:
+    raw = _get_setting_value(db, _PRESERVED_SESSIONS_SETTING_KEY)
+    if not raw:
+        return {}
+    try:
+        stored = json.loads(raw)
+    except (TypeError, ValueError):
+        return {}
+    return stored if isinstance(stored, dict) else {}
+
+
+def collect_preserved_session_fields(db) -> dict:
+    """Current sessions' user fields, with any snapshot kept from an unfinished
+    full sync taking priority (those rows were already wiped and rebuilt with
+    defaults, so the stored copy is the real one)."""
+    current = {
+        row.hevy_workout_id: _session_user_fields(row)
+        for row in db.query(WorkoutSession).all()
+        if row.hevy_workout_id
+    }
+    current.update(_stored_preserved_session_fields(db))
+    return current
+
+
+def store_preserved_session_fields(db) -> dict:
+    """Save sessions' user fields in app_settings before a wipe. It is committed
+    with the wipe, so the copy survives an import that fails part-way; the next
+    full import restores it and only then removes it."""
+    preserved = collect_preserved_session_fields(db)
+    _set_setting_value(db, _PRESERVED_SESSIONS_SETTING_KEY, json.dumps(preserved))
+    return preserved
+
+
+def _restore_session_user_fields(db, preserved: dict) -> None:
+    if not preserved:
+        return
+    rebuilt = (
+        db.query(WorkoutSession)
+        .filter(WorkoutSession.hevy_workout_id.in_(list(preserved.keys())))
+        .all()
+    )
+    for session in rebuilt:
+        fields = preserved.get(session.hevy_workout_id) or {}
+        for name, value in fields.items():
+            if name == "verified_at":
+                value = datetime.fromisoformat(value) if value else None
+            setattr(session, name, value)
 
 
 def _get_auto_verify_confidence_threshold(db) -> float:
@@ -638,15 +711,7 @@ def initial_import(db, canonical_map):
     context = _get_import_context(db)
     client = context["client"]
 
-    preserved_session_state = {
-        row.hevy_workout_id: {
-            "verification_status": row.verification_status,
-            "verified_at": row.verified_at,
-            "srpe": row.srpe,
-        }
-        for row in db.query(WorkoutSession).all()
-        if row.hevy_workout_id
-    }
+    preserved_session_state = store_preserved_session_fields(db)
 
     db.query(WorkoutLog).delete(synchronize_session=False)
     db.query(WorkoutSession).delete(synchronize_session=False)
@@ -670,19 +735,10 @@ def initial_import(db, canonical_map):
             break
         page += 1
 
-    if preserved_session_state:
-        rebuilt_sessions = (
-            db.query(WorkoutSession)
-            .filter(WorkoutSession.hevy_workout_id.in_(list(preserved_session_state.keys())))
-            .all()
-        )
-        for session in rebuilt_sessions:
-            preserved = preserved_session_state.get(session.hevy_workout_id)
-            if not preserved:
-                continue
-            session.verification_status = preserved["verification_status"]
-            session.verified_at = preserved["verified_at"]
-            session.srpe = preserved["srpe"]
+    _restore_session_user_fields(db, preserved_session_state)
+    db.query(AppSetting).filter(
+        AppSetting.key.in_([_PRESERVED_SESSIONS_SETTING_KEY, _FULL_SYNC_ERROR_SETTING_KEY])
+    ).delete(synchronize_session=False)
 
     _set_setting_value(db, _LAST_SYNC_SETTING_KEY, datetime.utcnow().isoformat())
     detect_exercise_conflicts(db)

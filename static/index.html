@@ -6,7 +6,7 @@
 <title>Hevy Fatigue</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
-<script src="/training/static/training.js"></script>
+<script src="/training/static/training.js?v=2"></script>
 <script src="/training/static/ai-coach.js?v=2"></script>
 <script src="/training/static/plan-proposal.js?v=4"></script>
 <script src="/training/static/plan-change.js?v=1"></script>
@@ -5468,7 +5468,7 @@ async function runFullSync() {
   
   // Show confirmation dialog
   const confirmed = window.confirm(
-    'This will delete and reimport all workout data from Hevy.\n\nCheck-in history and canonical names will be preserved.\n\nContinue?'
+    'This will delete and reimport all workout data from Hevy.\n\nCheck-ins, canonical names, and the sRPE, type, duration and verified marks you entered for each workout will be kept.\n\nContinue?'
   );
   if (!confirmed) return;
 

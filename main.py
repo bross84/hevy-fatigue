@@ -10,6 +10,7 @@ from typing import Optional
 from datetime import date as date_type, timedelta, datetime
 from uuid import UUID
 import httpx
+import logging
 import json
 import os
 import threading
@@ -446,9 +447,12 @@ def calculate_stress_scores(
 # --- Startup ---
 @app.on_event("startup")
 def startup():
-    from rackbook.config import validate_database_paths
+    from rackbook.config import monitoring_read_path_problem, validate_database_paths
     from database import _db_path
     validate_database_paths(_db_path)
+    problem = monitoring_read_path_problem(_db_path)
+    if problem:
+        logging.getLogger(__name__).warning(problem)
     init_db()
     db = SessionLocal()
     try:
@@ -933,7 +937,8 @@ def trigger_sync_full(db: Session = Depends(get_db)):
     """
     Full sync: wipe imported workout data and reimport entire history from Hevy.
     Intended for recovery after canonical renames or data integrity issues.
-    Preserves daily check-ins, exercise mappings, and canonical names.
+    Preserves daily check-ins, exercise mappings, canonical names, and the
+    sRPE/modality/duration/verified details typed in for each session.
     Rejects if a sync is already running.
     """
     if not _sync_lock.acquire(blocking=False):
@@ -951,6 +956,13 @@ def trigger_sync_full(db: Session = Depends(get_db)):
             db.query(AppSetting).filter(AppSetting.key == "last_sync").delete(synchronize_session=False)
             db.query(AppSetting).filter(AppSetting.key == "migration_incremental_sync_v1").delete(synchronize_session=False)
             
+            # Keep typed-in session details (sRPE, confirmed modality/duration, verified
+            # status) in app_settings, committed with the wipe; the reimport restores them.
+            # Imported here, not at module top: the offline trial replay stubs `importer`
+            # with only the two names above.
+            from importer import store_preserved_session_fields
+            store_preserved_session_fields(db)
+
             # Wipe imported workout data (FK-safe order: workout_logs first, then sessions)
             db.query(WorkoutLog).delete(synchronize_session=False)
             db.query(WorkoutSession).delete(synchronize_session=False)
