@@ -152,9 +152,12 @@ with sync_playwright() as p:
     assert undo.bounding_box()['height']==48
     assert undo.evaluate('(button, top) => button === window.tappedSet && button.offsetTop === top', before_tap)
     expect(page.locator('.set[data-working]').nth(1)).to_have_class('set next-working-set')
-    page.get_by_role('button',name='RPEact 8. Change RPEact',exact=True).tap()
+    # A ticked set's blank actual RPE stays blank (never copied from RPErx) until it is chosen.
+    first_row.get_by_role('button',name='Choose RPEact',exact=True).tap()
     page.get_by_role('button',name='7',exact=True).tap()
     expect(page.locator('#exercises .card[data-selected="true"] .ex-targets .rpebtn[aria-label="RPErx 8. Change RPErx"]')).to_have_count(1)
+    # Taps where the RPE sheet just was are ignored for 0.45 s (a double-tap guard), so wait like a person would.
+    page.wait_for_timeout(500)
     page.get_by_role('button',name='Mark set done',exact=True).last.tap()
     draft=page.evaluate("JSON.parse(localStorage.getItem('training.logDraft'))")
     assert all(s['done'] for s in draft['exercises'][0]['sets'])
@@ -269,7 +272,8 @@ with sync_playwright() as p:
     assert follow['matched_intended_sets'] is False
     expect(page.locator('#sessionReview')).to_contain_text('Saved set count differs from recorded intent')
     evidence=review['review']['movements'][0]['sets']
-    assert evidence[0]['rpe_source']=='entered' and evidence[1]['rpe_source']=='copied_target',evidence
+    # A blank actual RPE is saved as unrated; RPErx is never copied in.
+    assert evidence[0]['rpe_source']=='entered' and evidence[1]['rpe_source']=='unrated' and evidence[1]['actual_rpe'] is None,evidence
     expect(page.locator('#sessionReview')).to_be_hidden()
     page.screenshot(path=str(out/'session-review-phone.png'),full_page=True)
     assert page.evaluate("localStorage.getItem('training.logDraft')")==None
