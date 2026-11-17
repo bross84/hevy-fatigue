@@ -1303,3 +1303,38 @@ No deploy step is needed: `TZ` is already set in every compose file and checked 
 `deploy/check_config.py`. Tests: `rackbook/tests/test_local_day.py` (helper, Progress date, advice day
 at 11:35 pm and 12:35 am Eastern), `tests/test_coaching.py`
 (`test_late_evening_eastern_workout_belongs_to_its_local_day`), `tests/test_importer_local_day.py`.
+
+## Log page and phone-fit bug fixes (local, 2026-11-16)
+
+Issues #105, #120, #121, #122, #123 and #124. The visible changes (#105 button, #120-#122) were
+approved from a before/after mockup on 2026-11-16.
+- **New Hevy exercises in the picker (#105).** A search with no matches now downloads Hevy's exercise
+  list again, once per opening of the picker, and searches again, using the existing "Updating your
+  exercise list from Hevy" note. "No matches." stays only if the exercise still isn't there. The
+  12-hour stale refresh is unchanged. A "Refresh from Hevy" button under "No matches." downloads it
+  again on demand ("Checking Hevy…" while it runs).
+- **Keyboard over the Targets sheet (#123).** The Targets and Note sheets are pinned to the bottom of
+  the screen, so scrolling the page couldn't move them above the phone keyboard. While you type in one,
+  the sheet now sits on top of the keyboard (from `visualViewport`), shrinks to the space left, and
+  scrolls the box into view inside itself. It drops back when typing ends or the sheet closes. Set rows
+  keep the existing page scroll; the number pad is untouched.
+- **Key message (#124).** The Log page's missing-key message now says to save the key in dashboard
+  Settings, not on the Recent page.
+- **iPhone safe areas (#120).** Every page's viewport tag has `viewport-fit=cover`, so the existing
+  `env(safe-area-inset-bottom)` spacers work: Finish workout, the number pad's bottom row, sheets and the
+  dashboard nav clear the home-swipe strip. Pages don't use a translucent status bar, so nothing moves
+  under it; check landscape on the phone.
+- **No zoom on small boxes (#121).** Boxes under 16px that made iPhone Safari zoom are now 16px: Plans
+  form fields and week text, Stress/Trial dropdowns and date boxes, Progress date boxes and session
+  dropdown, legacy settings fields and the dashboard's AI equipment notes.
+- **Messages above the bottom bar (#122).** During a workout, `say()` shows messages just above the
+  bottom bar (`#barMsg`, `role=status`) with a ✕; everyday ones fade after 6 seconds. Warnings stay until
+  dismissed or replaced (`{ sticky: true }`): the phone not keeping the draft, another tab, the motivation
+  draft, Finish errors and save problems. A Finish error no longer jumps the page to the top. Before and
+  after a workout (no bottom bar) messages stay in the top box. On a phone the save-recovery card hides
+  both, as it hid the top box before. `logger-layout.css` is now `?v=12`.
+- **Edit plan on a phone (#106).** Edit plan opened the editor below the plan cards, at the bottom edge of
+  a phone screen, so it looked like nothing happened. Edit plan, New microcycle, Duplicate microcycle and
+  Write week as text now scroll to the editor (`showEditor`); redraws while editing don't move the page.
+- **Warm-up memory (#126)** is unchanged: having warmed up heavier than a lowered working weight
+  counts as warmed up.
