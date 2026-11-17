@@ -162,10 +162,7 @@ class AdviceCase(unittest.TestCase):
                 json.dumps(dict(recommendation_id=row['id'],title='Squat',decision=None,intended=None,
                     actual=dict(working_sets=2),matched_intended_sets=None))))
         self.checkin(None,2,offset=1);self.checkin(0,0,offset=3)
-        class Later(date):
-            @classmethod
-            def today(cls):return NOW.date()+timedelta(days=2)
-        with patch.object(advice,'date',Later):
+        with patch.object(advice,'local_today',return_value=NOW.date()+timedelta(days=2)):
             observed=advice.outcomes('saved')[0]
         self.assertEqual(observed['next_checkin']['date'],(NOW.date()+timedelta(days=1)).isoformat())
         self.assertIsNone(observed['next_checkin']['tiredness'])

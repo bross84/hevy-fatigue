@@ -1384,3 +1384,27 @@ Automated, mocked Hevy client and temporary SQLite only; no real account or data
 - **Baseline failure, not from this change:** `tools/check_training_browser.py` times out on unchanged main
   (d07b3e9) and with these changes alike: a Targets panel's scrim stays over the first working set's tick.
 - Not run: Docker build. Not checked on a phone: the storage warning (private-window Safari) and the confirm.
+
+## One local training day — local, 2026-11-16
+
+Details in hevy-context.md, "One local training day".
+
+- Passed: host 250 (249 + the new importer test); logger 633 with 1 expected failure (as before); every
+  `tests/*.cjs` and `rackbook/tests/*.cjs` (37).
+- New tests for an 11:35 pm Eastern workout (`2026-11-16T04:35:00Z`): AI evidence includes its
+  motivation check-in and dates the session the 15th, and the previous day's report (the daily same-day
+  cutoff) excludes it; Progress plots it on the 15th; the session-advice follow-up sees no check-in for
+  the 16th at 11:35 pm but does at 12:35 am; the importer dates the Hevy copy the 15th; the helper covers
+  summer time, naive UTC, plain dates, blanks, `TZ=UTC` and an unrecognized `TZ`. The coaching, Progress
+  and advice tests fail on the previous code; the importer test guards behavior that was already right
+  with `TZ` set.
+- Changed without removing an assertion: `test_session_advice.py` now fixes the clock through
+  `session_advice.local_today` instead of replacing `date`.
+- `check_training_browser.py` still stops at its known baseline failure (line 149, "Mark set done" after
+  the Targets sheet, blocked by the panel overlay), on this branch and on unchanged main (d07b3e9) with a
+  fresh preview server, so it does not reach the motivation-evidence assertion. That step was checked
+  instead through the same API on fresh mocked previews: a workout with a motivation check-in saved at
+  05:00 UTC on the 16th appeared in new AI evidence both with the server's own zone (Eastern, 12:00 am)
+  and with the server at `TZ=America/Los_Angeles` (9 pm on the 15th, evidence window ending the 15th),
+  which is the late-evening case that failed before.
+- Not run: Docker build/startup (daemon not running), physical phone, deployed or real data.

@@ -1252,3 +1252,54 @@ From the read-only review of d07b3e9.
 - **No unversioned training scripts.** draft-transfer.js, session-review.js, session-advice.js and
   stress-charts.js now load with `?v=1`, the Log page loads plan-proposal.js?v=4 (as the dashboard does),
   and the dashboard loads training.js?v=2, so phones fetch new code after a release.
+
+## One local training day (local, 2026-11-16)
+
+Found on 2026-11-15: a check-in saved at 11:35 pm Eastern was missing from AI coach evidence. The logger
+stores workout start and end as UTC instants (11:35 pm Eastern on the 15th is `2026-11-16T04:35:00Z`),
+and several readers took the first ten characters as the day, so anything after 7 pm (EST) or 8 pm (EDT)
+landed on the next day.
+
+`rackbook/local_day.py` is now the one rule for which calendar day a stored timestamp belongs to. The
+zone is `TZ` when it names an IANA zone (`America/New_York` in Docker and production compose); without
+it, or for a non-IANA value, the server's own local zone is used, which is what `date.today()` read
+before. Naive timestamps are UTC (the importer's convention); plain `YYYY-MM-DD` values are already days.
+It offers `local_day`, `local_day_text`, `local_today` and `register(conn)`, which adds a `local_day()`
+SQL function to a sqlite3 connection (read-only ones included). Host modules import it as
+`rackbook.local_day`, logger modules as `.local_day`.
+
+Now using it:
+
+- `coaching.local_evidence` filters logged sets, session reviews, plan completions, pre-training
+  soreness, motivation, confirmed check-ins and trial input ratings by `local_day(workout_start)` instead
+  of `substr(workout_start,1,10)`. Local exact sessions are dated by their local day, and
+  `build_report`'s default report day is `local_today()`.
+- `rackbook/progress.py` plots each session on its local day. `progress.html` is unchanged: it only
+  receives plain day strings and uses UTC midnight internally as a placeholder for them, which does not
+  move a day.
+- `importer.py` dates imported Hevy workouts with `local_day` (it read `TZ` itself before, defaulting to
+  UTC when unset; with `TZ` set, as in Docker, imported dates are unchanged).
+- `rackbook/session_advice.outcomes` (the later-check-in window) and `daily_coaching.prepare` (the
+  future-date guard) use `local_today()`.
+
+Left as they are, on purpose:
+
+- `rackbook/log.html` still sends start and end as UTC instants. An instant is exact, it is what Hevy
+  receives, and it is part of each frozen save payload and its hash, so changing the format would touch
+  the remote write and reconciliation paths. Readers convert it instead. The page already sends the
+  browser's local date where a day is needed (trial check-in and session advice `local_date`).
+- The model trial: `fatigue_trial.record` compares the supplied local date with the UTC date within
+  one day, and trial snapshots and timing are untouched. No frozen record is read differently or
+  rewritten; AI evidence only selects which trial input ratings fall in its window by local day.
+- The daily same-day cutoff rule is unchanged: daily readiness still sees completed training up to the
+  previous day. What changed is that a logger workout at 11 pm now counts as that evening's day (the same
+  day the importer already gave the Hevy copy), so it is excluded on its own day and included the next
+  morning, instead of slipping one day later. Host daily and pattern models read imported dates and the
+  recorded monitoring baseline (run with `TZ=America/New_York`) is unchanged.
+- `coaching_stress` already included late report-day sessions, and `coaching_outcomes` still computes
+  "before" as of the UTC day before a proposal's save; both are left for a later change.
+
+No deploy step is needed: `TZ` is already set in every compose file and checked by
+`deploy/check_config.py`. Tests: `rackbook/tests/test_local_day.py` (helper, Progress date, advice day
+at 11:35 pm and 12:35 am Eastern), `tests/test_coaching.py`
+(`test_late_evening_eastern_workout_belongs_to_its_local_day`), `tests/test_importer_local_day.py`.

@@ -7,8 +7,7 @@ from hevy_client import HevyClient
 from rpe_table import calculate_e1rm, seed_rpe_table
 from exercise_classifier import classify_exercise, ensure_exercise_mapped
 from datetime import datetime, timezone
-import os
-import zoneinfo
+from rackbook.local_day import local_day
 from sqlalchemy import func
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
@@ -41,7 +40,6 @@ _LAST_SYNC_SETTING_KEY = "last_sync"
 _PRESERVED_SESSIONS_SETTING_KEY = "full_sync_preserved_sessions"
 _FULL_SYNC_ERROR_SETTING_KEY = "sync_full_error_state"
 _AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT = 0.87
-_LOCAL_TZ = zoneinfo.ZoneInfo(os.environ.get("TZ", "UTC"))
 
 
 def _extract_srpe_from_title(workout_title):
@@ -385,8 +383,10 @@ def _process_workout(db, workout, canonical_map):
         stats["skipped_workouts_missing_date"] += 1
         return
     try:
-        utc_dt = datetime.fromisoformat(raw_date.replace('Z', '+00:00'))
-        workout_date = utc_dt.astimezone(_LOCAL_TZ).date()
+        # The athlete's local training day under TZ, shared with the logger and the AI evidence.
+        workout_date = local_day(raw_date)
+        if workout_date is None:
+            raise ValueError(raw_date)
     except ValueError:
         stats["skipped_workouts_missing_date"] += 1
         return

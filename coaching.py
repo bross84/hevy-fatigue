@@ -16,6 +16,7 @@ from sqlalchemy import text
 from database import (WorkoutLog, WorkoutSession, DailyReadiness, ExerciseMapping,
                       CoachingConversation, CoachingTurn)
 from rackbook.config import database_path
+from rackbook import local_day
 
 VERSION = 'training-review-v1'
 RECENT_SESSIONS = 12
@@ -241,20 +242,22 @@ def local_evidence(start, end):
     try:
         with closing(sqlite3.connect(database_path().as_uri()+'?mode=ro', uri=True, timeout=2)) as conn:
             conn.row_factory = sqlite3.Row
+            # Local logs store UTC instants; filter by the athlete's local day, not the UTC date.
+            local_day.register(conn)
             conn.execute('BEGIN')
             def rows(sql, args=()):
                 return [dict(r) for r in conn.execute(sql, args)]
-            result['sets'] = rows('SELECT * FROM logged_sets WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=? ORDER BY workout_start,id', (str(start), str(end)))
-            result['reviews'] = rows('SELECT * FROM session_reviews WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=? ORDER BY workout_start', (str(start), str(end)))
+            result['sets'] = rows('SELECT * FROM logged_sets WHERE local_day(workout_start)>=? AND local_day(workout_start)<=? ORDER BY workout_start,id', (str(start), str(end)))
+            result['reviews'] = rows('SELECT * FROM session_reviews WHERE local_day(workout_start)>=? AND local_day(workout_start)<=? ORDER BY workout_start', (str(start), str(end)))
             result['plans'] = rows('SELECT id,active,archived,revision,document FROM mesocycles ORDER BY active DESC,updated_at DESC LIMIT 10')
             result['plan_count'] = conn.execute('SELECT COUNT(*) FROM mesocycles').fetchone()[0]
-            result['completions'] = rows('SELECT mesocycle_id,session_id,hevy_workout_id,workout_start,outcome,note FROM mesocycle_completions WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=?', (str(start), str(end)))
-            result['pretraining'] = rows('SELECT * FROM session_soreness WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=? ORDER BY workout_start', (str(start), str(end)))
-            result['motivation'] = rows('SELECT hevy_workout_id,workout_start,level,reason,note,recorded_at,timing,saved_at FROM session_motivation WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=? ORDER BY workout_start',(str(start),str(end)))
-            result['confirmed_checkins']=rows('SELECT * FROM session_checkins WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=? ORDER BY workout_start',(str(start),str(end)))
+            result['completions'] = rows('SELECT mesocycle_id,session_id,hevy_workout_id,workout_start,outcome,note FROM mesocycle_completions WHERE local_day(workout_start)>=? AND local_day(workout_start)<=?', (str(start), str(end)))
+            result['pretraining'] = rows('SELECT * FROM session_soreness WHERE local_day(workout_start)>=? AND local_day(workout_start)<=? ORDER BY workout_start', (str(start), str(end)))
+            result['motivation'] = rows('SELECT hevy_workout_id,workout_start,level,reason,note,recorded_at,timing,saved_at FROM session_motivation WHERE local_day(workout_start)>=? AND local_day(workout_start)<=? ORDER BY workout_start',(str(start),str(end)))
+            result['confirmed_checkins']=rows('SELECT * FROM session_checkins WHERE local_day(workout_start)>=? AND local_day(workout_start)<=? ORDER BY workout_start',(str(start),str(end)))
             for check in result['confirmed_checkins']:check['motivation']=parsed(check['motivation'],{})
             # Only original input ratings from captured trials, not predictions or completions.
-            for row in rows('SELECT exercise_template_id,workout_start,recorded_at,prospective,snapshot FROM fatigue_trial_snapshots WHERE substr(workout_start,1,10)>=? AND substr(workout_start,1,10)<=? ORDER BY recorded_at', (str(start), str(end))):
+            for row in rows('SELECT exercise_template_id,workout_start,recorded_at,prospective,snapshot FROM fatigue_trial_snapshots WHERE local_day(workout_start)>=? AND local_day(workout_start)<=? ORDER BY recorded_at', (str(start), str(end))):
                 data = (parsed(row.pop('snapshot'), {}) or {}).get('input', {})
                 row.update(soreness=data.get('soreness'), pain=data.get('pain'), scale='0–3')
                 result['pretraining'].append(row)
@@ -337,7 +340,7 @@ def live_planning(conversation_id):
 
 def build_report(db, *, today=None, monitoring_context=None, context_limit=None):
     context_limit=MAX_CONTEXT_CHARS if context_limit is None else context_limit
-    today = today or date.today()
+    today = today or local_day.local_today()
     month_index = today.year * 12 + today.month - 1 - 6
     year, month = divmod(month_index, 12)
     start = date(year, month + 1, min(today.day, calendar.monthrange(year, month + 1)[1]))
@@ -376,7 +379,7 @@ def build_report(db, *, today=None, monitoring_context=None, context_limit=None)
                 weight_kg=row['weight_kg'],reps=row['reps'],actual_rpe=row['rpe'],target_rpe=row.get('target_rpe'),
                 role='warmup' if row['set_type']=='warmup' else ('top_set' if row['is_ts'] else 'working'),
                 rpe_source=meta.get('rpe_source','unknown'),basis=meta.get('basis','unknown'), conditioning=False))
-        sessions[key] = dict(id=key,date=str(sets[0]['workout_start'])[:10],start_time=sets[0]['workout_start'],
+        sessions[key] = dict(id=key,date=local_day.local_day_text(sets[0]['workout_start']),start_time=sets[0]['workout_start'],
             title=old.get('title') or sets[0].get('workout_title') or (parsed(review['review'],{}).get('title') if review else sets[0].get('workout_title')),
             source='local_exact', sets=normalized)
     # Preserve a completed zero-set review rather than resurrecting imported sets.
@@ -384,7 +387,7 @@ def build_report(db, *, today=None, monitoring_context=None, context_limit=None)
         if key not in exact:
             actual = parsed(review['actual'], [])
             if not any(ex.get('sets') for ex in actual):
-                sessions[key] = dict(id=key,date=review['workout_start'][:10],title=parsed(review['review'],{}).get('title'),source='local_exact',sets=[],start_time=review['workout_start'])
+                sessions[key] = dict(id=key,date=local_day.local_day_text(review['workout_start']),title=parsed(review['review'],{}).get('title'),source='local_exact',sets=[],start_time=review['workout_start'])
     ordered = sorted(sessions.values(), key=lambda r:(r['date'],r.get('start_time') or '',r['id']))
     exercises, weeks = {}, defaultdict(lambda:dict(sessions=0, known_working_sets=0, unknown_role_sets=0))
     for session in ordered:

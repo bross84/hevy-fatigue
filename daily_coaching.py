@@ -5,6 +5,7 @@ from uuid import NAMESPACE_URL, uuid5
 from pydantic import BaseModel
 from database import DailyReadiness, CoachingConversation
 import coaching
+from rackbook.local_day import local_today
 
 
 class DailyReviewInput(BaseModel):
@@ -39,7 +40,7 @@ def current(db, day):
 
 
 def prepare(db, day, history):
-    if day > date.today():
+    if day > local_today():
         raise ValueError('Future check-ins cannot receive a daily interpretation.')
     observed = observation(db,day)
     review_id = identity(observed)
