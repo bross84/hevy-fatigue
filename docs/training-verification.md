@@ -1408,3 +1408,23 @@ Details in hevy-context.md, "One local training day".
   and with the server at `TZ=America/Los_Angeles` (9 pm on the 15th, evidence window ending the 15th),
   which is the late-evening case that failed before.
 - Not run: Docker build/startup (daemon not running), physical phone, deployed or real data.
+
+## Log page bug fixes (local, 2026-11-16)
+
+- `rackbook/tests/test_log_open_bugs.cjs`: picker re-download once per opening on a missed search,
+  Refresh from Hevy button (waits while a check runs, works repeatedly),
+  sheet lifted above a 364px keyboard and following its height, dropped on blur/close, set rows still
+  page-scrolled, key message wording.
+- `rackbook/tests/test_phone_fit.cjs`: `viewport-fit=cover` on all 11 pages, 16px boxes, messages above
+  the bar (fade, sticky, ✕, a fading old message never removes a newer one), no Finish scroll-to-top.
+- `test_phone_fit.cjs` also checks the four editor openers call `showEditor` (and nothing else does);
+  `test_mesocycle_ui.cjs` stubs `showEditor` like `renderEditor`. Mocked Plans page at 375x812: after
+  Edit plan the editor is at the top of the screen (it started at 796px of 812 before).
+- `rackbook/tests/test_log_keypad.cjs`: its fake fields gained `closest()` (real elements have it), and
+  `test_log_draft_safety.cjs` reads the shown message through `shownMessage()`; no assertion changed.
+- Host 252 OK, rackbook 636 OK (1 expected failure), every `.cjs` OK, `check_logger_layout_browser`,
+  `check_training_recovery_browser` and `check_training_browser` passed. Mocked preview at 375x812: a
+  Finish error showed above the bar without moving the page, ✕ dismissed it, a missed picker search
+  checked Hevy once and Refresh from Hevy checked again.
+- Not run: Docker build/startup, physical phone. The keyboard lift needs an iPhone check: automation
+  can't open a real phone keyboard. Also check the swipe-strip spacing and landscape on the iPhone.

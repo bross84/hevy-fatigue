@@ -5,7 +5,7 @@
   <script src="/training/static/draft-transfer.js?v=1"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <link rel="manifest" href="/training/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/training/static/apple-touch-icon.png" />
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f5f8" />
@@ -122,6 +122,7 @@
     .period { display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px 12px; font-size:11px; color:var(--muted); margin-bottom:8px; font-variant-numeric:tabular-nums; }
     .custom-range { display:flex; flex-wrap:wrap; gap:8px; align-items:end; margin-bottom:12px; }
     .custom-range label { display:grid; gap:3px; font-size:11px; color:var(--muted); min-width:0; }
+    .custom-range input { font-size:16px; }
     .custom-range input,.custom-range button { min-height:36px; padding:5px 8px; background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:5px; min-width:0; }
     .plot-wrap { height:260px; position:relative; width:100%; min-width:0; }
     .plot-wrap canvas { touch-action:pan-y !important; }
@@ -136,7 +137,7 @@
     .inspector { border-top:1px solid var(--line); margin-top:12px; padding-top:12px; }
     .inspector-head { display:flex; align-items:center; gap:6px; }
     .inspector-head label { font-size:11px; color:var(--muted); margin-right:auto; }
-    #sessionSelect { max-width:190px; min-height:30px; background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:5px; padding:3px 6px; font-size:12px; }
+    #sessionSelect { max-width:190px; min-height:30px; background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:5px; padding:3px 6px; font-size:16px; }
     .detail-values { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:12px; }
     .detail-values span { display:block; color:var(--muted); font-size:11px; }
     .detail-values b { display:block; font-size:17px; font-weight:550; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }

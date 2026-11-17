@@ -114,11 +114,11 @@ const scrollDoc = { activeElement: null };
 const scrollContext = vm.createContext({trainingUrl:path=>path.startsWith("/training/")?path:"/training"+path, document: scrollDoc, padInput: true, numberpad: {offsetHeight:220},
   window: {visualViewport:{offsetTop:0,height:800},scrollBy: options => scrolls.push(options)} });
 vm.runInContext(html.slice(html.indexOf('  function liftIntoView('), html.indexOf('  document.addEventListener("focusin"')), scrollContext);
-const visibleField = { getBoundingClientRect: () => ({top:300,bottom:350}) };
+const visibleField = { closest: () => null, getBoundingClientRect: () => ({top:300,bottom:350}) };
 scrollDoc.activeElement = visibleField;
 scrollContext.liftIntoView(visibleField);
 assert.equal(scrolls.length,0,'Already visible fields must not jump to the top third');
-const obscuredField = { getBoundingClientRect: () => ({top:600,bottom:650}) };
+const obscuredField = { closest: () => null, getBoundingClientRect: () => ({top:600,bottom:650}) };
 scrollDoc.activeElement = obscuredField;
 scrollContext.liftIntoView(obscuredField);
 assert.equal(scrolls[0].top,82,'Only reveal the obscured portion with a small margin');
@@ -129,7 +129,7 @@ assert.equal(scrolls.length,1,'A delayed callback must not scroll after the fiel
 console.log('Field visibility and immediate minimal scrolling checks passed.');
 
 scrollContext.window.visualViewport.offsetTop = 40;
-const aboveField = { getBoundingClientRect: () => ({top:20,bottom:60}) };
+const aboveField = { closest: () => null, getBoundingClientRect: () => ({top:20,bottom:60}) };
 scrollDoc.activeElement = aboveField;
 scrollContext.liftIntoView(aboveField);
 assert.equal(scrolls.at(-1).top,-32,'Reveal fields above the visual viewport using its offset');

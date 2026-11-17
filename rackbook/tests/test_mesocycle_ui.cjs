@@ -21,7 +21,7 @@ const doc={id:'plan-1',name:'Strength block',completed:[],weeks:[{name:'Week 1',
  {id:'b',name:'Day B',exercises:[]}]},{name:'Week 2',sessions:[{id:'c',name:'Day C',exercises:[]}]}]};
 const context=vm.createContext({trainingUrl:path=>path.startsWith("/training/")?path:"/training"+path,structuredClone,id:()=>String(++counter)});
 for(const name of ['cloneSession','nextSession'])vm.runInContext(builder.match(new RegExp('function '+name+'\\([^\\n]+'))[0],context);
-context.dirty=false;context.remember=()=>{};context.renderEditor=()=>{};
+context.dirty=false;context.remember=()=>{};context.renderEditor=()=>{};context.showEditor=()=>{};
 context.confirm=()=>true;context.message=()=>{};
 for(const name of ['session','completed','namingNumber','applyNaming','newPlan','addDay','removeDay','duplicateMicrocycle'])vm.runInContext(builder.match(new RegExp('function '+name+'\\([^\\n]+'))[0],context);
 context.newPlan();assert.equal(context.plan.weeks.length,1);assert.equal(context.plan.weeks[0].sessions.length,0);

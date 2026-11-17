@@ -18,6 +18,7 @@ const context = vm.createContext({
   localStorage: { setItem(key, value) { if (refuse) throw new Error('QuotaExceededError'); stored = [key, value]; } },
   $: id => ({ msg })[id],
   say: text => { said.push(text); msg.textContent = text; },
+  shownMessage: () => msg.textContent,
   window: { addEventListener: (name, fn) => { listeners[name] = fn; } },
 });
 vm.runInContext(html.slice(start, end), context);
