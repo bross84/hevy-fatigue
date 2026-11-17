@@ -57,6 +57,7 @@
 #saveRecovery .recovery-settings { display:block; margin-top:8px; }
 @media(max-width:599px) {
   main[data-save-recovery] #msg,
+  main[data-save-recovery] ~ #bar #barMsg,
   main[data-save-recovery] ~ #bar #finish { display:none; }
   main[data-save-recovery] ~ #bar #rest { margin-bottom:0; }
   #saveRecovery { padding:14px; }

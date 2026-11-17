@@ -15,7 +15,7 @@
   <script src="/training/static/logger-layout.js?v=11"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <link rel="manifest" href="/training/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/training/static/apple-touch-icon.png" />
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f5f8" />
@@ -187,6 +187,12 @@
     .msg { border-radius: 10px; padding: 10px 12px; margin: 0 0 12px; font-size: 15px; }
     .msg.error { background: var(--danger-bg); color: var(--danger); }
     .msg.ok { background: var(--ok-bg); color: var(--ok); }
+    .bar-msg .msg { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; padding: 6px 6px 6px 12px; transition: opacity .3s; }
+    .bar-msg .msg.leaving { opacity: 0; }
+    .bar-msg .msg-text { flex: 1; min-width: 0; }
+    .bar-msg .msg-close { flex: none; width: 44px; min-height: 44px; padding: 0; border: 0; background: transparent; color: inherit; }
+    .bar > .bar-msg { max-width: 560px; margin: 0 auto; }
+    .bar > .bar-msg[hidden] { display: none; }
     .bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--bg); border-top: 1px solid var(--line); padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
     .bar > div { max-width: 560px; margin: 0 auto; }
     .rest { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
@@ -415,7 +421,7 @@
     .workout-log.typing main { padding-bottom: 60vh; }
     .workout-log.keypad-open main { padding-bottom: calc(var(--keypad-height, 250px) + 32px); }
   </style>
-  <link rel="stylesheet" href="/training/static/logger-layout.css?v=11" />
+  <link rel="stylesheet" href="/training/static/logger-layout.css?v=12" />
 </head>
 <body class="workout-log">
 <button id="loggerNavScrim" type="button" aria-label="Close navigation" hidden></button>
@@ -483,6 +489,7 @@
 </main>
 
 <div id="bar" class="bar" hidden>
+<div id="barMsg" class="bar-msg" role="status" aria-live="polite" hidden></div>
 <div id="restProg" class="restprog"><i></i></div>
 <div>
   <div class="bar-row">
@@ -627,7 +634,7 @@
   }
   // Exercise sheets (Info, Targets, Note, Plates) live inside their exercise card, so the live numbers, stress and
   // plate loader keep updating while open; CSS lifts the open one into a bottom sheet. Redraws reopen it.
-  let openPanelState = null;
+  let openPanelState = null, liftedSheet = null;   // liftedSheet: a sheet raised above the phone keyboard
   function openPanel(card, name) {
     closePanel();
     const id = [...cardEls].find(([, c]) => c === card)?.[0];
@@ -644,7 +651,7 @@
     $("panelScrim").hidden = !openPanelState;
     document.body.classList.toggle("panel-open", Boolean(openPanelState));
   }
-  function closePanel() { openPanelState = null; reapplyPanel(); }
+  function closePanel() { openPanelState = null; dropLiftedSheet(); reapplyPanel(); }
   function pickRpe(current, onPick) {
     const items = RPES.map((v) => ({ v: String(v), label: String(v), on: String(v) === String(current) }));
     items.push({ v: "", label: "Clear", on: false });
@@ -692,23 +699,23 @@
   function storeDraft() {
     try {
       localStorage.setItem(KEY, JSON.stringify(draft));
-      if (draftStoreFailed) { draftStoreFailed = false; if ($("msg").textContent === DRAFT_NOT_KEPT) say(""); }
+      if (draftStoreFailed) { draftStoreFailed = false; if (shownMessage() === DRAFT_NOT_KEPT) say(""); }
       return true;
     } catch (e) {
-      if (!draftStoreFailed) { draftStoreFailed = true; say(DRAFT_NOT_KEPT); }
+      if (!draftStoreFailed) { draftStoreFailed = true; say(DRAFT_NOT_KEPT, { sticky: true }); }
       return false;
     }
   }
   // Another tab or the home-screen app changed the same draft: the next tick here would overwrite it.
   const OTHER_TAB = "This workout was changed in another tab or window. Close the other one, then reload this page, so sets aren't overwritten.";
   window.addEventListener("storage", (event) => {
-    if (event.key === KEY && event.storageArea === localStorage && draft) say(OTHER_TAB);
+    if (event.key === KEY && event.storageArea === localStorage && draft) say(OTHER_TAB, { sticky: true });
   });
   function saveMotivationDraft() {
     // Coaching context must not trigger trial capture, stress refresh or weight calculations.
     if (!draft || draft.frozenSave) return false;
     try { localStorage.setItem(KEY,JSON.stringify(draft)); return true; }
-    catch (_) { say('Could not preserve the motivation answer on this device. Keep this page open until the workout is saved.'); return false; }
+    catch (_) { say('Could not preserve the motivation answer on this device. Keep this page open until the workout is saved.', { sticky: true }); return false; }
   }
   function clearDraft() {
     draft = null; try { localStorage.removeItem(KEY); } catch (e) {} restStop();
@@ -855,9 +862,28 @@
     if (stress) line.append(part("Stress", stress));
   }
 
-  function say(text, kind) {
-    const box = $("msg"); box.replaceChildren();
-    if (text) box.append(el("div", "msg " + (kind || "error"), text));
+  // Messages. During a workout you're scrolled down at the sets, so they show just above the bottom bar,
+  // with a ✕, and everyday ones fade after a few seconds; { sticky: true } keeps warnings until dismissed.
+  // Before and after a workout (no bottom bar) they stay in the box at the top of the page.
+  let currentMsg = "", msgTimer = null;
+  function shownMessage() { return currentMsg; }
+  function say(text, opts) {
+    clearTimeout(msgTimer);
+    currentMsg = text || "";
+    const top = $("msg"), dock = $("barMsg");
+    top.replaceChildren(); dock.replaceChildren(); dock.hidden = true;
+    if (!text) return;
+    const box = el("div", "msg " + ((opts && opts.kind) || "error"));
+    box.append(el("span", "msg-text", text));
+    if ($("bar").hidden) { top.append(box); return; }
+    const close = el("button", "msg-close", "✕");
+    close.type = "button"; close.setAttribute("aria-label", "Dismiss message");
+    close.addEventListener("click", () => { if (currentMsg === text) say(""); });
+    box.append(close); dock.append(box); dock.hidden = false;
+    if (!(opts && opts.sticky)) msgTimer = setTimeout(() => {
+      box.classList.add("leaving");
+      msgTimer = setTimeout(() => { if (currentMsg === text) say(""); }, 300);
+    }, 6000);
   }
 
   function show(name) {
@@ -1127,7 +1153,7 @@
       if (!recentPage.workouts.length) box.replaceChildren(el("p", "muted", "No recent workouts yet."));
     } catch (err) {
       box.replaceChildren();
-      say(err.message + (err.status === 400 ? " Save your Hevy key on the Recent page first." : ""));
+      say(err.message + (err.status === 400 ? " Save your Hevy key in dashboard Settings first." : ""));
     }
   }
 
@@ -2353,7 +2379,7 @@
   $("again").addEventListener("click", () => { say(""); renderStart(); });
 
   // ── Add exercise ────────────────────────────────────────────────────────────
-  let refreshTried = false;
+  let refreshTried = false, missRefreshed = false, catalogSyncing = false;
 
   // Exercises from your recent Hevy workouts, most recently used first, each once.
   function recentExercises() {
@@ -2446,7 +2472,15 @@
     for (const e of catalog) if (hit(e.title) && !pool.has(e.id)) pool.set(e.id, e);
     const rank = (e) => (recentIds.has(e.id) ? 0 : e.title.toLowerCase().startsWith(terms[0]) ? 1 : 2);
     const results = [...pool.values()].sort((a, b) => rank(a) - rank(b));
-    if (!results.length) { box.append(el("p", "muted", "No matches.")); return; }
+    if (!results.length) {
+      box.append(el("p", "muted", "No matches."));
+      const refresh = el("button", "wide", catalogSyncing ? "Checking Hevy…" : "Refresh from Hevy"); refresh.type = "button";
+      refresh.disabled = catalogSyncing;
+      refresh.addEventListener("click", () => { if (!catalogSyncing) syncCatalog(); });
+      box.append(refresh);
+      refreshAfterMiss();
+      return;
+    }
     section(box, "Results (" + results.length + ")", results, recentIds, muscleOf);
   }
 
@@ -2457,10 +2491,22 @@
     const newest = stamps.length ? Math.max(...stamps) : 0;
     if (catalog.length && Date.now() - newest < 12 * 3600 * 1000) return;
     refreshTried = true;
+    await syncCatalog();
+  }
+  // A search with no matches may be an exercise just made in Hevy: download the list again, once per
+  // opening of the picker, and search again. "No matches." stays only if it still isn't there.
+  async function refreshAfterMiss() {
+    if (missRefreshed || catalogSyncing) return;
+    missRefreshed = true;
+    await syncCatalog();
+  }
+  async function syncCatalog() {
+    catalogSyncing = true;
     $("syncnote").hidden = false;
+    if (!$("picker").hidden) renderResults();   // the Refresh button shows "Checking Hevy…" while it runs
     try { await api("/exercises/sync", { method: "POST" }); catalog = await api("/exercises"); }
     catch (err) { /* keep the stored list */ }
-    finally { $("syncnote").hidden = true; }
+    finally { catalogSyncing = false; $("syncnote").hidden = true; }
     renderResults();
   }
 
@@ -2469,7 +2515,7 @@
     swapTarget = target && target.sets ? target : null;
     $("pickerTitle").hidden = !swapTarget;
     $("pickerTitle").textContent = swapTarget ? "Swap " + swapTarget.title + " for…" : "";
-    $("picker").hidden = false; $("search").value = "";
+    $("picker").hidden = false; $("search").value = ""; missRefreshed = false;
     $("results").replaceChildren(el("p", "muted", "Loading exercises…"));
     try { catalog = catalog || (await api("/exercises")); } catch (err) { catalog = []; }
     if (!recentPage) { try { recentPage = await api("/hevy/workouts?page=1&page_size=10"); } catch (err) { /* no recents */ } }
@@ -2546,7 +2592,7 @@
   $("finish").addEventListener("click", () => {
     if (saving || saveDialog.open) return;
     let entry;
-    try { entry = draft.frozenSave || buildEntry(); } catch (err) { say(err.message); window.scrollTo(0, 0); return; }
+    try { entry = draft.frozenSave || buildEntry(); } catch (err) { say(err.message, { sticky: true }); return; }
     const excluded = draft.exercises.flatMap(ex => ex.sets.flatMap((s, i) =>
       !s.done && s.type !== "warmup" ? [ex.title + " — set " + (i + 1)] : []));
     $("saveWorkoutName").textContent = entry.title;
@@ -2573,7 +2619,7 @@
       const saved = await api("/hevy/workouts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(entry) });
       if (draft !== workoutBeingSaved) return;
       if (saved.state !== 'complete') {
-        say(saved.status || 'Save recovery is required.');
+        say(saved.status || 'Save recovery is required.', { sticky: true });
         WorkoutSave.panel(draft, completeRecoveredSave, {initialStatus:saved, focus:true});
         return;
       }
@@ -2585,7 +2631,7 @@
       SessionReviewUI.saved(saved);
     } catch (err) {
       if (draft !== workoutBeingSaved) return;
-      say(err.message + " Your frozen workout is retained. Check save status before continuing.");
+      say(err.message + " Your frozen workout is retained. Check save status before continuing.", { sticky: true });
       WorkoutSave.noteFailure(draft, err);
       window.scrollTo(0, 0);
       WorkoutSave.panel(draft, completeRecoveredSave, {focus:true});
@@ -2995,8 +3041,30 @@
   });
 
   let typingTimer = null;
+  // An open exercise sheet (Targets, Note) is pinned to the bottom of the screen, so scrolling the page can't
+  // move it: sit it on top of the phone keyboard instead and scroll the box into view inside the sheet.
+  function fitSheetAboveKeyboard(sheet) {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const keyboard = Math.max(0, window.innerHeight - (vv.offsetTop + vv.height));
+    sheet.style.bottom = keyboard + "px";
+    sheet.style.maxHeight = Math.max(160, vv.height - 24) + "px";
+    liftedSheet = sheet;
+  }
+  function dropLiftedSheet() {
+    if (!liftedSheet) return;
+    liftedSheet.style.bottom = ""; liftedSheet.style.maxHeight = "";
+    liftedSheet = null;
+  }
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", () => { if (liftedSheet) fitSheetAboveKeyboard(liftedSheet); });
   function liftIntoView(input) {
     if (document.activeElement !== input) return;
+    const sheet = input.closest(".ex-panel");
+    if (sheet && getComputedStyle(sheet).position === "fixed") {
+      fitSheetAboveKeyboard(sheet);
+      input.scrollIntoView({ block: "nearest", behavior: "instant" });
+      return;
+    }
     const vv = window.visualViewport;
     const viewportTop = vv ? vv.offsetTop : 0;
     const visibleBottom = viewportTop + (vv ? vv.height : window.innerHeight) - (padInput ? numberpad.offsetHeight : 0);
@@ -3007,7 +3075,7 @@
     if (delta) window.scrollBy({ top: delta, behavior: "instant" });
   }
   document.addEventListener("focusin", (e) => {
-    if (!e.target.matches || !e.target.matches("#exercises input")) return;
+    if (!e.target.matches || !e.target.matches("#exercises input, #exercises .ex-panel textarea")) return;
     if (e.target.inputMode === "none") return;
     clearTimeout(typingTimer);
     document.body.classList.add("typing");
@@ -3015,7 +3083,7 @@
   });
   document.addEventListener("focusout", () => {
     clearTimeout(typingTimer);
-    typingTimer = setTimeout(() => document.body.classList.remove("typing"), 150);   // moving between boxes is not leaving
+    typingTimer = setTimeout(() => { document.body.classList.remove("typing"); dropLiftedSheet(); }, 150);   // moving between boxes is not leaving
   });
 
   $("panelScrim").addEventListener("click", () => closePanel());
