@@ -588,11 +588,17 @@
   }
   // A bottom sheet of big buttons. items: [{ v, label, desc, on }]; picking one closes the sheet and calls onPick(v).
   // After a sheet closes, a quick second tap would land on whatever was under it (such as Finish workout).
-  // Taps in the next moment are ignored.
-  let ghostUntil = 0;
-  function swallowGhostTaps() { ghostUntil = Date.now() + 450; }
-  document.addEventListener("click", (e) => { if (e.isTrusted && Date.now() < ghostUntil) { e.preventDefault(); e.stopPropagation(); } }, true);
+  // For a moment, taps inside the area the sheet covered are ignored; taps anywhere else (a panel's ✕, a
+  // tick higher up) work at once.
+  let ghostUntil = 0, ghostArea = null;
+  function swallowGhostTaps(area) { ghostArea = area || null; ghostUntil = ghostArea ? Date.now() + 450 : 0; }
+  function isGhostTap(e) {
+    if (!e.isTrusted || Date.now() >= ghostUntil || !ghostArea) return false;
+    return e.clientX >= ghostArea.left && e.clientX <= ghostArea.right && e.clientY >= ghostArea.top && e.clientY <= ghostArea.bottom;
+  }
+  document.addEventListener("click", (e) => { if (isGhostTap(e)) { e.preventDefault(); e.stopPropagation(); } }, true);
   function openSheet(title, hint, items, cols, onPick, onClose) {
+    swallowGhostTaps(null);   // opening a sheet was a real tap, so its own buttons work at once
     const scrim = el("div", "scrim");
     const sheet = el("div", "sheet");
     sheet.setAttribute("role", "dialog"); sheet.setAttribute("aria-label", title);
@@ -601,7 +607,7 @@
     const grid = el("div", "sheetgrid" + (cols === 1 ? " list" : "")), buttons = {};
     grid.style.gridTemplateColumns = "repeat(" + cols + ", 1fr)";
     const onKey = (e) => { if (e.key === "Escape") close(); };
-    const close = () => { scrim.remove(); document.removeEventListener("keydown", onKey); swallowGhostTaps(); if (onClose) onClose(); };
+    const close = () => { const area = sheet.getBoundingClientRect(); scrim.remove(); document.removeEventListener("keydown", onKey); swallowGhostTaps(area); if (onClose) onClose(); };
     for (const it of items) {
       const b = el("button", ((it.on ? "on " : "") + (it.cls || "")).trim() || null, it.label);
       b.type = "button";

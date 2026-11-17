@@ -1219,3 +1219,11 @@ Approved on a mockup (2026-11-15) and built:
   the first chip in the button row (DDP, Myo, BO, DS, AMRAP, TM90; TS is a set label and is left out).
   Tapping it shows the full plan line and what each one means. Still labels only: weights are unchanged.
   There is no "density" callout in week text yet, so nothing shows for it.
+
+## Tap guard after a sheet closes (local, 2026-11-15)
+
+The gym-night fix ignored every real tap anywhere for 0.45 s after any bottom sheet closed, so a quick ✕ on
+the Targets panel after picking RPE, or a quick tick after closing the rest sheet, silently did nothing.
+Now only taps inside the area the closed sheet covered are ignored for those 0.45 s (where a double-tap
+lands, such as Finish workout); taps elsewhere work at once. Opening a new sheet clears the guard, so a
+second sheet opened in the same place (RPE right after RPE) takes its first tap.
