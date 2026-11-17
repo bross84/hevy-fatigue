@@ -1428,3 +1428,13 @@ Details in hevy-context.md, "One local training day".
   checked Hevy once and Refresh from Hevy checked again.
 - Not run: Docker build/startup, physical phone. The keyboard lift needs an iPhone check: automation
   can't open a real phone keyboard. Also check the swipe-strip spacing and landscape on the iPhone.
+
+## Log page day preview (local, 2026-11-17)
+
+- New rackbook/tests/test_log_day_preview.cjs: Preview day / Hide preview button (starts closed,
+  aria-expanded), one row per movement, week-text shorthand, notes,
+  "No sets yet", nothing tappable, placed under the Workout day picker.
+- Mocked preview at 375x812: the start card shows Preview day between the Workout day picker and
+  Load selected workout; tapping it opens the day's movement and sets and the button reads Hide preview.
+- All tests/*.cjs and rackbook/tests/*.cjs, check_logger_layout_browser and check_training_recovery_browser pass.
+- Not run: Docker build/startup, or a real phone.

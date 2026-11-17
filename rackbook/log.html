@@ -66,6 +66,13 @@
     #plannedStart label {display:grid;gap:6px;margin:12px 0;font-size:13px;color:var(--muted)}
     #plannedStart select {width:100%;min-width:0}
     #plannedStart button + button {margin-top:8px}
+    #plannedStart .day-preview + button {margin-top:8px}
+    .day-preview {list-style:none;margin:8px 0 0;padding:0;border:1px solid var(--line);border-radius:8px}
+    .day-preview li {padding:8px 10px;border-top:1px solid var(--line)}
+    .day-preview li:first-child {border-top:0}
+    .day-preview .dp-title {font-weight:600}
+    .day-preview .dp-sets {color:var(--muted);font-size:14px}
+    .day-preview .dp-note {color:var(--muted);font-size:13px;font-style:italic}
     #weeklyCall .reply {white-space:pre-wrap;margin:8px 0}
     #weeklyCall .actions {display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
     .plan-proposal {margin:8px 0 12px;padding:10px 12px;border:1px solid var(--accent);border-radius:8px;max-width:100%;overflow-wrap:anywhere}
@@ -1230,6 +1237,27 @@
     actions.append(open); box.append(actions);
   }
 
+  // Read-only look at a planned day before loading it, behind a Preview day button: each movement with its
+  // sets in week-text shorthand. Picking another day redraws the card, so the list starts closed again.
+  function dayPreview(session) {
+    const list = el("ul", "day-preview"); list.setAttribute("aria-label", session.name + " preview"); list.hidden = true;
+    list.id = "dayPreviewList";
+    const toggle = el("button", "wide", "Preview day"); toggle.type = "button";
+    toggle.setAttribute("aria-expanded", "false"); toggle.setAttribute("aria-controls", list.id);
+    toggle.addEventListener("click", () => {
+      list.hidden = !list.hidden;
+      toggle.textContent = list.hidden ? "Preview day" : "Hide preview";
+      toggle.setAttribute("aria-expanded", String(!list.hidden));
+    });
+    for (const ex of session.exercises) {
+      const item = el("li");
+      item.append(el("div", "dp-title", ex.title), el("div", "dp-sets", WeekText.setsText(ex.sets, ex.tm_pct) || "No sets yet"));
+      if (ex.notes) item.append(el("div", "dp-note", ex.notes));
+      list.append(item);
+    }
+    return [toggle, list];
+  }
+
   async function loadPlannedStart() {
     const box = $("plannedStart");
     box.hidden = false; box.replaceChildren(el("p", "muted", "Loading planned workout…"));
@@ -1269,6 +1297,7 @@
           workoutDetails.replaceChildren();
           const selected = sessions.find(session => session.id === daySelect.value);
           if (!selected) return;
+          if (selected.exercises.length) workoutDetails.append(...dayPreview(selected));
           if (done.has(selected.id)) {
             if (skipped.has(selected.id)) {
               const restore = el("button", "wide", "Undo skip"); restore.type = "button";
