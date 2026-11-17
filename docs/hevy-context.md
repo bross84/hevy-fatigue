@@ -1342,9 +1342,9 @@ approved from a before/after mockup on 2026-11-16.
 ## Log page day preview (local, 2026-11-17)
 
 Issue #107, Log-page part. On the Log page start screen, picking a microcycle and Workout day now
-shows a read-only list of that day's movements before you load it: each movement's title, its sets
+offers a Preview day button that opens a read-only list of that day's movements before you load it: each movement's title, its sets
 in week-text shorthand (WeekText.setsText, e.g. `1x3@8 TS, 3x5@7 BO`, `TM90` when set) and any
-movement note. It sits under the Workout day picker, above Load selected workout, and changes with
-the picked day. It shows for completed and skipped days too. Nothing in it can be tapped or edited;
+movement note. The button sits under the Workout day picker, above Load selected workout; tapping it again
+(Hide preview) closes the list, and picking another day redraws the card with the list closed. It shows for completed and skipped days too. Nothing in it can be tapped or edited;
 loading, Mark already completed and Skip this day are unchanged. No new requests: it uses the plan
 data the start screen already loads. Editing a day on a phone stays on the Plans page.

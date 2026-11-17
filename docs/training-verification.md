@@ -1431,8 +1431,10 @@ Details in hevy-context.md, "One local training day".
 
 ## Log page day preview (local, 2026-11-17)
 
-- New rackbook/tests/test_log_day_preview.cjs: one row per movement, week-text shorthand, notes,
+- New rackbook/tests/test_log_day_preview.cjs: Preview day / Hide preview button (starts closed,
+  aria-expanded), one row per movement, week-text shorthand, notes,
   "No sets yet", nothing tappable, placed under the Workout day picker.
-- Mocked preview at 375x812: the start card shows the selected day's movement and sets between the
-  Workout day picker and Load selected workout.
+- Mocked preview at 375x812: the start card shows Preview day between the Workout day picker and
+  Load selected workout; tapping it opens the day's movement and sets and the button reads Hide preview.
+- All tests/*.cjs and rackbook/tests/*.cjs, check_logger_layout_browser and check_training_recovery_browser pass.
 - Not run: Docker build/startup, or a real phone.
