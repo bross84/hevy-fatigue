@@ -1338,3 +1338,13 @@ approved from a before/after mockup on 2026-11-16.
   Write week as text now scroll to the editor (`showEditor`); redraws while editing don't move the page.
 - **Warm-up memory (#126)** is unchanged: having warmed up heavier than a lowered working weight
   counts as warmed up.
+
+## Log page day preview (local, 2026-11-17)
+
+Issue #107, Log-page part. On the Log page start screen, picking a microcycle and Workout day now
+shows a read-only list of that day's movements before you load it: each movement's title, its sets
+in week-text shorthand (WeekText.setsText, e.g. `1x3@8 TS, 3x5@7 BO`, `TM90` when set) and any
+movement note. It sits under the Workout day picker, above Load selected workout, and changes with
+the picked day. It shows for completed and skipped days too. Nothing in it can be tapped or edited;
+loading, Mark already completed and Skip this day are unchanged. No new requests: it uses the plan
+data the start screen already loads. Editing a day on a phone stays on the Plans page.
