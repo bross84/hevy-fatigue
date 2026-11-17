@@ -1368,3 +1368,19 @@ Details in hevy-context.md, "Gym-night fixes on the Log page".
   UTC (the known evening-date issue, not from this change; the line itself is unchanged).
 - Every .cjs, rackbook Python tests (1 expected failure, baseline), check_logger_layout_browser and
   check_training_recovery_browser passed. Not checked on a phone.
+
+## Data-safety fixes — local, 2026-11-15
+
+Automated, mocked Hevy client and temporary SQLite only; no real account or database.
+
+- `tests/test_full_sync_preserves_entries.py`: Full Sync keeps typed-in sRPE, confirmed modality/duration and
+  verified marks; a Full Sync that fails on page 2 keeps the saved copy through a second failure, and the next
+  Sync Now restores everything. Both tests fail on the previous code.
+- `rackbook/tests/test_log_draft_safety.cjs`: refused storage warns once and clears on recovery; another-tab
+  change warns; Remove last set confirms first and mentions a ticked set.
+- `rackbook/tests/test_config_paths.py`: unset and mismatched `HEVY_FATIGUE_DB_PATH` are reported.
+- Results: host 250 OK; rackbook 629 OK (1 expected failure, existing baseline); every .cjs OK;
+  check_logger_layout_browser and check_training_recovery_browser passed.
+- **Baseline failure, not from this change:** `tools/check_training_browser.py` times out on unchanged main
+  (d07b3e9) and with these changes alike: a Targets panel's scrim stays over the first working set's tick.
+- Not run: Docker build. Not checked on a phone: the storage warning (private-window Safari) and the confirm.

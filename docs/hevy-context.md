@@ -1227,3 +1227,28 @@ the Targets panel after picking RPE, or a quick tick after closing the rest shee
 Now only taps inside the area the closed sheet covered are ignored for those 0.45 s (where a double-tap
 lands, such as Finish workout); taps elsewhere work at once. Opening a new sheet clears the guard, so a
 second sheet opened in the same place (RPE right after RPE) takes its first tap.
+
+## Data-safety fixes (local, 2026-11-15)
+
+From the read-only review of d07b3e9.
+
+- **Force Full Sync keeps what was typed in.** Before the wipe, every session's verification status,
+  verified time and sRPE (and, for verified sessions, the confirmed modality, confidence, note and
+  duration) are saved as JSON in `app_settings.full_sync_preserved_sessions`, in the same transaction as
+  the wipe. The reimport (`importer.initial_import`) restores them and only then deletes that setting and
+  the old `sync_full_error_state`. If the import fails part-way the copy stays; the next Sync Now runs the
+  full import (last_sync was cleared) and restores it. A second failed attempt keeps the saved copy rather
+  than the half-built rows. The confirmation now says the sRPE, type, duration and verified marks are kept.
+  `main.py` imports the helper inside the route because the offline trial replay stubs `importer`.
+- **The Log draft can't fail silently.** If the phone refuses to store the draft (full storage, private
+  window) the page says once that it isn't keeping the workout, and clears that message when storage works
+  again. If the same draft changes in another tab or the home-screen app, the page warns before a tick
+  here overwrites it. Messages still use the existing message box at the top of the page.
+- **Remove last set asks first** ("Remove set 4 of Squat? It's already ticked as done."), like Remove
+  exercise.
+- **Advice database setting checked at startup.** `rackbook.config.monitoring_read_path_problem` logs a
+  warning when `HEVY_FATIGUE_DB_PATH` is unset or points at a different file from `DB_PATH`. It never changes
+  the value (the explicit read-only path is deliberate); production already sets both to the same file.
+- **No unversioned training scripts.** draft-transfer.js, session-review.js, session-advice.js and
+  stress-charts.js now load with `?v=1`, the Log page loads plan-proposal.js?v=4 (as the dashboard does),
+  and the dashboard loads training.js?v=2, so phones fetch new code after a release.

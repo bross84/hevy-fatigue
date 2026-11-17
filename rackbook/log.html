@@ -3,12 +3,12 @@
 <head>
   <script src="/training/static/training.js?v=2"></script>
   <script src="/training/static/save-recovery.js?v=3"></script>
-  <script src="/training/static/draft-transfer.js"></script>
+  <script src="/training/static/draft-transfer.js?v=1"></script>
   <script src="/training/static/week-text.js?v=1"></script>
-  <script src="/training/static/session-review.js"></script>
-  <script src="/training/static/session-advice.js"></script>
+  <script src="/training/static/session-review.js?v=1"></script>
+  <script src="/training/static/session-advice.js?v=1"></script>
   <script src="/training/static/session-motivation.js?v=4"></script>
-  <script src="/training/static/plan-proposal.js?v=3"></script>
+  <script src="/training/static/plan-proposal.js?v=4"></script>
   <script src="/training/static/plan-change.js?v=1"></script>
   <script src="/training/static/app-menu.js?v=2"></script>
   <script src="/training/static/ai-coach.js?v=2"></script>
@@ -679,12 +679,31 @@
   function saveDraft() {
     if (draft && !draft.client_workout_id) draft.client_workout_id = trainingUUID();
     queueTrialRecording();
-    try { localStorage.setItem(KEY, JSON.stringify(draft)); } catch (e) {}
+    storeDraft();
     if (draft) draft.exercises.forEach((ex) => { refreshE1rm(ex); refreshLoader(ex); });
     paintPlates();
     if (draft) new Set(draft.exercises.map((ex) => ex.template_id)).forEach(queueStress);
     if (typeof LoggerLayout !== 'undefined') LoggerLayout.update();
   }
+  // The draft lives only in this phone's storage. If the phone refuses to keep it (full, or a private
+  // window), say so once instead of letting ticked sets look safe when a reload would lose them.
+  let draftStoreFailed = false;
+  const DRAFT_NOT_KEPT = "This phone isn't keeping the workout. Keep this page open until you finish, or a reload will lose your sets.";
+  function storeDraft() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(draft));
+      if (draftStoreFailed) { draftStoreFailed = false; if ($("msg").textContent === DRAFT_NOT_KEPT) say(""); }
+      return true;
+    } catch (e) {
+      if (!draftStoreFailed) { draftStoreFailed = true; say(DRAFT_NOT_KEPT); }
+      return false;
+    }
+  }
+  // Another tab or the home-screen app changed the same draft: the next tick here would overwrite it.
+  const OTHER_TAB = "This workout was changed in another tab or window. Close the other one, then reload this page, so sets aren't overwritten.";
+  window.addEventListener("storage", (event) => {
+    if (event.key === KEY && event.storageArea === localStorage && draft) say(OTHER_TAB);
+  });
   function saveMotivationDraft() {
     // Coaching context must not trigger trial capture, stress refresh or weight calculations.
     if (!draft || draft.frozenSave) return false;
@@ -2050,7 +2069,13 @@
     ], 1, (v) => {
       if (v === "unit") { unitChip.click(); return; }
       if (v === "round") { chip.click(); return; }
-      if (v === "last") { ex.sets.pop(); saveDraft(); renderWorkout(); return; }
+      if (v === "last") {
+        const last = ex.sets[ex.sets.length - 1];
+        if (!last) return;
+        const question = "Remove set " + ex.sets.length + " of " + ex.title + "?" + (last.done ? " It's already ticked as done." : "");
+        if (!confirm(question)) return;
+        ex.sets.pop(); saveDraft(); renderWorkout(); return;
+      }
       if (!confirm("Remove " + ex.title + " from this workout?")) return;
       draft.exercises = draft.exercises.filter((e) => e.id !== ex.id); saveDraft(); renderWorkout();
     });
