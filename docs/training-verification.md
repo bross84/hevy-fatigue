@@ -1438,3 +1438,60 @@ Details in hevy-context.md, "One local training day".
   Load selected workout; tapping it opens the day's movement and sets and the button reads Hide preview.
 - All tests/*.cjs and rackbook/tests/*.cjs, check_logger_layout_browser and check_training_recovery_browser pass.
 - Not run: Docker build/startup, or a real phone.
+
+## Workout stabilization and custom exercises (local, 2026-11-20)
+
+Automated evidence (no real account or real database):
+
+- Host: `python -X utf8 -m unittest discover -s tests` — 252 passed.
+- Logger: `python -X utf8 -m unittest discover -s rackbook/tests -t .` — 648 tests,
+  OK with one pre-existing expected failure (legacy BBB percentage prescription).
+- All 46 JavaScript files under tests/ and rackbook/tests/ passed, including the
+  required recommendation, transfer and save-recovery checks. New
+  test_log_stabilization.cjs covers canonical kg, whole-pound display, unchanged
+  physical equipment, real shortages and the low-pin-bench source investigation.
+- New test_exercise_creation.py covers persistent sending before remote I/O,
+  concurrent requests, idempotence, uncertain no-repost, full-match reconciliation,
+  ambiguity/pre-existing-ID exclusion, remote-ID-first local recovery, independent
+  duplicate history/preferences, validation, write/preview blocking at service and
+  client, route responses, catalog availability and static no-cache headers.
+- test_exercise_state.py additionally verifies exact historical kg and that a newer
+  unrated session keeps its own date while e1RM comes from an older rated session.
+- check_logger_layout_browser.py passed (390–2560 px, loader ownership, notes,
+  reordering, reload, weights, draft identity, timer, no browser errors).
+- check_training_recovery_browser.py passed (stale-plan/model-validation correction,
+  recovery, unfinished-editor transfer, exactly-once completion).
+- check_training_browser.py passed against a self-owned tools.preview_app: complete
+  mocked workout save, motivation/soreness, Rx/actual RPE, next plan day, worker
+  scope, shared credentials routing, no unexpected browser errors.
+- New check_stabilization_browser.py passed: inline dated history and unmatched
+  sets; warm-up focus; kg/lb labels with unchanged canonical weight; navigation
+  close; rapid timer adjustments; failed Keep then successful retry; preview
+  creation blocking; duplicate prefill; uncertain creation across reload followed
+  by read-only reconciliation (one POST); actual Plans picker creation and catalog
+  refresh without automatic plan modification.
+- Screenshots inspected under artifacts/stabilization/: phone-history.png,
+  phone-plates.png, phone-create.png and desktop-history.png.
+- `git diff --check` passed. No behavioral assertions were weakened: the existing
+  picker test accounts explicitly for its two new actions while retaining refresh
+  and empty-state checks.
+
+Environment/baseline distinctions:
+- Sandboxed TestClient/preview startup hung; those processes were stopped and the
+  same disposable tests passed outside that restriction. This was not classified
+  as an application test failure. A preview invocation without Python UTF-8 failed
+  on the host's existing emoji startup message; rerun with -X utf8 passed.
+- Docker engine is unavailable (dockerDesktopLinuxEngine named pipe missing).
+  Docker build/container startup remain unverified; application startup was checked
+  through the isolated preview and TestClient. No existing container was touched.
+
+Not automated / not claimed fixed:
+- Physical iPhone taps, keyboard, music coexistence, silent switch, screen locking,
+  and deployed asset/data checks. The owner suspects Wi-Fi for Home Screen failure.
+- Original 250 lb low-pin-bench instance: an actual 240 lb e1RM + doubles @8 does
+  not produce that recommendation in the fixture. Existing TS/TM precedence and
+  fixed/manual inputs are preserved, not guessed away.
+- Music playback mode remains unchanged; lock-screen push notifications are not
+  implemented. Real-account custom-exercise creation was deliberately not tested.
+- GitHub issues were read and reconciled in training-integration.md; no issue
+  comments, closures, commits, pushes, deployment or production changes occurred.

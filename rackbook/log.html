@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <script src="/training/static/training.js?v=2"></script>
+  <script src="/training/static/exercise-create.js?v=1"></script>
+  <link rel="stylesheet" href="/training/static/exercise-create.css?v=1" />
   <script src="/training/static/save-recovery.js?v=3"></script>
   <script src="/training/static/draft-transfer.js?v=1"></script>
   <script src="/training/static/week-text.js?v=1"></script>
@@ -12,7 +14,7 @@
   <script src="/training/static/plan-change.js?v=1"></script>
   <script src="/training/static/app-menu.js?v=2"></script>
   <script src="/training/static/ai-coach.js?v=2"></script>
-  <script src="/training/static/logger-layout.js?v=11"></script>
+  <script src="/training/static/logger-layout.js?v=12"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -428,7 +430,7 @@
     .workout-log.typing main { padding-bottom: 60vh; }
     .workout-log.keypad-open main { padding-bottom: calc(var(--keypad-height, 250px) + 32px); }
   </style>
-  <link rel="stylesheet" href="/training/static/logger-layout.css?v=12" />
+  <link rel="stylesheet" href="/training/static/logger-layout.css?v=13" />
 </head>
 <body class="workout-log">
 <button id="loggerNavScrim" type="button" aria-label="Close navigation" hidden></button>
@@ -608,6 +610,7 @@
   function swallowGhostTaps(area) { ghostArea = area || null; ghostUntil = ghostArea ? Date.now() + 450 : 0; }
   function isGhostTap(e) {
     if (!e.isTrusted || Date.now() >= ghostUntil || !ghostArea) return false;
+    if (e.target?.closest?.('dialog[open]')) return false; // a new modal is never the control underneath the closed sheet
     return e.clientX >= ghostArea.left && e.clientX <= ghostArea.right && e.clientY >= ghostArea.top && e.clientY <= ghostArea.bottom;
   }
   document.addEventListener("click", (e) => { if (isGhostTap(e)) { e.preventDefault(); e.stopPropagation(); } }, true);
@@ -616,12 +619,17 @@
     const scrim = el("div", "scrim");
     const sheet = el("div", "sheet");
     sheet.setAttribute("role", "dialog"); sheet.setAttribute("aria-label", title);
-    sheet.append(el("h2", null, title));
+    const heading = el("h2", null, title);
+    sheet.append(heading);
     if (hint) sheet.append(el("p", "muted", hint));
     const grid = el("div", "sheetgrid" + (cols === 1 ? " list" : "")), buttons = {};
     grid.style.gridTemplateColumns = "repeat(" + cols + ", 1fr)";
     const onKey = (e) => { if (e.key === "Escape") close(); };
-    const close = () => { const area = sheet.getBoundingClientRect(); scrim.remove(); document.removeEventListener("keydown", onKey); swallowGhostTaps(area); if (onClose) onClose(); };
+    const previousFocus = document.activeElement;
+    let closed = false;
+    const close = () => { const area = sheet.getBoundingClientRect(); if (closed) return; closed = true; scrim.remove(); document.removeEventListener("keydown", onKey); swallowGhostTaps(area); if (previousFocus?.isConnected) previousFocus.focus({preventScroll:true}); if (onClose) onClose(); };
+    const closeButton = el("button", "sheet-close", "Close"); closeButton.type = "button";
+    closeButton.addEventListener("click", close); heading.before(closeButton);
     for (const it of items) {
       const b = el("button", ((it.on ? "on " : "") + (it.cls || "")).trim() || null, it.label);
       b.type = "button";
@@ -637,7 +645,8 @@
     scrim.addEventListener("click", (e) => { if (e.target === scrim) close(); });
     document.addEventListener("keydown", onKey);
     document.body.append(scrim);
-    return { close, buttons, setTitle: (text) => { sheet.firstElementChild.textContent = text; sheet.setAttribute("aria-label", text); } };
+    closeButton.focus({preventScroll:true});
+    return { close, buttons, setTitle: (text) => { heading.textContent = text; sheet.setAttribute("aria-label", text); } };
   }
   // Exercise sheets (Info, Targets, Note, Plates) live inside their exercise card, so the live numbers, stress and
   // plate loader keep updating while open; CSS lifts the open one into a bottom sheet. Redraws reopen it.
@@ -1115,16 +1124,23 @@
     applyAuto(ex); saveDraft(); refreshCard(ex);
   }
 
+  const refSaveStates = new Map(), refSaveQueues = new Map(), refSaveRevisions = new Map();
   function saveRef(ex) {
     const id = ex.template_id;
+    const revision = (refSaveRevisions.get(id) || 0) + 1; refSaveRevisions.set(id, revision);
+    refSaveStates.set(id, 'pending');
     clearTimeout(refTimers[id]);
     refTimers[id] = setTimeout(async () => {
       const body = { basis: ex.ref.basis, auto_weights: ex.ref.autoWeights !== false, ls: ex.ref.ls, tm_pct: ex.ref.tmPct, step_kg: ex.ref.stepKg, step_lb: ex.ref.stepLb, bar_kg: ex.ref.barKg, chain_kg: ex.ref.chainKg, rest_sec: ex.ref.restSec, weight_unit: ex.ref.weightUnit ?? null };
-      try {
+      const pending = (refSaveQueues.get(id) || Promise.resolve()).catch(()=>{}).then(async () => {
         refs[id] = await api("/exercise-refs/" + encodeURIComponent(id), {
           method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
         });
-      } catch (err) { /* the draft still holds it; it is saved again on the next change */ }
+      });
+      refSaveQueues.set(id, pending);
+      try { await pending; if (refSaveRevisions.get(id) === revision) refSaveStates.set(id, 'saved'); }
+      catch (err) { if (refSaveRevisions.get(id) === revision) { refSaveStates.set(id, 'failed'); say("Exercise settings are kept in this workout, but could not be saved for future workouts. Change the setting again to retry. " + err.message); } }
+      restRender();
     }, 600);
   }
 
@@ -1716,17 +1732,15 @@
   const PLATE_CLASSES = ["p25", "p20", "p15", "p10", "p5", "p2", "p1", "p05", "p025"];
   const plateClass = (p, weightUnit = unit) => PLATE_CLASSES[(weightUnit === "lb" ? PLATES_LB : PLATES_KG).indexOf(p)] || "p1";   // colours by size, biggest first
   function platePlan(kg, ex) {
-    const unit = unitFor(ex.ref);
-    const inLb = unit === "lb";
-    const total = inLb ? lbOfKg(kg) : kg;
+    const total = kg;
     const noBar = ex.ref.barKg === 0;
-    const bar = noBar ? 0 : inLb ? BAR_LB : ex.ref.barKg;
+    const bar = noBar ? 0 : ex.ref.barKg;
     const sides = noBar ? 1 : 2;
-    const chains = inLb ? lbOfKg(ex.ref.chainKg) : ex.ref.chainKg;
+    const chains = ex.ref.chainKg;
     let rem = (total - bar - chains) / sides;
     if (rem < -1e-6) return { below: true, counts: [], short: 0, noBar };
     const counts = [];
-    for (const p of inLb ? PLATES_LB : PLATES_KG) {
+    for (const p of PLATES_KG) {
       const n = Math.floor(rem / p + 1e-9);
       if (n > 0) { counts.push([p, n]); rem -= n * p; }
     }
@@ -1749,28 +1763,28 @@
     box.replaceChildren();
     const i = loaderSet(ex), set = i >= 0 ? ex.sets[i] : null, kg = set ? num(set.kg) : NaN;
     const head = el("div", "loadhead");
-    const which = el("button", "loadwhich", set ? setName(ex, i) + " · " + primaryText(set, ex) + " " + unit + " ▾" : "Plates ▾");
+    const which = el("button", "loadwhich", set ? setName(ex, i) + " · " + trim(kg) + " kg · " + Math.round(lbOfKg(kg)) + " lb" + (ex.loadPin != null ? " · Pinned" : "") + " ▾" : "Plates ▾");
     which.type = "button"; which.addEventListener("click", () => pickLoadSet(ex));
     head.append(which);
-    if (unit === "kg") {
+    {
       const bar = el("button", null, trim(ex.ref.barKg) + " kg bar ▾"); bar.type = "button"; bar.addEventListener("click", () => pickBar(ex));
       const chains = el("button", null, "Chains " + trim(ex.ref.chainKg) + " kg ▾"); chains.type = "button"; chains.addEventListener("click", () => pickChains(ex));
       head.append(bar, chains);
-    } else head.append(el("span", "static", BAR_LB + " lb bar"));
+    }
     box.append(head);
     if (isNaN(kg)) { box.append(el("p", "loadnote", "Give a set a weight to see its plates.")); return; }
     const plan = platePlan(kg, ex);
-    const barEl = drawPlates(plan, unit, "barfull");
+    const barEl = drawPlates(plan, "kg", "barfull");
     box.append(barEl);
     const read = el("div", "readout");
     if (plan.below) read.append("Under the bar");
     else if (!plan.counts.length) read.append("Bar only");
     else plan.counts.forEach(([p, n], k) => {
       if (k) read.append("  ·  ");
-      read.append(el("b", null, n + "×"), " " + trim(p) + " " + unit);
+      read.append(el("b", null, n + "×"), " " + trim(p) + " kg");
     });
     if (plan.noBar && plan.counts.length) read.append("  ·  total, no bar");
-    if (plan.short) read.append(el("div", "short", "(" + trim(Math.round(plan.short * 100) / 100) + " " + unit + " short of " + primaryText(set, ex) + " " + unit + ")"));
+    if (plan.short) read.append(el("div", "short", "(" + trim(Math.round(plan.short * 100) / 100) + " kg short of " + trim(kg) + " kg)"));
     box.append(read);
   }
   // The plates drawn on the bar, largest nearest the middle; with no bar, one stack for the whole load.
@@ -1801,13 +1815,12 @@
     if (isNaN(kg)) return null;
     const unit = unitFor(ex.ref), plan = platePlan(kg, ex);
     const chains = ex.ref.chainKg ? " + " + trim(ex.ref.chainKg) + " kg chains" : "";
-    const bar = plan.noBar ? "No bar" + chains : unit === "lb" ? BAR_LB + " lb bar" : trim(ex.ref.barKg) + " kg bar" + chains;
+    const bar = plan.noBar ? "No bar" + chains : trim(ex.ref.barKg) + " kg bar" + chains;
     const plates = plan.below ? "Under the bar" : plan.counts.length
       ? plan.counts.map(([p, n]) => n + "×" + trim(p)).join(" + ") + (plan.noBar ? " total" : " per side") : plan.noBar ? "No plates" : "Bar only";
     // The other unit beside the weight, so pounds are always in sight while lifting in kilograms (and the reverse).
-    const other = refText(set, ex) + " " + (unit === "lb" ? "kg" : "lb");
-    return { set: setName(ex, i) + " · " + primaryText(set, ex) + " " + unit + " · " + other, plates, bar, plan, unit,
-      short: plan.short ? trim(Math.round(plan.short * 100) / 100) + " " + unit + " short" : "" };
+    return { set: setName(ex, i) + " · " + trim(kg) + " kg · " + Math.round(lbOfKg(kg)) + " lb" + (ex.loadPin != null ? " · Pinned" : ""), plates, bar, plan, unit: "kg",
+      short: plan.short ? trim(Math.round(plan.short * 100) / 100) + " kg short" : "" };
   }
   function paintPlates() {
     const strip = $("plateStrip"), pad = $("padPlates");
@@ -2049,7 +2062,7 @@
   }
   // Dumbbell, cable and machine movements have no plates to load, so they get no plate strip or Plates button.
   const NO_PLATES = /\b(dumbbells?|kettlebells?|cable|machine|bands?|assisted|bodyweight)\b/i;
-  const usesPlates = (ex) => !NO_PLATES.test(ex.title || "");
+  const usesPlates = (ex) => ex.ref?.barKg === 0 || !NO_PLATES.test(ex.title || "");
   // What the plan asked for on a set: the planned weight (the automatic suggestion while there is one), the planned
   // reps and the RPE target. Shown beside the boxes, so changing a box never hides the target.
   function targetText(ex, s) {
@@ -2223,10 +2236,19 @@
     const heads = [["Set"], ["Previous", "previous-col"], ["Target", "target-col"], [unit === "lb" ? "Lb" : "Kg"], [unit === "lb" ? "Kg" : "Lb", "ref-col"],
       ["Reps @ RPE", "reps-col"], ["e1RM", "e1-col"], ["Stress", "stress-col"], ["Done", "done-col"]];
     for (const [t, cls] of heads) cols.append(el("span", cls || null, t));
-    right.append(cols);
 
     // Previous: what you did on this set last time, in lb (warm-ups line up with warm-ups, working sets with working sets)
     const previous = (ex.ref.state && ex.ref.state.previous) || [];
+    const previousDate = ex.ref.state?.previous_workout_start_time;
+    right.append(el("p", "previous-session muted", previous.length
+      ? "Last session · " + (previousDate ? new Date(previousDate).toLocaleDateString(undefined, {month:"short", day:"numeric", year:"numeric"}) : "Date unavailable")
+      : ex.ref.state?.error ? "Previous session unavailable" : ex.ref.state ? "No previous sets" : "Loading previous session…"), cols);
+    const previousText = (p) => {
+      if (!p) return "No matching previous set";
+      const weight = p.weight_kg != null ? (unit === "kg" ? trim(p.weight_kg) : Math.round(lbOfKg(p.weight_kg)))
+        : p.weight_lb != null ? (unit === "kg" ? trim(p.weight_lb / LB_PER_KG) : Math.round(p.weight_lb)) : "?";
+      return weight + " " + unit + " × " + (p.reps ?? "?") + " @ " + (p.rpe ?? "?");
+    };
     const prevWarm = previous.filter((p) => p.type === "warmup"), prevWork = previous.filter((p) => p.type !== "warmup");
     let working = 0, warm = 0;
     ex.sets.forEach((s, idx) => {
@@ -2245,7 +2267,7 @@
         saveDraft(); renderWorkout();
       }));
 
-      const prevCell = el("span", "prev", p ? trim(p.weight_lb) + "×" + (p.reps ?? "?") + (p.rpe != null ? " @" + p.rpe : "") : "");
+      const prevCell = el("span", "prev", previousText(p));
       const targetCell = el("span", "target", targetText(ex, s));
       const wt = el("input"); wt.type = "text"; wt.inputMode = "decimal"; wt.setAttribute("aria-label", "Weight in " + (unit === "lb" ? "pounds" : "kilograms"));
       prepareKeypadInput(wt, true, ex.title + " · Set " + (idx + 1));
@@ -2354,6 +2376,7 @@
       const wrap = el("div", "setwrap");
       const delBtn = el("button", "delbtn", "Delete"); delBtn.type = "button"; delBtn.setAttribute("aria-label", "Delete this set");
       wrap.append(delBtn, row);
+      wrap.append(el("div", "previous-inline", "Last time: " + previousText(p)));
       makeSwipeable(wrap, () => {
         const i = ex.sets.indexOf(s);
         if (i >= 0) ex.sets.splice(i, 1);
@@ -2362,6 +2385,12 @@
       right.append(wrap);
     });
 
+    const unmatched = [...prevWarm.slice(warm).map((p,i) => ["Warm-up " + (warm+i+1), p]), ...prevWork.slice(working).map((p,i) => ["Set " + (working+i+1), p])];
+    if (unmatched.length) {
+      const extra = el("details", "previous-extra"); extra.append(el("summary", null, "Other sets from last session (" + unmatched.length + ")"));
+      for (const [name,p] of unmatched) extra.append(el("p", null, name + ": " + previousText(p)));
+      right.append(extra);
+    }
     const stressTotal = el("div", "set stress-total");
     stressTotal.append(el("span", "total-label", "Total stress"), el("strong", null, "—"), el("span"));
     right.append(stressTotal);
@@ -2473,6 +2502,11 @@
 
   function renderResults() {
     const box = $("results"); box.replaceChildren();
+    for (const duplicate of [false,true]) {
+      const create = el("button", null, duplicate ? "Duplicate exercise" : "Create exercise"); create.type="button";
+      create.addEventListener("click", () => ExerciseCreate.open({catalog, duplicate, onCreated:async()=>{catalog=await api('/exercises');await loadReference();renderResults();}}));
+      box.append(create);
+    }
     if (!catalog.length) {
       box.append(el("p", "muted", "No exercises cached yet. Pull your exercise list from Hevy first."));
       const sync = el("button", "wide", "Sync exercises from Hevy"); sync.type = "button";
@@ -2813,8 +2847,10 @@
         if (keep) {
           const same = !ex || secs === restFor(ex);
           keep.hidden = !ex || (same && !restKept);
-          keep.disabled = same;
-          if (ex) keep.textContent = same ? restLabel(secs) + " kept for " + ex.title + " \u2713" : "Keep " + restLabel(secs) + " for " + ex.title;
+          const state = ex && refSaveStates.get(ex.template_id);
+          keep.disabled = same && state !== 'failed';
+          if (ex) keep.textContent = state === 'pending' && restKept ? "Saving rest…" : state === 'failed' && restKept ? "Retry saving rest for " + ex.title
+            : same ? restLabel(secs) + " kept for " + ex.title + " \u2713" : "Keep " + restLabel(secs) + " for " + ex.title;
         }
       }
     }

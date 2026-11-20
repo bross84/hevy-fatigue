@@ -70,6 +70,7 @@ def previous_sets(sessions: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
             {
                 "type": e.get("set_type") or "normal",
                 "weight_lb": weight_lb(e["weight_kg"]) if e.get("weight_kg") else None,
+                "weight_kg": e.get("weight_kg"),
                 "reps": e.get("reps"),
                 "rpe": e.get("rpe"),
             }
@@ -86,6 +87,8 @@ def build_exercise_state(entries: list[dict[str, Any]], pct: PctLookup) -> dict[
     of the most recent session of any kind."""
     sessions = sessions_newest_first(entries)
     previous = previous_sets(sessions)
+    previous_start = next((s[0].get("workout_start_time") for s in sessions
+                           if previous_sets([s])), None)
     for session in sessions:
         ref = reference_set(session, pct)
         if ref is None:
@@ -93,6 +96,7 @@ def build_exercise_state(entries: list[dict[str, Any]], pct: PctLookup) -> dict[
         entry = ref["entry"]
         return {
             "previous": previous,
+            "previous_workout_start_time": previous_start,
             "found": True,
             "workout_title": entry.get("workout_title"),
             "workout_start_time": entry.get("workout_start_time"),
@@ -103,6 +107,7 @@ def build_exercise_state(entries: list[dict[str, Any]], pct: PctLookup) -> dict[
         }
     return {
         "previous": previous,
+        "previous_workout_start_time": previous_start,
         "found": False,
         "workout_title": None,
         "workout_start_time": None,

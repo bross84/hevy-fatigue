@@ -72,6 +72,9 @@ const LoggerLayout = (() => {
       if (!controls) continue;
       const rows = [...card.querySelectorAll('.set[data-working]')];
       const next = rows.find(row => !row.classList.contains('done'));
+      const allRows = [...card.querySelectorAll('.setwrap > .set')];
+      const nextSet = allRows.find(row => !row.classList.contains('done'));
+      for (const row of allRows) row.classList.toggle('next-working-set', row === nextSet);
       if (blocked && next && controls.gate.parentElement !== next) next.insertBefore(controls.gate, next.querySelector('.tick'));
       controls.gate.hidden = !(blocked && next);
       controls.reason.textContent = current.frozenSave
@@ -79,7 +82,6 @@ const LoggerLayout = (() => {
       controls.trigger.hidden = Boolean(current.frozenSave);
       for (const row of rows) {
         const tick = row.querySelector('.tick');
-        row.classList.toggle('next-working-set', row === next);
         tick.disabled = Boolean(blocked && !row.classList.contains('done'));
         if (tick.disabled) tick.setAttribute('aria-describedby', controls.reason.id);
         else tick.removeAttribute('aria-describedby');

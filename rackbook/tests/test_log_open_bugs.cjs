@@ -74,8 +74,8 @@ const pctx = vm.createContext({
 vm.runInContext('let catalog = null, refreshTried = false, missRefreshed = false, catalogSyncing = false;\n'
   + html.slice(pStart, pEnd) + '\nthis.setCatalog = (c) => { catalog = c; }; this.getCatalog = () => catalog;'
   + '\nthis.resetMiss = () => { missRefreshed = false; };', pctx);
-const texts = () => results.children.map((c) => c.text).filter(Boolean);
-const refreshButton = () => results.children.find((c) => c.tag === 'button');
+const texts = () => results.children.map((c) => c.text).filter(t => t && !['Create exercise','Duplicate exercise'].includes(t));
+const refreshButton = () => results.children.find((c) => c.tag === 'button' && ['Checking Hevy…','Refresh from Hevy'].includes(c.text));
 const settle = () => new Promise((r) => setImmediate(r));
 
 (async () => {
@@ -83,6 +83,8 @@ const settle = () => new Promise((r) => setImmediate(r));
   search.value = 'zercher';
   hevyList = [...hevyList, { id: 'z', title: 'Zercher Squat', cached_at: '2026-11-16 21:00:00' }];   // just made in Hevy
   pctx.renderResults();
+  assert.ok(results.children.some(c => c.text === 'Create exercise'));
+  assert.ok(results.children.some(c => c.text === 'Duplicate exercise'));
   assert.deepEqual(texts(), ['No matches.', 'Checking Hevy…'], 'shows No matches while it checks');
   assert.equal(refreshButton().disabled, true, 'the Refresh button waits while a check runs');
   assert.equal(syncnote.hidden, false, 'the existing "Updating your exercise list" note shows');

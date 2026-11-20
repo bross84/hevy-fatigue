@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 from .database import get_db, get_rpe_percentage, init_db
 from . import soreness
+from . import exercise_creation
 from . import motivation
 from .motivation import MotivationInput
 from . import session_checkins
@@ -88,7 +89,10 @@ async def isolated_preview(request: Request, call_next):
     if os.environ.get("RACKBOOK_READ_ONLY_PREVIEW") == "1" and request.method not in ("GET", "HEAD", "OPTIONS") and path.startswith("/hevy/"):
         from fastapi.responses import JSONResponse
         return JSONResponse({"detail": "Hevy writes are disabled in this isolated local preview."}, status_code=403)
-    return await call_next(request)
+    response = await call_next(request)
+    if path.startswith('/static/'):
+        response.headers['Cache-Control'] = 'no-cache'
+    return response
 
 
 @app.get("/fatigue-trial/settings", response_model=fatigue_trial.TrialStatus)
@@ -458,6 +462,7 @@ class ExerciseRef(ExerciseRefInput):
 
 class PreviousSet(BaseModel):
     type: str
+    weight_kg: float | None = None
     weight_lb: float | None = None
     reps: int | None = None
     rpe: float | None = None
@@ -465,6 +470,7 @@ class PreviousSet(BaseModel):
 
 class ExerciseState(BaseModel):
     previous: list[PreviousSet] = []
+    previous_workout_start_time: str | None = None
     found: bool
     workout_title: str | None = None
     workout_start_time: str | None = None
@@ -2599,6 +2605,45 @@ def create_manual_e1rm(active_block_id: int, data: ManualE1RMInput):
 
 
 # ── Exercises ──────────────────────────────────────────────────────────────────
+
+@app.get('/exercise-creation/options')
+def creation_options():
+    from typing import get_args
+    return {'enabled': exercise_creation.writes_enabled(), 'types': get_args(exercise_creation.ExerciseType),
+            'equipment': get_args(exercise_creation.Equipment), 'muscles': get_args(exercise_creation.Muscle)}
+
+
+def _creation_call(fn, *args):
+    try:
+        return fn(*args)
+    except PermissionError as exc:
+        raise HTTPException(403, str(exc))
+    except LookupError as exc:
+        raise HTTPException(404, str(exc))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    except httpx.HTTPError:
+        raise HTTPException(502, 'Hevy is unavailable. Your exercise details have been kept; check status before retrying.')
+
+
+@app.get('/exercise-creation/template/{template_id}')
+def creation_template(template_id: str):
+    return _creation_call(hevy_client.HevyClient().get_exercise_template, template_id)
+
+
+@app.post('/exercise-creation')
+def create_exercise(data: exercise_creation.CreationInput):
+    return _creation_call(exercise_creation.create, data, hevy_client.HevyClient())
+
+
+@app.get('/exercise-creation/{request_id}')
+def creation_status(request_id: UUID):
+    return _creation_call(exercise_creation.status, request_id)
+
+
+@app.post('/exercise-creation/{request_id}/reconcile')
+def reconcile_exercise_creation(request_id: UUID):
+    return _creation_call(exercise_creation.reconcile, request_id, hevy_client.HevyClient())
 
 @app.get("/exercises")
 def get_exercises():

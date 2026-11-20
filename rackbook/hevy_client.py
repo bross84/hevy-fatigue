@@ -20,6 +20,38 @@ class HevyClient:
             raise ValueError("No Hevy API key configured.")
         return {"api-key": self.api_key}
 
+    def get_exercise_template(self, template_id: str) -> dict:
+        from urllib.parse import quote
+        with httpx.Client(timeout=30) as client:
+            response = client.get(f"{_BASE_URL}/exercise_templates/{quote(template_id, safe='')}", headers=self._headers())
+            response.raise_for_status()
+            return response.json()
+
+    def list_exercise_templates(self) -> list[dict]:
+        entries, page = [], 1
+        with httpx.Client(timeout=30) as client:
+            while True:
+                response = client.get(f"{_BASE_URL}/exercise_templates", headers=self._headers(), params={"page": page, "pageSize": 100})
+                response.raise_for_status()
+                data = response.json()
+                entries.extend(data.get("exercise_templates", []))
+                if page >= data.get("page_count", 1):
+                    return entries
+                page += 1
+
+    def create_exercise_template(self, exercise: dict) -> str:
+        if os.environ.get('HEVY_WRITES_ENABLED', '0') != '1' or os.environ.get('RACKBOOK_READ_ONLY_PREVIEW') == '1':
+            raise WorkoutNotSent('Hevy writes are disabled.')
+        if not self.api_key:
+            raise WorkoutNotSent('Configure the Hevy credential in Settings before creating an exercise.')
+        with httpx.Client(timeout=30) as client:
+            response = client.post(f"{_BASE_URL}/exercise_templates", headers=self._headers(), json={"exercise": exercise})
+            response.raise_for_status()
+            identity = response.json().get("id")
+            if not isinstance(identity, (str, int)) or isinstance(identity, bool) or not str(identity):
+                raise ValueError('Hevy did not return an exercise ID; check the catalog before retrying.')
+            return str(identity)
+
     def sync_exercise_cache(self) -> int:
         """Fetch all exercise templates from Hevy and upsert into hevy_exercise_cache."""
         exercises: list[dict] = []
