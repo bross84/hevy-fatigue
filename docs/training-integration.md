@@ -644,3 +644,53 @@ table or interpretation changed. `logger-layout.js` (v=3) keeps the motivation
 form in place and gives locked mobile sets a Go to check-in button. Details:
 hevy-context.md, "Day check-in".
 
+
+## Stabilization and exercise creation (local, 2026-11-20)
+
+Additive interfaces:
+- ExerciseState.previous_workout_start_time dates the displayed previous sets,
+  independently of the session supplying e1RM. PreviousSet.weight_kg preserves
+  original history weights for display. Existing fields/consumers remain supported.
+- GET /training/exercise-creation/options supplies allowed Hevy types, equipment,
+  muscles and whether creation is enabled. GET /template/{id} under that prefix
+  reads metadata for duplication.
+- POST /training/exercise-creation accepts a persisted request_id UUID, title,
+  exercise_type, equipment_category, muscle_group, other_muscles and optional
+  source_id. GET /{request_id} returns status; POST /{request_id}/reconcile performs
+  read-only remote lookup and local finalization, never a remote POST.
+- exercise_creations is initialized idempotently in the logger database. Frozen
+  payload, pre-request catalog IDs, preference snapshot, state and remote identity
+  protect retries across browser reloads/server restarts. Different payloads cannot
+  reuse an ID; active same-name requests cannot issue another remote creation.
+- Creation checks HEVY_WRITES_ENABLED and RACKBOOK_READ_ONLY_PREVIEW in the service
+  and real client. UI disables create when options report it unavailable. Required
+  creation fields/enums are validated server-side; SQL is parameterized.
+
+Hevy's current public schema was read at https://developers.hevy.com/openapi.json
+on 2026-11-20: POST /v1/exercise_templates wraps fields in `exercise` and returns
+`id` (the documented numeric ID is normalized to text). No new credentials, SDK,
+framework or host database tables are introduced. Existing workout save and trial
+contracts remain unchanged. Catalog creation supports Hevy's template types; it
+does not add new duration/distance entry controls to the existing weight/reps logger.
+
+Reconciled backlog (local record; GitHub issues were read, not changed):
+
+| Report / issue | Local status | Remaining acceptance |
+|---|---|---|
+| Phone history / #110 | Implemented inline with date and unmatched sets | Real phone readability |
+| kg equipment / false shortage | Implemented; exact kg retained, lb label rounded only | Actual equipment comparison |
+| Loader missing / #109, #110 | No-bar override; visibility checked across widths | Exact failing movement if recurrence |
+| Next set / #109, #110 | Includes warm-ups; gate separate | Gym workflow confirmation |
+| Low pin bench 250 lb | Fixture trace completed; not reproduced | Original source/TS/TM/manual load and prescription |
+| Create/duplicate exercise | Implemented with independent movement identity | Authorized real-account acceptance after review |
+| Rest persistence | Explicit failure and retry; serialized preference saves | Cross-workout phone acceptance |
+| Rapid timer taps | manipulation touch action; repeated-tap browser check | Physical Safari double-tap check |
+| Close controls / #130 | Close added; focus restored; new-dialog guard fixed | Original menu-specific symptom if recurrence |
+| Script caching / #149 | Static responses now no-cache | Deployed asset check after authorized release |
+| Music interruption | Playback mode identified; unchanged pending investigation | iPhone + music + silent switch + screen lock |
+| Home Screen / #109 | Owner suspects Wi-Fi; no speculative app fix | Reopen only if recurrence on a healthy connection |
+| Lock-screen notifications | Separate feature; not implemented | Product/platform decision |
+
+Closed #121 concerned input-font zoom, not repeated timer taps. #145's local-first
+architecture, native rewrite, repository cleanup and new coaching features remain
+outside this stabilization batch. Do not close unresolved reports based on code alone.

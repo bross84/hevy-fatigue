@@ -133,6 +133,14 @@ class TestPreviousSets(unittest.TestCase):
         state = build_exercise_state(newest + SQUAT, pct)
         self.assertEqual([("normal", 100, 10, None)], self._plain(state))
         self.assertEqual("BS-Bridge1.3.1", state["workout_title"])   # the e1RM still comes from the session that has RPEs
+        self.assertEqual("2026-10-07T00:00:00+00:00", state["previous_workout_start_time"])
+
+    def test_previous_kg_is_exact_even_when_pound_estimate_is_snapped(self):
+        entry = S('kg', '2026-11-20T12:00:00Z', 'normal', 220, 10, None)
+        entry['weight_kg'] = 100
+        state = build_exercise_state([entry], pct)
+        self.assertEqual(state['previous'][0]['weight_kg'], 100)
+        self.assertIsNone(state['previous'][0]['rpe'])
 
     def test_no_history_means_nothing_previous(self):
         self.assertEqual([], build_exercise_state([], pct)["previous"])

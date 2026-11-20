@@ -752,3 +752,25 @@ soreness or motivation, that the check-in at the top shows motivation then Patte
 Squat, Press and Hinge, and that Go to check-in on a locked set jumps there. Rate Squat and tick
 Hinge pain, confirm, finish, then open the saved workout's soreness edit in Recent: Squat and Hinge
 pain are shown and Press is blank.
+
+## Stabilization release gate (2026-11-20; local only)
+
+No commit, push, image publication or production restart is authorized by this
+implementation. Keep existing container identity, port, network, volumes, keys
+and rollback material. Before a separately authorized release:
+
+- Back up the logger database with the normal release procedure. Startup adds
+  exercise_creations without rewriting existing workout/trial records.
+- Keep the workout write/preview flags unchanged. Exercise creation respects the
+  same flags, including client-layer preview protection.
+- Resolve or retain any sending/uncertain exercise-creation journals before
+  rollback. An older build cannot expose their recovery UI; never delete those
+  records or blindly recreate an exercise after rollback. Reconciliation is
+  read-only against Hevy and requires a full new-template match.
+- Verify training static assets revalidate, exact kg survives a display-unit
+  switch, phone history is readable, a warm-up advances the highlight, and rest
+  settings persist into the next workout. Use a reviewed disposable environment
+  for destructive/failure testing, never production databases.
+- Complete Docker build/startup and physical iPhone acceptance before declaring
+  release readiness. Music/lock-screen behavior is not certified by browser
+  automation. Home Screen failure is currently suspected to be local Wi-Fi.

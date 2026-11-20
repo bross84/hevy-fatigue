@@ -1348,3 +1348,43 @@ movement note. The button sits under the Workout day picker, above Load selected
 (Hide preview) closes the list, and picking another day redraws the card with the list closed. It shows for completed and skipped days too. Nothing in it can be tapped or edited;
 loading, Mark already completed and Skip this day are unchanged. No new requests: it uses the plan
 data the start screen already loads. Editing a day on a phone stays on the Plans page.
+
+## Workout stabilization and custom exercises (local, 2026-11-20)
+
+Phone set rows now show last-session weight, reps and actual RPE underneath; missing
+values remain unknown. A separate previous-session timestamp prevents an older
+e1RM reference session from being mislabeled as the most recent workout. Extra
+previous sets remain available in a disclosure. History includes canonical kg
+without changing the existing e1RM calculation's pound conversion.
+
+Plate loading always uses kilogram equipment, including custom bars, chains and
+no-bar loads. Display-unit changes do not select pound plates or a 45 lb bar. The
+loader and strip show exact kg plus whole-pound reference labels (100 kg / 220 lb,
+25 kg / 55 lb). Canonical logged weights and configured automatic increments are
+unchanged. No-bar explicitly permits the loader even for bodyweight-named movements.
+The next unfinished set, including warm-ups, is highlighted; the working-set
+check-in gate remains separate. Manual loader pins are labeled.
+
+Exercise selection in Log and Plans offers Create/Duplicate through the shared
+exercise-create script. Hevy creates a new identity; duplicates copy compatible
+equipment/rest/increment preferences only. No e1RM, TM, TS, history, chart assignment
+or completed work is inherited. Creation never automatically adds/replaces a set
+or changes a plan. Exercise creation has a separate logger-owned durable journal;
+sending/uncertain requests never automatically repost. Explicit reconciliation
+requires one full new custom-template match, excluding pre-request catalog IDs.
+The remote ID is committed before atomic cache/preferences/completion effects.
+
+Rest settings writes are serialized, failures are visible, and Keep offers Retry
+instead of claiming a failed save succeeded. Timer/sheet buttons use manipulation
+touch handling. Generic sheets now have Close and restore focus; a new native
+dialog is exempt from the prior sheet's ghost-tap area. Training static assets
+revalidate with no-cache; the service worker remains network-only and /training/.
+
+The 250 lb low-pin-bench report is not reproduced: the actual table does not
+prescribe 250 lb doubles @8 from a 240 lb basis. Saved TS/TM and fixed/manual loads
+can differ from the reference being compared. No speculative formula change was
+made. Original workout inputs are needed to determine its cause. Music still uses
+the existing playback audio session pending physical iPhone investigation; push
+notifications are not added. The owner now suspects Wi-Fi for Home Screen failure.
+See training-integration.md for the reconciled backlog and training-verification.md
+for automated versus physical-device evidence. No deployment occurred.
