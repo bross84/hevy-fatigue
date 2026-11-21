@@ -1388,3 +1388,13 @@ the existing playback audio session pending physical iPhone investigation; push
 notifications are not added. The owner now suspects Wi-Fi for Home Screen failure.
 See training-integration.md for the reconciled backlog and training-verification.md
 for automated versus physical-device evidence. No deployment occurred.
+
+## Silent rest timer follow-up (2026-11-20)
+
+At the owner's request, rest countdowns no longer create an AudioContext, request
+a playback audio session or schedule beeps. The visible countdown, per-exercise
+rest, adjustments, Keep/retry, completion indication and supported vibration
+remain. This supersedes the preceding note that playback mode was unchanged.
+Reload the Log page after a future authorized release to replace any already-open
+page running the old audio code. No deployment or lock-screen alert feature is
+included; physical iPhone/music acceptance remains outstanding.
