@@ -774,3 +774,13 @@ and rollback material. Before a separately authorized release:
 - Complete Docker build/startup and physical iPhone acceptance before declaring
   release readiness. Music/lock-screen behavior is not certified by browser
   automation. Home Screen failure is currently suspected to be local Wi-Fi.
+
+## Silent rest timer follow-up (2026-11-20)
+
+At the owner's request, rest countdowns no longer create an AudioContext, request
+a playback audio session or schedule beeps. The visible countdown, per-exercise
+rest, adjustments, Keep/retry, completion indication and supported vibration
+remain. This supersedes the preceding note that playback mode was unchanged.
+Reload the Log page after a future authorized release to replace any already-open
+page running the old audio code. No deployment or lock-screen alert feature is
+included; physical iPhone/music acceptance remains outstanding.

@@ -2713,7 +2713,7 @@
   DraftTransfer.install('workout-draft');
 
   // ── Rest timer ──────────────────────────────────────────────────────
-  // Starts by itself when you tick a working set (warm-ups don't), counts down in the bar, and buzzes and beeps at zero.
+  // Starts by itself when you tick a working set (warm-ups don't), counts down in the bar, and buzzes (where the phone supports it) at zero — no sound, so music keeps playing.
   // The end time is kept in localStorage, so a reload doesn't lose it. The screen is kept awake where the browser
   // allows it (HTTPS only), because a sleeping page can't buzz.
   // The Finish sheet: time, sets and stress, one short line per exercise, and on request a comparison with last time
@@ -2782,7 +2782,7 @@
 
   const REST_OPTIONS = [0, 60, 90, 120, 150, 180, 240, 300];
   let restSheet = null;   // the open −15 / +15 sheet, kept in step with the countdown
-  let restSecs = 180, restEnd = null, restTotal = 0, restDone = false, restTimer = null, audio = null, wake = null;
+  let restSecs = 180, restEnd = null, restTotal = 0, restDone = false, restTimer = null, wake = null;
   let restExId = null, restKept = false;   // the exercise this rest is for, and whether "Keep" was tapped during it
   try {
     const saved = Number(localStorage.getItem("training.restSecs"));
@@ -2879,56 +2879,20 @@
     openSheet("Rest timer", "Starts by itself when you tick a working set.", items, 1,
       (v) => { if (v === "start") restStartNext(); else if (v === "exercise") openExerciseRest(ex); else $("restPick").click(); });
   });
-  // The end-of-rest beep is booked on the audio clock the moment rest starts (and re-booked after −15 / +15), so it
-  // sounds on time even when the page's own timers are slowed. restBooked holds the booked tones so they can be cancelled.
-  let restBooked = [], restBookedAt = 0;
-  function restUnbook() { for (const n of restBooked) { try { n.stop(); } catch (e) {} } restBooked = []; }
-  function restBook() {
-    restUnbook();
-    if (!audio || restEnd === null) return;
-    try { restBookedAt = audio.currentTime + Math.max(0, (restEnd - Date.now()) / 1000); restBooked = restBeepAt(restBookedAt); } catch (e) { restBooked = []; }
-  }
-  function restBeep() {
+  // Silent rest completion: never take an audio session away from the athlete's music.
+  function restNotify() {
     try { if (navigator.vibrate) navigator.vibrate([400, 150, 400, 150, 400, 150, 400]); } catch (e) {}
-    // already sounding from the booking, unless the audio clock was paused (page in the background) and it would be late
-    if (restBooked.length && audio && audio.currentTime >= restBookedAt - 0.25) { restBooked = []; return; }
-    restUnbook();
-    try { if (audio) restBeepAt(audio.currentTime); } catch (e) {}
-  }
-  function restBeepAt(start) {
-    const nodes = [];
-    {
-      // Loud on purpose: square waves (much harsher than a sine) at full gain, two alternating tones, about 3 seconds.
-      // A compressor in front keeps the stacked tones from clipping. The phone's media volume still sets the ceiling.
-      const t0 = start, comp = audio.createDynamicsCompressor();
-      comp.threshold.value = -30; comp.ratio.value = 12; comp.attack.value = 0.003; comp.release.value = 0.1;
-      comp.connect(audio.destination);
-      for (let i = 0; i < 8; i++) {
-        const at = t0 + i * 0.4;
-        for (const f of [i % 2 ? 1320 : 990, i % 2 ? 1760 : 1320]) {
-          const osc = audio.createOscillator(), gain = audio.createGain();
-          osc.type = "square"; osc.frequency.value = f; osc.connect(gain); gain.connect(comp);
-          gain.gain.setValueAtTime(1, at); gain.gain.setValueAtTime(0, at + 0.3);
-          osc.start(at); osc.stop(at + 0.32); nodes.push(osc);
-        }
-      }
-    }
-    return nodes;
   }
   function restLoop() {
     if (restEnd === null) return;
-    if (Date.now() >= restEnd) { restEnd = null; restDone = true; clearInterval(restTimer); restSave(); restBeep(); }
+    if (Date.now() >= restEnd) { restEnd = null; restDone = true; clearInterval(restTimer); restSave(); restNotify(); }
     restRender();
   }
   function restStart(secs, ex) {
-    // the sound is set up here, inside a tap, because the browser only lets a page beep later if it was allowed to now
-    // On an iPhone, "playback" lets the beep sound with the silent switch on, the way a media app does (Safari 16.4+).
-    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {}
-    try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === "suspended") audio.resume(); } catch (e) {}
-    restEnd = Date.now() + secs * 1000; restTotal = secs; restDone = false; restKept = false; restExId = ex ? ex.id : null; restSave(); restBook();
+    restEnd = Date.now() + secs * 1000; restTotal = secs; restDone = false; restKept = false; restExId = ex ? ex.id : null; restSave();
     clearInterval(restTimer); restTimer = setInterval(restLoop, 250); restRender();
   }
-  function restStop() { restEnd = null; restDone = false; restUnbook(); clearInterval(restTimer); restSave(); restRender(); }
+  function restStop() { restEnd = null; restDone = false; clearInterval(restTimer); restSave(); restRender(); }
   async function keepAwake() {
     try {
       if (navigator.wakeLock && !document.hidden && !wake) {
@@ -2943,7 +2907,7 @@
     const was = restEnd;
     restEnd = Math.max(Date.now() + 1000, restEnd + secs * 1000);
     restTotal = Math.max(1, restTotal + (restEnd - was) / 1000);
-    restSave(); restBook(); restRender();
+    restSave(); restRender();
   }
   $("restMinus").addEventListener("click", () => restNudge(-15));
   $("restPlus").addEventListener("click", () => restNudge(15));
