@@ -673,21 +673,21 @@ framework or host database tables are introduced. Existing workout save and tria
 contracts remain unchanged. Catalog creation supports Hevy's template types; it
 does not add new duration/distance entry controls to the existing weight/reps logger.
 
-Reconciled backlog (local record; GitHub issues were read, not changed):
+Reconciled backlog (updated with owner acceptance on 2026-11-22):
 
 | Report / issue | Local status | Remaining acceptance |
 |---|---|---|
-| Phone history / #110 | Implemented inline with date and unmatched sets | Real phone readability |
+| Phone history / #110 | Implemented inline with date and unmatched sets | Owner: displays and works; presentation can improve |
 | kg equipment / false shortage | Implemented; exact kg retained, lb label rounded only | Actual equipment comparison |
-| Loader missing / #109, #110 | No-bar override; visibility checked across widths | Exact failing movement if recurrence |
+| Loader missing / #109, #110 | No-bar override; visibility checked across widths | Owner: visual loader works; report exact movement if recurrence |
 | Next set / #109, #110 | Includes warm-ups; gate separate | Gym workflow confirmation |
 | Low pin bench 250 lb | Fixture trace completed; not reproduced | Original source/TS/TM/manual load and prescription |
 | Create/duplicate exercise | Implemented with independent movement identity | Authorized real-account acceptance after review |
-| Rest persistence | Explicit failure and retry; serialized preference saves | Cross-workout phone acceptance |
-| Rapid timer taps | manipulation touch action; repeated-tap browser check | Physical Safari double-tap check |
-| Close controls / #130 | Close added; focus restored; new-dialog guard fixed | Original menu-specific symptom if recurrence |
+| Rest persistence | Explicit failure and retry; serialized preference saves | Owner confirms persistence |
+| Rapid timer taps | manipulation touch action; repeated-tap browser check | Owner: no zoom; Keep-row shift fixed locally, retest pending |
+| Close controls / #130 | Close added; focus restored; new-dialog guard fixed | Owner: menu closes; VoiceOver/progression-sheet checks remain |
 | Script caching / #149 | Static responses now no-cache | Deployed asset check after authorized release |
-| Music interruption | Playback mode identified; unchanged pending investigation | iPhone + music + silent switch + screen lock |
+| Music interruption | Sound removed in #156 | Owner: timer no longer interrupts music; lock-screen alerts separate |
 | Home Screen / #109 | Owner suspects Wi-Fi; no speculative app fix | Reopen only if recurrence on a healthy connection |
 | Lock-screen notifications | Separate feature; not implemented | Product/platform decision |
 
@@ -704,3 +704,28 @@ remain. This supersedes the preceding note that playback mode was unchanged.
 Reload the Log page after a future authorized release to replace any already-open
 page running the old audio code. No deployment or lock-screen alert feature is
 included; physical iPhone/music acceptance remains outstanding.
+
+
+## Owner acceptance and UI follow-up (2026-11-22)
+
+Merged #155/#156 and owner-confirmed deployment supersede the earlier local-only
+status and outstanding music check. The shared creation editor now uses a filtered
+name search with explicit selection; unmatched text cannot submit, and source
+loading locks the form. No endpoint, save payload or strength-reference changes.
+The timer reserves Keep's layout space, preserving temporary adjustment semantics.
+These two UI fixes are local, pending release and phone acceptance.
+
+[#157](https://github.com/bross84/hevy-fatigue/issues/157) records the checked owner
+acceptance and remaining testing. #109/#110/#130/#149 now link that status and remain
+open for their unverified scope. See training-verification.md for full evidence.
+
+Create and Duplicate now have distinct entry flows: Create has blank details and
+no source picker; Duplicate requires a searched, selected source and prefills its
+details. An uncertain remote attempt still opens recovery from either action.
+Mocked browser checks cover mode switching, required selection and recovery;
+physical acceptance remains open in #157. These changes are still local.
+
+Delivery update (2026-11-22): Brian authorized committing, pushing and opening a PR
+for this follow-up on `codex/exercise-search-timer-controls`. Earlier local-only
+statements describe pre-review validation. Deployment and remaining physical/real-Hevy
+acceptance are still pending; #157 remains open.

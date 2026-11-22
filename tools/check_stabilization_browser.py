@@ -62,7 +62,10 @@ def run():
                 page.evaluate('restStart(180,draft.exercises[0])')
                 page.locator('#restPill').click()
                 plus=page.get_by_role('button',name='+15',exact=True)
-                for _ in range(4):plus.click(delay=10)
+                position=plus.bounding_box()
+                for _ in range(4):
+                    plus.click(delay=10)
+                    assert plus.bounding_box()==position, 'Keep must not move the timer controls'
                 assert page.evaluate('restTotal')==240
                 assert plus.evaluate("e=>getComputedStyle(e).touchAction")=='manipulation'
                 page.route('**/training/exercise-refs/*',lambda route:route.fulfill(status=503,json={'detail':'Mock unavailable'}))
@@ -87,7 +90,26 @@ def run():
                 page.route('**/training/exercise-creation',create)
                 page.evaluate("ExerciseCreate.open({catalog:[{id:'sq',title:'Bench Press'}],duplicate:true})")
                 form=page.locator('.exercise-create')
-                form.get_by_label('Start from').select_option('sq')
+                expect(form.get_by_role('heading',name='Duplicate exercise',exact=True)).to_be_visible()
+                form.get_by_label('Exercise name').fill('Unselected duplicate')
+                form.get_by_role('button',name='Create in Hevy').click()
+                assert not calls, 'Duplicate requires a selected source'
+                form.get_by_label('Start from').fill('no such exercise')
+                expect(form).to_contain_text('No matching exercises.')
+                form.get_by_label('Start from').fill('bEnCh')
+                page.screenshot(path=str(OUT/'phone-source-search.png'))
+                page.set_viewport_size({'width':1280,'height':900})
+                page.screenshot(path=str(OUT/'desktop-source-search.png'))
+                page.set_viewport_size({'width':390,'height':844})
+                form.get_by_role('button',name='Bench Press',exact=True).click()
+                expect(form.get_by_label('Exercise name')).to_have_value('Bench Press (copy)')
+                form.get_by_role('button',name='Close',exact=True).click()
+                page.evaluate("ExerciseCreate.open({catalog:[]})")
+                expect(form.get_by_role('heading',name='Create exercise',exact=True)).to_be_visible()
+                expect(form.get_by_label('Start from')).to_be_hidden()
+                expect(form.get_by_label('Exercise name')).to_have_value('')
+                form.get_by_role('button',name='Close',exact=True).click()
+                page.evaluate("ExerciseCreate.open({catalog:[{id:'sq',title:'Bench Press'}],duplicate:true})")
                 expect(form.get_by_label('Exercise name')).to_have_value('Bench Press (copy)')
                 form.get_by_label('Exercise name').fill('Low Pin Bench')
                 form.get_by_role('button',name='Create in Hevy').click()
@@ -98,6 +120,7 @@ def run():
                 page.evaluate('ExerciseCreate.open({catalog:[]})')
                 expect(page.get_by_role('button',name='Create in Hevy')).to_be_disabled()
                 expect(page.get_by_label('Exercise name')).to_have_value('Low Pin Bench')
+                expect(page.get_by_role('heading',name='Duplicate exercise',exact=True)).to_be_visible()
                 page.route('**/training/exercise-creation/*/reconcile',lambda r:r.fulfill(json={'state':'complete','exercise_id':'new','title':'Low Pin Bench'}))
                 page.get_by_role('button',name='Check creation status').click()
                 expect(page.locator('.exercise-create')).to_have_count(0)
@@ -109,6 +132,7 @@ def run():
                 page.get_by_role('button',name='+ Movement',exact=True).click()
                 page.get_by_role('button',name='Create exercise',exact=True).click()
                 form=page.locator('.exercise-create')
+                expect(form.get_by_label('Start from')).to_be_hidden()
                 form.get_by_label('Exercise name').fill('New accessory')
                 assert form.locator('[name="other_muscles"]').evaluate('e=>e.selectedOptions.length')==0
                 created=[]

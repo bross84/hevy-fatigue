@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <script src="/training/static/training.js?v=2"></script>
-  <script src="/training/static/exercise-create.js?v=1"></script>
-  <link rel="stylesheet" href="/training/static/exercise-create.css?v=1" />
+  <script src="/training/static/exercise-create.js?v=2"></script>
+  <link rel="stylesheet" href="/training/static/exercise-create.css?v=2" />
   <script src="/training/static/save-recovery.js?v=3"></script>
   <script src="/training/static/draft-transfer.js?v=1"></script>
   <script src="/training/static/week-text.js?v=1"></script>
@@ -155,7 +155,7 @@
     .sheetgrid.list button { text-align: left; padding: 8px 14px; font-size: 17px; }
     .sheetgrid.list button.danger { color: var(--danger); }
     .sheetgrid button.compact { font-size: 15px; line-height: 1.25; padding: 4px 6px; }
-    .sheetgrid button.keep { grid-column: 1 / -1; font-size: 16px; padding: 4px 8px; }
+    .sheetgrid button.keep { grid-column: 1 / -1; font-size: 16px; padding: 4px 8px; height:4.5em; overflow:auto; }
     .sheetgrid button.keep:disabled { opacity: 1; color: var(--accent); }
     .ex-chip.progression { color: var(--accent); border-color: var(--accent); font-weight: 650; }
     /* swipe a set left to reveal Delete */
@@ -2846,7 +2846,8 @@
         const keep = restSheet.buttons.keep, ex = restExercise(), secs = restAdjusted();
         if (keep) {
           const same = !ex || secs === restFor(ex);
-          keep.hidden = !ex || (same && !restKept);
+          keep.hidden = false;
+          keep.style.visibility = !ex || (same && !restKept) ? 'hidden' : 'visible';
           const state = ex && refSaveStates.get(ex.template_id);
           keep.disabled = same && state !== 'failed';
           if (ex) keep.textContent = state === 'pending' && restKept ? "Saving rest…" : state === 'failed' && restKept ? "Retry saving rest for " + ex.title

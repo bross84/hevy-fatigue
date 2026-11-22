@@ -1495,3 +1495,60 @@ Not automated / not claimed fixed:
   implemented. Real-account custom-exercise creation was deliberately not tested.
 - GitHub issues were read and reconciled in training-integration.md; no issue
   comments, closures, commits, pushes, deployment or production changes occurred.
+
+
+## Owner acceptance and UI follow-up (2026-11-22)
+
+PRs [#155](https://github.com/bross84/hevy-fatigue/pull/155) and
+[#156](https://github.com/bross84/hevy-fatigue/pull/156) are merged. Their Python,
+JavaScript, container/startup and CodeQL checks passed. The image for merge
+3d885ee was [published successfully](https://github.com/bross84/hevy-fatigue/actions/runs/44843135025).
+Brian confirms the server is up to date. This supersedes the earlier local-only
+release status; no deployment was performed in this follow-up.
+
+Owner-reported phone acceptance: the silent countdown leaves music alone; rapid
+adjustments do not zoom; history displays (usable, but presentation could improve);
+the visual loader works; menu closing works; rest settings persisted. This is
+physical-use evidence, distinct from mocked browser coverage. It does not certify
+VoiceOver, screen locking, every equipment combination or a real Hevy creation.
+
+Local follow-up, awaiting review/release and phone testing: Start from now searches
+exercise names with tappable matches and no-match feedback
+in the shared Log/Plans editor. Template loading locks selection to avoid races;
+unconfirmed search text cannot be submitted. Creation identity, recovery and
+independent history rules are unchanged. The timer reserves the Keep row so its
+appearance and saving/retry labels do not move the adjustment buttons.
+
+Still open: phone acceptance of these two UI changes; real-account create/duplicate
+and independent history; original low-pin-bench source evidence; warm-up/next-set
+workflow; physical kg/lb/custom-bar/chains/no-bar checks; deployed asset revalidation;
+VoiceOver/progression-sheet details in #130. Lock-screen alerts remain unimplemented.
+Home Screen failure is suspected Wi-Fi; investigate only if it recurs on a healthy
+connection. Do not interpret history acceptance as approval of every #110 redesign
+item. Broader #109/#110 tickets remain open.
+
+Local follow-up validation (2026-11-22; mocked services and disposable databases):
+- Host: 252 tests passed. Logger: 648 tests passed with the same one expected failure.
+- All 47 JavaScript test files passed.
+- check_stabilization_browser.py passed: search/no matches/case-insensitive result
+  selection, duplicate prefill, recovery with one POST, and identical timer-button
+  bounding boxes before/after Keep appears. Phone/desktop search screenshots inspected.
+- check_logger_layout_browser.py, check_training_recovery_browser.py and
+  check_training_browser.py all passed; no browser errors.
+- Local Docker engine is still unavailable (missing dockerDesktopLinuxEngine pipe),
+  so new changes have not had a local container build. Hosted container success above
+  applies to merged #155/#156, not to this uncommitted follow-up.
+- Tracker updates: #109/#110/#130/#149 comments and new acceptance checklist
+  [#157](https://github.com/bross84/hevy-fatigue/issues/157); all remain open for testing.
+- No real account test, commit, push or deployment was performed for this follow-up.
+
+Create and Duplicate now have distinct entry flows: Create has blank details and
+no source picker; Duplicate requires a searched, selected source and prefills its
+details. An uncertain remote attempt still opens recovery from either action.
+Mocked browser checks cover mode switching, required selection and recovery;
+physical acceptance remains open in #157. These changes are still local.
+
+Delivery update (2026-11-22): Brian authorized committing, pushing and opening a PR
+for this follow-up on `codex/exercise-search-timer-controls`. Earlier local-only
+statements describe pre-review validation. Deployment and remaining physical/real-Hevy
+acceptance are still pending; #157 remains open.
