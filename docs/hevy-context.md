@@ -1398,3 +1398,28 @@ remain. This supersedes the preceding note that playback mode was unchanged.
 Reload the Log page after a future authorized release to replace any already-open
 page running the old audio code. No deployment or lock-screen alert feature is
 included; physical iPhone/music acceptance remains outstanding.
+
+
+## Owner acceptance and UI follow-up (2026-11-22)
+
+PRs #155/#156 are merged with passing hosted tests/container checks. Brian confirms
+the server is current, timer leaves music alone, rapid timer taps do not zoom,
+history works (presentation could improve), loader and menu closing work, and rest
+persists. See training-verification.md for release links and evidence boundaries.
+
+Local follow-up replaces Start from with exercise search in Log/Plans and reserves
+the timer Keep row to stop +/- controls moving. Not committed, pushed or deployed;
+phone and real-Hevy creation acceptance remain open in
+[#157](https://github.com/bross84/hevy-fatigue/issues/157).
+#109/#110/#130/#149 were updated without closing their remaining scope.
+
+Create and Duplicate now have distinct entry flows: Create has blank details and
+no source picker; Duplicate requires a searched, selected source and prefills its
+details. An uncertain remote attempt still opens recovery from either action.
+Mocked browser checks cover mode switching, required selection and recovery;
+physical acceptance remains open in #157. These changes are still local.
+
+Delivery update (2026-11-22): Brian authorized committing, pushing and opening a PR
+for this follow-up on `codex/exercise-search-timer-controls`. Earlier local-only
+statements describe pre-review validation. Deployment and remaining physical/real-Hevy
+acceptance are still pending; #157 remains open.

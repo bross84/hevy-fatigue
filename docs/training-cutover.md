@@ -784,3 +784,31 @@ remain. This supersedes the preceding note that playback mode was unchanged.
 Reload the Log page after a future authorized release to replace any already-open
 page running the old audio code. No deployment or lock-screen alert feature is
 included; physical iPhone/music acceptance remains outstanding.
+
+
+## Owner acceptance and UI follow-up (2026-11-22)
+
+The historical 2026-11-20 local-only gate above has been superseded for #155/#156:
+PRs merged, hosted container/startup checks passed and Brian confirms the current
+image is running. Music, rapid-tap zoom, history display, loader visibility, menu
+closing and persistent rest have owner acceptance. See training-verification.md.
+
+This follow-up has not committed, pushed or deployed its search and Keep-row fixes.
+Before a separately authorized release, retain existing container/network/volume
+identity and rollback material. No schema change is added here. Reload Log/Plans
+after updating; then verify source search/selection and rapid +/- taps while Keep
+appears, saves and retries. Real-account creation, independent duplicate history,
+physical equipment cases, warm-up progression and deployed asset revalidation
+remain open in [#157](https://github.com/bross84/hevy-fatigue/issues/157).
+Keep the exercise-creation journal and uncertain-response rollback precautions above.
+
+Create and Duplicate now have distinct entry flows: Create has blank details and
+no source picker; Duplicate requires a searched, selected source and prefills its
+details. An uncertain remote attempt still opens recovery from either action.
+Mocked browser checks cover mode switching, required selection and recovery;
+physical acceptance remains open in #157. These changes are still local.
+
+Delivery update (2026-11-22): Brian authorized committing, pushing and opening a PR
+for this follow-up on `codex/exercise-search-timer-controls`. Earlier local-only
+statements describe pre-review validation. Deployment and remaining physical/real-Hevy
+acceptance are still pending; #157 remains open.
