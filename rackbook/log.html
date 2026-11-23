@@ -14,7 +14,7 @@
   <script src="/training/static/plan-change.js?v=1"></script>
   <script src="/training/static/app-menu.js?v=2"></script>
   <script src="/training/static/ai-coach.js?v=2"></script>
-  <script src="/training/static/logger-layout.js?v=12"></script>
+  <script src="/training/static/logger-layout.js?v=13"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -430,7 +430,7 @@
     .workout-log.typing main { padding-bottom: 60vh; }
     .workout-log.keypad-open main { padding-bottom: calc(var(--keypad-height, 250px) + 32px); }
   </style>
-  <link rel="stylesheet" href="/training/static/logger-layout.css?v=13" />
+  <link rel="stylesheet" href="/training/static/logger-layout.css?v=14" />
 </head>
 <body class="workout-log">
 <button id="loggerNavScrim" type="button" aria-label="Close navigation" hidden></button>
@@ -1893,14 +1893,15 @@
   // Swipe a set left to reveal Delete; tap Delete to remove it. A tap elsewhere, or a swipe back, closes it again.
   const SWIPE_W = 76;
   let openSwipe = null;
-  function setOffset(wrap, x) { wrap.lastElementChild.style.transform = x ? "translateX(" + x + "px)" : ""; }
+  function setOffset(wrap, x) { wrap.querySelector('.set').style.transform = x ? "translateX(" + x + "px)" : ""; }
   function closeSwipe() {
     if (!openSwipe) return;
     setOffset(openSwipe, 0); openSwipe.classList.remove("open"); openSwipe = null;
   }
   document.addEventListener("pointerdown", (e) => { if (openSwipe && !openSwipe.contains(e.target)) closeSwipe(); });
   function makeSwipeable(wrap, onDelete) {
-    const row = wrap.lastElementChild, del = wrap.firstElementChild;
+    // Inline history follows the row; child order does not identify the swipe surface.
+    const row = wrap.querySelector('.set'), del = wrap.querySelector('.delbtn');
     let x0 = null, y0 = 0, base = 0, cur = 0, dragging = false, id = null;
     row.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
@@ -3098,8 +3099,11 @@
     const vv = window.visualViewport;
     const viewportTop = vv ? vv.offsetTop : 0;
     const visibleBottom = viewportTop + (vv ? vv.height : window.innerHeight) - (padInput ? numberpad.offsetHeight : 0);
+    const stripRect = $("exStrip")?.getBoundingClientRect();
+    const visibleTop = stripRect && stripRect.height > 0 && stripRect.top <= viewportTop + 1
+      ? Math.max(viewportTop, stripRect.bottom) : viewportTop;
     const rect = input.getBoundingClientRect(), margin = 12;
-    const delta = rect.top < viewportTop + margin ? rect.top - viewportTop - margin
+    const delta = rect.top < visibleTop + margin ? rect.top - visibleTop - margin
       : rect.bottom > visibleBottom - margin ? rect.bottom - visibleBottom + margin : 0;
     // Move only an obscured field, without an animation continuing into a set tap.
     if (delta) window.scrollBy({ top: delta, behavior: "instant" });

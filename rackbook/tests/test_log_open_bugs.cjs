@@ -21,7 +21,7 @@ assert.ok(start > 0 && end > start, 'sheet keyboard helpers are present');
 const listeners = {}, pageScrolls = [];
 const vv = { offsetTop: 0, height: 480, addEventListener: (name, fn) => { listeners[name] = fn; } };
 const doc = { activeElement: null };
-const ctx = vm.createContext({ document: doc, padInput: null, numberpad: { offsetHeight: 0 },
+const ctx = vm.createContext({ $:()=>null, document: doc, padInput: null, numberpad: { offsetHeight: 0 },
   window: { innerHeight: 844, visualViewport: vv, scrollBy: (o) => pageScrolls.push(o) },
   getComputedStyle: (node) => ({ position: node.fixed ? 'fixed' : 'static' }) });
 vm.runInContext('let liftedSheet = null;\n' + html.slice(start, end), ctx);

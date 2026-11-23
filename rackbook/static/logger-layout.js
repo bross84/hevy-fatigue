@@ -238,7 +238,12 @@ const LoggerLayout = (() => {
     update();
     if (typeof paintPlates === 'function') paintPlates();
     const strip = byId('exStrip');
-    if (strip && strip.getBoundingClientRect().top < 0) strip.scrollIntoView({block: 'start', behavior: 'instant'});
+    const card = hooks.getCard(id);
+    if (strip && strip.getBoundingClientRect().height > 0 && card &&
+        card.getBoundingClientRect().top < strip.getBoundingClientRect().bottom) {
+      card.style.scrollMarginTop = (strip.getBoundingClientRect().height + 2) + 'px';
+      card.scrollIntoView({block: 'start', behavior: 'instant'});
+    }
   }
   // After a working set is ticked: in a superset, go to the partner (no rest until both have done the round);
   // otherwise, once this exercise is done, the next exercise that still has sets to do.

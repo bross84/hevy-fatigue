@@ -57,6 +57,22 @@ def run():
                 expect(page.locator('#plateStrip')).to_contain_text('100 kg · 220 lb')
                 assert page.evaluate('draft.exercises[0].sets[0].kg') in ('20','100')
                 assert page.evaluate("draft.exercises[0].sets.find(s=>s.type==='normal').kg")=='100'
+                # History is a sibling after the row: swipe must still target the set itself.
+                page.evaluate("draft.exercises[0].sets.push({type:'normal',kg:'80',reps:'6',rpe:'7',done:false,manual:true});renderWorkout();saveDraft()")
+                swipe_row=page.locator('.setwrap .set').last
+                swipe_row.scroll_into_view_if_needed()
+                box=swipe_row.bounding_box()
+                x,y=box['x']+box['width']*.65,box['y']+box['height']/2
+                touch=context.new_cdp_session(page)
+                touch.send('Input.dispatchTouchEvent',{'type':'touchStart','touchPoints':[{'x':x,'y':y}]})
+                for step in range(1,13):
+                    touch.send('Input.dispatchTouchEvent',{'type':'touchMove','touchPoints':[{'x':x-85*step/12,'y':y}]})
+                touch.send('Input.dispatchTouchEvent',{'type':'touchEnd','touchPoints':[]})
+                expect(page.locator('.setwrap.open')).to_have_count(1)
+                assert swipe_row.evaluate("e=>e.style.transform")=='translateX(-76px)'
+                assert page.locator('.setwrap').last.locator('.previous-inline').evaluate("e=>e.style.transform")==''
+                page.locator('.setwrap.open').get_by_role('button',name='Delete this set',exact=True).click()
+                assert page.evaluate("draft.exercises[0].sets.filter(s=>s.type==='normal').map(s=>s.kg)")==['100']
                 page.locator('#loggerMenu').click();page.locator('#loggerCloseMenu').click()
                 expect(page.locator('#loggerMenu')).to_have_attribute('aria-expanded','false')
                 page.evaluate('restStart(180,draft.exercises[0])')
