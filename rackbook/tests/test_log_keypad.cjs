@@ -111,7 +111,8 @@ console.log('Keypad editing, fixed key order, touch/mouse activation, Next, dism
 // Exercise the real visibility helper: visible fields never recenter and scrolling cannot outlive focus.
 let scrolls = [];
 const scrollDoc = { activeElement: null };
-const scrollContext = vm.createContext({trainingUrl:path=>path.startsWith("/training/")?path:"/training"+path, document: scrollDoc, padInput: true, numberpad: {offsetHeight:220},
+let stickyRect = null;
+const scrollContext = vm.createContext({$:()=>stickyRect ? {getBoundingClientRect:()=>stickyRect} : null, trainingUrl:path=>path.startsWith("/training/")?path:"/training"+path, document: scrollDoc, padInput: true, numberpad: {offsetHeight:220},
   window: {visualViewport:{offsetTop:0,height:800},scrollBy: options => scrolls.push(options)} });
 vm.runInContext(html.slice(html.indexOf('  function liftIntoView('), html.indexOf('  document.addEventListener("focusin"')), scrollContext);
 const visibleField = { closest: () => null, getBoundingClientRect: () => ({top:300,bottom:350}) };
@@ -133,3 +134,7 @@ const aboveField = { closest: () => null, getBoundingClientRect: () => ({top:20,
 scrollDoc.activeElement = aboveField;
 scrollContext.liftIntoView(aboveField);
 assert.equal(scrolls.at(-1).top,-32,'Reveal fields above the visual viewport using its offset');
+scrollContext.window.visualViewport.offsetTop = 0;
+stickyRect = {top:0,bottom:96,height:96};
+scrollContext.liftIntoView(aboveField);
+assert.equal(scrolls.at(-1).top,-88,'Reveal focused fields below the sticky exercise selector');

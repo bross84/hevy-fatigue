@@ -129,6 +129,16 @@ with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
                 assert page.evaluate('draft.client_workout_id') == identity
                 assert page.evaluate('draft.exercises.map(e=>e.sets.map(s=>s.kg))') == original_weights
                 assert page.evaluate("localStorage.getItem('training.restEnd')") == timer
+            for width in (390,1024):
+                page.set_viewport_size({'width':width,'height':844})
+                page.evaluate("window.scrollTo(0,document.getElementById('exStrip').offsetTop+150)")
+                strip=page.locator('#exStrip')
+                assert abs(strip.bounding_box()['y'])<1, 'Exercise selector must stick to the viewport top'
+                page.screenshot(path=str(OUT/f'sticky-exercises-{width}.png'))
+                strip.locator('.ex-card:not(.ex-card-add)').nth(2).click()
+                selected=page.locator('#exercises > .card[data-selected="true"]')
+                assert selected.bounding_box()['y'] >= strip.bounding_box()['height']-1, (width,selected.bounding_box(),strip.bounding_box())
+            page.set_viewport_size({'width':390,'height':844})
             page.locator('#loggerMenu').click()
             expect(page.locator('#loggerCloseMenu')).to_be_focused()
             assert page.evaluate("document.querySelector('main').inert")

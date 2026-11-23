@@ -729,3 +729,38 @@ Delivery update (2026-11-22): Brian authorized committing, pushing and opening a
 for this follow-up on `codex/exercise-search-timer-controls`. Earlier local-only
 statements describe pre-review validation. Deployment and remaining physical/real-Hevy
 acceptance are still pending; #157 remains open.
+
+
+## Swipe-to-delete regression (2026-11-22, local)
+
+Inline previous-session history became the last child of each set wrapper. Swipe
+binding and translation still used lastElementChild, so the history text received
+the gesture handler instead of the actual set row. Both now select .set explicitly;
+the delete action selects .delbtn. Existing pan-y scrolling, set-entry handlers,
+delete semantics and history rendering are unchanged.
+
+The mocked browser regression failed before this fix (no open swipe row) and passes
+afterward. Native emulated touch swipes reveal Delete, translate the set row rather
+than its history, and remove only the selected set. Physical iPhone acceptance is
+still required. No live workout, commit, push or deployment was performed.
+
+
+## Sticky exercise selector (2026-11-22, local)
+
+Below the wide desktop workspace, the exercise-card strip sticks to the viewport
+top once scrolled there. It retains horizontal scrolling, a solid theme background,
+and top safe-area padding. Menus and sheets remain above it. Selecting an exercise
+scrolls its heading clear of the measured strip height; focused set inputs also
+clear the strip when the keypad is open. The existing wide desktop outline remains.
+Logger CSS/JS asset versions were bumped. No weight, RPE, save or timer logic changed.
+
+After release, check phone vertical/horizontal scrolling, switching exercises,
+keypad input visibility, menu/sheet overlap and landscape safe areas. Local browser
+checks cover pinned position at 390/1024 px, selection clearance and widths through
+2560 px. Phone/tablet screenshots inspected. Real iPhone acceptance remains pending.
+No commit, push or deployment was performed in this follow-up.
+
+Delivery update: owner authorized commit, push and PR for the swipe and sticky
+selector fixes on `codex/swipe-sticky-exercises`. The local-only statements above
+describe validation before publication. Server deployment and phone acceptance
+remain pending. No strength-reference policy change is included.
