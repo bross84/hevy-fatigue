@@ -7,8 +7,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script src="/training/static/training.js?v=2"></script>
-<script src="/training/static/ai-coach.js?v=2"></script>
-<script src="/training/static/plan-proposal.js?v=4"></script>
+<script src="/training/static/ai-coach.js?v=3"></script>
+<script src="/training/static/plan-proposal.js?v=5"></script>
 <script src="/training/static/plan-change.js?v=1"></script>
 <script src="/static/daily-coach.js?v=5"></script>
 <link rel="icon" href="/resources/favicon.png" type="image/png">
@@ -3030,6 +3030,10 @@ body.ai-open main {
 .dashboard-heading h1 { font-size:24px; font-weight:600; letter-spacing:-.02em; }
 .dashboard-heading time,.dashboard-subtitle { color:var(--muted); font-size:13px; }
 .dashboard-subtitle { margin:0 0 24px; }
+#weekly-review-notice { margin:0 0 16px; padding:16px; border:1px solid var(--border); border-radius:12px; background:var(--card); overflow-wrap:anywhere; }
+#weekly-review-notice h2 { font-size:18px; margin:0 0 6px; }
+#weekly-review-notice p { color:var(--muted); max-width:72ch; }
+#weekly-review-notice a { display:inline-flex; align-items:center; min-height:44px; margin-top:4px; color:var(--accent); text-underline-offset:3px; }
 .host-workspace .dashboard-wrap { display:grid; grid-template-columns:minmax(0,1fr); padding:0; gap:16px; align-items:stretch; }
 .host-workspace .dashboard-sidebar,.host-workspace .dashboard-main,.host-workspace .dashboard-secondary { display:contents; position:static; }
 .host-workspace .dashboard-card { min-width:0; padding:16px; border-radius:12px; box-shadow:none; box-sizing:border-box; margin:0; }
@@ -3242,6 +3246,7 @@ body.ai-open main {
 <section id="tab-dashboard" class="tab-content active">
   <div class="dashboard-heading"><h1 id="dashboard-title" tabindex="-1">Dashboard</h1><time id="dashboardDate"></time></div>
   <p class="dashboard-subtitle">Today’s check-in and recent training</p>
+  <section id="weekly-review-notice" aria-live="polite" aria-label="Weekly training review" hidden></section>
 
   <div class="dashboard-wrap">
       <div class="dashboard-card" id="dashboard-readiness-card">
@@ -4880,7 +4885,7 @@ async function loadCoachingConversations() {
 
 async function startTrainingReview() {
   if (aiChatStreaming || aiReviewLoading || !aiChatConfigured) return;
-  await sendAIMessage('Review my training. Assess the apparent emphasis, progress and uncertainty, whether a change is warranted, and a concrete proposed direction with rationale and alternatives. Ask a focused question if my goal or constraints are missing.', true);
+  await sendAIMessage('Review my training in at most 200 words: Overall — how the week went; Trends — brief e1RM, volume and stress bullets; Next week — should I keep or change the plan, and why? Distinguish weekly observations from longer-term trends and flag missing evidence briefly. No exercise-by-exercise inventory, alternatives or follow-up questions; I will ask if I need more detail.', true);
 }
 
 function _appendAIMessage(role, content, streaming = false) {
@@ -7560,7 +7565,42 @@ function _tsbBar(tsb) {
   </div>`;
 }
 
+let weeklyReviewNoticeRequest = 0;
+async function loadWeeklyReviewNotice() {
+  const request = ++weeklyReviewNoticeRequest;
+  const box = document.getElementById('weekly-review-notice');
+  try {
+    const response = await fetch(trainingUrl('/api/weekly-call'));
+    if (!response.ok) throw new Error('Weekly review status unavailable');
+    const due = await response.json();
+    if (request !== weeklyReviewNoticeRequest) return;
+    if (!due) { box.hidden = true; box.replaceChildren(); return; }
+    const saved = await fetch('/api/ai/conversations/' + encodeURIComponent(due.call_id));
+    if (!saved.ok && saved.status !== 404) throw new Error('Review status unavailable');
+    const view = saved.ok ? await saved.json() : null;
+    if (request !== weeklyReviewNoticeRequest) return;
+    const turn = (view?.turns || []).at(-1);
+    const ready = turn?.status === 'complete' && !!turn.response;
+    const heading = document.createElement('h2');
+    heading.textContent = ready ? 'Weekly review ready' : turn ? 'Weekly review in progress' : 'Week complete — ready to review';
+    if (turn && ['failed', 'interrupted'].includes(turn.status)) heading.textContent = 'Weekly review needs attention';
+    const detail = document.createElement('p');
+    detail.textContent = ready ? due.source.name + ': your coach’s review is ready. Read it before deciding on next week.'
+      : due.source.name + ' is finished. Open AI Coach to review the week and discuss what comes next.';
+    const link = document.createElement('a');
+    link.textContent = ready ? 'Read weekly review' : turn ? 'Open weekly review' : 'Review this week';
+    link.href = view ? AICoach.openUrl(due.call_id) : AICoach.callUrl(due.source.id);
+    box.replaceChildren(heading, detail, link);
+    box.hidden = false;
+  } catch (error) {
+    if (request === weeklyReviewNoticeRequest) { box.hidden = true; box.replaceChildren(); }
+  }
+}
+window.addEventListener('focus', () => {
+  if (document.getElementById('tab-dashboard').classList.contains('active')) loadWeeklyReviewNotice();
+});
 async function loadTrainingLoadCard() {
+  loadWeeklyReviewNotice();
   const dashboardWrap = document.querySelector('.dashboard-wrap');
   if (!dashboardWrap) return;
   try {

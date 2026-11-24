@@ -36,3 +36,12 @@ The athlete wants a check-in like a remote coach (or MacroFactor's weekly check-
 - The coach raises "time for a new stimulus" in the weekly call when the evidence warrants it, giving the idea and its reasons first and building the program once the athlete agrees.
 - Plans carry no ME/RE labels. The coach judges from reps, RPE and check-ins.
 - The coach may use any movement in the local exercise library, not only ones trained before. Creating new custom movements is a later, separate change.
+
+
+## Amendment — 2026-11-23
+
+Remove the Run it back action from the weekly review UI: the athlete interpreted
+it as starting the AI review. Accept remains the action for setting up a coach's
+proposal. Keep legacy repeat records/endpoints and Undo compatible. Reviews
+summarize the week, e1RM/volume/stress trends, and one justified next-week decision;
+follow-up detail is athlete-led. This supersedes the shortcut described above.

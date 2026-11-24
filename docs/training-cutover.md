@@ -850,3 +850,41 @@ Delivery update: owner authorized commit, push and PR for the swipe and sticky
 selector fixes on `codex/swipe-sticky-exercises`. The local-only statements above
 describe validation before publication. Server deployment and phone acceptance
 remain pending. No strength-reference policy change is included.
+
+
+## Concise review release checks (2026-11-23, pending release)
+
+After an authorized release, reload both dashboard and Log page. Confirm a finished
+week has no Run it back button, AI Coach/builder links work, and proposed next weeks
+still require Accept. Existing repeated weeks must retain compatible Undo behavior.
+Check a newly generated review for Overall, e1RM/Volume/Stress, and one next-week
+recommendation with its reason; older saved replies intentionally remain unchanged.
+Check a size-limit error offers a fresh discussion rather than a missing saved call.
+The context size limit itself is unchanged. Verify actual provider concision and
+phone readability separately from mocked browser tests. No schema migration or
+production-data rewrite is required; rollback uses the prior reviewed image and
+preserves existing databases/keys. No production cutover is authorized here.
+
+
+Dashboard notice acceptance: after release, confirm a due week appears above
+Readiness, a completed reply says Weekly review ready and opens the saved review,
+and an ungenerated review has distinct wording. Setting up next week should hide
+the notice on returning to the dashboard. Check on a physical phone; merely
+viewing the dashboard must not generate an AI request or create a plan.
+
+
+## Compact weekly review release gate (2026-11-23)
+
+After authorized deployment, open the previously rejected completed week from its
+review link. A preparation-only rejection has no saved conversation to replace;
+normal preparation can now run. Verify one completed review and the dashboard
+ready notice, then reopen it in Log/AI Coach and confirm no duplicate generation.
+Accept remains necessary for next-week setup. Never automatically retry a pending
+or interrupted provider turn or rewrite an existing frozen review. Check KBR1.2
+and actual model comprehension separately from synthetic/mock acceptance.
+
+No data migration or production-record modification is required. Build/startup
+verification remains blocked until Docker Desktop is running. Rollback to the
+prior reviewed image preserves both databases and keys; compact frozen reviews
+remain versioned evidence and their existing saved replies remain readable.
+No deployment is authorized by this implementation task.

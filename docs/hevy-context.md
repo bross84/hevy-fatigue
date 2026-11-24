@@ -1458,3 +1458,70 @@ Delivery update: owner authorized commit, push and PR for the swipe and sticky
 selector fixes on `codex/swipe-sticky-exercises`. The local-only statements above
 describe validation before publication. Server deployment and phone acceptance
 remain pending. No strength-reference policy change is included.
+
+
+## Concise coaching reviews (2026-11-23, local)
+
+The weekly call no longer offers Run it back: the label was mistaken for a review
+retry. The card offers AI Coach and the builder; a coach proposal still requires
+Accept. Existing repeat successors and Undo remain supported, with plain wording
+that describes a repeated week. No existing plan or saved review is rewritten.
+
+General training reviews and weekly-call prompts now request at most 200 prose
+words: Overall, three Trends bullets (e1RM, Volume, Stress), and Next week with
+one keep/change/insufficient-evidence decision and its reason. Details,
+alternatives and follow-up questions are not solicited by default. Missing scored
+sets are not proof of skipped work or poor compliance; rolling stress/progress
+windows must not be presented as week-over-week measurements. The prose budget
+is a model instruction, not truncation or a guarantee; proposal JSON is separate.
+
+The existing weekly context size guard is unchanged. On preparation failure the
+card links to a fresh AI Coach discussion instead of a conversation that may not
+exist, and explains that no next week was created. New reviews use the new brief;
+old frozen replies remain unchanged. No deployment, commit or push is included.
+
+
+## Dashboard weekly review notice (2026-11-23, local)
+
+A notice above Readiness uses GET /training/api/weekly-call and the host's saved
+conversation GET. It says Weekly review ready only for a completed latest reply;
+a finished week without a reply says Week complete — ready to review. Pending
+and interrupted/failed turns have distinct wording. Links open the saved Coach
+conversation, or explicitly start the due weekly review when clicked. Rendering
+never generates a review or changes a plan. No due call (including after next-week
+setup), or an unavailable lookup, hides the notice. Dashboard refresh/tab entry
+and window focus refresh status; overlapping responses cannot overwrite newer data.
+The existing 14-day rollover eligibility and active-plan rules remain unchanged.
+
+
+## Compact completed-week evidence (2026-11-23, local)
+
+This supersedes the earlier note that the approximately 79k weekly rejection
+remains. New weekly reviews use weekly-evidence-v2: readable metadata plus
+compact_details with lossless shared values and column/row tables. detail_ref
+points into compact_details.data; $ref indexes its shared array. Identical captured
+RPE charts, prescriptions and other repeated structures are stored once. Set
+occurrences and order, nulls, exact numeric values, differing prescriptions,
+review findings and untrusted notes are preserved. coaching_compact.unpack is the
+reference decoder. Existing saved conversations are neither migrated nor rewritten.
+
+All progress/volume/stress calculations still run on full source data first.
+Completed-week normalized sessions and linked/plan-associated check-ins are
+protected before historical trimming. Existing historical omissions are recorded;
+the completed week's plan, actual sets and session reviews are never trimmed.
+
+The half-budget rejection is replaced by a measured shared budget: at most 160k
+characters of frozen evidence, and the existing 220k total message limit including
+instructions, live planning and the maximum accepted 12k first user message.
+The send route checks the actual request again before recording a pending turn.
+A preparation budget failure saves no conversation and sends no provider request;
+retrying after this release can therefore prepare a previously rejected week.
+Pending/interrupted/provider-uncertain requests retain existing no-auto-resend rules.
+No route/request/schema migration, training-record write, or additional AI call.
+
+
+Delivery update (2026-11-23): Brian authorized commit, push and a PR for the
+concise reviews, dashboard notice and compact weekly evidence on
+`codex/weekly-review-context`. Earlier local-only notes describe pre-publication
+validation. Deployment, Docker verification and actual KBR1.2 acceptance remain
+pending. The unrelated low-pin-bench investigation is excluded from this PR.

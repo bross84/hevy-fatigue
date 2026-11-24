@@ -1,7 +1,7 @@
 /* The AI Coach's browser code, shared by the dashboard, the daily card and the logger.
    Host AI requests use /api/ai; logger-owned requests still use trainingUrl. It only reads
    and requests: whether a reply may be resent is decided by the server, and it never edits a plan. A plan
-   changes only through the athlete's own taps on the proposal/change cards or Run it back (ADR 0002). */
+   changes only through the athlete's own taps on the proposal/change cards (ADR 0002). */
 const AICoach = (() => {
   async function json(path,options) {
     const response=await fetch(path,options),data=await response.json();
@@ -11,9 +11,9 @@ const AICoach = (() => {
   const openUrl=id=>'/?coaching_conversation='+encodeURIComponent(id)+'#ai';
   const callUrl=id=>'/?coaching_week='+encodeURIComponent(id)+'&coaching_kind=call#ai';
   const MESSAGES={
-    start:'Review this planned training week before day 1. Use my confirmed motivation and note, daily check-ins, recent performance, actual spacing and previous coaching discussions. Explain whether to keep the plan or propose a change. Separate engagement from fatigue; ask a focused question where my goal or constraints matter. Do not apply programming changes.',
-    end:'Review the microcycle I just finished like my remote coach. Compare the planned work with actual saved sessions, effort, motivation, check-ins and spacing; a skipped day was not trained. Use the movement progress summary, and how my earlier saved proposals turned out, as context rather than conclusions. Revisit our opening discussion if there was one, explain what worked and what is uncertain, and propose the next microcycle or phase for us to discuss. Ask focused follow-ups; do not apply changes.',
-    call:'This is our weekly coaching call. Review the microcycle I just finished like my remote coach: planned versus actual sessions, effort, motivation, check-ins and spacing (a skipped day was not trained), the progress summary, and how earlier proposals turned out. Then lay out my next microcycle: if it is not set up yet, give it as one plan proposal, usually this week with any changes the evidence supports; if it already exists, give one plan change or tell me to keep it. Keeping everything the same is a fine answer. If you think I need a new stimulus or phase, explain the idea and why and ask me first. Keep it short; I decide.'};
+    start:'Review this planned training week before day 1. Use my confirmed motivation and note, daily check-ins, recent performance, actual spacing and previous coaching discussions. Explain whether to keep the plan or propose a change. Separate engagement from fatigue; state any missing goal or constraint briefly without follow-up questions. Do not apply programming changes.',
+    end:'Review the microcycle I just finished like my remote coach. Compare the planned work with actual saved sessions, effort, motivation, check-ins and spacing; a skipped day was not trained. Use the movement progress summary, and how my earlier saved proposals turned out, as context rather than conclusions. Revisit our opening discussion if there was one, explain what worked and what is uncertain, and propose the next microcycle or phase for us to discuss. Use the short Overall, Trends (e1RM, Volume, Stress), and Next week format; no follow-up questions. Do not apply changes.',
+    call:'This is our weekly coaching call. Review the finished microcycle in at most 200 words: Overall — how the week went; Trends — three short bullets for e1RM, Volume and Stress; Next week — keep or change the plan, with a brief evidence-based reason. Distinguish the finished week from rolling stress and longer-term progress windows. Missing data is not failed training. No exercise inventory, alternatives or follow-up questions; I will ask for detail. Keeping everything the same is a fine answer. If next week is not set up, include one plan proposal for my acceptance, with only justified changes. If it already exists, suggest one plan change or say to keep it. A new phase needs my agreement before building it. Do not apply changes.'};
   async function reviewWeek(planId,kind,sessionId=null,onStatus=()=>{},onPrepared=()=>{}) {
     onStatus('Preparing your weekly coaching context…');
     let view=await json('/api/ai/week-reviews',{method:'POST',headers:{'Content-Type':'application/json'},

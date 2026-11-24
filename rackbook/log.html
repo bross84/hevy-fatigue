@@ -10,10 +10,10 @@
   <script src="/training/static/session-review.js?v=1"></script>
   <script src="/training/static/session-advice.js?v=1"></script>
   <script src="/training/static/session-motivation.js?v=4"></script>
-  <script src="/training/static/plan-proposal.js?v=4"></script>
+  <script src="/training/static/plan-proposal.js?v=5"></script>
   <script src="/training/static/plan-change.js?v=1"></script>
   <script src="/training/static/app-menu.js?v=2"></script>
-  <script src="/training/static/ai-coach.js?v=2"></script>
+  <script src="/training/static/ai-coach.js?v=3"></script>
   <script src="/training/static/logger-layout.js?v=13"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
   <meta charset="utf-8" />
@@ -1182,7 +1182,7 @@
 
   // Weekly coaching call (ADR 0002): when a microcycle has finished and nothing is planned next, hold one call
   // for it here before day 1. It starts by itself once per finished microcycle (the server never resends a
-  // saved call). The next week changes only on the athlete's Accept or Run it back tap.
+  // saved call). The next week changes only on the athlete's Accept tap.
   const weeklyCallsStarted = new Set();
   async function loadWeeklyCall() {
     const box = $("weeklyCall");
@@ -1196,18 +1196,13 @@
       if (call && call.next) showSetUp(box, plan, call); else loadWeeklyCall();
     };
     box.hidden = false;
+    const introduction = el("p", "muted", plan.name + " is finished. Review the week and your coach's suggestion below. A proposed next week becomes active only when you tap Accept.");
     box.replaceChildren(el("h2", null, "Weekly coaching call"),
-      el("p", "muted", plan.name + " is finished. Your coach reviews it and lays out next week. Nothing changes until you tap Accept or Run it back."),
+      introduction,
       status, reply, actions);
-    const again = el("button", null, "Run it back"); again.type = "button";
-    again.title = "Repeat " + plan.name + " unchanged as next week, without waiting for the coach.";
-    again.addEventListener("click", async () => {
-      again.disabled = true; status.textContent = "Setting up next week…";
-      try { await api("/api/weekly-call/" + encodeURIComponent(plan.id) + "/run-it-back", { method: "POST" }); refreshed(); }
-      catch (err) { status.textContent = err.message + " Nothing was changed."; again.disabled = false; }
-    });
     const open = el("a", null, "Continue in AI Coach"); open.href = AICoach.openUrl(due.call_id);
-    actions.append(again, open);
+    const builder = el("a", null, "Plan next week in builder"); builder.href = trainingUrl("/microcycles");
+    actions.append(open, builder);
     function showCall(view) {
       reply.replaceChildren();
       const turn = (view.turns || []).filter(t => t.response).at(-1);
@@ -1229,11 +1224,14 @@
       status.textContent = view ? "" : "Open AI Coach to start the call.";
       if (view) showCall(view);
     } catch (err) {
-      status.textContent = err.message + " You can still Run it back or plan next week in the builder.";
+      introduction.textContent = plan.name + " is finished. The automatic review could not be completed.";
+      status.textContent = err.message + " No next week was created. You can plan next week in the builder.";
+      open.textContent = "Start a discussion in AI Coach";
+      open.href = "/#ai";
     }
   }
 
-  // After Accept or Run it back: confirm what is now active and offer Undo while the new week is untouched.
+  // After setup (including legacy repeats): confirm what is now active and offer Undo while the new week is untouched.
   function showSetUp(box, plan, call) {
     const next = call.next, status = el("p", "muted");
     box.hidden = false;

@@ -67,25 +67,26 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             call=page.locator('#weeklyCall')
             expect(call).to_contain_text('Weekly coaching call')
             expect(call).to_contain_text('Mock preview plan · Weekly coaching call. Recorded sessions')
-            expect(call.get_by_role('button',name='Run it back',exact=True)).to_be_visible()
+            expect(call.get_by_role('button',name='Run it back',exact=True)).to_have_count(0)
+            expect(call.get_by_role('link',name='Plan next week in builder')).to_have_attribute('href','/training/microcycles')
             assert calls()==1
             due=page.request.get(URL+'/training/api/weekly-call').json()
             assert due['source']['id']==plan['id'] and due['next'] is None
             page.reload();expect(call).to_contain_text('Recorded sessions')
             assert calls()==1  # a reload never resends
             page.screenshot(path=str(OUT/'weekly-call-phone.png'),full_page=True)
-            # Run it back repeats the week as the active next one; Undo takes it back while untouched.
-            call.get_by_role('button',name='Run it back',exact=True).click()
-            expect(call).to_contain_text('is your active microcycle, repeating Mock preview plan')
+            # Legacy repeat records retain Undo; the removed shortcut is exercised only through the compatibility API.
+            assert page.request.post(URL+'/training/api/weekly-call/'+plan['id']+'/run-it-back').ok
+            page.reload()
             active=[p for p in plans() if p['active']]
             assert len(active)==1 and active[0]['id']!=plan['id'] and active[0]['completed']==[]
             assert [s['exercises'] for s in active[0]['weeks'][0]['sessions']]==[s['exercises'] for s in initial_weeks[0]['sessions']]
-            expect(page.locator('#plannedStart')).to_contain_text(active[0]['name'])
-            call.get_by_role('button',name='Undo',exact=True).click()
-            expect(call).to_contain_text('Run it back')
+            assert page.request.post(URL+'/training/api/weekly-call/'+plan['id']+'/undo').ok
+            page.reload()
+            expect(call).to_contain_text('Recorded sessions')
+            expect(call.get_by_role('button',name='Run it back',exact=True)).to_have_count(0)
             assert not any(p['active'] for p in plans()) and calls()==1
-            call.get_by_role('button',name='Run it back',exact=True).click()
-            expect(call).to_contain_text('is your active microcycle')
+            assert page.request.post(URL+'/training/api/weekly-call/'+plan['id']+'/run-it-back').ok
             repeat=next(p for p in plans() if p['active'])
             page.reload();expect(call).to_be_hidden()
             # Day 1 of the new week: the check-in shows the call already held, without asking the AI again.
@@ -147,10 +148,22 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             page.set_viewport_size(dict(width=1280,height=900))
             page.screenshot(path=str(OUT/'call-desktop.png'),full_page=True)
             assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+            # A context-size failure offers a fresh discussion, not the missing conversation or repeat action.
+            page.route('**/training/api/weekly-call',lambda route:route.fulfill(json=due))
+            page.route('**/api/ai/week-reviews',lambda route:route.fulfill(status=400,json=dict(detail='The week is too large for automatic review; discuss it in AI Coach instead.')))
+            page.goto(URL+'/training/log')
+            expect(call).to_contain_text('No next week was created.')
+            expect(call.get_by_role('link',name='Start a discussion in AI Coach')).to_have_attribute('href','/#ai')
+            expect(call.get_by_role('button',name='Run it back',exact=True)).to_have_count(0)
+            assert calls()==3
+            page.screenshot(path=str(OUT/'review-error-desktop.png'),full_page=True)
+            page.set_viewport_size(dict(width=390,height=844))
+            page.screenshot(path=str(OUT/'review-error-phone.png'),full_page=True)
+            assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
             assert not errors,errors
             browser.close()
         print(json.dumps(dict(mandatory_checkin='passed',weekly_call='automatic on the Log page once a week finishes, once, never resent',
-                              run_it_back='repeats the week as active, undo restores',checkin='shows the held call without a new request',
+                              repeat_shortcut='absent; legacy repeat and undo remain compatible',checkin='shows the held call without a new request',
                               skip_day='finishes a microcycle without counting as trained',ai_calls=3,fatigue='unchanged by check-in',
                               finished_week='unchanged',providers='fully mocked')))
     finally:

@@ -4,6 +4,7 @@
 lays out the next one. 'start' and 'end' are the earlier opening and closing reviews, kept so saved
 conversations and old links still open."""
 from contextlib import closing
+from copy import deepcopy
 import json
 import sqlite3
 from typing import Literal
@@ -12,6 +13,7 @@ from pydantic import BaseModel, Field
 from database import CoachingConversation, CoachingTurn
 from rackbook.config import database_path
 import coaching
+import coaching_compact
 
 
 class WeekReviewInput(BaseModel):
@@ -91,12 +93,55 @@ def week_context(data, db):
     return context
 
 
+def compact_report(report, context):
+    """Share duplicate detail across the week and history, after computing all summaries.
+
+    Stable public metadata stays readable. References never remove a set occurrence:
+    expanding compact_details reconstructs every selected subtree exactly.
+    """
+    result = deepcopy(report)
+    result['week_context'] = deepcopy(context)
+    result['week_context']['version'] = coaching_compact.VERSION
+    details = {}
+
+    def move(parent, key, path):
+        details[path] = parent[key]
+        parent[key] = {'detail_ref': path}
+
+    week = result['week_context']
+    move(week, 'plan', 'week.plan')
+    for index, workout in enumerate(week['actual_workouts']):
+        for key in ('prescription', 'review', 'sets'):
+            move(workout, key, f'week.actual_workouts.{index}.{key}')
+    for key in ('recent_sessions', 'preserved_sessions', 'saved_plans'):
+        move(result, key, key)
+    if 'completed_week_evidence' in result:
+        move(result, 'completed_week_evidence', 'completed_week_evidence')
+    for index, exercise in enumerate(result['exercises']):
+        if 'recent_exposures' in exercise:
+            move(exercise, 'recent_exposures', f'exercises.{index}.recent_exposures')
+    result['compact_details'] = coaching_compact.pack(details)
+    return result
+
+
 def prepare(db,data,monitoring):
     review_id=identity(data.plan_id,data.kind)
     if db.get(CoachingConversation,review_id):return coaching.conversation(db,review_id)
     context=week_context(data,db)
-    budget=coaching.MAX_CONTEXT_CHARS-len(coaching.encode(context))-1000
-    if budget<coaching.MAX_CONTEXT_CHARS//2:raise ValueError('The week is too large for automatic review; discuss it in AI Coach instead.')
-    evidence=coaching.build_report(db,monitoring_context=monitoring,context_limit=budget)
-    evidence['week_context']=context
+    live = coaching.live_planning(review_id)
+    # Reserve the largest accepted first message, actual instructions and current live
+    # planning state. messages() rechecks the actual request before a turn is committed.
+    first_message = ' ' * coaching.MAX_MESSAGE_CHARS
+    try:
+        overhead = sum(len(m['content']) for m in coaching.messages(
+            dict(evidence={}, turns=[]), first_message, live=live)) - len(coaching.encode({}))
+        budget = min(coaching.MAX_CONTEXT_CHARS, coaching.MAX_CONTEXT_CHARS + coaching.MAX_REPLY_CHARS - overhead)
+        evidence=coaching.build_report(db,monitoring_context=monitoring,context_limit=budget,
+                                      encode_report=lambda report: compact_report(report, context),
+                                      protected_workouts={w['workout_id'] for w in context['actual_workouts']},
+                                      protected_plan_id=data.plan_id)
+        coaching.messages(dict(evidence=evidence, turns=[]), first_message, live=live)
+    except coaching.ContextBudgetError as exc:
+        raise ValueError('The complete weekly evidence still exceeds the review budget after deduplication. '
+                         'No AI review was sent and no training records were changed.') from exc
     return coaching.save_conversation(db,review_id,evidence)
