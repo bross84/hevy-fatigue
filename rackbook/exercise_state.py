@@ -11,9 +11,11 @@ the nearest half pound).
 from __future__ import annotations
 
 from collections import OrderedDict
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
 LB_PER_KG = 2.20462
+REFERENCE_MAX_AGE_DAYS = 90
 
 PctLookup = Callable[[float, int], "float | None"]
 
@@ -82,7 +84,7 @@ def previous_sets(sessions: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
     return []
 
 
-def build_exercise_state(entries: list[dict[str, Any]], pct: PctLookup) -> dict[str, Any]:
+def build_exercise_state(entries: list[dict[str, Any]], pct: PctLookup, *, as_of: datetime | None = None) -> dict[str, Any]:
     """The movement's e1RM from its most recent session that has a usable set (or found=False), plus the sets
     of the most recent session of any kind."""
     sessions = sessions_newest_first(entries)
@@ -94,6 +96,15 @@ def build_exercise_state(entries: list[dict[str, Any]], pct: PctLookup) -> dict[
         if ref is None:
             continue
         entry = ref["entry"]
+        if as_of is not None:
+            try:
+                stamp = datetime.fromisoformat(entry.get("workout_start_time", "").replace("Z", "+00:00"))
+                if stamp.tzinfo is None:
+                    stamp = stamp.replace(tzinfo=timezone.utc)
+            except (ValueError, TypeError, AttributeError):
+                continue
+            if not as_of - timedelta(days=REFERENCE_MAX_AGE_DAYS) <= stamp <= as_of:
+                continue
         return {
             "previous": previous,
             "previous_workout_start_time": previous_start,

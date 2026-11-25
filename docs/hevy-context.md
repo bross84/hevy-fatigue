@@ -1525,3 +1525,57 @@ concise reviews, dashboard notice and compact weekly evidence on
 `codex/weekly-review-context`. Earlier local-only notes describe pre-publication
 validation. Deployment, Docker verification and actual KBR1.2 acceptance remain
 pending. The unrelated low-pin-bench investigation is excluded from this PR.
+
+
+## Low-pin-bench investigation (2026-11-22)
+
+The earlier stabilization test had a false-positive assertion: CSV RPE keys were
+strings such as `8.0`, whereas the lookup requested `8`. Missing lookup returned
+null, and null multiplied by the conversion factor compared as zero. Corrected
+the fixture to normalize numeric keys, load the production lookup/rounding code,
+and require a finite positive recommendation with exact expected results.
+
+With the bundled table, a 240 lb basis and normal 5 lb increments gives 215 lb for
+2 @8 and 230 lb for 2 @10; 2 @8 with 2.5 kg increments gives 97.5 kg. These are
+controlled cases, not a reconstruction of the owner's unknown target RPE.
+A saved 275 lb TS gives 250 lb for 2 @8 even if the history reference is 240 lb.
+Alternatively, an earlier completed 235 lb x2 @6 drives the next 2 @8 to 250 lb
+through movement-specific LSe1RM. Fixed plan weights are marked manual and are
+not recalculated. These possibilities are reproduced, not established causes.
+
+The first-set auto path uses this exercise template ID's saved TS or last-session
+reference (TM applies its configured percentage); later sets can use their own
+movement's last eligible completed set. Saved session review may retain original
+plan weights, suggestion, manual flag and basis, but not the entire TS/reference
+snapshot. Need the original workout/date, target RPE, whether any working set had
+already been completed, and where the roughly 240 lb figure was shown. No real
+account/database was accessed; no recommendation formula changed. All JavaScript
+checks pass after the regression correction. No commit, push or deployment.
+
+
+## Strength-reference recency (2026-11-24, local; #159)
+
+Owner-approved policy: automatic historical e1RM references must be within the
+last 90 elapsed days, inclusive at the boundary. The logger exercise-state route
+applies that cutoff; old Previous sets remain visible. Undated, invalid and future
+history cannot supply an automatic load. Analytical callers of the pure history
+builder retain their existing behavior unless they request an as-of cutoff.
+
+Saved TS records are preserved. A TS older than 90 days (or without a usable date)
+requires the visible "Use pinned TS for this workout" action before it supplies
+e1RM/TM. Confirmation is stored only in the device draft and bound to the workout
+UUID, movement and exact TS values/date; reload preserves it, a changed TS or new
+workout does not. There is no silent fallback around a stale pin. TS age/date is
+shown. No usable recent reference prompts manual starting-weight entry; subsequent
+movement-specific completed actual RPEs still supply LSe1RM when enabled.
+
+Unfinished automatic loads from ineligible references are cleared, including on
+draft restoration. Manual, completed, warm-up and automatic-off weights are
+preserved. Frozen saves are not recalculated or refreshed. No schema migration,
+historical rewrite, credential change, monitoring/trial change or deployment.
+The original 250 lb incident remains unconfirmed; #159 stays open for review.
+
+
+Delivery update (2026-11-24): Brian authorized commit, push and a PR for
+`codex/strength-reference-recency`. Earlier local-only statements describe
+pre-publication validation. Deployment and physical acceptance remain pending.

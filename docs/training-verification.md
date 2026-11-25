@@ -1672,3 +1672,80 @@ concise reviews, dashboard notice and compact weekly evidence on
 `codex/weekly-review-context`. Earlier local-only notes describe pre-publication
 validation. Deployment, Docker verification and actual KBR1.2 acceptance remain
 pending. The unrelated low-pin-bench investigation is excluded from this PR.
+
+
+## Low-pin-bench investigation (2026-11-22)
+
+The earlier stabilization test had a false-positive assertion: CSV RPE keys were
+strings such as `8.0`, whereas the lookup requested `8`. Missing lookup returned
+null, and null multiplied by the conversion factor compared as zero. Corrected
+the fixture to normalize numeric keys, load the production lookup/rounding code,
+and require a finite positive recommendation with exact expected results.
+
+With the bundled table, a 240 lb basis and normal 5 lb increments gives 215 lb for
+2 @8 and 230 lb for 2 @10; 2 @8 with 2.5 kg increments gives 97.5 kg. These are
+controlled cases, not a reconstruction of the owner's unknown target RPE.
+A saved 275 lb TS gives 250 lb for 2 @8 even if the history reference is 240 lb.
+Alternatively, an earlier completed 235 lb x2 @6 drives the next 2 @8 to 250 lb
+through movement-specific LSe1RM. Fixed plan weights are marked manual and are
+not recalculated. These possibilities are reproduced, not established causes.
+
+The first-set auto path uses this exercise template ID's saved TS or last-session
+reference (TM applies its configured percentage); later sets can use their own
+movement's last eligible completed set. Saved session review may retain original
+plan weights, suggestion, manual flag and basis, but not the entire TS/reference
+snapshot. Need the original workout/date, target RPE, whether any working set had
+already been completed, and where the roughly 240 lb figure was shown. No real
+account/database was accessed; no recommendation formula changed. All JavaScript
+checks pass after the regression correction. No commit, push or deployment.
+
+
+## Strength-reference recency verification (2026-11-24)
+
+- New fixed-clock Python cases cover exact 90-day inclusion, older exclusion,
+  missing recent RPE, invalid/missing/future dates, preserved previous sets and
+  unchanged analytical history without a cutoff.
+- New JS cases cover stale TS confirmation, same-workout reload, new workout UUID,
+  changed TS, TM, manual/completed preservation and subsequent actual-RPE LS use.
+  Existing calculation fixtures now explicitly date their eligible references.
+- Full host suite: 260 passed (artifacts/recency-host-tests.log). Full logger suite:
+  652 passed with one existing expected failure (artifacts/recency-logger-tests.log).
+- All 42 rackbook/tests/*.cjs and the three required host JavaScript checks passed.
+- tools/check_reference_recency_browser.py passed at 390 and 1280 px: visible
+  confirmation, blank stale automatic load, explicit TS use, actual page reload,
+  changed-reference invalidation, manual-entry notice and no horizontal overflow.
+  Screenshots inspected under artifacts/reference-recency. Existing mocked
+  stabilization browser suite also passed with no page errors.
+- Sandboxed Python tests stalled, consistent with the previously documented
+  environment issue; stopped and reran successfully with approved escalation.
+  The new focused pure tests also passed inside the sandbox.
+- Docker Desktop Linux engine unavailable; build/startup cannot be verified here.
+  No real Hevy account/database or physical device used. Phone deployment
+  acceptance, Docker validation and issue closure remain pending.
+- No commit, push or deployment. Pre-existing investigation/documentation edits
+  were retained, including the low-pin-bench fixture trace.
+
+
+Delivery update (2026-11-24): Brian authorized commit, push and a PR for
+`codex/strength-reference-recency`. Earlier local-only statements describe
+pre-publication validation. Deployment and physical acceptance remain pending.
+
+PR isolation validation: rebased this feature onto main, excluding unmerged
+coaching PR #165. Host suite: 252 passed; logger suite: 652 tests passed with
+one existing expected failure. All 42 logger JS files and three required host
+JS checks passed. The focused phone/desktop browser check passed again, including
+actual reload. Logs: artifacts/recency-pr-{host,logger,browser}.log. Earlier
+260-host-test results included the separate coaching work. Docker remains blocked.
+
+
+## PR #165 merge-conflict resolution (2026-11-24)
+
+Merged main after #166 into codex/weekly-review-context. Conflicts were only
+append-only sections in four documentation files; retained both coaching and
+strength-reference notes. Application and test files match the combined tree
+previously validated in commit 260a785 (260 host / 652 logger tests, one expected
+failure); no application conflict or new behavior change. All 42 logger JS files
+and the three required host JS checks passed again. Both mocked browser checks
+passed: weekly compact review (one provider call, zero plan changes) and phone/
+desktop stale TS confirmation including reload. Logs: artifacts/merge165-*.log.
+Docker and physical-device limitations remain unchanged. No deployment.

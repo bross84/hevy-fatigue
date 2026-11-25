@@ -824,3 +824,31 @@ A preparation budget failure saves no conversation and sends no provider request
 retrying after this release can therefore prepare a previously rejected week.
 Pending/interrupted/provider-uncertain requests retain existing no-auto-resend rules.
 No route/request/schema migration, training-record write, or additional AI call.
+
+
+## Strength-reference recency (2026-11-24, local; #159)
+
+Owner-approved policy: automatic historical e1RM references must be within the
+last 90 elapsed days, inclusive at the boundary. The logger exercise-state route
+applies that cutoff; old Previous sets remain visible. Undated, invalid and future
+history cannot supply an automatic load. Analytical callers of the pure history
+builder retain their existing behavior unless they request an as-of cutoff.
+
+Saved TS records are preserved. A TS older than 90 days (or without a usable date)
+requires the visible "Use pinned TS for this workout" action before it supplies
+e1RM/TM. Confirmation is stored only in the device draft and bound to the workout
+UUID, movement and exact TS values/date; reload preserves it, a changed TS or new
+workout does not. There is no silent fallback around a stale pin. TS age/date is
+shown. No usable recent reference prompts manual starting-weight entry; subsequent
+movement-specific completed actual RPEs still supply LSe1RM when enabled.
+
+Unfinished automatic loads from ineligible references are cleared, including on
+draft restoration. Manual, completed, warm-up and automatic-off weights are
+preserved. Frozen saves are not recalculated or refreshed. No schema migration,
+historical rewrite, credential change, monitoring/trial change or deployment.
+The original 250 lb incident remains unconfirmed; #159 stays open for review.
+
+
+Delivery update (2026-11-24): Brian authorized commit, push and a PR for
+`codex/strength-reference-recency`. Earlier local-only statements describe
+pre-publication validation. Deployment and physical acceptance remain pending.

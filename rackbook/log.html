@@ -974,6 +974,51 @@
     return pct ? lb / pct : null;
   }
 
+  // Reference eligibility is rechecked on use, including restored drafts.
+  const REFERENCE_MAX_AGE_DAYS = 90;
+  function recentReference(stamp) {
+    const time = Date.parse(stamp), now = Date.now();
+    return Number.isFinite(time) && time <= now && now - time <= REFERENCE_MAX_AGE_DAYS * 86400000;
+  }
+  function tsConfirmationKey(ex) {
+    const ts = ex.ref.ts;
+    return JSON.stringify([draft.client_workout_id, ex.template_id, ts?.set_at, ts?.e1rm_lb, ts?.weight_lb, ts?.reps, ts?.rpe]);
+  }
+  function staleTsPending(ex) {
+    return !!ex.ref.ts?.found && !recentReference(ex.ref.ts.set_at) &&
+      ex.staleTsConfirmation !== tsConfirmationKey(ex);
+  }
+  function historyReference(ex) {
+    const st = ex.ref.state;
+    return st?.found && recentReference(st.workout_start_time) ? st : null;
+  }
+  function referenceNotice(ex) {
+    const box = el("div", "reference-notice");
+    if (ex.ref.autoWeights === false) return box;
+    if (staleTsPending(ex)) {
+      const ts = ex.ref.ts;
+      box.append(el("p", "muted", "Pinned TS: " + Math.round(ts.e1rm_lb) + " lb e1RM · " +
+        (Number.isFinite(Date.parse(ts.set_at)) ? new Date(ts.set_at).toLocaleDateString(undefined, {year:"numeric",month:"short",day:"numeric"}) : "date unavailable") +
+        ". Older than 90 days or undated. Confirm it for this workout, or enter a starting weight."));
+      const button = el("button", "pill", "Use pinned TS for this workout");
+      button.type = "button";
+      button.addEventListener("click", () => {
+        if (draft.frozenSave) return;
+        ex.staleTsConfirmation = tsConfirmationKey(ex);
+        applyAuto(ex); saveDraft(); refreshCard(ex);
+      });
+      button.disabled = !!draft.frozenSave;
+      box.append(button);
+    } else if (!ex.ref.ts?.found && ex.ref.state && !historyReference(ex)) {
+      box.append(el("p", "muted", "No usable e1RM from the last 90 days. Enter a starting weight; LSe1RM can use your completed working sets."));
+    } else {
+      const source = ex.ref.ts?.found ? ex.ref.ts : historyReference(ex);
+      if (source) box.append(el("p", "muted", (ex.ref.ts?.found ? "Pinned TS" : "History e1RM") + " · " +
+        fmtShortDate(source.set_at || source.workout_start_time)));
+    }
+    return box;
+  }
+
   // The e1RM of the nearest earlier set that is ticked done and has weight, reps and an RPE.
   function lastSetE1rm(ex, index) {
     for (let j = index - 1; j >= 0; j--) {
@@ -1007,16 +1052,17 @@
       if (e1) return e1;
     }
     const ts = ex.ref.ts;
-    return ts && ts.found ? ts.e1rm_lb : null;
+    return ts && ts.found && !staleTsPending(ex) ? ts.e1rm_lb : null;
   }
 
   // The movement's current e1RM: its TS if it has one, else its best set today, until a set is done the one from the last session.
   function currentE1rm(ex) {
     const anchor = anchorE1rm(ex);
     if (anchor) return { value: anchor, best: null };
+    if (staleTsPending(ex)) return null;
     const best = bestSetToday(ex);
     if (best) return { value: best.e1, best };
-    const st = ex.ref.state;
+    const st = historyReference(ex);
     return st && st.found ? { value: st.e1rm_lb, best: null } : null;
   }
 
@@ -1044,8 +1090,8 @@
   // The movement's TM: the latest saved TS's e1RM x the TM %. Until a TS has been saved it falls back to the
   // best set of the last session, so a movement keeps its weights while you have no TS yet.
   function tmValue(ex) {
-    const ts = ex.ref.ts, st = ex.ref.state;
-    if (ts && ts.found) return ts.e1rm_lb * ex.ref.tmPct;
+    const ts = ex.ref.ts, st = historyReference(ex);
+    if (ts && ts.found) return staleTsPending(ex) ? null : ts.e1rm_lb * ex.ref.tmPct;
     return st && st.found ? st.e1rm_lb * ex.ref.tmPct : null;
   }
 
@@ -1085,7 +1131,12 @@
       if (only && s !== only) return;
       if (s.done || s.manual || s.type === "warmup") return;
       const w = autoWeight(ex, i);
-      if (w == null) return;
+      if (w == null) {
+        if (ex.ref.autoWeights !== false && (staleTsPending(ex) || (ex.ref.state && !historyReference(ex) && !ex.ref.ts?.found))) {
+          s.kg = ""; delete s.autoSuggestion; showWeight(s, ex);
+        }
+        return;
+      }
       s.kg = String(Math.round(w * 1e6) / 1e6);
       s.autoSuggestion = w;
       showWeight(s, ex);
@@ -1106,19 +1157,28 @@
   }
 
   async function loadTs(ex) {
+    if (draft.frozenSave) return;
     try {
-      ex.ref.ts = await api("/training-max/" + encodeURIComponent(ex.template_id));
+      const ts = await api("/training-max/" + encodeURIComponent(ex.template_id));
+      if (draft.frozenSave) return;
+      ex.ref.ts = ts;
     } catch (err) {
+      if (draft.frozenSave) return;
       ex.ref.ts = { found: false };
     }
     applyAuto(ex); saveDraft(); refreshCard(ex);
   }
 
   async function loadState(ex) {
-    loadTs(ex);
+    if (draft.frozenSave) return;
+    await loadTs(ex);
+    if (draft.frozenSave) return;
     try {
-      ex.ref.state = await api("/hevy/exercise-state/" + encodeURIComponent(ex.template_id));
+      const state = await api("/hevy/exercise-state/" + encodeURIComponent(ex.template_id));
+      if (draft.frozenSave) return;
+      ex.ref.state = state;
     } catch (err) {
+      if (draft.frozenSave) return;
       ex.ref.state = { found: false, error: err.message };
     }
     applyAuto(ex); saveDraft(); refreshCard(ex);
@@ -2113,6 +2173,7 @@
     grip.type = "button"; grip.setAttribute("aria-label", "Drag to reorder " + ex.title);
     makeReorderable(card, grip, ex);
     head.append(grip, el("p", "ex-title", ex.title));
+    card.insertBefore(referenceNotice(ex), left);
     if (ex.swappedFrom) card.insertBefore(el("p", "swap-note", "Swapped in for " + ex.swappedFrom), chips);
     if (ex.notes) card.insertBefore(el("p", "ex-note", ex.notes), chips);
     const chip = el("button", "chip", "Round to " + trim(stepOf(ex.ref)) + " " + unit + " ▾");
@@ -3147,6 +3208,7 @@
           if (s.kg === undefined) { const l = parseFloat(s.lb); s.kg = l > 0 ? String(Math.round(l / LB_PER_KG * 2) / 2) : ""; delete s.lb; }
         }
       }
+      if (!draft.frozenSave) draft.exercises.forEach(ex => applyAuto(ex));
       renderWorkout();
       draft.exercises.forEach(loadState);
     } else { draft = null; renderStart(); }

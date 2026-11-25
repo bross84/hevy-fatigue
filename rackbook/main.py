@@ -1046,7 +1046,7 @@ def get_exercise_state(exercise_template_id: str):
     """A movement's current e1RM, worked out from its last session in Hevy with the user's RPE table."""
     entries = _call_hevy(lambda client: client.exercise_history(exercise_template_id))
     entries = set_log.overlay_exact_rpe(entries, set_log.for_exercise(exercise_template_id))  # RPEs Hevy dropped
-    return exercise_state.build_exercise_state(entries, get_rpe_percentage)
+    return exercise_state.build_exercise_state(entries, get_rpe_percentage, as_of=datetime.now(timezone.utc))
 
 
 @app.get("/training-max/{exercise_template_id}", response_model=TrainingMax)

@@ -4,13 +4,13 @@ const vm = require('node:vm');
 const html = fs.readFileSync(require('node:path').join(__dirname, '..', 'log.html'), 'utf8');
 function el(tag, cls, text) {
   return {tag, cls, textContent:text, children:[], attrs:{}, style:{}, events:{},
-    classList:{toggle(){}}, append(...items){this.children.push(...items);},
+    insertBefore(item,before){this.children.splice(this.children.indexOf(before),0,item);}, classList:{toggle(){}}, append(...items){this.children.push(...items);},
     setAttribute(k,v){this.attrs[k]=v;}, addEventListener(k,fn){this.events[k]=fn;}};
 }
 const noop=()=>{};
 let saved=0, rests=0, redraws=0;
 const context=vm.createContext({trainingUrl:path=>path.startsWith("/training/")?path:"/training"+path,el, unit:'kg', unitFor:()=> 'kg', exerciseUnitControl:()=>el('button'), trim:String, stepOf:()=>2.5, makeReorderable:noop,
-  restLabel:String, restFor:()=>60, renderRefBar:()=>el('div'), renderSoreness:noop, renderTrial:noop, trialEnabled:false,
+  restLabel:String, restFor:()=>60, renderRefBar:()=>el('div'), referenceNotice:()=>el('div'), renderSoreness:noop, renderTrial:noop, trialEnabled:false,
   queueStress:noop,fillStress:noop,paintNumbers:noop,matchMedia:()=>({matches:false}),kindOf:s=>s.type,KIND:{warmup:'W'},
   prepareKeypadInput:noop,primaryText:s=>s.kg,refText:()=>'',primaryInputs:new Map(),refCells:new Map(),
   rpeControl:()=>({reportValidity:()=>true}),setE1rm:()=>null,setE1Cells:new Map(),setStressCells:new Map(),
@@ -100,7 +100,7 @@ assert.equal(nodes(card).find(n=>n.name==='RPEact').value,'7');
 ticks(card)[1].events.click();
 assert.equal(adaptive.sets[1].arpe,'','Ticking a set never copies the RPE target into the actual RPE');
 assert.equal(adaptive.sets[1].actualSource,'unrated','A blank actual RPE is saved as unrated');
-adaptive.ref.ts={found:true,e1rm_lb:330};
+adaptive.ref.ts={found:true,set_at:new Date(Date.now()-86400000).toISOString(),e1rm_lb:330};
 adaptive.ref.ls=false;
 assert.equal(context.baseFor(adaptive,1),330,'LS off keeps the existing pinned e1RM basis');
 act[0].change('5');
