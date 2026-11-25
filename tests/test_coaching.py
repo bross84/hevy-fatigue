@@ -386,6 +386,111 @@ class CoachingTests(TestCase):
         self.assertIn('A weekly coaching call (week_context.kind call) replaces both',source)
         self.assertIn('LIVE PLANNING STATE',source)
 
+    def large_completed_week(self):
+        from tools.weekly_review_fixture import seed_completed_week
+        return seed_completed_week()
+
+    def test_large_week_fits_losslessly_and_reaches_provider_once(self):
+        import weekly_coaching, coaching_compact
+        plan = self.large_completed_week()
+        data = weekly_coaching.WeekReviewInput(plan_id=plan['id'], kind='call')
+        raw = weekly_coaching.week_context(data, self.db)
+        self.assertGreater(len(coaching.encode(raw)), 79_000)
+        baseline = coaching.build_report(self.db, context_limit=2_000_000)
+        before = self.path.read_bytes()
+        response = self.client.post('/api/ai/week-reviews', json=data.model_dump(mode='json'))
+        self.assertEqual(response.status_code, 200, response.text)
+        view = response.json()
+        details = coaching_compact.unpack(view['evidence']['compact_details'])
+        self.assertEqual(details['week.plan'], raw['plan'])
+        for index, workout in enumerate(raw['actual_workouts']):
+            for key in ('sets', 'prescription', 'review'):
+                self.assertEqual(details[f'week.actual_workouts.{index}.{key}'], workout[key])
+        for key in ('progress_summary', 'pattern_stress_index', 'workload_windows', 'coverage'):
+            self.assertEqual(view['evidence'][key], baseline[key])
+        self.assertEqual(self.path.read_bytes(), before)
+        self.assertLessEqual(len(coaching.encode(view['evidence'])), coaching.MAX_CONTEXT_CHARS)
+        messages = coaching.messages(view, 'x' * coaching.MAX_MESSAGE_CHARS, live=coaching.live_planning(view['id']))
+        self.assertLessEqual(sum(len(m['content']) for m in messages), coaching.MAX_CONTEXT_CHARS + coaching.MAX_REPLY_CHARS)
+        provider, remote = self.provider(['data: {"choices":[{"delta":{"content":"Overall: steady. Next week: keep the plan."}}]}\n\ndata: [DONE]\n\n'])
+        with patch.object(main, '_get_ai_api_key', return_value='mock-only'), provider:
+            self.assertEqual(self.send(view['id']).status_code, 200)
+            self.assertEqual(self.send(view['id']).status_code, 409)
+        self.assertEqual(remote.send.call_count, 1)
+        with patch.object(weekly_coaching, 'week_context', side_effect=AssertionError('must not recapture')):
+            repeated = self.client.post('/api/ai/week-reviews', json=data.model_dump(mode='json'))
+        self.assertEqual(repeated.json()['evidence'], view['evidence'])
+        self.assertEqual(repeated.json()['turns'][0]['status'], 'complete')
+
+    def test_week_budget_accounts_for_live_state_and_never_saves_oversized_evidence(self):
+        import weekly_coaching
+        plan = self.large_completed_week()
+        body = dict(plan_id=plan['id'], kind='call')
+        with patch.object(coaching, 'live_planning', return_value={'large': 'x' * 210_000}):
+            response = self.client.post('/api/ai/week-reviews', json=body)
+        self.assertEqual(response.status_code, 422)
+        self.assertIn('No AI review was sent', response.json()['detail'])
+        self.assertIsNone(self.db.get(CoachingConversation, weekly_coaching.identity(plan['id'], 'call')))
+        # A preparation failure has no frozen conversation or pending turn to block retry.
+        self.assertEqual(self.client.post('/api/ai/week-reviews', json=body).status_code, 200)
+
+    def test_week_keeps_complete_data_when_older_history_is_trimmed(self):
+        import weekly_coaching, coaching_compact
+        plan = self.large_completed_week()
+        data = weekly_coaching.WeekReviewInput(plan_id=plan['id'], kind='call')
+        context = weekly_coaching.week_context(data, self.db)
+        transform = lambda report: weekly_coaching.compact_report(report, context)
+        protected = {w['workout_id'] for w in context['actual_workouts']}
+        with logger.get_db() as conn:
+            conn.execute('INSERT INTO session_checkins(session_id,workout_start,plan_id,plan_session_id,motivation,recorded_at,linked_workout_id) VALUES (?,?,?,?,?,?,?)',
+                         (str(uuid4()), coaching.now_iso(), plan['id'], 'day0', json.dumps(dict(level=0,note='Long exact note ' * 100)), coaching.now_iso(), 'completed-0'))
+        baseline = coaching.build_report(self.db, encode_report=transform, protected_workouts=protected, context_limit=2_000_000)
+        captured = coaching_compact.unpack(baseline['compact_details'])['completed_week_evidence']
+        self.assertEqual(len(captured['sessions']), 3)
+        self.assertEqual(captured['confirmed_session_checkins'][0]['motivation']['level'], 0)
+        old_id = str(uuid4())
+        coaching.save_conversation(self.db, old_id, dict(captured_at=coaching.now_iso(), version=coaching.VERSION))
+        for sequence in range(1, 5):
+            self.db.add(CoachingTurn(id=str(uuid4()), conversation_id=old_id, sequence=sequence,
+                message='Old discussion ' * 400, response='Old response ' * 400,
+                status='complete', model='mock-only', created_at=coaching.now_iso()))
+        self.db.commit()
+        report = coaching.build_report(self.db, encode_report=transform, protected_workouts=protected,
+                                      context_limit=len(coaching.encode(baseline)) + 1000)
+        self.assertTrue(any('prior_review_excerpts: older detail omitted' in note for note in report['limitations']))
+        self.assertEqual(coaching_compact.unpack(report['compact_details']),
+                         coaching_compact.unpack(baseline['compact_details']))
+        for key in ('progress_summary', 'pattern_stress_index', 'workload_windows'):
+            self.assertEqual(report[key], baseline[key])
+
+    def test_request_size_exact_boundary_and_one_character_over(self):
+        view = dict(evidence={}, turns=[])
+        message = 'x' * coaching.MAX_MESSAGE_CHARS
+        blank = sum(len(m['content']) for m in coaching.messages(view, message, live={}))
+        room = coaching.MAX_CONTEXT_CHARS + coaching.MAX_REPLY_CHARS - blank
+        # JSON object adds its quoted key and value delimiters as well as the text.
+        padding = room - (len(coaching.encode({'padding': ''})) - len(coaching.encode({})))
+        view['evidence'] = {'padding': 'x' * padding}
+        self.assertEqual(sum(len(m['content']) for m in coaching.messages(view, message, live={})),
+                         coaching.MAX_CONTEXT_CHARS + coaching.MAX_REPLY_CHARS)
+        view['evidence']['padding'] += 'x'
+        with self.assertRaises(coaching.ContextBudgetError): coaching.messages(view, message, live={})
+
+    def test_missing_session_review_preserves_actual_sets_and_unknowns(self):
+        import weekly_coaching, coaching_compact
+        plan = self.large_completed_week()
+        with logger.get_db() as conn:
+            conn.execute('DELETE FROM session_reviews WHERE hevy_workout_id=?', ('completed-0',))
+        data = weekly_coaching.WeekReviewInput(plan_id=plan['id'], kind='call')
+        raw = weekly_coaching.week_context(data, self.db)
+        view = weekly_coaching.prepare(self.db, data, None)
+        decoded = coaching_compact.unpack(view['evidence']['compact_details'])
+        index = next(i for i, row in enumerate(raw['actual_workouts']) if row['workout_id']=='completed-0')
+        self.assertIsNone(decoded[f'week.actual_workouts.{index}.review'])
+        self.assertIsNone(decoded[f'week.actual_workouts.{index}.prescription'])
+        self.assertEqual(decoded[f'week.actual_workouts.{index}.sets'], raw['actual_workouts'][index]['sets'])
+        self.assertEqual(len(decoded[f'week.actual_workouts.{index}.sets']), 24)
+
     def test_a_skipped_day_finishes_the_microcycle_for_review_and_is_shown_as_not_trained(self):
         from rackbook import mesocycles
         plan,_=self.week()

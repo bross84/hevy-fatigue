@@ -1600,6 +1600,80 @@ selector fixes on `codex/swipe-sticky-exercises`. The local-only statements abov
 describe validation before publication. Server deployment and phone acceptance
 remain pending. No strength-reference policy change is included.
 
+
+## Concise coaching review verification — 2026-11-23
+
+Local only; no commit, push, production database access or deployment.
+
+- Host unittest suite: 252 passed.
+- Logger unittest suite: 648 tests, OK with one existing expected failure.
+- Required three host JavaScript checks and every rackbook/tests/*.cjs: passed.
+- New tools/check_review_copy_browser.py: mocked phone (390px) and desktop
+  (1280px) review/error states passed; no repeat button, correct Coach/builder
+  destinations, no logger POST, and no horizontal overflow. Screenshots inspected
+  under artifacts/review-copy. Fixture prose checks display only, not model quality.
+- Existing tools/check_weekly_coaching_browser.py: blocked before weekly review at
+  its first save, because #confirmSave stays hidden. The unchanged HEAD script
+  reproduces the same failure (artifacts/review-browser-baseline.log); assertions
+  were not weakened. Its weekly expectations were updated for the removed action.
+- Sandboxed Python/preview attempts stalled; suites and focused browser checks
+  ran with approved sandbox escalation. Deprecation warnings remain.
+- Docker build/startup blocked: Docker Desktop Linux engine pipe unavailable.
+  No container startup occurred. Complete this gate before release.
+- Real-provider adherence to the requested 200-word format, actual weekly data,
+  and physical-phone acceptance remain unverified. Existing replies are retained;
+  the weekly context-size guard is unchanged.
+
+
+Dashboard-notice follow-up: required host JavaScript checks and all logger .cjs
+checks passed again. Extended check_review_copy_browser.py passed saved-ready,
+not-yet-generated, interrupted and absent-call states with mocked GETs, phone and
+desktop screenshots and overflow checks. Python logic is unchanged since the
+252/648-test pass above. Docker remains unavailable as recorded above. Physical
+phone/provider acceptance and deployment remain pending; no commit or push.
+
+
+## Completed-week context budget fix — 2026-11-23, local
+
+- Synthetic three-session, six-movement, four-set fixture with captured RPE charts:
+  raw weekly context 184,334 characters (old threshold approximately 79,000);
+  final complete frozen report including history 74,629 characters. The actual
+  mocked provider request fits the existing total-message limit.
+- Lossless round-trip checks preserve charts, plan/prescription differences,
+  every set occurrence/order, precise weights, warm-ups, RPE 3.5, null ratings,
+  long Unicode notes, marker-shaped user data and repeated movement IDs/titles.
+- Route regression reaches one completed provider turn; stale-sequence resend is
+  refused, frozen evidence is reused, logger bytes stay unchanged. Missing review
+  keeps actual sets and null prescription/review. Oversized live state saves no
+  conversation; a subsequent normal preparation succeeds.
+- Historical trimming regression preserves the complete week's normalized sets
+  and linked check-in, while full-data progress/stress/workload summaries match.
+  Exact total-request boundary passes and one extra character fails.
+- Full host suite: 258 tests passed before the last added edge cases. Final
+  coaching-specific suite: 148 tests passed, including the additional cases; see
+  compact-final-tests.log.
+  Full logger suite: 648 tests, OK with one existing expected failure. Required
+  host JS checks and every rackbook/tests/*.cjs passed.
+- tools/check_weekly_compact_browser.py: real local preparation and saved review,
+  mocked provider, dashboard entry -> AI review -> logger -> dashboard ready ->
+  saved discussion; exactly one provider call, three completed workouts, zero
+  plan changes. Phone/desktop captures under artifacts/weekly-compact.
+- The preview deliberately omits its unrelated daily check-in so daily AI calls
+  cannot contaminate the weekly request count. No real Hevy/provider/database used.
+- Existing broader weekly browser save-dialog baseline failure remains as recorded
+  above. Docker build attempted again but Linux engine pipe is unavailable, so
+  Docker build/startup remains blocked. No production or physical-device checks.
+- No commit, push or deployment. Actual KBR1.2/model comprehension is release
+  acceptance, not claimed by mocked-provider testing.
+
+
+Delivery update (2026-11-23): Brian authorized commit, push and a PR for the
+concise reviews, dashboard notice and compact weekly evidence on
+`codex/weekly-review-context`. Earlier local-only notes describe pre-publication
+validation. Deployment, Docker verification and actual KBR1.2 acceptance remain
+pending. The unrelated low-pin-bench investigation is excluded from this PR.
+
+
 ## Low-pin-bench investigation (2026-11-22)
 
 The earlier stabilization test had a false-positive assertion: CSV RPE keys were
@@ -1662,3 +1736,16 @@ one existing expected failure. All 42 logger JS files and three required host
 JS checks passed. The focused phone/desktop browser check passed again, including
 actual reload. Logs: artifacts/recency-pr-{host,logger,browser}.log. Earlier
 260-host-test results included the separate coaching work. Docker remains blocked.
+
+
+## PR #165 merge-conflict resolution (2026-11-24)
+
+Merged main after #166 into codex/weekly-review-context. Conflicts were only
+append-only sections in four documentation files; retained both coaching and
+strength-reference notes. Application and test files match the combined tree
+previously validated in commit 260a785 (260 host / 652 logger tests, one expected
+failure); no application conflict or new behavior change. All 42 logger JS files
+and the three required host JS checks passed again. Both mocked browser checks
+passed: weekly compact review (one provider call, zero plan changes) and phone/
+desktop stale TS confirmation including reload. Logs: artifacts/merge165-*.log.
+Docker and physical-device limitations remain unchanged. No deployment.

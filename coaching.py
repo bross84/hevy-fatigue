@@ -24,6 +24,13 @@ RECENT_EXPOSURES = 6
 KNOWN_MOVEMENTS = 80
 MAX_CONTEXT_CHARS = 160_000
 MAX_REPLY_CHARS = 60_000
+MAX_MESSAGE_CHARS = 12_000
+
+
+class ContextBudgetError(ValueError):
+    """The complete provider request cannot fit within the existing character limits."""
+
+
 MAX_TURNS = 40
 DAILY_PENDING_RETRY_AGE = timedelta(minutes=5)
 DAILY_RECOMMENDATION_VERSION = 'daily-recommendation-v2'
@@ -88,10 +95,23 @@ The supplied score/recommendation is provisional context, not a command or physi
 Low fatigue alone does not establish a need for more volume. A first-set overshoot is not proof of a bad block.
 Assess performance, effort, dose, frequency, spacing, check-ins and consistency together.
 Consider maintaining, changing dose, substituting movements, or transitioning phases; changes need evidence,
-not simply elapsed weeks or the novelty of a new exercise. Explain alternatives and what would change your view.
-Ask a focused question if a missing goal, constraint, equipment detail or competition date materially changes advice.
-For a training review, cover: apparent training emphasis (label inferred phases), progress and uncertainty,
-whether change is warranted, and a concrete proposed direction with rationale. Avoid forced recommendations.
+not simply elapsed weeks or the novelty of a new exercise. Discuss alternatives only when asked.
+For training and weekly reviews, use at most 200 words of prose in three short sections:
+Overall: one sentence on how the week went, with uncertainty where needed.
+Trends: three short bullets, labeled e1RM, Volume, and Stress. Summarize the overall direction,
+using only the few movement examples that matter to the decision, not an exercise-by-exercise inventory.
+Next week: say Keep the plan, Change the plan, or Not enough evidence to decide. If changing it,
+name the specific change and its evidence-based reason; otherwise briefly explain why holding is reasonable.
+Separate the finished microcycle from rolling 7-day stress and 28-day progress comparisons; do not
+present those windows as week-over-week results. Compare volume only over comparable periods and movements.
+Missing scored sets or sparse exposures do not prove skipped work, poor compliance, stalling or failure.
+Do not claim good recovery or successful adaptation from stress scores alone.
+Include material uncertainty beside the claim, not in a separate long caveat section. Do not repeat the verdict.
+Do not end a review with questions, a menu of alternatives, or an unsolicited detailed program analysis.
+If goals or constraints are missing, state the limitation and avoid changes that depend on them.
+The athlete will ask specific follow-up questions; answer those directly at the requested depth.
+The prose limit excludes machine-readable plan blocks, which the UI renders as a separate proposal card.
+Avoid forced recommendations.
 Cite report field names/dates/exposure counts for numerical claims. Do not invent numbers absent from the report.
 Cite literature ONLY with the provided reference IDs, titles and URLs, and only for the supplied principle.
 Do not invent citations, claim live literature search, or present product thresholds as established science.
@@ -108,18 +128,21 @@ Legacy reason fatigue used a combined tiredness/poor-recovery label. Its precise
 ambiguous without the note, and it is never proof of poor physical recovery.
 Use motivation as engagement context, never a performance prediction or a fatigue-score component.
 For weekly reviews, week_context identifies the planned training week, not a calendar Monday–Sunday.
+Weekly evidence v2 uses compact_details for lossless shared values and column-based set tables.
+An object containing detail_ref points to that key in compact_details.data; resolve its encoding
+using compact_details.encoding and shared. These are the full original values, not omitted evidence.
+Resolve referenced prescriptions, actual sets and session findings before comparing planned and actual work.
 Opening reviews should discuss the upcoming plan using current check-in, recent response and spacing.
 Closing reviews should compare planned versus actually linked work, motivation and response, revisit
-the opening discussion, and propose specific options to discuss with the athlete like a remote coach.
+the opening discussion, and give one concise recommendation with its reason.
 A weekly coaching call (week_context.kind call) replaces both: it is the one check-in per finished microcycle,
 like a remote coach's weekly call. Review the finished microcycle as a closing review would, then lay out the next
 one. If live current_plans has no microcycle with pending days, give the next week as one plan-proposal block: usually
 the same week, with changes only where the evidence supports them. If the next microcycle already exists (or
 week_context.next_week is set), give changes to it as one plan-change block, or say to keep it. Keeping everything the
-same is a good answer. When the evidence suggests a new stimulus or phase, explain the idea and why and ask whether the
-athlete wants it; build that program only after they agree, and meanwhile offer the usual next week so training is not
+same is a good answer. When the evidence suggests a new stimulus or phase, briefly explain the idea and why, noting that it needs agreement; build that program only after they agree, and meanwhile offer the usual next week so training is not
 held up. Keep the call short and plain. In a call the athlete can accept a plan-proposal as their next microcycle, which
-then becomes active on their tap, or choose Run it back to repeat the finished week unchanged; after that, refine the new
+then becomes active only on their Accept tap; after that, refine the new
 week with plan-change blocks against current_plans.
 A day in week_context.skipped_sessions (or a plan_completions row with outcome skipped) was skipped by the athlete's
 choice and not trained: never count it as performed work, and do not treat it as a failure, a fatigue signal or
@@ -151,10 +174,10 @@ guesses (reviewed_share) and unmapped exercises limit confidence. These are tota
 Each exercise's progress block and progress_summary compare a movement's e1RM (heaviest recorded-RPE set) over the
 last 28 days with the 28 days before: progressing, flat, declining or insufficient_evidence. In a training or
 weekly review (not a daily interpretation), mention the movements in progress_summary.attention even if the athlete
-did not ask, and say plainly when none are flagged or evidence is insufficient. Before suggesting any change, check
+did not ask when they materially affect the decision; group the rest and say plainly when evidence is insufficient. Before suggesting any change, check
 the confounders in the report: rep_range_shift, entered_share, low_effort_exposures, exposure spacing, a recent
 deload or time off, stress and check-in context. Then offer options to discuss, such as holding, a rep-range or
-set-count change, a variation, or a phase change, with what would change your view. A flat or declining status
+set-count change, a variation, or a phase change, only when asked for alternatives. Default to one justified direction. A flat or declining status
 shows neither cause nor failure and is not a recommendation; never present it as proof that a block should end.
 proposal_outcomes is the history of week proposals the athlete saved as drafts, newest first: how far each
 plan got (stage, sessions_completed of sessions_planned, edited_since_save) and, once 28 days have passed since its
@@ -338,8 +361,10 @@ def live_planning(conversation_id):
     return result
 
 
-def build_report(db, *, today=None, monitoring_context=None, context_limit=None):
+def build_report(db, *, today=None, monitoring_context=None, context_limit=None, encode_report=None,
+                 protected_workouts=(), protected_plan_id=None):
     context_limit=MAX_CONTEXT_CHARS if context_limit is None else context_limit
+    encode_report = encode_report or (lambda report: report)
     today = today or local_day.local_today()
     month_index = today.year * 12 + today.month - 1 - 6
     year, month = divmod(month_index, 12)
@@ -498,25 +523,36 @@ def build_report(db, *, today=None, monitoring_context=None, context_limit=None)
         turns=db.query(CoachingTurn).filter_by(conversation_id=review.id,status='complete').order_by(CoachingTurn.sequence.desc()).limit(4).all()
         prior.append(dict(id=review.id,evidence_date=review.created_at,turns=[dict(message=t.message[:4000],response=(t.response or '')[:4000]) for t in reversed(turns)]))
     report['prior_review_excerpts']=prior
+    if protected_workouts or protected_plan_id:
+        # Capture before historical trimming: completed-week provenance/check-ins must
+        # survive even when older detail is removed to fit the provider request.
+        report['completed_week_evidence'] = dict(
+            sessions=[s for s in ordered if s['id'] in protected_workouts],
+            **{key: [row for row in report[key] if row.get('hevy_workout_id') in protected_workouts
+                     or row.get('linked_workout_id') in protected_workouts
+                     or protected_plan_id is not None and row.get('plan_id') == protected_plan_id]
+               for key in ('pretraining_checkins', 'motivation_checkins', 'confirmed_session_checkins')})
     report['limitations'].append('Prior review excerpts: latest three conversations, last four completed turns each, at most 4000 characters per message/response. They are historical claims, not verified outcomes.')
     # Drop bounded detail first, always record every omitted section. Do not silently send oversized prompts.
+    def report_size():
+        return len(encode(encode_report(report)))
     for section in ('prior_review_excerpts','recommendation_feedback','proposal_outcomes','preserved_sessions','saved_plans','pretraining_checkins','motivation_checkins','confirmed_session_checkins','recent_sessions'):
-        while len(encode(report))>context_limit and report[section]:
+        while report_size()>context_limit and report[section]:
             report[section].pop(-1 if section in ('prior_review_excerpts','recommendation_feedback','proposal_outcomes','saved_plans') else 0)
             note=f'{section}: older detail omitted for context size.'
             if note not in report['limitations']: report['limitations'].append(note)
-    if len(encode(report))>context_limit:
+    if report_size()>context_limit:
         for ex in report['exercises']: ex['recent_exposures']=[]
         report['limitations'].append('Per-exercise raw sets omitted for context size; summaries retained.')
-    if len(encode(report))>context_limit:
+    if report_size()>context_limit:
         for ex in report['exercises']: (ex.get('stress') or {}).pop('recent_sessions',None)
         report['limitations'].append('Per-session stress detail omitted for context size; stress summaries retained.')
-    if len(encode(report))>context_limit:
+    if report_size()>context_limit:
         for ex in report['exercises']: (ex.get('progress') or {}).pop('recent_points',None)
         report['limitations'].append('Per-exposure progress points omitted for context size; progress summaries retained.')
-    if len(encode(report))>context_limit:
-        raise ValueError('Training context exceeds the review limit; no incomplete assessment was sent.')
-    return report
+    if report_size()>context_limit:
+        raise ContextBudgetError('Training context exceeds the review limit; no incomplete assessment was sent.')
+    return encode_report(report)
 
 
 def parse_daily_recommendation(response):
@@ -668,5 +704,5 @@ def messages(view, message, live=None):
             prior.append(dict(role='assistant',content=prefix+t['response']))
     prior.append(dict(role='user',content=message))
     if sum(len(m['content']) for m in prior)>MAX_CONTEXT_CHARS+MAX_REPLY_CHARS:
-        raise ValueError('Conversation context is full. Start a new training review; this one remains saved.')
+        raise ContextBudgetError('Conversation context is full. Start a new training review; this one remains saved.')
     return prior

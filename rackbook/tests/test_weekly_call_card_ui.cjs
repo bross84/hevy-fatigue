@@ -69,7 +69,7 @@ const PREVIEW='/training/api/weekly-call/src/preview',ACCEPT='/training/api/week
   // Next week set up another way (Run it back): no Accept, but Undo while it is untouched.
   responses[PREVIEW]={json:call({next:{...set,origin:'repeat',proposal_id:null}})};
   card=await PlanProposal.mount(new Node('div'),request,{call:{sourcePlanId:'src'}});
-  assert.ok(card.textContent.includes('Next week is already set up with Run it back: BS2.4.'));
+  assert.ok(card.textContent.includes('Next week is already set up by repeating the previous week: BS2.4.'));
   assert.deepEqual(buttons(card).map(b=>b.textContent),['Undo']);
   responses[PREVIEW]={json:call({this_turn:true,next:{...set,can_undo:false,undo_problem:'A day of the next week has been trained or skipped, so it cannot be undone here.'}})};
   card=await PlanProposal.mount(new Node('div'),request,{call:{sourcePlanId:'src'}});

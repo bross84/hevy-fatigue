@@ -110,7 +110,7 @@ const PlanProposal = (() => {
     };
     if (next) {
       card.append(el('p', 'plan-proposal-note', call.this_turn ? next.name + ' is your active microcycle, set up from this proposal.'
-        : 'Next week is already set up' + (next.origin === 'repeat' ? ' with Run it back' : ' from another reply') + ': ' + next.name + '.'));
+        : 'Next week is already set up' + (next.origin === 'repeat' ? ' by repeating the previous week' : ' from another reply') + ': ' + next.name + '.'));
       if (next.can_undo) {
         const undo = el('button', 'plan-proposal-save', 'Undo');
         undo.type = 'button';

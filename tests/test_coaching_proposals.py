@@ -47,7 +47,7 @@ class BriefTests(TestCase):
         for phrase in ('A weekly coaching call (week_context.kind call) replaces both',
                        'give the next week as one plan-proposal block', 'give changes to it as one plan-change block',
                        'Keeping everything the same is a good answer', 'build that program only after they agree',
-                       'Run it back to repeat the finished week unchanged',
+                       'then becomes active only on their Accept tap',
                        'Outside a weekly coaching call the athlete can preview it and save it only as an inactive draft'):
             self.assertIn(phrase, brief)
 

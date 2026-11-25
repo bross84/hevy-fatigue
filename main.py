@@ -109,7 +109,7 @@ class CoachingCreate(BaseModel):
 
 class CoachingMessage(BaseModel):
     id: UUID
-    message: str = Field(min_length=1, max_length=12000)
+    message: str = Field(min_length=1, max_length=coaching.MAX_MESSAGE_CHARS)
     model: str = Field(min_length=1, max_length=200)
     expected_sequence: int = Field(ge=0, le=coaching.MAX_TURNS)
     retry_pending_turn_id: UUID | None = None

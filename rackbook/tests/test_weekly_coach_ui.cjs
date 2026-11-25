@@ -31,6 +31,6 @@ vm.runInContext(fs.readFileSync(path.join(__dirname,'../static/ai-coach.js'),'ut
   await ctx.weekly.reviewWeek('plan4','call');
   assert.equal(calls.find(c=>c.url==='/api/ai/week-reviews').body.kind,'call');
   const sent=calls.find(c=>c.url.endsWith('/messages')).body.message;
-  assert.match(sent,/weekly coaching call/);assert.match(sent,/Keeping everything the same is a fine answer/);assert.match(sent,/ask me first/);
+  assert.match(sent,/weekly coaching call/);assert.match(sent,/Keeping everything the same is a fine answer/);assert.match(sent,/at most 200 words/);assert.match(sent,/No exercise inventory, alternatives or follow-up questions/);
   console.log('Weekly Coach: selected model, split stream, cached/uncertain no resend, missing settings, weekly call message and safe navigation passed.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
