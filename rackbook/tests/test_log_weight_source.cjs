@@ -11,7 +11,7 @@ const c=vm.createContext({el,LB_PER_KG:2.20462262185,num:Number,lbOfKg:n=>n*2.20
   trim:String,fmtShortDate:String,setE1Cells:new Map()});
 vm.runInContext(html.slice(html.indexOf('  function setE1rm('),html.indexOf('  function refreshCard(')),c);
 vm.runInContext(html.slice(html.indexOf('  function renderRefBar('),html.indexOf('  // ── The plate loader')),c);
-const ex={ref:{basis:'e1rm',ls:true,tmPct:.95,state:{found:true,e1rm_lb:300}},sets:[
+const ex={ref:{basis:'e1rm',ls:true,tmPct:.95,state:{found:true,workout_start_time:new Date(Date.now()-86400000).toISOString(),e1rm_lb:300}},sets:[
   {type:'normal',done:true,kg:'100',reps:'5',rpe:'6',arpe:'5'},
   {type:'normal',done:false,manual:false,kg:'90',reps:'5',rpe:'6'},
   {type:'normal',done:false,manual:true,kg:'80',reps:'5',rpe:'6'}]};

@@ -850,3 +850,25 @@ Delivery update: owner authorized commit, push and PR for the swipe and sticky
 selector fixes on `codex/swipe-sticky-exercises`. The local-only statements above
 describe validation before publication. Server deployment and phone acceptance
 remain pending. No strength-reference policy change is included.
+
+## Strength-reference recency release checks (2026-11-24, pending)
+
+After reviewed build/deployment, reload Log. Verify a movement with only history
+older than 90 days shows previous sets but asks for a starting weight. Confirm a
+recent eligible history reference still fills the normal load. With an old pinned
+TS, verify no automatic starting load appears until "Use pinned TS for this
+workout" is tapped; inspect its displayed date/value before confirming. Confirm
+reload retains approval for that workout and a new workout asks again. Test both
+e1RM and TM, manual/done weights and LS adjustment after an actual rated set.
+Do not use a production workout as a test upload. Physical phone acceptance is
+separate from mocked checks. Keep #159 open until review/release acceptance.
+
+No migration: both databases, TS history, completed records and frozen saves stay
+intact. Rollback to the prior reviewed image preserves all data/keys but restores
+the old unlimited-age automatic-reference behavior. Docker build/startup must
+pass once Docker Desktop is available. This change does not authorize deployment.
+
+
+Delivery update (2026-11-24): Brian authorized commit, push and a PR for
+`codex/strength-reference-recency`. Earlier local-only statements describe
+pre-publication validation. Deployment and physical acceptance remain pending.
