@@ -26,9 +26,6 @@ main { max-width: 1120px; padding: 24px; margin: 0 auto; }
 .page-title h1 { font-size: 26px; font-weight: 700; letter-spacing: -.035em; line-height: 1.2; margin: 0; }
 .app-header .page-back { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; width: auto; padding: 0 10px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); font-size: 13px; }
 .header-tools { justify-self: end; }
-.app-header .app-nav { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; padding: 5px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; white-space: normal; }
-.app-header .app-nav a { display: flex; align-items: center; justify-content: center; flex: 1 0 auto; min-height: 40px; padding: 6px 14px; margin: 0; border-radius: 9px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 550; }
-.app-header .app-nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 650; }
 .card { border-radius: 16px; border-color: var(--line); box-shadow: var(--shadow); margin-bottom: 16px; }
 h2, h3, .wk-title, .ex-title { letter-spacing: -.02em; font-weight: 650; }
 button, input, select { transition: border-color .12s ease, background-color .12s ease, box-shadow .12s ease; }
@@ -54,7 +51,6 @@ th { font-weight: 600; }
 .wk-meta { margin-top: 6px; }
 .intro { line-height: 1.65; }
 @media (hover: hover) {
-  .app-header .app-nav a:hover { background: var(--soft); color: var(--text); }
   button:not(:disabled):hover { border-color: var(--accent); }
 }
 @media (max-width: 599px) {
@@ -62,7 +58,6 @@ th { font-weight: 600; }
   .app-header { gap: 12px; margin-bottom: 18px; }
   .page-heading { gap: 8px; }
   .page-title h1 { font-size: 23px; }
-  .app-header .app-nav a { flex: 1 0 28%; padding: 6px 8px; min-height: 44px; font-size: 13px; }
   .card { border-radius: 14px; }
   .metric { padding: 10px 8px; }
   .metric strong { font-size: 23px; }

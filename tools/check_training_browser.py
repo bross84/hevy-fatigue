@@ -216,6 +216,18 @@ with sync_playwright() as p:
     expect(desk.get_by_role('textbox',name='Weight in kilograms',exact=True).last).to_have_value(manual_before)
     stored=next(r for r in desk.request.get(URL+'/training/exercise-refs').json() if r['exercise_template_id']=='sq')
     assert stored['auto_weights'] is False and stored['ls'] is True,stored
+    # Computer width: every page keeps the shared menu open down the left side, like Log and the dashboard.
+    for path,current in (('/training/recent','Recent'),('/training/microcycles','Plans'),('/training/progress','Progress'),
+                         ('/training/stress','Stress'),('/training/rpe-charts','RPE Charts'),('/training/trial',None),
+                         ('/static/docs.html','Docs'),('/static/diagnostic.html',None)):
+        desk.goto(URL+path)
+        expect(desk.locator('#appNav')).to_be_visible()
+        expect(desk.get_by_role('button',name='Menu',exact=True)).to_be_hidden()
+        if current: expect(desk.locator('#appNav a[aria-current="page"]')).to_have_text(current)
+        else: expect(desk.locator('#appNav a[aria-current="page"]')).to_have_count(0)
+        content_left=desk.evaluate("document.querySelector('main, [data-app-main]').getBoundingClientRect().left")
+        assert content_left>=224,(path,content_left)
+        assert desk.evaluate('document.documentElement.scrollWidth <= innerWidth'),path
     desk.screenshot(path=str(out/'logger-no-source-desktop.png'),full_page=True)
     fresh=browser.new_context(viewport={'width':390,'height':844},is_mobile=True,has_touch=True)
     fresh.route('https://**/*',lambda route:route.abort())
@@ -291,7 +303,18 @@ with sync_playwright() as p:
     expect(page.locator('#plannedStart')).to_contain_text('Next Workout')
     page.goto(URL+'/training/rpe-charts');expect(page.locator('h1')).to_contain_text('RPE')
     page.screenshot(path=str(out/'rpe-phone.png'),full_page=True)
-    page.get_by_role('link',name='Settings',exact=True).click()
+    # Phone: the page links sit behind the shared Menu button, which opens the same list as Log.
+    menu=page.get_by_role('button',name='Menu',exact=True)
+    expect(menu).to_have_attribute('aria-expanded','false')
+    expect(page.locator('#appNav')).to_be_hidden()
+    menu.click()
+    expect(menu).to_have_attribute('aria-expanded','true')
+    expect(page.locator('#appNav a[aria-current="page"]')).to_have_text('RPE Charts')
+    page.locator('#appNav').get_by_role('button',name='Close',exact=True).click()
+    expect(page.locator('#appNav')).to_be_hidden()
+    expect(menu).to_be_focused()
+    menu.click()
+    page.locator('#appNav').get_by_role('link',name='Settings',exact=True).click()
     expect(page.locator('#tab-settings')).to_have_class('tab-content active')
     assert page.url.endswith('/#settings')
     # Unknown hashes cannot hide or break the host dashboard.

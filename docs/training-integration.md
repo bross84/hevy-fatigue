@@ -876,3 +876,17 @@ ID. A sync copy of an exercise that a pending creation later confirms is folded 
 record. `init_db` backfills from `exercise_creations` and `hevy_exercise_cache`. Workouts, plans
 and references keep Hevy IDs (#145). Routes: `GET /exercises/local`; `GET /exercises` adds
 `local_id`.
+
+## Shared page menu (2026-11-26, local; #128)
+
+`app-menu.js` (v3) has two variants. `data-app-menu="sidebar"` is unchanged and used
+only by Log's own `#loggerNav`. `data-app-menu="shell"` (training pages other than
+Log, plus host Docs and Diagnostics, which load `/training/static/app-menu.js`)
+moves the `<nav>` into a generated `<aside id="appNav">` with a ✕, adds
+`#appNavScrim` and a `#appMenuButton` "Menu" button in the page header, and sets
+`body.has-app-nav`. Below 1100px it is a slide-out (main/`[data-app-main]` made
+inert while open; Escape, ✕ and scrim close it); from 1100px it is a fixed 224px
+sidebar (240px from 1900px) and main is offset beside it. Its styles are injected
+by the script, so host pages need no theme.css. The old top-bar "More" variant and
+the `.app-header .app-nav` styles in theme.css (v2) are removed. No routes,
+storage or service-worker scope changed.

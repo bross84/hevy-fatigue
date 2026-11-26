@@ -937,3 +937,14 @@ build/startup passed (isolated, no network). This does not authorize deployment.
   build ignores the new table. Keep the pre-release database copy as usual.
 - After deploy: run Exercise sync once, then check `/training/exercises/local` lists the catalog with
   `in_hevy: true`. Not yet checked on a phone or against deployed data.
+
+## Shared page menu release checks (2026-11-26, pending; #128)
+
+After reviewed build/deployment, on a phone: Recent, Plans, Progress, Stress, RPE
+Charts, Trial, Docs and Diagnostics show one Menu button beside the title; it opens
+the grouped list with the current page marked, ✕ closes it, and every link works.
+On a computer (1100px or wider) the list stays open on the left on every page and
+nothing scrolls sideways. Log and the dashboard look as before.
+
+No migration or data change. Rollback to the prior reviewed image restores the old
+top menus. This does not authorize deployment.

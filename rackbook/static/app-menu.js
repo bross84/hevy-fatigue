@@ -38,27 +38,60 @@ const AppMenu = (() => {
     return a;
   }
 
-  // Phone-friendly top bar: Dashboard, Training and pinned items (Settings) stay visible; the rest sit behind "More".
-  function renderBar(container) {
-    const extra = document.createElement('div');
-    extra.className = 'app-nav-more';
-    extra.id = 'appNavMore';
-    extra.hidden = true;
-    const toggle = document.createElement('button');
-    toggle.type = 'button';
-    toggle.className = 'app-nav-more-toggle';
-    toggle.textContent = 'More';
-    toggle.setAttribute('aria-expanded', 'false');
-    toggle.setAttribute('aria-controls', extra.id);
-    toggle.addEventListener('click', () => {
-      extra.hidden = !extra.hidden;
-      toggle.setAttribute('aria-expanded', String(!extra.hidden));
+  // Every page except Log and the dashboard: the same grouped list as Log's sidebar. Below 1100px it
+  // slides out from a Menu button in the page header; from 1100px it stays open down the left side.
+  function renderShell(nav) {
+    renderSidebar(nav);
+    if (nav.closest('#appNav')) return;
+    const header = nav.parentElement;
+    const aside = document.createElement('aside');
+    aside.id = 'appNav';
+    aside.className = 'app-shell-nav';
+    aside.setAttribute('aria-label', 'Application navigation');
+    const title = document.createElement('div');
+    title.className = 'app-shell-title';
+    const name = document.createElement('span');
+    name.textContent = 'Hevy-Fatigue';
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'close-x';
+    close.setAttribute('aria-label', 'Close');
+    close.textContent = '✕';
+    title.append(name, close);
+    aside.append(title, nav);
+    const scrim = document.createElement('button');
+    scrim.type = 'button';
+    scrim.id = 'appNavScrim';
+    scrim.setAttribute('aria-label', 'Close navigation');
+    scrim.hidden = true;
+    const menu = document.createElement('button');
+    menu.type = 'button';
+    menu.id = 'appMenuButton';
+    menu.className = 'app-menu-button';
+    menu.textContent = 'Menu';
+    menu.setAttribute('aria-controls', aside.id);
+    menu.setAttribute('aria-expanded', 'false');
+    header.append(menu);
+    document.body.prepend(scrim);
+    document.body.prepend(aside);
+    document.body.classList.add('has-app-nav');
+    const wide = window.matchMedia('(min-width:1100px)');
+    const setOpen = (open, focus = true) => {
+      aside.classList.toggle('is-open', open);
+      scrim.hidden = !open;
+      menu.setAttribute('aria-expanded', String(open));
+      const main = document.querySelector('main, [data-app-main]');
+      if (main) main.inert = open;
+      if (open) close.focus();
+      else if (focus && !wide.matches) menu.focus();
+    };
+    menu.addEventListener('click', () => setOpen(menu.getAttribute('aria-expanded') !== 'true'));
+    close.addEventListener('click', () => setOpen(false));
+    scrim.addEventListener('click', () => setOpen(false));
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && menu.getAttribute('aria-expanded') === 'true') setOpen(false);
     });
-    for (const group of groups) {
-      const always = group.name === 'Overview' || group.name === 'Training';
-      for (const item of group.items) (always || item.pinned ? container : extra).append(link(item));
-    }
-    container.append(toggle, extra);
+    wide.addEventListener('change', () => { if (wide.matches) setOpen(false, false); });
   }
 
   // Full grouped list for the logger's slide-out sidebar.
@@ -77,12 +110,21 @@ const AppMenu = (() => {
     const css = document.createElement('style');
     css.id = 'appMenuStyle';
     css.textContent = [
-      '.app-nav .app-nav-more-toggle{display:flex;align-items:center;justify-content:center;flex:1 0 auto;min-height:40px;padding:6px 14px;border:0;border-radius:9px;background:transparent;color:var(--muted);font:inherit;font-size:14px;font-weight:550;cursor:pointer}',
-      '.app-nav .app-nav-more-toggle:hover{background:var(--soft);color:var(--text)}',
-      '.app-nav .app-nav-more-toggle[aria-expanded=true]{background:var(--accent-soft);color:var(--accent)}',
-      '.app-nav .app-nav-more{display:flex;flex-wrap:wrap;gap:4px;flex:1 0 100%}',
-      '.app-nav .app-nav-more[hidden]{display:none}',
-      '@media (max-width:767px){.app-nav .app-nav-more-toggle{flex:1 0 28%;min-height:44px;padding:6px 8px;font-size:13px}}',
+      '.app-shell-nav{display:none;box-sizing:border-box;background:var(--card);color:var(--text);border-right:1px solid var(--line,var(--border))}',
+      '.app-shell-nav.is-open{display:block;position:fixed;inset:0 auto 0 0;width:min(300px,85vw);overflow-y:auto;z-index:1001}',
+      '.app-shell-title{display:flex;align-items:center;justify-content:space-between;padding:16px 12px;font-weight:500}',
+      '.app-shell-title .close-x{flex:none;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;min-height:44px;padding:0;margin:0;border:1px solid var(--line,var(--border));border-radius:12px;background:var(--card);color:var(--text);font:inherit;font-size:18px;line-height:1;cursor:pointer}',
+      '.app-shell-nav .app-nav{display:grid;gap:4px;position:static;width:auto;height:auto;padding:0 12px 24px;margin:0;background:none;border:0;border-radius:0}',
+      '.app-shell-nav .logger-nav-group{font-size:12px;color:var(--muted);margin:20px 12px 4px}',
+      '.app-shell-nav .app-nav a{display:flex;align-items:center;justify-content:flex-start;flex:none;min-height:44px;padding:8px 12px;margin:0;border-radius:8px;color:var(--text);text-decoration:none;font-size:14px;font-weight:400}',
+      '.app-shell-nav .app-nav a:hover{background:var(--soft,rgba(127,127,127,.12))}',
+      '.app-shell-nav .app-nav a[aria-current=page]{background:var(--accent-soft,var(--accent-sub,rgba(127,160,230,.18)));color:var(--accent);font-weight:500}',
+      ".app-shell-nav .app-nav a[aria-current=page]::after{content:'Current';margin-left:auto;font-size:12px;font-weight:400}",
+      '#appNavScrim{position:fixed;inset:0;width:auto;min-height:0;padding:0;margin:0;background:rgba(0,0,0,.55);border:0;border-radius:0;z-index:1000}',
+      '#appNavScrim[hidden]{display:none}',
+      '.app-menu-button{flex:none;width:auto;min-height:44px;padding:0 16px;margin:0;border:1px solid var(--line,var(--border));border-radius:12px;background:var(--card);color:var(--text);font:inherit;font-size:14px;font-weight:600;cursor:pointer}',
+      '@media (min-width:1100px){.app-shell-nav{display:block;position:fixed;inset:0 auto 0 0;width:224px;overflow-y:auto;z-index:30}.app-menu-button,.app-shell-title .close-x{display:none}body.has-app-nav :is(main,[data-app-main]){max-width:none;margin:0 0 0 224px}}',
+      '@media (min-width:1900px){.app-shell-nav{width:240px}body.has-app-nav :is(main,[data-app-main]){margin-left:240px}}',
     ].join('\n');
     document.head.append(css);
   }
@@ -90,7 +132,7 @@ const AppMenu = (() => {
   function render(container, variant = container.dataset.appMenu) {
     container.replaceChildren();
     if (variant === 'sidebar') renderSidebar(container);
-    else { style(); renderBar(container); }
+    else { style(); renderShell(container); }
   }
 
   function mount() {

@@ -7,6 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Hevy Fatigue — Methodology & Reference</title>
 <link rel="icon" href="/resources/favicon.png" type="image/png">
+<script src="/training/static/app-menu.js?v=3"></script>
 <link rel="apple-touch-icon" href="/resources/apple-touch-icon.png">
 <style>
 /* ══════════════════════════════════════════════════════
@@ -96,21 +97,6 @@ nav {
   [data-theme="auto"] .logo-icon-dark { display: none; }
   [data-theme="auto"] .logo-icon-light { display: block; }
 }
-.nav-tabs { display: flex; gap: 2px; flex: 1; }
-.nav-tab {
-  background: none;
-  border: none;
-  color: var(--muted);
-  padding: 7px 14px;
-  cursor: pointer;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all .15s;
-}
-.nav-tab:hover  { color: var(--text); background: var(--border); }
-.nav-tab.active { color: var(--accent); background: var(--accent-sub); }
-
 .nav-right { margin-left: auto; }
 .btn-group button {
   font-size: 13px;
@@ -552,10 +538,24 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
     .logo { height: 28px; }
     .logo-icon-dark,
     .logo-icon-light { height: 28px; }
+  }
 
-    .nav-tabs {
-      display: none;
-    }
+  /* The shared app menu: from 1100px it stays open down the left side, so the top bar,
+     the contents list and the article move right to make room. */
+  .nav-right { display: flex; align-items: center; }
+  /* A wide reference table scrolls inside itself instead of making the whole page scroll sideways. */
+  @media (max-width: 900px) {
+    .ref-table { display: block; max-width: 100%; overflow-x: auto; }
+  }
+  @media (min-width: 1100px) {
+    body.has-app-nav > nav { width: auto; margin-left: 224px; }
+    body.has-app-nav .sidebar { left: 224px; }
+    body.has-app-nav main.docs-main { margin-left: 474px; max-width: 860px; }
+  }
+  @media (min-width: 1900px) {
+    body.has-app-nav > nav { margin-left: 240px; }
+    body.has-app-nav .sidebar { left: 240px; }
+    body.has-app-nav main.docs-main { margin-left: 490px; }
   }
 </style>
 </head>
@@ -568,12 +568,8 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
     <img class="logo-icon-dark" src="/resources/HF_LOGO_DARK.png" alt="Hevy Fatigue">
     <img class="logo-icon-light" src="/resources/HF_LOGO_LIGHT.png" alt="Hevy Fatigue">
   </a>
-  <div class="nav-tabs">
-    <a href="/" class="nav-tab">Today</a>
-    <a href="/static/docs.html" class="nav-tab active">Docs</a>
-  </div>
   <div class="nav-right">
-    <a href="/" class="nav-tab" style="color: var(--accent); font-weight: 600;">← Dashboard</a>
+    <nav class="app-nav" aria-label="Pages" data-app-menu="shell"></nav>
   </div>
 </nav>
 
