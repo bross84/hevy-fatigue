@@ -177,13 +177,14 @@ def health():
 
 @app.get("/")
 def index():
-    # The front door is the workout log. The original multi-tab app is kept, unchanged, at /legacy.
+    # The front door is the workout log.
     return RedirectResponse("/training/log", headers=NO_CACHE)
 
 
+# The old multi-tab settings page is retired; its trial switch lives on the host Settings tab. Old bookmarks land there.
 @app.get("/legacy")
 def legacy_index():
-    return FileResponse(PACKAGE_DIR / "index.html", headers=NO_CACHE)
+    return RedirectResponse("/#settings", headers=NO_CACHE)
 
 
 @app.get("/favicon.ico")

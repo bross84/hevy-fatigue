@@ -13,14 +13,13 @@ function trainingUUID() {
 
 /* Light/Dark: follow the choice saved on the host dashboard (localStorage "theme": light, dark or auto).
  * Training pages style dark mode with prefers-color-scheme rules, so a fixed choice rewrites those rules to always
- * (dark) or never (light) apply. "auto" or no choice leaves the phone's setting in charge. A page with its own theme
- * control (#themeSelect, the legacy settings page) keeps it. */
+ * (dark) or never (light) apply. "auto" or no choice leaves the phone's setting in charge. */
 function trainingThemeChoice() {
   try { const t = localStorage.getItem('theme'); return t === 'light' || t === 'dark' ? t : null; } catch (e) { return null; }
 }
 function trainingApplyTheme(sheets) {
   const choice = trainingThemeChoice();
-  if (!choice || document.getElementById('themeSelect')) return;
+  if (!choice) return;
   document.documentElement.style.colorScheme = choice;
   const visit = rules => {
     for (const rule of rules) {

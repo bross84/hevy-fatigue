@@ -1657,3 +1657,17 @@ around the app the same way Log and the dashboard already did.
   still come from `rackbook/static/app-menu.js`; Model trial stays out of it.
 
 No data, saving, credential, monitoring, trial or Hevy-write behaviour changed.
+
+## Trial switch moved to Settings; old settings page retired (2026-11-26, local; #132)
+
+Owner approved the mockup on 2026-11-26.
+
+- **Settings** has a new "Performance model trial" card next to Engine Diagnostics. It holds the on/off
+  button, the current state (On / Off · optional), a "View trial results →" link and the folded
+  trial history. It replaces the plain "Training settings and performance model trial" link.
+- **The old settings page** (`/training/legacy`) is removed; its address opens Settings. Nothing
+  on it was needed elsewhere. The Hevy key was already managed in Settings. Exercise sync is in
+  Log and Plans. Its Theme menu changed only that page. Its kg/lbs choice was broken: lbs saved a
+  value the Log page doesn't read. Log's own kg/lb toggle is the one that works.
+- The trial setting is stored by the training app, so a trial that was on stays on. Recording,
+  timing, results and frozen trial records are unchanged.

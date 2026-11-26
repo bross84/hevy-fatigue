@@ -2228,6 +2228,16 @@ tbody tr:hover td { background: var(--row-hover); }
   text-decoration: none;
 }
 .settings-diag-cta:hover { opacity: 0.88; }
+/* Performance model trial (moved from the retired training settings page). */
+.trial-card-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.trial-card-head .card-title { margin-bottom: 0; }
+.trial-state { font-size: 12px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; }
+.trial-state.is-on { color: var(--accent); border-color: var(--accent); }
+.trial-status { font-size: 13px; color: var(--muted); margin: 0 0 12px; line-height: 1.5; }
+.trial-results-link { display: inline-block; margin-top: 12px; font-size: 13px; color: var(--accent); }
+.trial-history { margin-top: 12px; font-size: 13px; }
+.trial-history summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+.trial-history p { color: var(--muted); margin: 0 0 6px; line-height: 1.5; }
 .settings-key-row { display: flex; gap: 8px; align-items: stretch; min-width: 0; }
 .settings-key-row input {
   flex: 1;
@@ -3558,7 +3568,6 @@ body.ai-open main {
 
 <!-- ══════════════ SETTINGS TAB ══════════════ -->
 <section id="tab-settings" class="tab-content">
-<p><a href="/training/legacy#settings">Training settings and performance model trial</a></p>
   <div class="card settings-card settings-card-api">
     <div class="card-title">Settings</div>
 
@@ -3599,6 +3608,15 @@ body.ai-open main {
     <div class="card-title">Engine Diagnostics &amp; Tweaks</div>
     <p class="settings-diag-body">The diagnostics page shows how your scores are calculated, the raw numbers behind your Today recommendation, and settings for fine-tuning how the engine classifies and patterns your training data.</p>
     <a class="settings-diag-cta" href="/static/diagnostic.html">Open Engine Diagnostics →</a>
+  </div>
+
+  <div class="card settings-card settings-card-trial">
+    <div class="trial-card-head"><div class="card-title" id="trialSettingTitle">Performance model trial</div><span id="trialSettingState" class="trial-state">Loading…</span></div>
+    <p class="settings-diag-body" id="trialSettingDescription">Enter your pre-workout scores and planned sets. The trial records automatically before lifting; see the result after saving.</p>
+    <p class="trial-status" id="trialSettingStatus" role="status">Loading trial setting…</p>
+    <button class="btn btn-primary" id="trialEnabled" type="button" aria-pressed="false" aria-describedby="trialSettingDescription trialSettingStatus" disabled style="width:100%;">Enable model trial</button>
+    <a class="trial-results-link" href="/training/trial">View trial results →</a>
+    <details id="trialHistory" class="trial-history" hidden><summary>Model trial history</summary><div></div></details>
   </div>
 
   <div class="card settings-card ai-settings-card">
@@ -8876,6 +8894,59 @@ document.querySelectorAll('.exm-filter-btn').forEach(btn => {
     filterAndRenderExerciseList();
   });
 });
+</script>
+<script id="trial-settings">
+/* Performance model trial on/off and history (moved from the retired training settings page). The setting is stored by
+   the training app, so where the switch lives changes nothing about recording, timing or saved trial records. */
+const trialSettingRefs = Object.fromEntries(['trialEnabled','trialSettingState','trialSettingStatus','trialHistory'].map(id=>[id,document.getElementById(id)]));
+let trialSettingEnabled=false, trialSettingLoaded=false;
+async function trialSettingsApi(url,options={}) {
+  const response=await fetch(trainingUrl(url),options);
+  if(!response.ok)throw Error('Request failed ('+response.status+').');
+  return response.json();
+}
+function renderTrialSetting() {
+  const button=trialSettingRefs.trialEnabled, state=trialSettingRefs.trialSettingState;
+  button.textContent=trialSettingEnabled?'Turn off trial':'Enable model trial';
+  button.className=trialSettingEnabled?'btn btn-secondary':'btn btn-primary';
+  button.setAttribute('aria-pressed',String(trialSettingEnabled));
+  button.disabled=!trialSettingLoaded;
+  state.textContent=trialSettingEnabled?'On':'Off · optional';
+  state.className=trialSettingEnabled?'trial-state is-on':'trial-state';
+  trialSettingRefs.trialSettingStatus.textContent=trialSettingEnabled?'Trial controls appear in your workouts. Results stay hidden until saving.':'Enable to show trial controls in your workouts.';
+}
+async function loadTrialSetting() {
+  try {
+    const data=await trialSettingsApi('/fatigue-trial/settings');
+    trialSettingEnabled=data.enabled;trialSettingLoaded=true;renderTrialSetting();
+  } catch(err) { trialSettingRefs.trialSettingState.textContent='Unavailable';trialSettingRefs.trialSettingStatus.textContent='Could not load the trial setting. Reload to retry. '+err.message; }
+}
+async function toggleTrialSetting() {
+  if(trialSettingRefs.trialEnabled.disabled||!trialSettingLoaded)return;
+  trialSettingRefs.trialEnabled.disabled=true;
+  trialSettingRefs.trialSettingStatus.textContent='Saving trial setting…';
+  try {
+    const data=await trialSettingsApi('/fatigue-trial/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:!trialSettingEnabled})});
+    trialSettingEnabled=data.enabled;renderTrialSetting();
+  } catch(err) { renderTrialSetting();trialSettingRefs.trialSettingStatus.textContent='Could not save the trial setting: '+err.message; }
+}
+async function loadTrialHistory() {
+  const details=trialSettingRefs.trialHistory,box=details.querySelector('div');
+  const line=text=>{const p=document.createElement('p');p.textContent=text;box.append(p);};
+  try {
+    const data=await trialSettingsApi('/fatigue-trial/dashboard');box.replaceChildren();
+    const completed=data.entries.filter(r=>r.status==='completed');
+    for(const r of completed.slice(-10).reverse())line(r.workout_start.slice(0,10)+' · '+r.title+' · Expected: '+r.prediction.replaceAll('_',' ')+'; observed: '+r.observed.replaceAll('_',' '));
+    if(!completed.length)line('No saved trial workouts yet.');
+    const pending=data.entries.filter(r=>r.status==='recorded').length;
+    if(pending)line(pending+' snapshots have no saved workout (open or discarded drafts). They do not count toward comparisons.');
+    for(const c of data.cohorts)line(c.title+' · '+c.eligible_predictions+'/12 eligible predictions · '+(c.review_at?'Review '+c.review_at.slice(0,10):'Awaiting first saved trial workout')+' · '+c.status);
+  } catch(err) { box.replaceChildren();line('History unavailable. Open the trial results or reload to retry.'); }
+  details.hidden=false;
+}
+trialSettingRefs.trialEnabled.addEventListener('click',toggleTrialSetting);
+loadTrialSetting();
+loadTrialHistory();
 </script>
 </body>
 </html>

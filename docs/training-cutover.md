@@ -948,3 +948,13 @@ nothing scrolls sideways. Log and the dashboard look as before.
 
 No migration or data change. Rollback to the prior reviewed image restores the old
 top menus. This does not authorize deployment.
+
+## Trial switch in Settings release checks (2026-11-26, pending; #132)
+
+After reviewed build/deployment: Settings shows the Performance model trial card with the same
+On/Off state as before deployment (the setting is stored, not moved). Turning it off and on
+updates the state, "View trial results →" opens the trial page, and the history lists saved
+trial workouts. Opening `/training/legacy` (or an old bookmark to it) lands on Settings.
+
+No migration or data change. Rollback to the prior reviewed image restores the old page; the
+trial setting and records are untouched. This does not authorize deployment.
