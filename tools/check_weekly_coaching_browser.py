@@ -38,6 +38,10 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
                     page.locator('#confirmMotivation').click()
                 assert response.value.ok,response.value.text()
             def save():
+                # A TS set needs a performed RPE: a blank one saves as unrated and blocks the save (#127, #169).
+                for row in page.locator('.set').filter(has=page.locator('.kind.ts')).all():
+                    row.locator('.rpebtn').click();page.locator('.sheet').get_by_role('button',name='8',exact=True).click()
+                    page.wait_for_timeout(500)  # taps where a sheet just closed are ignored for 450 ms (ghost-tap guard)
                 for button in page.locator('.set .tick').all():button.click()
                 page.locator('#finish').click()
                 with page.expect_response(lambda r:r.url.endswith('/training/hevy/workouts') and r.request.method=='POST') as response:
@@ -149,8 +153,11 @@ with (OUT/'preview.log').open('w',encoding='utf-8') as log:
             page.screenshot(path=str(OUT/'call-desktop.png'),full_page=True)
             assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
             # A context-size failure offers a fresh discussion, not the missing conversation or repeat action.
-            page.route('**/training/api/weekly-call',lambda route:route.fulfill(json=due))
-            page.route('**/api/ai/week-reviews',lambda route:route.fulfill(status=400,json=dict(detail='The week is too large for automatic review; discuss it in AI Coach instead.')))
+            # Context routes also catch requests the training service worker makes; page routes do not.
+            page.context.route('**/training/api/weekly-call',lambda route:route.fulfill(json=due))
+            page.context.route('**/api/ai/week-reviews',lambda route:route.fulfill(status=400,json=dict(detail='The week is too large for automatic review; discuss it in AI Coach instead.')))
+            # The call card shows on the Log start screen; drop the workout the previous step left open.
+            page.evaluate("localStorage.removeItem('training.logDraft')")
             page.goto(URL+'/training/log')
             expect(call).to_contain_text('No next week was created.')
             expect(call.get_by_role('link',name='Start a discussion in AI Coach')).to_have_attribute('href','/#ai')

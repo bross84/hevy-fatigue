@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>/* Follow the Light/Dark choice saved on the dashboard; Auto follows the phone. */
+(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Diagnostics</title>
@@ -8,15 +10,24 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
-    /* Theme tokens (dark) */
-    :root {
-      --bg: #2e282a;
-      --card: #3d3638;
-      --border: #524c4e;
-      --text: #f3f8f2;
-      --muted: #a09498;
-      --accent: #5da9e9;
-      --danger: #ef3e36;
+    /* Theme tokens: the shared theme's colours (rackbook/static/theme.css). */
+    :root, [data-theme="dark"] {
+      --bg: #111923;
+      --card: #1a2533;
+      --border: #344358;
+      --text: #e8eef8;
+      --muted: #a5b4c9;
+      --accent: #95baff;
+      --danger: #f09595;
+    }
+    [data-theme="light"] {
+      --bg: #f3f5f8;
+      --card: #ffffff;
+      --border: #dce3ec;
+      --text: #17243a;
+      --muted: #59687c;
+      --accent: #2459b8;
+      --danger: #a32d2d;
     }
     
     html { overflow-x: auto; }

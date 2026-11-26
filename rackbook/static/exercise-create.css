@@ -3,6 +3,8 @@
 .exercise-create label { display:block; margin:14px 0; }
 .exercise-create input,.exercise-create select { display:block; box-sizing:border-box; width:100%; padding:10px; margin-top:5px; font:inherit; font-size:16px; color:var(--text); background:var(--bg); border:1px solid var(--line); border-radius:8px; }
 .exercise-create button { min-height:44px; margin:6px 8px 6px 0; touch-action:manipulation; }
+.exercise-create .dialog-head .close-x { margin:0; }
+.exercise-create h2 { font-size:19px; }
 .exercise-create p { line-height:1.5; }
 .exercise-create [hidden] { display:none; }
 .exercise-source-results { max-height:220px; overflow-y:auto; }

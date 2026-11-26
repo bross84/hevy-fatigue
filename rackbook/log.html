@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <script src="/training/static/training.js?v=2"></script>
-  <script src="/training/static/exercise-create.js?v=2"></script>
-  <link rel="stylesheet" href="/training/static/exercise-create.css?v=2" />
+  <script src="/training/static/exercise-create.js?v=3"></script>
+  <link rel="stylesheet" href="/training/static/exercise-create.css?v=3" />
   <script src="/training/static/save-recovery.js?v=3"></script>
   <script src="/training/static/draft-transfer.js?v=1"></script>
   <script src="/training/static/week-text.js?v=1"></script>
@@ -25,14 +25,10 @@
   <title>Log Workout</title>
   <style>
     :root {
-      --bg: #f6f5f1; --card: #ffffff; --text: #1d1d1b; --muted: #6b6a64; --line: #e3e1d9;
-      --accent: #1f5fbf; --chip: #eef0f4; --done: #e4f2e4; --done-line: #9ccc9c;
       --danger: #a32d2d; --danger-bg: #fcebeb; --ok: #1d6b2f; --ok-bg: #e4f2e4; --warn-bg: #fbf0d9; --warn: #7a5200;
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #161614; --card: #21211e; --text: #ecebe5; --muted: #a09f97; --line: #34332f;
-        --accent: #7fb0ff; --chip: #2b2c30; --done: #1f3a24; --done-line: #3f7a4a;
         --danger: #f09595; --danger-bg: #3a1f1f; --ok: #8fd19e; --ok-bg: #1f3a24; --warn-bg: #3a3118; --warn: #e8c66a;
       }
     }
@@ -270,79 +266,8 @@
     .trial-panel textarea, .trial-panel select { display:block; width:100%; margin:8px 0; }
     .trial-panel textarea { min-height:80px; }
   </style>
-  <style id="rackbook-theme">
-
-    /* Rackbook visual system: kept inline so every page remains self-contained. */
-    :root {
-      color-scheme: light;
-      --bg: #f3f5f8; --card: #ffffff; --text: #17243a; --muted: #59687c;
-      --line: #dce3ec; --accent: #2459b8; --chip: #edf1f7; --soft: #f7f9fc;
-      --accent-soft: #edf3ff; --done: #edf7f1; --done-line: #28784b;
-      --shadow: 0 2px 5px rgba(23,36,58,.025), 0 10px 28px rgba(23,36,58,.035);
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        color-scheme: dark;
-        --bg: #111923; --card: #1a2533; --text: #e8eef8; --muted: #a5b4c9;
-        --line: #344358; --accent: #95baff; --chip: #243246; --soft: #202d3d;
-        --accent-soft: #243b5b; --done: #20392f; --done-line: #3f825f;
-        --shadow: 0 4px 20px rgba(0,0,0,.12);
-      }
-    }
-    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
-    main { max-width: 1120px; padding: 24px; margin: 0 auto; }
-    .app-header { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 16px; margin: 0 0 24px; }
-    .page-heading { gap: 12px; }
-    .page-title { min-width: 0; }
-    .eyebrow { display: block; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .18em; margin: 0 0 3px; }
-    .page-title h1 { font-size: 26px; font-weight: 700; letter-spacing: -.035em; line-height: 1.2; margin: 0; }
-    .app-header .page-back { width: auto; padding: 0 10px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); font-size: 13px; }
-    .header-tools { justify-self: end; }
-    .app-header .app-nav { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; padding: 5px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; white-space: normal; }
-    .app-header .app-nav a { display: flex; align-items: center; justify-content: center; flex: 1 0 auto; min-height: 40px; padding: 6px 14px; margin: 0; border-radius: 9px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 550; }
-    .app-header .app-nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 650; }
-    .card { border-radius: 16px; border-color: var(--line); box-shadow: var(--shadow); margin-bottom: 16px; }
-    h2, h3, .wk-title, .ex-title { letter-spacing: -.02em; font-weight: 650; }
-    button, input, select { transition: border-color .12s ease, background-color .12s ease, box-shadow .12s ease; }
-    button { font-weight: 550; }
-    button.primary { font-weight: 650; color: var(--card); }
-    button:disabled { cursor: default; }
-    :where(button, a, input, select, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-    input, select { accent-color: var(--accent); }
-    .lifts { gap: 6px; padding: 5px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); margin-bottom: 20px; }
-    .lifts button { border-color: transparent; background: transparent; min-height: 44px; font-weight: 600; }
-    .lifts button.on, .lifts button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
-    .movement-card { padding: 18px; background: var(--card); border-radius: 16px; box-shadow: var(--shadow); }
-    .movement-card[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
-    .card-score { font-size: 30px; font-weight: 700; letter-spacing: -.04em; margin: 8px 0; }
-    .metrics { gap: 16px; }
-    .metric { padding: 12px; border-radius: 12px; background: var(--soft); }
-    .metric strong { font-size: 28px; font-weight: 700; letter-spacing: -.03em; }
-    .controls { gap: 12px; padding: 14px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 16px; }
-    .controls label { font-size: 13px; color: var(--muted); font-weight: 550; }
-    .controls select { color: var(--text); background: var(--soft); }
-    th { font-weight: 600; }
-    .wk-head { flex-wrap: wrap; gap: 4px 12px; }
-    .wk-meta { margin-top: 6px; }
-    .intro { line-height: 1.65; }
-    @media (hover: hover) {
-      .app-header .app-nav a:hover { background: var(--soft); color: var(--text); }
-      button:not(:disabled):hover { border-color: var(--accent); }
-    }
-    @media (max-width: 599px) {
-      main { padding: 16px 12px; }
-      .app-header { gap: 12px; margin-bottom: 18px; }
-      .page-heading { gap: 8px; }
-      .page-title h1 { font-size: 23px; }
-      .app-header .app-nav a { flex: 1 0 28%; padding: 6px 8px; min-height: 44px; font-size: 13px; }
-      .card { border-radius: 14px; }
-      .metric { padding: 10px 8px; }
-      .metric strong { font-size: 23px; }
-      .controls { padding: 12px; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
-    }
+  <link rel="stylesheet" href="/training/static/theme.css?v=1" />
+  <style id="page-theme">
 
     .workout-log main { padding-bottom: 190px; }
     .workout-log .card { padding: 16px; }
@@ -430,12 +355,12 @@
     .workout-log.typing main { padding-bottom: 60vh; }
     .workout-log.keypad-open main { padding-bottom: calc(var(--keypad-height, 250px) + 32px); }
   </style>
-  <link rel="stylesheet" href="/training/static/logger-layout.css?v=14" />
+  <link rel="stylesheet" href="/training/static/logger-layout.css?v=15" />
 </head>
 <body class="workout-log">
 <button id="loggerNavScrim" type="button" aria-label="Close navigation" hidden></button>
 <aside id="loggerNav" class="logger-nav" aria-label="Application navigation">
-  <div class="logger-nav-title"><span>Hevy-Fatigue</span><button id="loggerCloseMenu" type="button">Close</button></div>
+  <div class="logger-nav-title"><span>Hevy-Fatigue</span><button id="loggerCloseMenu" type="button" class="close-x" aria-label="Close">✕</button></div>
   <nav class="app-nav" aria-label="Pages" data-app-menu="sidebar"></nav>
 </aside>
 <main>
@@ -519,7 +444,7 @@
   <div>
     <div class="row" style="margin-bottom:8px">
       <input id="search" type="text" placeholder="Search exercises" autocomplete="off" style="flex:1" />
-      <button id="closePicker" type="button">Cancel</button>
+      <button id="closePicker" type="button" class="close-x" aria-label="Close">✕</button>
     </div>
     <p id="pickerTitle" class="picker-title" hidden></p>
     <p id="syncnote" class="hint" hidden>Updating your exercise list from Hevy…</p>
@@ -619,8 +544,9 @@
     const scrim = el("div", "scrim");
     const sheet = el("div", "sheet");
     sheet.setAttribute("role", "dialog"); sheet.setAttribute("aria-label", title);
-    const heading = el("h2", null, title);
-    sheet.append(heading);
+    const heading = el("h2", null, title), head = el("div", "sheet-head");
+    head.append(heading);
+    sheet.append(head);
     if (hint) sheet.append(el("p", "muted", hint));
     const grid = el("div", "sheetgrid" + (cols === 1 ? " list" : "")), buttons = {};
     grid.style.gridTemplateColumns = "repeat(" + cols + ", 1fr)";
@@ -628,8 +554,8 @@
     const previousFocus = document.activeElement;
     let closed = false;
     const close = () => { const area = sheet.getBoundingClientRect(); if (closed) return; closed = true; scrim.remove(); document.removeEventListener("keydown", onKey); swallowGhostTaps(area); if (previousFocus?.isConnected) previousFocus.focus({preventScroll:true}); if (onClose) onClose(); };
-    const closeButton = el("button", "sheet-close", "Close"); closeButton.type = "button";
-    closeButton.addEventListener("click", close); heading.before(closeButton);
+    const closeButton = el("button", "close-x sheet-close", "✕"); closeButton.type = "button"; closeButton.setAttribute("aria-label", "Close");
+    closeButton.addEventListener("click", close); head.append(closeButton);
     for (const it of items) {
       const b = el("button", ((it.on ? "on " : "") + (it.cls || "")).trim() || null, it.label);
       b.type = "button";
@@ -2114,7 +2040,7 @@
     const head = el("div", "panel-head"), text = el("div");
     text.append(el("h2", null, title));
     if (sub) text.append(el("p", "muted", sub));
-    const close = el("button", "panel-close", "✕"); close.type = "button"; close.setAttribute("aria-label", "Close");
+    const close = el("button", "close-x panel-close", "✕"); close.type = "button"; close.setAttribute("aria-label", "Close");
     close.addEventListener("click", () => closePanel());
     head.append(text, close);
     return head;
@@ -2310,6 +2236,13 @@
       return weight + " " + unit + " × " + (p.reps ?? "?") + " @ " + (p.rpe ?? "?");
     };
     const prevWarm = previous.filter((p) => p.type === "warmup"), prevWork = previous.filter((p) => p.type !== "warmup");
+    // On a phone (no Previous column) last session's working sets show once, under the date, not under every set.
+    // Repeated sets are grouped: "100 kg × 8 @ 7 (3 sets), 105 kg × 5 @ 8".
+    if (prevWork.length) {
+      const groups = [];
+      for (const p of prevWork) { const text = previousText(p), last = groups.at(-1); if (last && last.text === text) last.n += 1; else groups.push({ text, n: 1 }); }
+      cols.before(el("p", "previous-summary muted", groups.map(g => g.text + (g.n > 1 ? " (" + g.n + " sets)" : "")).join(", ")));
+    }
     let working = 0, warm = 0;
     ex.sets.forEach((s, idx) => {
       if (s.type === "warmup") warm += 1; else working += 1;
@@ -2436,7 +2369,6 @@
       const wrap = el("div", "setwrap");
       const delBtn = el("button", "delbtn", "Delete"); delBtn.type = "button"; delBtn.setAttribute("aria-label", "Delete this set");
       wrap.append(delBtn, row);
-      wrap.append(el("div", "previous-inline", "Last time: " + previousText(p)));
       makeSwipeable(wrap, () => {
         const i = ex.sets.indexOf(s);
         if (i >= 0) ex.sets.splice(i, 1);
@@ -2562,11 +2494,14 @@
 
   function renderResults() {
     const box = $("results"); box.replaceChildren();
+    // New and Copy sit in their own row above the results so they don't read as exercises.
+    const actions = el("div", "picker-actions");
     for (const duplicate of [false,true]) {
-      const create = el("button", null, duplicate ? "Duplicate exercise" : "Create exercise"); create.type="button";
+      const create = el("button", null, duplicate ? "Copy exercise" : "+ New exercise"); create.type="button";
       create.addEventListener("click", () => ExerciseCreate.open({catalog, duplicate, onCreated:async()=>{catalog=await api('/exercises');await loadReference();renderResults();}}));
-      box.append(create);
+      actions.append(create);
     }
+    box.append(actions);
     if (!catalog.length) {
       box.append(el("p", "muted", "No exercises cached yet. Pull your exercise list from Hevy first."));
       const sync = el("button", "wide", "Sync exercises from Hevy"); sync.type = "button";

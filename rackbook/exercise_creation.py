@@ -1,4 +1,5 @@
-"""Custom exercises: frozen intent, no automatic repost, independent movement history."""
+"""Custom exercises: local record first, then a Hevy copy. Frozen intent, no automatic
+repost, independent movement history."""
 import json
 import os
 import time
@@ -8,6 +9,7 @@ from uuid import UUID
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from . import local_exercises
 from .database import get_db
 from .hevy_client import WorkoutNotSent
 
@@ -55,7 +57,8 @@ def status(identity):
         row = conn.execute('SELECT * FROM exercise_creations WHERE id=?', (str(identity),)).fetchone()
     if not row:
         raise LookupError('Creation attempt not found.')
-    return {'request_id': row['id'], 'state': row['state'], 'exercise_id': row['remote_id'], 'title': json.loads(row['payload'])['title']}
+    return {'request_id': row['id'], 'local_id': row['id'], 'state': row['state'], 'exercise_id': row['remote_id'],
+            'title': json.loads(row['payload'])['title']}
 
 
 def _finish(identity):
@@ -67,6 +70,8 @@ def _finish(identity):
         if not row['remote_id']:
             raise ValueError('No confirmed Hevy exercise ID.')
         body, prefs = json.loads(row['payload']), json.loads(row['preferences'])
+        local_exercises.save_created(conn, identity, body)
+        local_exercises.link_hevy(conn, identity, row['remote_id'])
         conn.execute('INSERT INTO hevy_exercise_cache(id,title,primary_muscle) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title, primary_muscle=excluded.primary_muscle', (row['remote_id'], body['title'], body['muscle_group']))
         if prefs:
             # Only equipment/rest/display increments; strength records and sources are never inherited.
@@ -82,10 +87,14 @@ def create(data, client):
     payload = json.dumps(body, sort_keys=True)
     with get_db() as conn:
         old = conn.execute('SELECT * FROM exercise_creations WHERE id=?', (identity,)).fetchone()
+    resend = False
     if old:
-        if old['payload'] != payload:
-            raise ValueError('This creation ID already belongs to different exercise details.')
-        return _finish(identity) if old['remote_id'] else status(identity)
+        if old['remote_id'] or old['state'] != 'rejected':
+            if old['payload'] != payload:
+                raise ValueError('This creation ID already belongs to different exercise details.')
+            return _finish(identity) if old['remote_id'] else status(identity)
+        # Hevy definitely did not create it. The athlete's tap may resend it, edited or not.
+        resend = True
     # Capture existing identities before the write, so reconciliation cannot claim an older exercise.
     catalog = client.list_exercise_templates()
     if any(e['title'].strip().casefold() == data.title.casefold() for e in catalog):
@@ -102,10 +111,24 @@ def create(data, client):
     with get_db() as conn:
         conn.execute('BEGIN IMMEDIATE')
         # Serializes concurrent tabs even when they supply different UUIDs.
-        old = conn.execute('SELECT id FROM exercise_creations WHERE id=? OR (title_key=? AND state != ?)', (identity, data.title.casefold(), 'rejected')).fetchone()
+        old = conn.execute('SELECT id FROM exercise_creations WHERE id != ? AND title_key=? AND state != ?', (identity, data.title.casefold(), 'rejected')).fetchone()
         if old:
             raise ValueError('A creation attempt already exists for this name. Reopen it and check its status.')
-        conn.execute('INSERT INTO exercise_creations VALUES(?,?,?,?,?,?,?,?)', (identity, payload, data.title.casefold(), 'sending', None, json.dumps([str(e['id']) for e in catalog]), json.dumps(prefs), time.time()))
+        if local_exercises.title_taken(conn, data.title, identity):
+            raise ValueError('That exercise name already exists. Choose a distinct name or select the existing exercise.')
+        current = conn.execute('SELECT state FROM exercise_creations WHERE id=?', (identity,)).fetchone()
+        before, now = json.dumps([str(e['id']) for e in catalog]), time.time()
+        if resend:
+            if not current or current['state'] != 'rejected':
+                raise ValueError('This exercise is already being sent. Check its status.')
+            conn.execute("UPDATE exercise_creations SET payload=?,title_key=?,state='sending',before_ids=?,preferences=?,created_at=? WHERE id=?",
+                         (payload, data.title.casefold(), before, json.dumps(prefs), now, identity))
+        elif current:
+            raise ValueError('A creation attempt already exists for this name. Reopen it and check its status.')
+        else:
+            conn.execute('INSERT INTO exercise_creations VALUES(?,?,?,?,?,?,?,?)', (identity, payload, data.title.casefold(), 'sending', None, before, json.dumps(prefs), now))
+        # The local record is committed with the journal, before Hevy is contacted.
+        local_exercises.save_created(conn, identity, body)
     try:
         remote_id = client.create_exercise_template({k:v for k,v in body.items() if k != 'source_id'})
     except Exception as exc:

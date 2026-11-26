@@ -1,0 +1,84 @@
+/* One look for every page: the training pages link this file, and the host dashboard uses the same
+ * colours under its own variable names (static/index.html). Dark mode follows the phone, or the Light/Dark
+ * choice saved on the dashboard (training.js rewrites the prefers-color-scheme rules below). */
+:root {
+  color-scheme: light;
+  --bg: #f3f5f8; --card: #ffffff; --text: #17243a; --muted: #59687c;
+  --line: #dce3ec; --accent: #2459b8; --chip: #edf1f7; --soft: #f7f9fc;
+  --accent-soft: #edf3ff; --done: #edf7f1; --done-line: #28784b;
+  --shadow: 0 2px 5px rgba(23,36,58,.025), 0 10px 28px rgba(23,36,58,.035);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #111923; --card: #1a2533; --text: #e8eef8; --muted: #a5b4c9;
+    --line: #344358; --accent: #95baff; --chip: #243246; --soft: #202d3d;
+    --accent-soft: #243b5b; --done: #20392f; --done-line: #3f825f;
+    --shadow: 0 4px 20px rgba(0,0,0,.12);
+  }
+}
+body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+main { max-width: 1120px; padding: 24px; margin: 0 auto; }
+.app-header { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 16px; margin: 0 0 24px; }
+.page-heading { gap: 12px; }
+.page-title { min-width: 0; }
+.eyebrow { display: block; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .18em; margin: 0 0 3px; }
+.page-title h1 { font-size: 26px; font-weight: 700; letter-spacing: -.035em; line-height: 1.2; margin: 0; }
+.app-header .page-back { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; width: auto; padding: 0 10px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); font-size: 13px; }
+.header-tools { justify-self: end; }
+.app-header .app-nav { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; padding: 5px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; white-space: normal; }
+.app-header .app-nav a { display: flex; align-items: center; justify-content: center; flex: 1 0 auto; min-height: 40px; padding: 6px 14px; margin: 0; border-radius: 9px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 550; }
+.app-header .app-nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 650; }
+.card { border-radius: 16px; border-color: var(--line); box-shadow: var(--shadow); margin-bottom: 16px; }
+h2, h3, .wk-title, .ex-title { letter-spacing: -.02em; font-weight: 650; }
+button, input, select { transition: border-color .12s ease, background-color .12s ease, box-shadow .12s ease; }
+button { font-weight: 550; }
+button.primary { font-weight: 650; color: var(--card); }
+button:disabled { cursor: default; }
+:where(button, a, input, select, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+input, select { accent-color: var(--accent); }
+.lifts { gap: 6px; padding: 5px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); margin-bottom: 20px; }
+.lifts button { border-color: transparent; background: transparent; min-height: 44px; font-weight: 600; }
+.lifts button.on, .lifts button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.movement-card { padding: 18px; background: var(--card); border-radius: 16px; box-shadow: var(--shadow); }
+.movement-card[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.card-score { font-size: 30px; font-weight: 700; letter-spacing: -.04em; margin: 8px 0; }
+.metrics { gap: 16px; }
+.metric { padding: 12px; border-radius: 12px; background: var(--soft); }
+.metric strong { font-size: 28px; font-weight: 700; letter-spacing: -.03em; }
+.controls { gap: 12px; padding: 14px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 16px; }
+.controls label { font-size: 13px; color: var(--muted); font-weight: 550; }
+.controls select { color: var(--text); background: var(--soft); font-size: 16px; }
+th { font-weight: 600; }
+.wk-head { flex-wrap: wrap; gap: 4px 12px; }
+.wk-meta { margin-top: 6px; }
+.intro { line-height: 1.65; }
+@media (hover: hover) {
+  .app-header .app-nav a:hover { background: var(--soft); color: var(--text); }
+  button:not(:disabled):hover { border-color: var(--accent); }
+}
+@media (max-width: 599px) {
+  main { padding: 16px 12px; }
+  .app-header { gap: 12px; margin-bottom: 18px; }
+  .page-heading { gap: 8px; }
+  .page-title h1 { font-size: 23px; }
+  .app-header .app-nav a { flex: 1 0 28%; padding: 6px 8px; min-height: 44px; font-size: 13px; }
+  .card { border-radius: 14px; }
+  .metric { padding: 10px 8px; }
+  .metric strong { font-size: 23px; }
+  .controls { padding: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
+}
+
+/* One close button for every sheet, panel and window: a ✕ in the top-right corner, 44px to tap. */
+.close-x { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px;
+  min-height: 44px; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--card);
+  color: var(--text); font-size: 18px; font-weight: 400; line-height: 1; cursor: pointer; }
+.sheet-head, .dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 6px; }
+.sheet-head > h2, .dialog-head > h2 { flex: 1; min-width: 0; margin: 0; }
+
+/* Exercise search: making a new exercise sits above the results and doesn't look like one of them. */
+.picker-actions { display: flex; gap: 8px; margin: 0 0 10px; }
+.picker-actions button { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 44px; border-style: dashed; background: transparent; color: var(--accent); font-weight: 600; }

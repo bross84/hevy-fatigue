@@ -1579,3 +1579,59 @@ The original 250 lb incident remains unconfirmed; #159 stays open for review.
 Delivery update (2026-11-24): Brian authorized commit, push and a PR for
 `codex/strength-reference-recency`. Earlier local-only statements describe
 pre-publication validation. Deployment and physical acceptance remain pending.
+
+
+## Unified look (2026-11-25, local; #167)
+
+Owner approved a before/after mockup on 2026-11-25. Every page now uses one navy
+palette, one button shape and one close button.
+
+- **Shared theme file.** `rackbook/static/theme.css` holds the training-page
+  palette and header/nav/card styles that were pasted into seven pages. Log,
+  Plans, Recent, Progress, Stress, Trial and RPE Charts link it; page-only rules
+  stay inline. The 16px dropdown and inline-flex back-link fixes now apply to
+  every page. training.js still rewrites its prefers-color-scheme rules for a
+  saved Light/Dark choice.
+- **Log colours.** The grey `.workout-log` override in logger-layout.css is gone;
+  the Log page uses the shared navy like every other page.
+- **Dashboard, Docs, Diagnostics.** The dashboard's workspace palette (grey) now
+  uses the navy values under its own variable names, and `--on-accent` sets the
+  text on accent-filled buttons (dark on the light-blue dark-mode accent). Docs
+  and Diagnostics use the navy values and follow the saved Light/Dark choice.
+  The dashboard's buttons are 44px tall with 10px corners. A selected option is
+  always the filled accent; before, some selected options were near-white on
+  white in light mode.
+- **One close button.** Every Log sheet and panel, the exercise create/copy
+  window, the Plans windows, both side menus, the exercise search and the
+  dashboard check-in use the same 44px ✕ (`.close-x`, aria-label "Close"),
+  top-right. The exercise search's "Cancel" became the ✕.
+- **Last session on a phone.** Under 600px the per-set "Last time" lines are
+  gone. One line under "Last session · date" lists last session's working sets,
+  grouping repeats: "100 kg × 8 @ 7 (2 sets), 100 kg × 8 @ 8". Tablets and
+  computers keep the Previous column. "Other sets from last session" stays.
+- **Exercise search.** "+ New exercise" and "Copy exercise" sit in their own
+  dashed row above the results (Log and Plans). The windows they open keep their
+  "Create exercise"/"Duplicate exercise" titles and behaviour.
+
+No data, saving, credential, monitoring, trial or Hevy-write behaviour changed.
+
+## Local exercise catalog (2026-11-25, local; #168)
+
+- New `local_exercises` table in the logging database (RACKBOOK_DB_PATH). Every exercise has a
+  local ID; `hevy_id` only links it to the Hevy copy. `origin` is `app` (created here) or `hevy`
+  (copied from the Hevy catalog).
+- **Create/Duplicate exercise** commits the local record in the same transaction as the
+  `sending` journal row, before Hevy is contacted. Hevy's ID is stored on the local record only
+  after Hevy confirms it (or a full-match reconciliation finds it). A rejected or uncertain attempt
+  keeps the local record with no Hevy link.
+- After a rejection, **Edit and try again** now keeps the same creation ID, so the app's copy is
+  updated and resent on the athlete's tap instead of leaving a second copy. Sending/uncertain
+  attempts are still never resent automatically.
+- **Exercise sync** (`POST /training/exercises/sync`) copies the whole Hevy catalog into
+  `local_exercises`, with type, equipment and muscles, matched on Hevy ID; local IDs never change.
+  Startup gives existing cached and previously created exercises local records.
+- `GET /training/exercises/local` lists the local catalog (`in_hevy`, `creation_state`);
+  `GET /training/exercises` also returns `local_id`.
+- Unchanged: workouts, plans, references and history still use Hevy exercise IDs; the picker still
+  lists exercises from the Hevy cache; HEVY_WRITES_ENABLED=0 still blocks creation. Moving
+  workouts to local IDs is #145.

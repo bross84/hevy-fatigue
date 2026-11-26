@@ -12,8 +12,8 @@
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#111923" />
   <title>Model trial · Hevy-Fatigue</title>
   <style>
-    :root { --bg:#f6f5f1; --card:#fff; --text:#1d1d1b; --muted:#6b6a64; --line:#e3e1d9; --accent:#1f5fbf; --peripheral:#377a58; --central:#a76118; --error:#a32d2d; }
-    @media(prefers-color-scheme:dark) { :root { --bg:#161614; --card:#21211e; --text:#ecebe5; --muted:#a09f97; --line:#34332f; --accent:#7fb0ff; --peripheral:#7ec79b; --central:#e8a15c; --error:#f09595; } }
+    :root { --peripheral:#377a58; --central:#a76118; --error:#a32d2d; }
+    @media(prefers-color-scheme:dark) { :root { --peripheral:#7ec79b; --central:#e8a15c; --error:#f09595; } }
     * { box-sizing:border-box; } [hidden] { display:none !important; }
     body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
     main { max-width:1100px; margin:auto; padding:16px; }
@@ -103,80 +103,7 @@
     }
 .legend {display:none;} .stress-chart { min-width:0; } .stress-chart .chart-selection {font-size:11px;color:var(--muted);margin-top:8px;min-height:34px} .stress-chart input {min-width:0;max-width:145px;font:inherit;font-size:16px;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:5px} .stress-chart .range-row {font-size:11px} .observation-grid figure {min-width:0;}
 </style>
-  <style id="rackbook-theme">
-
-    /* Rackbook visual system: kept inline so every page remains self-contained. */
-    :root {
-      color-scheme: light;
-      --bg: #f3f5f8; --card: #ffffff; --text: #17243a; --muted: #59687c;
-      --line: #dce3ec; --accent: #2459b8; --chip: #edf1f7; --soft: #f7f9fc;
-      --accent-soft: #edf3ff; --done: #edf7f1; --done-line: #28784b;
-      --shadow: 0 2px 5px rgba(23,36,58,.025), 0 10px 28px rgba(23,36,58,.035);
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        color-scheme: dark;
-        --bg: #111923; --card: #1a2533; --text: #e8eef8; --muted: #a5b4c9;
-        --line: #344358; --accent: #95baff; --chip: #243246; --soft: #202d3d;
-        --accent-soft: #243b5b; --done: #20392f; --done-line: #3f825f;
-        --shadow: 0 4px 20px rgba(0,0,0,.12);
-      }
-    }
-    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
-    main { max-width: 1120px; padding: 24px; margin: 0 auto; }
-    .app-header { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 16px; margin: 0 0 24px; }
-    .page-heading { gap: 12px; }
-    .page-title { min-width: 0; }
-    .eyebrow { display: block; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .18em; margin: 0 0 3px; }
-    .page-title h1 { font-size: 26px; font-weight: 700; letter-spacing: -.035em; line-height: 1.2; margin: 0; }
-    .app-header .page-back { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; width: auto; padding: 0 10px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); font-size: 13px; }
-    .header-tools { justify-self: end; }
-    .app-header .app-nav { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; padding: 5px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; white-space: normal; }
-    .app-header .app-nav a { display: flex; align-items: center; justify-content: center; flex: 1 0 auto; min-height: 40px; padding: 6px 14px; margin: 0; border-radius: 9px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 550; }
-    .app-header .app-nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 650; }
-    .card { border-radius: 16px; border-color: var(--line); box-shadow: var(--shadow); margin-bottom: 16px; }
-    h2, h3, .wk-title, .ex-title { letter-spacing: -.02em; font-weight: 650; }
-    button, input, select { transition: border-color .12s ease, background-color .12s ease, box-shadow .12s ease; }
-    button { font-weight: 550; }
-    button.primary { font-weight: 650; color: var(--card); }
-    button:disabled { cursor: default; }
-    :where(button, a, input, select, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-    input, select { accent-color: var(--accent); }
-    .lifts { gap: 6px; padding: 5px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); margin-bottom: 20px; }
-    .lifts button { border-color: transparent; background: transparent; min-height: 44px; font-weight: 600; }
-    .lifts button.on, .lifts button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
-    .movement-card { padding: 18px; background: var(--card); border-radius: 16px; box-shadow: var(--shadow); }
-    .movement-card[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
-    .card-score { font-size: 30px; font-weight: 700; letter-spacing: -.04em; margin: 8px 0; }
-    .metrics { gap: 16px; }
-    .metric { padding: 12px; border-radius: 12px; background: var(--soft); }
-    .metric strong { font-size: 28px; font-weight: 700; letter-spacing: -.03em; }
-    .controls { gap: 12px; padding: 14px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 16px; }
-    .controls label { font-size: 13px; color: var(--muted); font-weight: 550; }
-    .controls select { color: var(--text); background: var(--soft); font-size: 16px; }
-    th { font-weight: 600; }
-    .wk-head { flex-wrap: wrap; gap: 4px 12px; }
-    .wk-meta { margin-top: 6px; }
-    .intro { line-height: 1.65; }
-    @media (hover: hover) {
-      .app-header .app-nav a:hover { background: var(--soft); color: var(--text); }
-      button:not(:disabled):hover { border-color: var(--accent); }
-    }
-    @media (max-width: 599px) {
-      main { padding: 16px 12px; }
-      .app-header { gap: 12px; margin-bottom: 18px; }
-      .page-heading { gap: 8px; }
-      .page-title h1 { font-size: 23px; }
-      .app-header .app-nav a { flex: 1 0 28%; padding: 6px 8px; min-height: 44px; font-size: 13px; }
-      .card { border-radius: 14px; }
-      .metric { padding: 10px 8px; }
-      .metric strong { font-size: 23px; }
-      .controls { padding: 12px; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
-    }
-  </style>
+  <link rel="stylesheet" href="/training/static/theme.css?v=1" />
   <script src="/training/static/app-menu.js?v=2"></script>
 </head>
 <body>

@@ -26,16 +26,7 @@
 
 /* Dark (default) */
 :root, [data-theme="dark"] {
-  --bg:           #0F172A;
-  --card:         #111827;
-  --card-raised:  #1E293B;
-  --border:       #1E293B;
-  --border-mid:   #253456;
-  --text:         #F1F5F9;
-  --muted:        #64748B;
-  --accent:       #3772FF;
-  --accent-sub:   rgba(55,114,255,.14);
-  --accent-light: #6B9FFF;
+  /* Surface, text and accent colours are set once, below, in the shared navy (see "Approved dashboard workspace"). */
   --quad:         #6B9FFF;
   --posterior:    #F59E0B;
   --push:         #22C55E;
@@ -51,16 +42,6 @@
 
 /* Light */
 [data-theme="light"] {
-  --bg:           #F1F5F9;
-  --card:         #FFFFFF;
-  --card-raised:  #F8FAFC;
-  --border:       #E2E8F0;
-  --border-mid:   #CBD5E1;
-  --text:         #0F172A;
-  --muted:        #64748B;
-  --accent:       #3772FF;
-  --accent-sub:   rgba(55,114,255,.10);
-  --accent-light: #1A4FCC;
   --quad:         #1A4FCC;
   --posterior:    #92400E;
   --push:         #166534;
@@ -477,14 +458,12 @@ main { max-width: 1200px; margin: 0 auto; padding: 74px 24px 20px; }
   font-weight: 600;
   color: var(--text);
 }
-.checkin-modal-close {
-  background: none;
-  border: none;
-  color: var(--muted);
-  font-size: 20px;
-  cursor: pointer;
-  padding: 4px;
-  line-height: 1;
+/* Same ✕ as every other sheet and window (rackbook/static/theme.css .close-x). */
+.checkin-modal-close, .host-workspace #hostCloseMenu {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 44px; height: 44px; min-height: 44px; padding: 0;
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  color: var(--text); font-size: 18px; line-height: 1; cursor: pointer;
 }
 .checkin-prompt-banner {
   display: flex;
@@ -500,7 +479,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 74px 24px 20px; }
 }
 .checkin-prompt-btn {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent, #fff);
   border: none;
   border-radius: 8px;
   min-height: 44px;
@@ -1048,7 +1027,7 @@ select:focus { outline: none; border-color: var(--accent); }
 }
 .btn-primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent, #fff);
   width: 100%;
   margin-top: 6px;
   padding: 10px;
@@ -1096,7 +1075,7 @@ select:focus { outline: none; border-color: var(--accent); }
 }
 .trend-range .btn-secondary.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent, #fff);
   font-weight: 600;
   border-color: transparent;
 }
@@ -2242,7 +2221,7 @@ tbody tr:hover td { background: var(--row-hover); }
   display: inline-block;
   padding: 8px 16px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent, #fff);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
@@ -2949,7 +2928,7 @@ body.ai-open main {
 }
 .vf-range-row .btn-secondary.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent, #fff);
   font-weight: 600;
 }
 
@@ -2999,20 +2978,23 @@ body.ai-open main {
 }
 
 /* Approved dashboard workspace. Design study: unslop by Damir Sokolovsky
-   (@heydamir), CC BY 4.0. Existing chart/data behavior is unchanged. */
+   (@heydamir), CC BY 4.0. Existing chart/data behavior is unchanged.
+   Colours match the training pages' shared theme (rackbook/static/theme.css):
+   bg, card, card-raised = soft, border = line, accent-sub = accent-soft.
+   --on-accent is the text colour on an accent-filled button. */
 [data-theme="dark"] {
-  --bg:#14181d; --card:#1d232a; --card-raised:#252c34;
-  --border:#353d46; --border-mid:#49515b; --text:#edf0f4; --muted:#a8b1bc;
-  --accent:#97baff; --accent-light:#97baff; --accent-sub:#26364c;
+  --bg:#111923; --card:#1a2533; --card-raised:#202d3d;
+  --border:#344358; --border-mid:#4a5d78; --text:#e8eef8; --muted:#a5b4c9;
+  --accent:#95baff; --accent-light:#95baff; --accent-sub:#243b5b; --on-accent:#111923;
 }
 [data-theme="light"] {
-  --bg:#f4f5f6; --card:#fff; --card-raised:#eef0f3;
-  --border:#dbe0e4; --border-mid:#bdc6ce; --text:#17212b; --muted:#596572;
-  --accent:#2259ac; --accent-light:#2259ac; --accent-sub:#eaf0fa;
+  --bg:#f3f5f8; --card:#fff; --card-raised:#f7f9fc;
+  --border:#dce3ec; --border-mid:#c3cedb; --text:#17243a; --muted:#59687c;
+  --accent:#2459b8; --accent-light:#2459b8; --accent-sub:#edf3ff; --on-accent:#fff;
 }
 .host-workspace { --text-secondary:var(--muted); }
 .host-workspace #host-topbar { display:flex; height:64px; padding:0 16px; gap:12px; }
-.host-workspace #hostMenu,.host-workspace #hostCloseMenu { min-height:44px; padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); font:inherit; cursor:pointer; }
+.host-workspace #hostMenu { min-height:44px; padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); font:inherit; cursor:pointer; }
 .host-workspace .bottom-nav,.host-workspace .bottom-sheet,.host-workspace .bottom-sheet-scrim { display:none!important; }
 .host-workspace main { max-width:none; padding:88px 16px 24px; min-width:0; }
 .host-sidebar { display:none; background:var(--card); color:var(--text); border-right:1px solid var(--border); }
@@ -3052,7 +3034,8 @@ body.ai-open main {
 .host-workspace .dashboard-card .vf-chart-wrap { height:260px; }
 .host-workspace .vf-range-row { flex-wrap:wrap; }
 .host-workspace .vf-range-row .btn,.host-workspace #today-pattern-fatigue-card button { min-height:44px; padding:8px 12px; }
-.host-workspace .btn-secondary.active,.host-workspace .btn-group:not(.theme-group) button.active { color:var(--bg); }
+/* A selected option is always the filled accent with its matching text, in light and dark. */
+.host-workspace .btn-secondary.active,.host-workspace .btn-group:not(.theme-group) button.active { background:var(--accent); color:var(--on-accent); border-color:transparent; }
 .host-workspace .today-chart-bands-legend { flex-wrap:wrap; gap:8px 12px; }
 .host-workspace #today-joint-card { min-width:0; grid-column:1/-1; }
 .host-workspace #daily-coach-review { min-width:0; overflow-wrap:anywhere; }
@@ -3061,7 +3044,13 @@ body.ai-open main {
   .host-workspace main { padding:88px 16px 24px!important; }
   .host-workspace.ai-open main { padding:80px 16px 16px!important; }
 }
-[data-theme="dark"] .host-workspace .btn-primary,[data-theme="dark"] .host-workspace .checkin-prompt-btn { color:#10213a; }
+[data-theme="dark"] .host-workspace .btn-primary,[data-theme="dark"] .host-workspace .checkin-prompt-btn { color:var(--on-accent); }
+/* Buttons match the training pages: 44px to tap, 10px corners (rackbook/static/theme.css). */
+.host-workspace .btn { min-height:44px; border-radius:10px; font-size:14px; }
+.host-workspace .btn-sm { min-height:44px; padding:6px 12px; font-size:13px; }
+.host-workspace .trend-range, .host-workspace .vf-range-row { border-radius:10px; }
+.host-workspace .trend-range .btn-secondary { min-height:44px; padding:6px 12px; font-size:13px; border-radius:0; }
+.host-workspace .checkin-prompt-btn { min-height:44px; border-radius:10px; }
 /* Today's summary comes first. Fatigue Trend leads the analysis below it. */
 .dashboard-readiness-metrics { display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; }
 .dashboard-readiness-metrics .readiness-score { line-height:1.1; margin:0; white-space:nowrap; }
@@ -3147,7 +3136,7 @@ body.ai-open main {
 
 <button id="hostNavScrim" type="button" aria-label="Close navigation" hidden></button>
 <aside id="hostSidebar" class="host-sidebar" aria-label="Application navigation">
-  <div class="host-sidebar-title"><span>Hevy-Fatigue</span><button id="hostCloseMenu" type="button">Close</button></div>
+  <div class="host-sidebar-title"><span>Hevy-Fatigue</span><button id="hostCloseMenu" type="button" aria-label="Close">✕</button></div>
   <nav aria-label="Pages">
     <span class="host-nav-group">Overview</span>
     <button class="nav-tab active" data-tab="dashboard" aria-current="page">Dashboard</button>
@@ -3301,7 +3290,7 @@ body.ai-open main {
     <div class="checkin-modal-handle"></div>
     <div class="checkin-modal-header">
       <div class="checkin-modal-title" id="checkin-modal-title">Daily Check-in</div>
-      <button type="button" class="checkin-modal-close" id="checkin-modal-close" aria-label="Close" autofocus>×</button>
+      <button type="button" class="checkin-modal-close" id="checkin-modal-close" aria-label="Close" autofocus>✕</button>
     </div>
     <div id="checkin-modal-body">
       <!-- Check-in form injected here by JS -->

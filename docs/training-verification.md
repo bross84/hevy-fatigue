@@ -1749,3 +1749,40 @@ and the three required host JS checks passed again. Both mocked browser checks
 passed: weekly compact review (one provider call, zero plan changes) and phone/
 desktop stale TS confirmation including reload. Logs: artifacts/merge165-*.log.
 Docker and physical-device limitations remain unchanged. No deployment.
+
+
+## Unified look verification (2026-11-25, local; #167, #169)
+
+- Host suite 260 passed; logger suite 658 passed (one existing expected
+  failure). All 48 tests/*.cjs and rackbook/tests/*.cjs passed after updates:
+  test_log_open_bugs.cjs checks the New/Copy row; test_phone_fit.cjs checks the
+  16px dropdown rule in theme.css and that Stress/Trial link it.
+- All 12 mocked browser checks passed. check_stabilization_browser checks the
+  phone summary line, no per-set lines and the new button names.
+  check_dashboard_layout_browser waits for the Log menu links (built by script
+  after the stylesheets load) instead of counting at once; it still requires
+  each link once. check_training_browser needs the mocked preview already
+  running on port 18127 (it does not start its own server).
+- #169: check_weekly_coaching_browser failed identically on untouched
+  origin/main. Three stale steps in the check, no app change: (1) the TS set
+  needs a performed RPE, since a blank one saves as unrated and blocks the save
+  (#127), so the check now enters RPE 8; (2) it waits 500 ms after that sheet
+  closes, because taps there are ignored for 450 ms; (3) the error-path fakes
+  use context routes, because the training service worker's requests bypass
+  page routes, and the leftover workout draft is cleared so the Log start
+  screen (where the call card lives) shows. Passed on repeated runs.
+- Removed colour settings the shared theme overrides from the older page
+  blocks (Log, Recent, RPE Charts, Stress, Trial) and from the dashboard's
+  original slate block; page-only colours (danger, warn, chart series) stay.
+- Mocked preview at 375 px (dark and light) and 1280 px (light): dashboard,
+  Log, Plans picker, exercise window and Docs; computed colours confirmed
+  navy; selected buttons readable in both themes. The only failed requests
+  across all pages were the expected empty-data 404s (no check-in today; no
+  squat progress data).
+- Docker: `docker build -t hevy-fatigue:unified-look-local .` passed. An
+  isolated `--network none --read-only` run with temporary /tmp, /data and
+  /training-data served /, Docs, Diagnostics, Log, Plans, Progress, theme.css,
+  logger-layout.css v15, exercise-create.js v3 and sw.js with 200s, started
+  again after a restart, and logged no errors. Container and image removed.
+- No real Hevy account, real database or physical device used. No commit,
+  push or deployment.

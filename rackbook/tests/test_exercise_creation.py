@@ -122,7 +122,86 @@ class CreationTests(unittest.TestCase):
                 self.assertEqual(result.json()['state'],'complete')
                 self.assertEqual(api.get('/exercise-creation/'+str(self.data.request_id)).json()['exercise_id'],'new-id')
                 self.assertIn('new-id',[e['id'] for e in api.get('/exercises').json()])
+                listed={e['id']:e for e in api.get('/exercises').json()}
+                self.assertEqual(listed['new-id']['local_id'],str(self.data.request_id))
+                local=[e for e in api.get('/exercises/local').json() if e['id']==str(self.data.request_id)]
+                self.assertEqual((local[0]['hevy_id'],local[0]['in_hevy'],local[0]['creation_state']),('new-id',True,'complete'))
                 self.assertEqual(api.get('/static/exercise-create.js').headers['cache-control'],'no-cache')
+
+    def test_local_record_is_committed_before_hevy_and_linked_after(self):
+        def remote(body):
+            with get_db() as db:
+                row = db.execute('SELECT * FROM local_exercises WHERE id=?', (str(self.data.request_id),)).fetchone()
+            self.assertIsNotNone(row); self.assertIsNone(row['hevy_id']); self.assertEqual(row['origin'], 'app')
+            return 'new-id'
+        self.client.create_exercise_template.side_effect = remote
+        result = service.create(self.data, self.client)
+        self.assertEqual(result['local_id'], str(self.data.request_id))
+        with get_db() as db:
+            from rackbook import local_exercises
+            row = local_exercises.get(db, str(self.data.request_id))
+        self.assertEqual((row['hevy_id'], row['title'], row['equipment'], row['other_muscles']), ('new-id', 'Low Pin Bench', 'barbell', ['triceps']))
+
+    def test_rejected_keeps_local_copy_and_same_id_resend_updates_it(self):
+        self.client.create_exercise_template.side_effect = WorkoutNotSent('no')
+        self.assertEqual(service.create(self.data, self.client)['state'], 'rejected')
+        with get_db() as db:
+            row = db.execute('SELECT title,hevy_id FROM local_exercises WHERE id=?', (str(self.data.request_id),)).fetchone()
+        self.assertEqual((row['title'], row['hevy_id']), ('Low Pin Bench', None))
+        self.client.create_exercise_template.side_effect = None
+        edited = service.CreationInput(**{**self.data.model_dump(), 'title': 'Low Pin Press'})
+        self.assertEqual(service.create(edited, self.client)['state'], 'complete')
+        self.assertEqual(self.client.create_exercise_template.call_count, 2)
+        with get_db() as db:
+            rows = db.execute("SELECT title,hevy_id FROM local_exercises WHERE origin='app'").fetchall()
+        self.assertEqual([tuple(r) for r in rows], [('Low Pin Press', 'new-id')])
+
+    def test_uncertain_keeps_local_copy_and_blocks_same_name(self):
+        self.client.create_exercise_template.side_effect = httpx.ReadTimeout('timeout')
+        service.create(self.data, self.client)
+        with get_db() as db:
+            self.assertEqual(db.execute('SELECT count(*) FROM local_exercises WHERE hevy_id IS NULL').fetchone()[0], 1)
+        with self.assertRaises(ValueError):
+            service.create(service.CreationInput(**{**self.data.model_dump(), 'request_id': uuid4()}), self.client)
+
+    def test_catalog_sync_copies_everything_and_keeps_local_ids(self):
+        from rackbook import local_exercises
+        templates = [{'id': 'h1', 'title': 'Squat', 'type': 'weight_reps', 'equipment': 'barbell', 'primary_muscle_group': 'quadriceps', 'secondary_muscle_groups': ['glutes'], 'is_custom': False}]
+        with get_db() as db:
+            local_exercises.mirror_hevy(db, templates)
+            first = db.execute("SELECT id FROM local_exercises WHERE hevy_id='h1'").fetchone()['id']
+            local_exercises.mirror_hevy(db, [{**templates[0], 'title': 'Back Squat'}])
+            row = db.execute("SELECT * FROM local_exercises WHERE hevy_id='h1'").fetchall()
+        self.assertEqual(len(row), 1)
+        self.assertEqual((row[0]['id'], row[0]['title'], row[0]['equipment'], row[0]['origin']), (first, 'Back Squat', 'barbell', 'hevy'))
+        with self.assertRaises(ValueError):
+            service.create(service.CreationInput(**{**self.data.model_dump(), 'title': 'back squat'}), self.client)
+
+    def test_sync_copy_made_while_uncertain_is_folded_into_app_record(self):
+        from rackbook import local_exercises
+        self.client.create_exercise_template.side_effect = httpx.ReadTimeout('timeout')
+        service.create(self.data, self.client)
+        match = {'id': 'remote', 'title': self.data.title, 'type': 'weight_reps', 'equipment': 'barbell', 'primary_muscle_group': 'chest', 'secondary_muscle_groups': ['triceps'], 'is_custom': True}
+        with get_db() as db:
+            local_exercises.mirror_hevy(db, [match])
+        self.client.list_exercise_templates.return_value = [match]
+        with patch.object(service.time, 'time', return_value=service.time.time() + 600):
+            self.assertEqual(service.reconcile(self.data.request_id, self.client)['state'], 'complete')
+        with get_db() as db:
+            rows = db.execute("SELECT id, origin FROM local_exercises WHERE hevy_id='remote'").fetchall()
+        self.assertEqual([tuple(r) for r in rows], [(str(self.data.request_id), 'app')])
+
+    def test_init_backfills_existing_creations_and_cache(self):
+        with get_db() as db:
+            db.execute("INSERT INTO exercise_creations VALUES('old-1',?,'old press','complete','h9','[]','{}',1.0)",
+                       ('{"title":"Old Press","exercise_type":"weight_reps","equipment_category":"barbell","muscle_group":"shoulders","other_muscles":[],"source_id":null}',))
+            db.execute("INSERT INTO hevy_exercise_cache(id,title,primary_muscle) VALUES('h2','Deadlift','hamstrings')")
+        init_db(); init_db()
+        with get_db() as db:
+            rows = {r['hevy_id']: (r['id'], r['origin']) for r in db.execute('SELECT * FROM local_exercises')}
+        self.assertEqual(rows['h9'], ('old-1', 'app'))
+        self.assertEqual(rows['h2'][1], 'hevy')
+        self.assertEqual(len(rows), 2)
 
     def test_reconciliation_rejects_ambiguous_and_existing_matches(self):
         match={'id':'old','title':'Other','type':'weight_reps','equipment':'barbell','primary_muscle_group':'chest','secondary_muscle_groups':['triceps'],'is_custom':True}
