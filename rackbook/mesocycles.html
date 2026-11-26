@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en"><head>
   <script src="/training/static/training.js?v=2"></script>
-  <script src="/training/static/exercise-create.js?v=2"></script>
-  <link rel="stylesheet" href="/training/static/exercise-create.css?v=2" />
+  <script src="/training/static/exercise-create.js?v=3"></script>
+  <link rel="stylesheet" href="/training/static/exercise-create.css?v=3" />
   <script src="/training/static/draft-transfer.js?v=1"></script>
   <script src="/training/static/week-text.js?v=1"></script>
   <link rel="icon" type="image/png" sizes="192x192" href="/training/static/icon-192.png" />
@@ -28,7 +28,7 @@ a {color:var(--accent)} h2 {font-size:19px;margin:0} h3 {font-size:16px;margin:0
 .plan-set input {min-width:0;width:100%;padding:6px;text-align:center}.plan-set input[type=checkbox] {min-height:24px;height:24px;accent-color:var(--accent)} .plan-head {font-size:12px;color:var(--muted);text-align:center}
 .danger {color:var(--danger,#a32d2d);background:var(--danger-bg,#fcebeb)} .message {padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:16px;background:var(--card)} #status:empty {display:none}
 .editor-title {margin-bottom:16px}.editor-title label {margin-bottom:10px} .savebar {position:sticky;bottom:0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;z-index:2;box-shadow:var(--shadow);margin-top:14px}
-dialog {color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;width:min(560px,95vw);max-height:80vh} dialog::backdrop {background:rgba(0,0,0,.4)} #exerciseResults {max-height:50vh;overflow:auto;margin-top:12px} .picker-footer {border-top:1px solid var(--line);margin-top:12px;padding-top:12px}.picker-footer button {font-size:13px} #exerciseResults button {display:block;width:100%;text-align:left;margin-bottom:6px} .empty {padding:24px 0;text-align:center;color:var(--muted)}
+dialog {color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;width:min(560px,95vw);max-height:80vh} dialog::backdrop {background:rgba(0,0,0,.4)} #exerciseResults {max-height:50vh;overflow:auto;margin-top:12px} .picker-footer {border-top:1px solid var(--line);margin-top:12px;padding-top:12px}.picker-footer button {font-size:13px} #exerciseResults button {display:block;width:100%;text-align:left;margin-bottom:6px} #exerciseResults .picker-actions button {display:flex;align-items:center;justify-content:center;width:auto;text-align:center;margin:0} .empty {padding:24px 0;text-align:center;color:var(--muted)}
 #weekTextDialog {width:min(760px,96vw);max-height:92vh} #weekText {font:16px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;min-height:220px;resize:vertical;white-space:pre;overflow-wrap:normal;overflow-x:auto}
 .week-text-wrap {position:relative} #weekTextSuggest {position:absolute;left:0;top:0;z-index:3;width:min(380px,100%);background:var(--card);border:1px solid var(--line);border-radius:6px;box-shadow:var(--shadow);max-height:min(300px,45vh);overflow:auto;padding:2px 0;font:13px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace}
 #weekTextSuggest button {display:block;width:100%;min-height:0;padding:3px 10px;text-align:left;border:0;border-radius:0;background:transparent;font:inherit;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} #weekTextSuggest button[aria-selected=true] {background:var(--accent);color:var(--card)}
@@ -39,80 +39,7 @@ dialog {color:var(--text);background:var(--card);border:1px solid var(--line);bo
 .wt-pick .row button {min-height:36px;font-size:13px} .wt-bad {color:var(--danger)} .callouts {font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
 @media(max-width:750px) {.wt-move{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:750px) {.editor-layout{grid-template-columns:minmax(0,1fr)}.sidebar{position:static;max-height:250px}.plan-set{min-width:370px}}
-</style><style id="rackbook-theme">
-
-    /* Rackbook visual system: kept inline so every page remains self-contained. */
-    :root {
-      color-scheme: light;
-      --bg: #f3f5f8; --card: #ffffff; --text: #17243a; --muted: #59687c;
-      --line: #dce3ec; --accent: #2459b8; --chip: #edf1f7; --soft: #f7f9fc;
-      --accent-soft: #edf3ff; --done: #edf7f1; --done-line: #28784b;
-      --shadow: 0 2px 5px rgba(23,36,58,.025), 0 10px 28px rgba(23,36,58,.035);
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        color-scheme: dark;
-        --bg: #111923; --card: #1a2533; --text: #e8eef8; --muted: #a5b4c9;
-        --line: #344358; --accent: #95baff; --chip: #243246; --soft: #202d3d;
-        --accent-soft: #243b5b; --done: #20392f; --done-line: #3f825f;
-        --shadow: 0 4px 20px rgba(0,0,0,.12);
-      }
-    }
-    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
-    main { max-width: 1120px; padding: 24px; margin: 0 auto; }
-    .app-header { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 16px; margin: 0 0 24px; }
-    .page-heading { gap: 12px; }
-    .page-title { min-width: 0; }
-    .eyebrow { display: block; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .18em; margin: 0 0 3px; }
-    .page-title h1 { font-size: 26px; font-weight: 700; letter-spacing: -.035em; line-height: 1.2; margin: 0; }
-    .app-header .page-back { width: auto; padding: 0 10px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); font-size: 13px; }
-    .header-tools { justify-self: end; }
-    .app-header .app-nav { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; padding: 5px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; white-space: normal; }
-    .app-header .app-nav a { display: flex; align-items: center; justify-content: center; flex: 1 0 auto; min-height: 40px; padding: 6px 14px; margin: 0; border-radius: 9px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 550; }
-    .app-header .app-nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 650; }
-    .card { border-radius: 16px; border-color: var(--line); box-shadow: var(--shadow); margin-bottom: 16px; }
-    h2, h3, .wk-title, .ex-title { letter-spacing: -.02em; font-weight: 650; }
-    button, input, select { transition: border-color .12s ease, background-color .12s ease, box-shadow .12s ease; }
-    button { font-weight: 550; }
-    button.primary { font-weight: 650; color: var(--card); }
-    button:disabled { cursor: default; }
-    :where(button, a, input, select, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-    input, select { accent-color: var(--accent); }
-    .lifts { gap: 6px; padding: 5px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); margin-bottom: 20px; }
-    .lifts button { border-color: transparent; background: transparent; min-height: 44px; font-weight: 600; }
-    .lifts button.on, .lifts button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
-    .movement-card { padding: 18px; background: var(--card); border-radius: 16px; box-shadow: var(--shadow); }
-    .movement-card[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
-    .card-score { font-size: 30px; font-weight: 700; letter-spacing: -.04em; margin: 8px 0; }
-    .metrics { gap: 16px; }
-    .metric { padding: 12px; border-radius: 12px; background: var(--soft); }
-    .metric strong { font-size: 28px; font-weight: 700; letter-spacing: -.03em; }
-    .controls { gap: 12px; padding: 14px 16px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 16px; }
-    .controls label { font-size: 13px; color: var(--muted); font-weight: 550; }
-    .controls select { color: var(--text); background: var(--soft); }
-    th { font-weight: 600; }
-    .wk-head { flex-wrap: wrap; gap: 4px 12px; }
-    .wk-meta { margin-top: 6px; }
-    .intro { line-height: 1.65; }
-    @media (hover: hover) {
-      .app-header .app-nav a:hover { background: var(--soft); color: var(--text); }
-      button:not(:disabled):hover { border-color: var(--accent); }
-    }
-    @media (max-width: 599px) {
-      main { padding: 16px 12px; }
-      .app-header { gap: 12px; margin-bottom: 18px; }
-      .page-heading { gap: 8px; }
-      .page-title h1 { font-size: 23px; }
-      .app-header .app-nav a { flex: 1 0 28%; padding: 6px 8px; min-height: 44px; font-size: 13px; }
-      .card { border-radius: 14px; }
-      .metric { padding: 10px 8px; }
-      .metric strong { font-size: 23px; }
-      .controls { padding: 12px; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
-    }
-  </style>  <script src="/training/static/app-menu.js?v=2"></script>
+</style><link rel="stylesheet" href="/training/static/theme.css?v=1" />  <script src="/training/static/app-menu.js?v=2"></script>
 </head><body><main>
 <header class="app-header"><div class="page-heading"><div class="page-title"><span class="eyebrow">Hevy-Fatigue</span><h1>Plans</h1></div></div><nav class="app-nav" aria-label="Pages" data-app-menu="bar"></nav></header>
 <p class="muted">Plan one week of workouts and train at your own pace. The next workout waits until you finish and save the current one.</p>
@@ -125,8 +52,8 @@ dialog {color:var(--text);background:var(--card);border:1px solid var(--line);bo
  <div class="editor-layout"><aside class="card sidebar"><h3>Days</h3><div id="weeks"></div><button id="addDay" type="button">+ Add day</button></aside><section class="card"><div id="sessionEditor"></div></section></div>
  <div class="row savebar"><span id="saveState" class="muted grow"></span><button id="savePlan" class="primary" type="submit">Save plan</button><button id="usePlan" type="button">Use this microcycle</button><button id="cancelPlan" type="button">Cancel</button></div>
 </form>
-<dialog id="exercisePicker" aria-label="Add movement"><div class="row"><h2 class="grow">Add movement</h2><button id="closeExercisePicker" type="button">Close</button></div><label>Find an exercise<input id="exerciseSearch" type="search" placeholder="Search your Hevy exercises"></label><div id="exerciseResults"></div><div class="row picker-footer"><span id="pickerStatus" class="muted grow" role="status">Most recently trained first</span><button id="syncExercises" type="button">Refresh list</button></div></dialog>
-<dialog id="weekTextDialog" aria-label="Write week as text"><div class="row"><h2 class="grow">Write week as text</h2><button id="weekTextClose" type="button">Close</button></div>
+<dialog id="exercisePicker" aria-label="Add movement"><div class="row"><h2 class="grow">Add movement</h2><button id="closeExercisePicker" type="button" class="close-x" aria-label="Close">✕</button></div><label>Find an exercise<input id="exerciseSearch" type="search" placeholder="Search your Hevy exercises"></label><div id="exerciseResults"></div><div class="row picker-footer"><span id="pickerStatus" class="muted grow" role="status">Most recently trained first</span><button id="syncExercises" type="button">Refresh list</button></div></dialog>
+<dialog id="weekTextDialog" aria-label="Write week as text"><div class="row"><h2 class="grow">Write week as text</h2><button id="weekTextClose" type="button" class="close-x" aria-label="Close">✕</button></div>
 <details class="week-text-help"><summary>How to write it</summary><p><code>Week 3 Day 1</code> starts a training day. Type <code>#</code> to search your movements, then the sets: <code>3x5@7</code> is 3 sets of 5 at RPE 7, and <code>3x3@6,7,8</code> gives one RPE per set. A comma before new sets starts another group: <code>1x3@8 TS, 3x5@7 BO</code>.</p><p>Callouts: <code>TS</code> top set · <code>BO</code> back-off · <code>+</code> AMRAP last set (<code>3x5+</code>) · <code>DS</code> or <code>DS2</code> drop sets · <code>myo 15-20@9</code> · <code>DDP</code> · <code>TM90</code>. ME and RE are ignored. The Log page shows callouts as labels; you choose the weights.</p></details>
 <div class="row"><label class="grow">Program<input id="weekTextProgram" maxlength="90" placeholder="BS-Bridge"></label><label>Cycle<input id="weekTextCycle" type="number" min="1" max="9999" step="1" value="1" style="width:100px"></label></div>
 <div class="week-text-wrap"><label>Your week<textarea id="weekText" rows="12" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Week 1 Day 1&#10;#Squat (Barbell) 1x3@8 TS, 3x5@7 BO&#10;#Bench Press (Barbell) 5x4@6 DDP" aria-describedby="weekTextHint"></textarea></label><div id="weekTextSuggest" role="listbox" aria-label="Matching movements" hidden></div></div>
@@ -212,7 +139,7 @@ async function save(){if(busy||!$('editor').reportValidity())return false;busy=t
 async function loadPicker(){const [list,history,assignments]=await Promise.allSettled([api('/exercises'),api('/hevy/workouts?page=1&page_size=10'),api('/rpe-chart-assignments')]);if(list.status==='rejected')throw list.reason;if(assignments.status==='rejected')throw assignments.reason;assignmentCatalog=assignments.value;catalog=list.value;recentWorkouts=history.status==='fulfilled'?history.value.workouts:[];$('pickerStatus').textContent=history.status==='fulfilled'?'Most recently trained first':'Recent history unavailable. Showing alphabetical order.';renderExercises();}
 async function openPicker(){message('');$('exercisePicker').showModal();$('exerciseSearch').value='';$('exerciseResults').replaceChildren(el('p','muted','Loading movements…'));try{await loadPicker();$('exerciseSearch').focus();}catch(e){$('exerciseResults').replaceChildren(el('p','muted',e.message));}}
 function sortedExerciseMatches(items,workouts,query){const pool=new Map(items.map(e=>[e.id,e])),lastUsed=new Map(),terms=query.toLowerCase().trim().split(/\s+/);for(const w of workouts){const time=Date.parse(w.start_time)||0;for(const ex of w.exercises||[]){const key=ex.exercise_template_id;if(!key)continue;if(!pool.has(key)&&ex.title)pool.set(key,{id:key,title:ex.title});lastUsed.set(key,Math.max(lastUsed.get(key)||0,time));}}return [...pool.values()].filter(e=>terms.every(t=>e.title.toLowerCase().includes(t))).sort((a,b)=>(lastUsed.get(b.id)||0)-(lastUsed.get(a.id)||0)||a.title.localeCompare(b.title));}
-function renderExercises(){const box=$('exerciseResults');box.replaceChildren();for(const duplicate of [false,true])box.append(button(duplicate?'Duplicate exercise':'Create exercise',()=>ExerciseCreate.open({catalog,duplicate,onCreated:loadPicker})));const hits=sortedExerciseMatches(catalog,recentWorkouts,$('exerciseSearch').value).slice(0,100);for(const ex of hits)box.append(button(ex.title,()=>{session().exercises.push({exercise_template_id:ex.id,title:ex.title,notes:'',sets:[{reps:5,rpe:7,weight_kg:null,type:'normal',ts:false}]});if(assignmentCatalog[ex.id]&&!Object.hasOwn(plan.rpe_assignments||{},ex.id)){plan.rpe_assignments||={};plan.rpe_assignments[ex.id]=structuredClone(assignmentCatalog[ex.id]);}$('exercisePicker').close();remember();renderSession();}));if(!hits.length)box.append(el('p','muted','No matches. Refresh the exercise list if needed.'));}
+function renderExercises(){const box=$('exerciseResults');box.replaceChildren();const actions=el('div','picker-actions');for(const duplicate of [false,true])actions.append(button(duplicate?'Copy exercise':'+ New exercise',()=>ExerciseCreate.open({catalog,duplicate,onCreated:loadPicker})));box.append(actions);const hits=sortedExerciseMatches(catalog,recentWorkouts,$('exerciseSearch').value).slice(0,100);for(const ex of hits)box.append(button(ex.title,()=>{session().exercises.push({exercise_template_id:ex.id,title:ex.title,notes:'',sets:[{reps:5,rpe:7,weight_kg:null,type:'normal',ts:false}]});if(assignmentCatalog[ex.id]&&!Object.hasOwn(plan.rpe_assignments||{},ex.id)){plan.rpe_assignments||={};plan.rpe_assignments[ex.id]=structuredClone(assignmentCatalog[ex.id]);}$('exercisePicker').close();remember();renderSession();}));if(!hits.length)box.append(el('p','muted','No matches. Refresh the exercise list if needed.'));}
 function cancelEdit(){if(busy)return;if(dirty&&!confirm(plan&&plan.id?'Discard your unsaved changes to this plan?':'Discard this new microcycle? It has not been saved.'))return;plan=null;wi=si=0;dirty=false;try{localStorage.removeItem(KEY);}catch(e){}$('editor').hidden=true;$('saveState').textContent='';message('');}
 $('cancelPlan').addEventListener('click',cancelEdit);
 $('newPlan').addEventListener('click',newPlan);$('addDay').addEventListener('click',addDay);

@@ -41,7 +41,9 @@ def run():
                   renderWorkout();saveDraft();
                 }""")
                 expect(page.locator('.previous-session')).to_contain_text('Nov 13, 2026')
-                expect(page.locator('.previous-inline').nth(1)).to_have_text('Last time: 100 kg × 8 @ 7')
+                # Phone: last session's working sets show once under the date, not under every set.
+                expect(page.locator('.previous-summary')).to_have_text('100 kg × 8 @ 7, 100 kg × 7 @ ?')
+                expect(page.locator('.previous-inline')).to_have_count(0)
                 page.locator('.previous-extra summary').click()
                 expect(page.locator('.previous-extra')).to_contain_text('100 kg × 7 @ ?')
                 expect(page.locator('.set.next-working-set .kind')).to_have_text('W')
@@ -57,7 +59,7 @@ def run():
                 expect(page.locator('#plateStrip')).to_contain_text('100 kg · 220 lb')
                 assert page.evaluate('draft.exercises[0].sets[0].kg') in ('20','100')
                 assert page.evaluate("draft.exercises[0].sets.find(s=>s.type==='normal').kg")=='100'
-                # History is a sibling after the row: swipe must still target the set itself.
+                # Swipe must target the set row itself, not another child of the swipe wrapper.
                 page.evaluate("draft.exercises[0].sets.push({type:'normal',kg:'80',reps:'6',rpe:'7',done:false,manual:true});renderWorkout();saveDraft()")
                 swipe_row=page.locator('.setwrap .set').last
                 swipe_row.scroll_into_view_if_needed()
@@ -70,7 +72,7 @@ def run():
                 touch.send('Input.dispatchTouchEvent',{'type':'touchEnd','touchPoints':[]})
                 expect(page.locator('.setwrap.open')).to_have_count(1)
                 assert swipe_row.evaluate("e=>e.style.transform")=='translateX(-76px)'
-                assert page.locator('.setwrap').last.locator('.previous-inline').evaluate("e=>e.style.transform")==''
+                assert page.locator('.setwrap').last.locator('.delbtn').evaluate("e=>e.style.transform")==''
                 page.locator('.setwrap.open').get_by_role('button',name='Delete this set',exact=True).click()
                 assert page.evaluate("draft.exercises[0].sets.filter(s=>s.type==='normal').map(s=>s.kg)")==['100']
                 page.locator('#loggerMenu').click();page.locator('#loggerCloseMenu').click()
@@ -146,7 +148,7 @@ def run():
                 page.goto(URL+'/training/mesocycles')
                 page.get_by_role('button',name='Edit plan',exact=True).click()
                 page.get_by_role('button',name='+ Movement',exact=True).click()
-                page.get_by_role('button',name='Create exercise',exact=True).click()
+                page.get_by_role('button',name='+ New exercise',exact=True).click()
                 form=page.locator('.exercise-create')
                 expect(form.get_by_label('Start from')).to_be_hidden()
                 form.get_by_label('Exercise name').fill('New accessory')

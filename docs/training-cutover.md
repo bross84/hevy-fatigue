@@ -911,3 +911,19 @@ pass once Docker Desktop is available. This change does not authorize deployment
 Delivery update (2026-11-24): Brian authorized commit, push and a PR for
 `codex/strength-reference-recency`. Earlier local-only statements describe
 pre-publication validation. Deployment and physical acceptance remain pending.
+
+
+## Unified look release checks (2026-11-25, pending)
+
+After reviewed build/deployment, on a phone in both Light and Dark: the
+dashboard, Log, Plans, Recent, Progress, Stress, Docs and Diagnostics share the
+navy colours; accent-filled buttons have readable text; selected range buttons
+are readable. On Log, every sheet (RPE, set type, rest, ⋯) and panel (Info,
+Targets, Note, Plates) closes with the top-right ✕. With a previous session,
+the phone shows one "Last session" line with grouped working sets and no line
+under each set; a tablet still shows the Previous column. In exercise search,
+"+ New exercise" and "Copy exercise" open the create and duplicate windows.
+
+No migration or data change. Rollback to the prior reviewed image restores the
+old colours and labels; databases and keys are untouched. Local Docker
+build/startup passed (isolated, no network). This does not authorize deployment.

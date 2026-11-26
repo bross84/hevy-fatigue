@@ -239,7 +239,8 @@ with (OUT / 'preview.log').open('w', encoding='utf-8') as log:
                           '/training/progress', '/training/stress', '/training/rpe-charts',
                           '/static/docs.html', '/#settings']
             for link in host_links:
-                assert page.locator(f'#loggerNav a[href="{link}"]').count() == 1, link
+                # The menu is built by script after the stylesheets load; wait for it rather than counting at once.
+                expect(page.locator(f'#loggerNav a[href="{link}"]')).to_have_count(1)
             assert not errors, errors
             print(json.dumps({'real_chartjs':'passed','desktop':'2560x1440 chart-focused two columns',
                               'tablet_phone':'two/one columns','range_theme_gaps':'preserved','compact_readiness_wide_charts':'passed',

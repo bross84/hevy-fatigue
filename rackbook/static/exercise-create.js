@@ -16,13 +16,15 @@ const ExerciseCreate = (() => {
     if (active) return;
     active = true;
     const dialog = node('dialog'); dialog.className='exercise-create';
-    const form=node('form'), title=node('h2','Create exercise'), close=node('button','Close');
+    const form=node('form'), title=node('h2','Create exercise'), close=node('button','✕'), head=node('div');
+    head.className='dialog-head';close.className='close-x';close.setAttribute('aria-label','Close');
     let closed=false;
     const cleanup=()=>{if(closed)return;closed=true;active=false;dialog.remove();};
     const closeDialog=()=>{dialog.close();cleanup();};
     close.type='button'; close.addEventListener('click',closeDialog);
     const message=node('p'); message.setAttribute('role','status');
-    form.append(close,title,node('p','Creates an exercise in Hevy. New movements start with their own history and strength reference.'));
+    head.append(title,close);
+    form.append(head,node('p','Creates an exercise in Hevy. New movements start with their own history and strength reference.'));
     const fields={};
     function field(key,label,values) {
       const wrap=node('label',label), input=node(values?'select':'input'); input.name=key;

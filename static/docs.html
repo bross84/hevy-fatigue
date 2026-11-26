@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
+<script>/* Follow the Light/Dark choice saved on the dashboard; Auto follows the phone. */
+(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Hevy Fatigue — Methodology & Reference</title>
@@ -12,37 +14,37 @@
    Light palette: 058ed9 ffd166 e1dee3 40476d b9314f
 ══════════════════════════════════════════════════════ */
 
-/* Dark (default) */
+/* Dark (default). Colours match the shared theme (rackbook/static/theme.css). */
 :root, [data-theme="dark"] {
-  --bg:           #0d1117;
-  --card:         #161b22;
-  --border:       #30363d;
-  --text:         #e6edf3;
-  --muted:        #7d8590;
-  --accent:       #58a6ff;
+  --bg:           #111923;
+  --card:         #1a2533;
+  --border:       #344358;
+  --text:         #e8eef8;
+  --muted:        #a5b4c9;
+  --accent:       #95baff;
   --quad:         #58a6ff;
   --posterior:    #f0883e;
   --push:         #3fb950;
   --pull:         #bc8cff;
   --danger:       #f85149;
-  --accent-sub:   rgba(88,166,255,.13);
+  --accent-sub:   #243b5b;
   --btn-shadow:   rgba(0,0,0,.6);
 }
 
 /* Light */
 [data-theme="light"] {
-  --bg:           #e1dee3;
-  --card:         #f5f3f6;
-  --border:       #c8c4ca;
-  --text:         #2e2830;
-  --muted:        #7a6e7c;
-  --accent:       #058ed9;
+  --bg:           #f3f5f8;
+  --card:         #ffffff;
+  --border:       #dce3ec;
+  --text:         #17243a;
+  --muted:        #59687c;
+  --accent:       #2459b8;
   --quad:         #058ed9;
   --posterior:    #b9314f;
   --push:         #1a7a3c;
   --pull:         #6b3fa0;
   --danger:       #b9314f;
-  --accent-sub:   rgba(5,142,217,.13);
+  --accent-sub:   #edf3ff;
   --btn-shadow:   rgba(0,0,0,.15);
 }
 

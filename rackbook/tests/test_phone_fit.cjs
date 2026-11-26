@@ -22,9 +22,11 @@ for (const page of ['rackbook/index.html', 'rackbook/log.html', 'rackbook/mesocy
 const meso = read('rackbook/mesocycles.html');
 assert.match(meso, /label input,label textarea \{[^}]*font-size:16px/, 'Plans form boxes are 16px');
 assert.match(meso, /#weekText \{font:16px\//, 'Write week as text box is 16px');
+// The 16px dropdown rule lives in the shared theme that every training page links.
+assert.match(read('rackbook/static/theme.css'), /\.controls select \{[^}]*font-size: 16px/, 'shared theme dropdowns are 16px');
 for (const page of ['rackbook/stress.html', 'rackbook/trial.html']) {
   const html = read(page);
-  assert.match(html, /\.controls select \{[^}]*font-size: 16px/, page + ' dropdowns are 16px');
+  assert.match(html, /<link rel="stylesheet" href="\/training\/static\/theme\.css\?v=\d+" \/>/, page + ' links the shared theme (16px dropdowns)');
   assert.match(html, /\.stress-chart input \{[^}]*font:inherit;font-size:16px/, page + ' date boxes are 16px');
 }
 const progress = read('rackbook/progress.html');

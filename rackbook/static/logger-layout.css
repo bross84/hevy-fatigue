@@ -1,9 +1,6 @@
 /* Compact desktop workspace; mobile set/keypad geometry remains with the logger.
  * Design study: unslop by Damir Sokolovsky (@heydamir), CC BY 4.0. */
-.workout-log { --bg:#f4f5f6; --card:#fff; --text:#17212b; --muted:#596572; --line:#dbe0e4; --soft:#eef0f3; --accent:#2259ac; --accent-soft:#eaf0fa; }
-@media(prefers-color-scheme:dark) {
-  .workout-log { --bg:#14181d; --card:#1d232a; --text:#edf0f4; --muted:#a8b1bc; --line:#353d46; --soft:#252c34; --accent:#97baff; --accent-soft:#26364c; }
-}
+/* Colours come from the shared theme (theme.css), the same as every other page. */
 .logger-nav { display:none; background:var(--card); color:var(--text); border-right:1px solid var(--line); }
 .logger-nav-title { display:flex; align-items:center; justify-content:space-between; padding:16px 12px; font-weight:500; }
 .logger-nav nav { display:grid; gap:4px; padding:0 12px 24px; }
@@ -256,13 +253,11 @@
 .workout-log #exercises .set { min-height:56px; border:2px solid transparent; border-radius:12px; padding:0 4px; }
 .workout-log #exercises .set.done { background:var(--done); border-color:var(--done-line); }
 .workout-log #exercises .set.next-working-set { box-shadow:none; border-color:var(--accent); }
-.previous-inline { display:none; }
 .previous-session, .previous-extra { margin:10px 0; font-size:14px; }
-@media(max-width:599px) {
-  .previous-inline { display:block; padding:4px 8px 10px; font-size:14px; color:var(--muted); }
-}
+.previous-session:has(+ .previous-summary) { margin-bottom:2px; }
+.previous-summary { margin:0 0 10px; font-size:14px; }
+@media(min-width:600px) { .previous-summary { display:none; } }
 .workout-log button, .sheet button { touch-action:manipulation; }
-.sheet-close { float:right; min-width:44px; min-height:44px; }
 .workout-log #exercises .set.next-working-set .tick:not(:disabled) { color:transparent; background:transparent; border-color:var(--line); }
 .workout-log #exercises .set .tick { width:48px; height:48px; min-height:48px; border-radius:10px; border:2px solid var(--line); background:transparent; color:transparent; justify-self:center; font-size:20px; }
 .workout-log #exercises .set.done .tick { background:var(--done-line); border-color:var(--done-line); color:#fff; }
@@ -308,7 +303,7 @@
 .panel-head > div { flex:1; min-width:0; }
 .panel-head h2 { margin:0; font-size:19px; }
 .panel-head p { margin:2px 0 0; }
-.panel-close { width:44px; min-height:44px; padding:0; border-radius:22px; }
+/* .panel-close takes the shared .close-x look from theme.css. */
 .workout-log .ex-targets .target-row { display:grid; grid-template-columns:48px minmax(0,1fr) minmax(0,1fr); gap:8px; align-items:center; margin:0 0 6px; }
 .workout-log .ex-targets .target-head { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
 .workout-log .ex-targets .target-label { font-weight:700; }
