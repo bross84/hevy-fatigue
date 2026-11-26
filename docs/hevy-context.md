@@ -154,7 +154,7 @@ Do not touch without an explicit spec. Log any incidental observation under "Out
 | Constraint | Rule |
 |---|---|
 | ORM | SQLAlchemy only. No Alembic, no Flask. |
-| Frontend libraries | Chart.js and marked.js only. No bundler, no build step. |
+| Frontend libraries | Chart.js and marked.js only, served from `rackbook/static/vendor/` (pinned, hashes in its README; no CDN). No bundler, no build step. |
 | Frontend structure | `index.html` holds all HTML, CSS, JS. Do not split. |
 | DB path | Read from `os.environ` as `DB_PATH`. Never hardcode. |
 | Output language | No directives. App informs, does not instruct. |

@@ -1,6 +1,6 @@
-# Progress chart dependencies
+# Browser script dependencies
 
-Pinned browser scripts served from this folder; no CDN requests or build step. Each corresponding MIT license is included. Load Chart.js, Hammer.js, then the zoom plugin.
+Pinned browser scripts served from this folder for the training pages and the host dashboard (`static/index.html` loads Chart.js and marked from here); no CDN requests or build step. Each corresponding MIT license is included. Load Chart.js, Hammer.js, then the zoom plugin.
 
 Chart.js 4.4.0 matches Hevy-Fatigue’s chart engine. Its `_trendChartBaseOptions`, `_vfBuildBarLineChart`, and `_exmBuildLineChart` in `static/index.html` informed Progress’s sizing, axes, typography, legends and tooltip styling. Rackbook retains its own data/calculations and uses real elapsed-time spacing.
 
@@ -24,5 +24,12 @@ Chart.js 4.4.0 matches Hevy-Fatigue’s chart engine. Its `_trendChartBaseOption
 - Source: https://registry.npmjs.org/chartjs-plugin-zoom/-/chartjs-plugin-zoom-2.2.0.tgz
 - Archive member: `package/dist/chartjs-plugin-zoom.min.js`
 - SHA-256: `e4a088e5bab93be6ee47c939eeb9ebaa80e0b39156d4bdfd1af9c844be81b6c4`
+
+## marked 9.1.6
+
+- File: `marked-9.1.6.min.js` (dashboard AI coach replies)
+- Source: https://registry.npmjs.org/marked/-/marked-9.1.6.tgz
+- Archive member: `package/marked.min.js`
+- SHA-256: `6002af63485b043fa60ddaba1b34363b98d2a8b2c63b607004f3a2405a8a053a`
 
 To update, fetch the pinned upstream npm tarball and copy only the compiled browser file and license; never run package lifecycle scripts. Update the versioned HTML path and hashes, then run the Progress frontend/route checks and verify desktop/touch zoom, gaps, selection and theme handling in the browser.

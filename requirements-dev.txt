@@ -1,3 +1,5 @@
 -r requirements.txt
 # Windows does not ship the IANA timezone database needed by the importer.
 tzdata==2026.6; sys_platform == "win32"
+# Browser checks in tools/check_*_browser.py; after installing run: python -m playwright install chromium
+playwright==1.65.2
