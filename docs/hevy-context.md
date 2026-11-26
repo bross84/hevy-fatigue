@@ -1635,3 +1635,25 @@ No data, saving, credential, monitoring, trial or Hevy-write behaviour changed.
 - Unchanged: workouts, plans, references and history still use Hevy exercise IDs; the picker still
   lists exercises from the Hevy cache; HEVY_WRITES_ENABLED=0 still blocks creation. Moving
   workouts to local IDs is #145.
+
+## Shared page menu (2026-11-26, local; #128, #135, #167)
+
+Owner approved phone and computer mockups on 2026-11-26. Every page now gets
+around the app the same way Log and the dashboard already did.
+
+- **Phone and tablet (under 1100px).** Recent, Plans, Progress, Stress, RPE
+  Charts, Trial, Docs and Diagnostics replace their grid of link buttons (and
+  "More") with one Menu button next to the page title. It opens the same grouped
+  slide-out list as Log, with the current page marked and the ✕ to close.
+- **Computer (1100px and wider).** The same list stays open down the left side,
+  and the page uses the width beside it instead of a centred 1120px column.
+- **Docs.** The "Today / Docs" tabs and "← Dashboard" link are gone; the app
+  menu is on the left and the document contents list sits beside it. Its ☰
+  button still opens the contents on a phone.
+- **Diagnostics.** The "Back to Dashboard" link is replaced by the menu. Its
+  input tables no longer make the phone page scroll sideways; Docs' reference
+  tables scroll inside themselves on a phone.
+- Log and the dashboard are unchanged. The menu's contents are unchanged and
+  still come from `rackbook/static/app-menu.js`; Model trial stays out of it.
+
+No data, saving, credential, monitoring, trial or Hevy-write behaviour changed.

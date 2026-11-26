@@ -15,9 +15,11 @@ for(const m of side.matchAll(/<span class="host-nav-group">([^<]*)<\/span>|<butt
 assert.deepEqual(host,groups,'dashboard sidebar matches the shared menu definition');
 
 // Every logger page draws its menu from the shared script; none keeps a hand-written copy.
-const pages={'log.html':'sidebar','mesocycles.html':'bar','recent.html':'bar','progress.html':'bar','stress.html':'bar','rpe_charts.html':'bar','trial.html':'bar'};
+// Log keeps its own sidebar markup; every other page gets the shared shell (Menu button below 1100px,
+// left sidebar from 1100px). Docs and Diagnostics are host pages that load the same script.
+const pages={'rackbook/log.html':'sidebar','rackbook/mesocycles.html':'shell','rackbook/recent.html':'shell','rackbook/progress.html':'shell','rackbook/stress.html':'shell','rackbook/rpe_charts.html':'shell','rackbook/trial.html':'shell','static/docs.html':'shell','static/diagnostic.html':'shell'};
 for(const [file,variant] of Object.entries(pages)){
-  const text=fs.readFileSync('rackbook/'+file,'utf8');
+  const text=fs.readFileSync(file,'utf8');
   const navs=[...text.matchAll(/<nav class="app-nav"[\s\S]*?<\/nav>/g)].map(m=>m[0]);
   assert.equal(navs.length,1,file+' has one menu');
   assert.ok(navs[0].includes('data-app-menu="'+variant+'"'),file+' uses the '+variant+' menu');
@@ -27,4 +29,4 @@ for(const [file,variant] of Object.entries(pages)){
 
 // Model trial stays out of the main navigation.
 assert.ok(!JSON.stringify(groups).includes('/training/trial'));
-console.log('App menu: one shared definition, dashboard sidebar identical, seven logger pages use it, Model trial excluded.');
+console.log('App menu: one shared definition, dashboard sidebar identical, nine pages use it, Model trial excluded.');

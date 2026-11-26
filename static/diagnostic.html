@@ -7,7 +7,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Diagnostics</title>
   <link rel="icon" href="/resources/favicon.png" type="image/png">
+  <script src="/training/static/app-menu.js?v=3"></script>
   <style>
+    .diag-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 0.5rem; }
+    .diag-head h1 { margin: 0; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
     /* Theme tokens: the shared theme's colours (rackbook/static/theme.css). */
@@ -180,6 +183,12 @@
     tr:last-child td {
       border-bottom: 1px solid var(--border);
     }
+
+    /* Keep the input tables inside a phone screen (the page used to scroll sideways by about 20px). */
+    @media (max-width: 599px) {
+      th, td { padding: 0.6rem 0.35rem; }
+      th { letter-spacing: 0; }
+    }
     
     .volume-value {
       font-family: 'Courier New', monospace;
@@ -324,13 +333,11 @@
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="container" data-app-main>
     <header>
-      <h1>Diagnostics</h1>
+      <div class="diag-head"><h1>Diagnostics</h1><nav class="app-nav" aria-label="Pages" data-app-menu="shell"></nav></div>
       <div class="header-meta">
         <span id="last-updated"></span>
-        <span> · </span>
-        <a href="/">Back to Dashboard</a>
         <span> · </span>
         <button id="refresh-btn" style="
           background: var(--accent);

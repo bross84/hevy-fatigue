@@ -1786,3 +1786,27 @@ Docker and physical-device limitations remain unchanged. No deployment.
   again after a restart, and logged no errors. Container and image removed.
 - No real Hevy account, real database or physical device used. No commit,
   push or deployment.
+
+## Shared page menu (2026-11-26, local; #128)
+
+- Host suite: 260 tests OK. Logger suite: 658 OK (1 expected failure). All 48 JS
+  test files pass; `tests/test_app_menu.cjs` now requires the shell menu on the
+  six training pages, Docs and Diagnostics, and Log's sidebar variant.
+- All 12 browser checks pass. `check_training_browser` now opens the phone Menu
+  (current page marked, ✕ closes it and returns focus to Menu) before following
+  Settings. At 1280px it confirms that Recent, Plans, Progress, Stress, RPE Charts,
+  Trial, Docs and Diagnostics show the left menu with Menu hidden, content
+  starting right of it, and no sideways scroll. It needs a freshly started mocked
+  preview on port 18127: a second run against the same preview fails at the
+  first-workout title because the first run already logged that workout.
+- Mocked preview at 375px (dark and light) and 1366px: menu opens, closes with ✕
+  and Escape, makes the page behind it inert, and every header matches. Two
+  existing sideways overflows were fixed: the Diagnostics input tables (20px) and
+  the Docs reference tables (10px).
+- Docker: `docker build -t hevy-fatigue:shared-menu-local .` passed. An isolated
+  `--network none --read-only` run with temporary /tmp, /data and /training-data
+  returned 200 for /, Docs, Diagnostics, all seven training pages, app-menu.js v3
+  (with the new menu code), theme.css v2 and sw.js. After a restart it was
+  answering again, and it logged no errors. Container and image removed.
+- No real Hevy account, real database or physical device used. Not committed,
+  pushed or deployed.
