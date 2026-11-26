@@ -1671,3 +1671,20 @@ Owner approved the mockup on 2026-11-26.
   value the Log page doesn't read. Log's own kg/lb toggle is the one that works.
 - The trial setting is stored by the training app, so a trial that was on stays on. Recording,
   timing, results and frozen trial records are unchanged.
+
+## TS trend tracker counts every marked top set; model trial off (local, 2026-11-26)
+
+- The Stress page's Performance & soreness tracker (`rackbook/fatigue.py`, now `ts-trends-v4`)
+  counts every marked TS toward its 12-session baseline, whatever the reps or RPE. Each TS's
+  e1RM already converts reps and RPE with the chart. v3 counted only top sets with the same reps
+  and RPE within one point of the latest, so wave top sets (1@7, 1@8, 3@7, 2@8.5) restarted the
+  count: Brian's low-bar squat showed 1 of 12 after six weeks, 4 of 12 under v4. The 12 sessions,
+  6-versus-6 medians, 3% thresholds, BW/soreness pairing, 21-day reset and every suggestion rule
+  are unchanged. Server message wording says "marked TS sessions" instead of "comparable".
+  Frozen trial snapshots keep their stored v3 output. Tests: `rackbook/tests/test_fatigue.py`.
+- Brian turned the performance model trial off in Settings on 2026-11-26 (live setting; v0
+  records kept). It could not score his changing top sets: 0 of 12 on every movement. A v1
+  redesign (per-session e1RM from every rated set, personal check-in range, combined score) is
+  parked in `docs/trial-v1-plan.md`, pending a read-only look-back in 6–8 weeks.
+- Not deployed. Stress page wording updated with Brian's approval: the counter reads "N / 12 marked
+  TS sessions" and the help text says "12 marked-TS sessions ..., at any reps or RPE".

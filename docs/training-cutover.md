@@ -958,3 +958,12 @@ trial workouts. Opening `/training/legacy` (or an old bookmark to it) lands on S
 
 No migration or data change. Rollback to the prior reviewed image restores the old page; the
 trial setting and records are untouched. This does not authorize deployment.
+
+## TS trend tracker v4 release checks (2026-11-26, pending)
+
+After reviewed build/deployment: on the Stress page, Squat, Low Bar w/ Belt shows 4 / 12 (it
+showed 1 / 12 before) and the TS e1RM line joins all four top sets since 2026-10-16.
+`/training/movement-fatigue/{id}` reports `ts-trends-v4`. The trial stays off.
+
+No migration or data change: the tracker recalculates on read. Rollback to the prior reviewed
+image restores v3 counting. This does not authorize deployment.

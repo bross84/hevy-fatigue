@@ -49,7 +49,7 @@ class FatigueRouteCase(unittest.TestCase):
         self.assertTrue(all(p["e1rm_lb"]==300 for p in result["points"]))
         response=self.client.get("/movement-fatigue/test-squat")
         self.assertEqual(response.status_code,200,response.text)
-        self.assertEqual(response.json()["model_version"],"ts-trends-v3")
+        self.assertEqual(response.json()["model_version"],"ts-trends-v4")
 
     def test_press_and_bench_share_soreness_not_performance(self):
         self.seed("press", "press")
