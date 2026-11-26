@@ -1810,3 +1810,23 @@ Docker and physical-device limitations remain unchanged. No deployment.
   answering again, and it logged no errors. Container and image removed.
 - No real Hevy account, real database or physical device used. Not committed,
   pushed or deployed.
+
+## Trial switch in Settings (2026-11-26, local; #132)
+
+- Host suite: 260 OK. Logger suite: 658 OK (1 expected failure). All 48 JS test files pass.
+  - `rackbook/tests/test_trial_settings.cjs` now drives the Settings card script. It covers load
+    failure, a single write per tap, save failure and history. It also checks that the card is on
+    the Settings tab, that nothing links to `/training/legacy`, and that `rackbook/index.html` is gone.
+  - `test_front_door` and the combined-startup test check the no-cache 307 from
+    `/training/legacy` to `/#settings`.
+  - `test_phone_fit` drops the deleted page.
+- All 12 browser checks pass. `check_training_browser` now confirms the Settings trial card loads
+  (enabled, "Off · optional", results link) and that `/training/legacy` opens Settings.
+- Mocked preview at 1366px and 375px. Turning the trial on updated the stored setting to
+  `enabled: true`, the button changed to "Turn off trial", the history showed, and nothing
+  scrolled sideways on a phone.
+- Docker: the image built. An isolated `--network none --read-only` run returned 200 for /
+  (with the trial card), Log, Trial, `/training/fatigue-trial/settings` and sw.js, and 307 from
+  `/training/legacy` to `/#settings`. It answered after a restart and logged no errors. The
+  container and image were removed.
+- No real Hevy account, real database or physical device used.

@@ -1,4 +1,4 @@
-"""The front door: / sends you to the workout log; the original app is kept, unchanged, at /legacy."""
+"""The front door: / sends you to the workout log; the retired /legacy page sends you to host Settings."""
 import json
 import os
 import shutil
@@ -32,10 +32,11 @@ class TestFrontDoor(unittest.TestCase):
         self.assertIn(r.status_code, (302, 307))
         self.assertEqual("/training/log", r.headers["location"])
 
-    def test_original_app_is_still_served_at_legacy(self):
-        r = self.client.get("/legacy")
-        self.assertEqual(200, r.status_code)
-        self.assertIn("Hevy-Fatigue", r.text)
+    def test_retired_legacy_page_redirects_to_host_settings(self):
+        r = self.client.get("/legacy", follow_redirects=False)
+        self.assertIn(r.status_code, (302, 307))
+        self.assertEqual("/#settings", r.headers["location"])
+        self.assertEqual("no-cache", r.headers["cache-control"])
 
     def test_recent_page_links_to_the_log_page_and_back(self):
         # Pages draw their menu from one shared script, which must link both ways.
@@ -48,7 +49,7 @@ class TestFrontDoor(unittest.TestCase):
         self.assertIn("href: '/training/recent'", menu)
 
     def test_pages_tell_browsers_to_recheck_instead_of_reusing_a_stored_copy(self):
-        for path in ("/log", "/recent", "/legacy"):
+        for path in ("/log", "/recent"):
             self.assertEqual("no-cache", self.client.get(path).headers["cache-control"], path)
         self.assertEqual("no-cache", self.client.get("/", follow_redirects=False).headers["cache-control"])
 

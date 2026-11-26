@@ -10,7 +10,7 @@ const root = path.join(__dirname, '..', '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 
 // #120
-for (const page of ['rackbook/index.html', 'rackbook/log.html', 'rackbook/mesocycles.html', 'rackbook/progress.html',
+for (const page of ['rackbook/log.html', 'rackbook/mesocycles.html', 'rackbook/progress.html',
   'rackbook/recent.html', 'rackbook/rpe_charts.html', 'rackbook/stress.html', 'rackbook/trial.html',
   'static/index.html', 'static/diagnostic.html', 'static/docs.html']) {
   const tag = read(page).match(/<meta name="viewport" content="([^"]+)"/);
@@ -32,7 +32,6 @@ for (const page of ['rackbook/stress.html', 'rackbook/trial.html']) {
 const progress = read('rackbook/progress.html');
 assert.match(progress, /\.custom-range input \{ font-size:16px; \}/, 'Progress date boxes are 16px');
 assert.match(progress, /#sessionSelect \{[^}]*font-size:16px/, 'Progress session dropdown is 16px');
-assert.match(read('rackbook/index.html'), /\.field select \{[^}]*font-size: 16px;/, 'legacy settings boxes are 16px');
 assert.match(read('static/index.html'), /\.ai-equipment-notes \{[^}]*font-size: 16px;/, 'equipment notes box is 16px');
 
 // #122

@@ -693,7 +693,7 @@ from fastapi.testclient import TestClient
 import main, sqlite3, os
 for i in range(2):
  with TestClient(main.app) as c:
-  for path in ('/','/training/log','/training/microcycles','/training/mesocycles','/training/recent','/training/progress','/training/rpe-charts','/training/stress','/training/stress/details','/training/trial','/training/legacy'):
+  for path in ('/','/training/log','/training/microcycles','/training/mesocycles','/training/recent','/training/progress','/training/rpe-charts','/training/stress','/training/stress/details','/training/trial'):
    r=c.get(path); assert r.status_code==200,(path,r.status_code)
   for path in ('/training/static/training.js','/training/static/draft-transfer.js','/training/static/save-recovery.js','/training/static/vendor/chart-4.4.0.umd.js','/training/sw.js'):
    assert c.get(path).status_code==200,path
@@ -701,6 +701,8 @@ for i in range(2):
   assert manifest['scope']=='/training/' and manifest['start_url']=='/training/log'
   for icon in manifest['icons']: assert c.get(icon['src']).status_code==200
   assert '/training/log' in c.get('/').text and 'Check-in History' in c.get('/').text
+  legacy=c.get('/training/legacy',follow_redirects=False); assert legacy.status_code in (302,307) and legacy.headers['location']=='/#settings'
+  home=c.get('/').text; assert 'id="trialEnabled"' in home and '/training/legacy' not in home
   assert '/training/static/app-menu.js' in c.get('/training/log').text
   assert "href: '/#settings'" in c.get('/training/static/app-menu.js').text
 with sqlite3.connect(os.environ['DB_PATH']) as db:

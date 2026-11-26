@@ -1,7 +1,7 @@
 const inlineScriptMatches = require('./helpers/html-scripts.cjs');
-// Settings UI only; no browser/network/Hevy writes.
+// Host Settings trial card only (moved from the retired training settings page); no browser/network/Hevy writes.
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
-const root=path.join(__dirname,'..'),settings=fs.readFileSync(path.join(root,'index.html'),'utf8');
+const root=path.join(__dirname,'..'),settings=fs.readFileSync(path.join(root,'..','static','index.html'),'utf8');
 for(const match of inlineScriptMatches(settings))new vm.Script(match[1]);
 const elements=new Map();
 function el(){return {textContent:'',children:[],attrs:{},disabled:true,hidden:true,append(n){this.children.push(n)},replaceChildren(){this.children=[]},setAttribute(k,v){this.attrs[k]=v},addEventListener(k,fn){this[k]=fn},querySelector(){return this.box??=el()}};}
@@ -10,7 +10,7 @@ let fail=false,failLoad=false,calls=[];
 const context=vm.createContext({trainingUrl:path=>path.startsWith("/training/")?path:"/training"+path,document:{getElementById:get,createElement:el},fetch:async(url,options={})=>{
  calls.push([url,options]);if(fail||failLoad)throw Error('Offline');return {ok:true,json:async()=>url.endsWith('/dashboard')?{entries:[{status:'recorded'}],cohorts:[]}:({enabled:options.method==='PUT'?JSON.parse(options.body).enabled:true})};
 }});
-const script=settings.match(/<script id="trial-settings">([\s\S]*?)<\/script>/)[1].replace('  loadTrialSetting();','').replace('  loadTrialHistory();','');
+const script=settings.match(/<script id="trial-settings">([\s\S]*?)<\/script>/)[1].replace(/^\s*loadTrialSetting\(\);$/m,'').replace(/^\s*loadTrialHistory\(\);$/m,'');
 vm.runInContext(script,context);
 (async()=>{
  failLoad=true;await context.loadTrialSetting();assert.equal(get('trialEnabled').disabled,true);assert.match(get('trialSettingStatus').textContent,/Could not load/);
@@ -20,7 +20,11 @@ vm.runInContext(script,context);
  await toggle;assert.equal(get('trialEnabled').attrs['aria-pressed'],'false');assert.equal(get('trialEnabled').disabled,false);
  fail=true;await context.toggleTrialSetting();assert.equal(get('trialEnabled').attrs['aria-pressed'],'false');assert.match(get('trialSettingStatus').textContent,/Could not save/);
  fail=false;await context.loadTrialHistory();assert.equal(get('trialHistory').hidden,false);assert.match(get('trialHistory').box.children.map(x=>x.textContent).join(' '),/No saved trial workouts.*1 snapshots/);
- assert.match(settings,/href="\/training\/trial">View model trial dashboard/);
+ const settingsTab=settings.slice(settings.indexOf('<section id="tab-settings"'),settings.indexOf('</section>',settings.indexOf('<section id="tab-settings"')));
+ assert.match(settingsTab,/id="trialEnabled"/,'Trial switch sits on the host Settings tab');
+ assert.match(settingsTab,/href="\/training\/trial">View trial results/);
+ assert.ok(!settings.includes('/training/legacy'),'No link to the retired settings page');
+ assert.ok(!fs.existsSync(path.join(root,'index.html')),'Retired settings page is gone');
  for(const file of ['log.html','mesocycles.html','recent.html','progress.html','stress.html','rpe_charts.html','trial.html']){
   const text=fs.readFileSync(path.join(root,file),'utf8'),nav=text.match(/<nav class="app-nav"[\s\S]*?<\/nav>/)[0];
   assert.ok(!nav.includes('href="/training/trial"'),file+' keeps Model trial out of main navigation');

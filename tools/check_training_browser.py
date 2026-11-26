@@ -317,6 +317,13 @@ with sync_playwright() as p:
     page.locator('#appNav').get_by_role('link',name='Settings',exact=True).click()
     expect(page.locator('#tab-settings')).to_have_class('tab-content active')
     assert page.url.endswith('/#settings')
+    # The trial switch lives on Settings; the retired /training/legacy page sends old bookmarks there.
+    expect(page.locator('#tab-settings #trialEnabled')).to_be_enabled()
+    expect(page.locator('#trialSettingState')).to_have_text('Off · optional')
+    expect(page.locator('#tab-settings').get_by_role('link',name='View trial results →')).to_have_attribute('href','/training/trial')
+    page.goto(URL+'/training/legacy')
+    expect(page.locator('#tab-settings')).to_have_class('tab-content active')
+    assert page.url.endswith('/#settings'),page.url
     # Unknown hashes cannot hide or break the host dashboard.
     page.goto(URL+'/#not-a-tab');expect(page.locator('#tab-settings')).to_have_class('tab-content active')
     page.reload();expect(page.locator('#tab-dashboard')).to_have_class('tab-content active')

@@ -90,9 +90,9 @@ models, except additive save-recovery fields. `training-routes.txt` lists them.
 | `/training/rpe-charts` | General and observed charts, assignments and historical chart import |
 | `/training/stress`, `/training/stress/details` | Existing stress model, history and relationships |
 | `/training/trial` | Stored prospective observations and frozen shadows |
-| `/training/legacy` | Noncredential settings, trial toggle; retained legacy backend |
+| `/training/legacy` | Retired (2026-11-26): redirects to host `/#settings`, where the trial toggle now lives |
 
-Packaged assets include all seven HTML pages plus legacy settings, both RPE CSVs,
+Packaged assets include all seven HTML pages, both RPE CSVs,
 Chart.js/Hammer/zoom vendors, stress-chart helper, PWA icons, manifest and worker.
 The worker remains network-only and its default scope is `/training/`.
 
@@ -890,3 +890,14 @@ sidebar (240px from 1900px) and main is offset beside it. Its styles are injecte
 by the script, so host pages need no theme.css. The old top-bar "More" variant and
 the `.app-header .app-nav` styles in theme.css (v2) are removed. No routes,
 storage or service-worker scope changed.
+
+## Trial switch moved to Settings (2026-11-26, local; #132)
+
+The Performance model trial card is now on the host Settings tab (`static/index.html`,
+`<script id="trial-settings">`). It calls the unchanged `GET`/`PUT /training/fatigue-trial/settings`
+and `GET /training/fatigue-trial/dashboard` through `trainingUrl`. `rackbook/index.html` (the old
+multi-tab settings page) is deleted and `GET /training/legacy` returns a no-cache redirect to
+`/#settings`. Its other sections were redundant: the Hevy key already lived in host Settings,
+Exercise sync is in the Log and Plans pickers, and its Theme and kg/lbs controls affected nothing
+else. The lbs control wrote `"lbs"` while Log reads `"lb"`. training.js no longer checks for that
+page's `#themeSelect`. No storage, trial timing or service-worker scope changed.
