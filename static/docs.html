@@ -205,6 +205,12 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
   .formula-block .op { color: var(--accent); }
   .formula-block .val { color: var(--amber); }
 
+  /* Light mode: the dark-mode code colours were pale blue on mid-grey. */
+  [data-theme="light"] .formula-block { background: var(--accent-sub); }
+  [data-theme="light"] .formula-block .var { color: #1d4f9e; font-weight: 600; }
+  [data-theme="light"] .formula-block .op { color: var(--muted); }
+  [data-theme="light"] .formula-block .val { color: #9a4a0c; }
+
   /* ── Info cards ─────────────────────────────────────── */
   .info-card {
     background: var(--bg-card);
@@ -607,7 +613,7 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       <a class="nav-link" href="#ewma">EWMA (ATL / CTL)</a>
       <a class="nav-link" href="#tsb">TSB & training state</a>
       <a class="nav-link" href="#fatigue-score">Fatigue score</a>
-      <a class="nav-link" href="#readiness-trend">7-day trend</a>
+      <a class="nav-link" href="#readiness-trend">Fatigue Trend chart</a>
       <a class="nav-link" href="#dashboard-layout">Dashboard layout</a>
       <a class="nav-link" href="#joint">Joint health advisory</a>
     </div>
@@ -751,7 +757,7 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         <p>The structure of this composite is consistent with the <strong>Hooper Index</strong> (Hooper &amp; Mackinnon, 1995 [9]) and the <strong>DALDA</strong> (Daily Analysis of Life Demands for Athletes), both peer-reviewed subjective wellness tools used in applied sports science. Weighted composites of self-report items are the standard approach in athlete monitoring. The specific weights here (45/30/25) are practitioner-selected, not statistically derived from individual data — this is normal practice. Commercial monitoring tools including WHOOP and HRV4Training make the same class of assumption.</p>
       </div>
 
-      <p>On days without a workout, the daily fatigue score is computed from check-in alone. On training days, training load is incorporated as a modifier (see §4).</p>
+      <p>This subjective score is then blended with your recent training volume to give the combined score shown on the dashboard (see <a href="#fatigue-score" style="color:var(--accent);">§08b Fatigue score</a>).</p>
     </section>
 
     <!-- ═══════════════════════════════════════════ -->
@@ -763,18 +769,18 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         <h2>No check-in — pending state</h2>
       </div>
 
-      <p>When no check-in exists for the current day, the dashboard switches into a neutral pending state. The subjective score shows as <code>—</code>, the combined score shows as <code>value*</code> with a muted/unconfirmed treatment, and the recommendation copy changes from a fatigue-based recommendation to a check-in prompt.</p>
+      <p>When today has no check-in, the Readiness card shows a banner — <em>No check-in recorded today. Readiness scores may be incomplete.</em> — with a <strong>Check in</strong> button that opens the check-in form.</p>
 
       <ul class="doc-list">
-        <li>Pattern stress cards render with muted styling and empty dots.</li>
-        <li>The stress label shows <code>—</code> instead of a numeric score.</li>
-        <li>Training load signals still compute normally from workout history; only the subjective component is absent.</li>
-        <li>The footer note remains: <code>No check-in today — pattern signals based on training load only</code>.</li>
+        <li>No score is invented for the missing day. The Subjective / Objective / Combined breakdown is hidden until you check in.</li>
+        <li>In Pattern stress, Soreness and Trend show <code>—</code> for the day. Load still updates from your training history.</li>
+        <li>On the Fatigue Trend chart the missing day is a gap in the line, not a zero.</li>
+        <li>A missed day resets the run of consecutive check-ins. A gap of more than seven days restarts monitoring, which needs three consecutive complete check-ins before recommendations return.</li>
       </ul>
 
       <div class="info-card callout-blue">
         <div class="callout-label">Design rationale</div>
-        <p>A neutral fallback of <strong>10.0</strong> is used for math only when the subjective score is null. It is never displayed as a real score, and it exists solely to keep the combined readiness math stable until the athlete completes today's check-in.</p>
+        <p>Missing data stays missing. Filling a gap with a neutral or assumed value would make the score look more certain than it is, so the app shows <code>—</code> or <em>Continue Training as Normal</em> with an explanation instead.</p>
       </div>
     </section>
 
@@ -831,18 +837,17 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       <p>Four distinct pathways calculate training stress depending on session modality. Each produces a session stress score (SSS) in arbitrary units (AU) that feeds into the EWMA model.</p>
 
       <h3>Pathway A — Strength & hypertrophy</h3>
-      <p>Stress is computed per set using RPE and tonnage (load × reps). Sets below RPE 6 contribute negligible stress and are filtered or heavily discounted.</p>
+      <p>Stress is computed per set from <strong>intensity and reps</strong>, not from the weight on the bar. Intensity is the set's percentage of your estimated 1RM, read from the RPE chart using the set's reps and RPE (or 10 − RIR). Without an RPE, the app estimates it from your best recent e1RM for that exercise (last 12 weeks), or from the Wendler formula as a last resort.</p>
 
       <div class="formula-block">
-        <span class="comment">// Per-set stress</span><br>
-        <span class="var">set_stress</span> <span class="op">=</span> <span class="var">tonnage</span> <span class="op">×</span> <span class="var">RPE_factor</span><br><br>
-        <span class="comment">// tonnage = weight_lbs × reps</span><br>
-        <span class="comment">// RPE_factor = exponential curve peaking at RPE 10</span><br><br>
-        <span class="comment">// Session stress = sum of all set stresses</span><br>
-        <span class="var">session_stress</span> <span class="op">=</span> Σ <span class="var">set_stress</span>
+        <span class="comment">// pct = percentage of e1RM (0.0–1.0) from the RPE chart</span><br>
+        <span class="var">central_stress</span> <span class="op">=</span> <span class="var">pct</span>² <span class="op">×</span> <span class="var">reps</span><br>
+        <span class="var">peripheral_stress</span> <span class="op">=</span> <span class="var">pct</span> <span class="op">×</span> <span class="var">reps</span><br><br>
+        <span class="comment">// Session stress = sum over all working sets</span><br>
+        <span class="var">session_stress</span> <span class="op">=</span> Σ (<span class="var">central_stress</span> <span class="op">+</span> <span class="var">peripheral_stress</span>)
       </div>
 
-      <p>The RPE factor applies a non-linear curve so that the difference between RPE 8 and RPE 10 is much larger than between RPE 6 and RPE 8 — reflecting the disproportionate neural and systemic cost of near-maximal effort.</p>
+      <p>Squaring intensity for central stress means heavy, near-maximal sets cost much more than lighter sets of the same reps, while peripheral stress grows in line with volume at intensity. Two sets with the same RPE and reps get the same stress whatever the weight, so an exercise that felt harder should be logged at a higher RPE.</p>
 
       <h3>Pathway A2 — HYP sRPE fallback</h3>
       <p>When a verified HYP session has duration and sRPE logged but at least half of its sets are missing RPE values, the session falls back to a session-level sRPE proxy. This covers circuit-style hypertrophy work and pump sessions where per-set RPE is often incomplete.</p>
@@ -976,15 +981,15 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         <h2>Workout importer</h2>
       </div>
 
-      <p>Hevy Fatigue connects to the Hevy API to pull your workout history into the local database. The importer is designed to be lightweight and respect API rate limits — it does not run automatically in the background on a continuous schedule.</p>
+      <p>Hevy Fatigue connects to the Hevy API to pull your workout history into the local database. It does not sync continuously in the background.</p>
 
       <h3>How sync works</h3>
-      <p>Sync is triggered manually via the Sync button on the Workouts tab. Each sync pulls the most recent 7 sessions from Hevy using the <code>workouts/events</code> endpoint, which returns only changes since the last sync rather than re-fetching your entire history. On first-ever sync, a full historical fetch is performed to populate the database.</p>
+      <p>Submitting a daily check-in syncs automatically. To sync by hand, open <strong>Menu → Settings → Hevy Sync</strong> and press <strong>Sync Now</strong>. Each sync asks Hevy only for workouts added, changed or deleted since the last sync (the <code>workouts/events</code> endpoint) rather than re-fetching your entire history. The very first sync fetches your full history.</p>
 
-      <p>A cooldown period is enforced between syncs to prevent API rate limit issues. If you trigger a sync and see a cooldown message, wait the indicated time before retrying.</p>
+      <p>Only one sync runs at a time; while one is running, the sync buttons stay inactive.</p>
 
       <h3>Verification queue</h3>
-      <p>Every imported session lands in the <strong>verification queue</strong> on the Workouts tab — including sessions with clear title codes. This is intentional. Auto-classification is never trusted blindly: a misclassified session with an incorrect modality or missing sRPE will corrupt your stress calculations silently. Manual verification takes seconds and ensures the data feeding your metrics is correct.</p>
+      <p>Imported sessions that need a decision land in the <strong>Session Verification Queue</strong> at the top of <strong>Menu → Workouts</strong>; the Workouts entry shows a badge with the number waiting. A session is verified automatically when it has a duration and the classifier is confident (at least 87% by default) — and, for conditioning or cardio, when its sRPE came from the title. Everything else waits for you.</p>
 
       <p>For each queued session you will see:</p>
       <ul class="doc-list">
@@ -994,21 +999,21 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         <li>A duration field and conditional sRPE field for conditioning/cardio sessions</li>
       </ul>
 
-      <p>Verified sessions are written to the stress model and begin contributing to your ATL, CTL, and TSB. Unverified sessions in the queue do not affect your metrics.</p>
+      <p>Strength and hypertrophy sets count toward stress from their logged RPE as soon as they are imported. Conditioning and cardio sessions, and the hypertrophy sRPE fallback, count only once the session is verified, because they depend on a confirmed duration and sRPE.</p>
 
       <h3>Reclassification without re-syncing</h3>
-      <p>If you update the title tagging convention on old sessions in Hevy, or want to re-run the classifier after a settings change, use the <strong>Reclassify Sessions</strong> button in Settings → Session Processing. This re-runs the classifier against all locally stored sessions without hitting the Hevy API and without consuming your sync cooldown. Manually verified sessions are not overwritten unless you explicitly request a full reclassify.</p>
+      <p>If you update the title tagging convention on old sessions in Hevy, or want to re-run the classifier after a settings change, use <strong>Reclassify Sessions</strong> on the Diagnostics page (<strong>Menu → Settings → Open Engine Diagnostics</strong>). This re-runs the classifier against all locally stored sessions without contacting Hevy. Verified sessions keep their classification; <strong>Force Reclassify All</strong> overwrites them too and asks for confirmation first.</p>
 
       <h3>Force Full Sync (recovery)</h3>
       <p>Normally, <strong>Sync Now</strong> is incremental: it pulls only changes since the last sync, which is fast and API-friendly. In rare cases — after a data integrity issue, a botched canonical rename, or if you suspect orphaned or stale sessions — you can perform a <strong>Force Full Sync</strong> to delete and reimport your entire workout history from Hevy.</p>
 
-      <p><strong>Important:</strong> Force Full Sync deletes all imported sessions and sets, then re-downloads everything. Your daily check-in history and canonical exercise names are always preserved. When you click Force Full Sync, a confirmation dialog appears. Confirm only if you understand the implications.</p>
+      <p><strong>Important:</strong> Force Full Sync deletes all imported sessions and sets, then re-downloads everything. Your daily check-ins, canonical exercise names, and the sRPE, type, duration and verified marks you entered for each workout are kept. When you click Force Full Sync, a confirmation dialog appears. Confirm only if you understand the implications.</p>
 
-      <p>Force Full Sync is found in Settings → Hevy Sync, styled as a secondary button to discourage accidental use. Once initiated, both the Sync Now and Force Full Sync buttons become inactive until the reimport completes. If a full sync fails partway through (e.g., API timeout), an error message will tell you to retry or restore from backup — the system never silently leaves you with an empty workout table.</p>
+      <p>Force Full Sync is found in Menu → Settings → Hevy Sync, below Sync Now and styled as a danger button to discourage accidental use. Once initiated, both the Sync Now and Force Full Sync buttons become inactive until the reimport completes. If a full sync fails partway through (e.g., API timeout), an error message will tell you to retry or restore from backup — the system never silently leaves you with an empty workout table.</p>
 
       <div class="info-card callout-purple">
         <div class="callout-label">Diagnostics page</div>
-        <p>The <strong>Diagnostics page</strong> (<code>/static/diagnostic.html</code>) provides a lower-level view of what the importer has pulled: session volume, 7-day and 28-day workout summaries, and raw session data. If something looks wrong in your metrics and you're not sure why, diagnostics is the first place to look — it shows you exactly what data the system is working with. See <a href="#diagnostics" style="color:var(--accent);">§10 Diagnostics page</a> for the full workflow.</p>
+        <p>The <strong>Diagnostics page</strong> (<code>/static/diagnostic.html</code>) provides a lower-level view of what the engine is working with: today's score breakdown, check-in inputs, the 7-day volume against your 6-month weekly average, ATL/CTL/TSB, joint advisory state and how your last 10 sessions were classified. If something looks wrong in your metrics and you're not sure why, diagnostics is the first place to look — it shows you exactly what data the system is working with. See <a href="#diagnostics" style="color:var(--accent);">§10 Diagnostics page</a> for the full workflow.</p>
       </div>
     </section>
 
@@ -1026,53 +1031,61 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       <div class="pattern-grid">
         <div class="pattern-card">
           <div class="pattern-name">Knee dominant</div>
-          <div class="pattern-weight" style="color:#58a6ff">30%</div>
           <div class="pattern-desc">Squat, lunge, leg press patterns</div>
         </div>
         <div class="pattern-card">
           <div class="pattern-name">Hip dominant</div>
-          <div class="pattern-weight" style="color:#58a6ff">30%</div>
           <div class="pattern-desc">Deadlift, hinge, hip extension</div>
         </div>
         <div class="pattern-card">
           <div class="pattern-name">Push</div>
-          <div class="pattern-weight" style="color:#3fb950">20%</div>
           <div class="pattern-desc">Press, push-up, dip patterns</div>
         </div>
         <div class="pattern-card">
           <div class="pattern-name">Pull</div>
-          <div class="pattern-weight" style="color:#3fb950">20%</div>
           <div class="pattern-desc">Row, pull-up, curl patterns</div>
         </div>
       </div>
 
       <p>Each exercise in exercise_mappings carries percentage weights across the four pattern columns (pct_quad_dom, pct_posterior, pct_upper_push, pct_upper_pull). Session stress is apportioned to each pattern bucket proportionally based on these weights. For conditioning sessions where no exercise mappings exist, the system falls back to an equal 25/25/25/25 distribution across all four buckets.</p>
 
-      <p>Each pattern bucket runs its own parallel EWMA, producing per-pattern ATL, CTL, and TSB. This powers pattern-level trend visualization on the dashboard.</p>
+      <p>Each pattern bucket runs its own parallel EWMA, producing per-pattern ATL, CTL, and TSB. This powers the Pattern stress card and the Per-Pattern Fatigue Trend chart on the dashboard.</p>
 
-      <h3>Pattern stress dots</h3>
-      <p>Pattern stress dots use <code>_pattern_tsb_signal(tsb, ctl)</code> to turn per-pattern TSB into a normalized stress signal. The implementation is: <code>clamp(-tsb / ctl, 0.0, 1.0)</code>, rounded to 3 decimal places, and it returns <code>0.0</code> when CTL &le; 0.</p>
+      <h3>Pattern stress card</h3>
+      <p>The dashboard's Pattern stress card is a table with one row per pattern (Knee, Hip, Push, Pull) and three columns, each shown as a word plus a fill bar:</p>
+
+      <table class="ref-table">
+        <thead><tr><th>Column</th><th>What it shows</th></tr></thead>
+        <tbody>
+          <tr><td>Load</td><td>Recent training on that pattern relative to its own baseline, using training through yesterday. It decays on rest days and keeps showing leftover acute load even below baseline.</td></tr>
+          <tr><td>Soreness</td><td>Your latest soreness rating for that pattern, unchanged: None, Mild, Moderate, Significant or Severe (0–4).</td></tr>
+          <tr><td>Trend</td><td>The higher of Load and Soreness, smoothed. It rises immediately and eases off as you recover (65% yesterday's trend, 35% today's signal).</td></tr>
+        </tbody>
+      </table>
 
       <div class="formula-block">
-        <span class="comment">// Per-pattern stress signal</span><br>
-        <span class="var">signal</span> <span class="op">=</span> clamp(<span class="op">-</span><span class="var">tsb</span> <span class="op">/</span> <span class="var">ctl</span>, <span class="val">0.0</span>, <span class="val">1.0</span>)<br>
-        <span class="comment">// Return 0.0 when CTL ≤ 0; round to 3 decimals</span>
+        <span class="comment">// Load signal per pattern (target-day training removed first)</span><br>
+        <span class="var">load</span> <span class="op">=</span> clamp(<span class="var">ATL</span> <span class="op">/</span> (<span class="val">2</span> <span class="op">×</span> <span class="var">CTL</span>), <span class="val">0.0</span>, <span class="val">1.0</span>)<br>
+        <span class="var">soreness</span> <span class="op">=</span> <span class="var">rating</span> <span class="op">/</span> <span class="val">4</span><br><br>
+        <span class="comment">// Trend: rises at once, recovers gradually</span><br>
+        <span class="var">trend</span> <span class="op">=</span> max(<span class="var">raw</span>, <span class="val">0.35</span> <span class="op">×</span> <span class="var">raw</span> <span class="op">+</span> <span class="val">0.65</span> <span class="op">×</span> <span class="var">trend_yesterday</span>)<br>
+        <span class="comment">// where raw = max(load, soreness)</span>
       </div>
 
       <table class="ref-table">
-        <thead><tr><th>Dots</th><th>Label</th><th>Meaning</th></tr></thead>
+        <thead><tr><th>Signal</th><th>Label (Load and Trend)</th></tr></thead>
         <tbody>
-          <tr><td>1</td><td>Fresh</td><td>Fresh / underloaded</td></tr>
-          <tr><td>2</td><td>Min. Stress</td><td>Light strain, mostly green</td></tr>
-          <tr><td>3</td><td>Normal Stress</td><td>Expected training load</td></tr>
-          <tr><td>4</td><td>Moderate Stress</td><td>Approaching caution territory</td></tr>
-          <tr><td>5</td><td>High Stress</td><td>High fatigue / red flag</td></tr>
+          <tr><td>0.0 – 0.2</td><td>Very low</td></tr>
+          <tr><td>0.2 – 0.4</td><td>Low</td></tr>
+          <tr><td>0.4 – 0.6</td><td>Moderate</td></tr>
+          <tr><td>0.6 – 0.8</td><td>Elevated</td></tr>
+          <tr><td>0.8 – 1.0</td><td>High</td></tr>
         </tbody>
       </table>
 
       <div class="info-card callout-amber">
-        <div class="callout-label">Dot colors</div>
-        <p>One-dot freshness uses the accent color. Two- and three-dot states use the success/green family. Four-dot stress uses the warn/amber color. Five-dot stress uses the danger/red color.</p>
+        <div class="callout-label">When a cell shows —</div>
+        <p>Load needs that pattern trained on at least three dates spanning 28 days in the prior 180. Soreness needs today's rating. Trend needs both, plus three consecutive check-ins; a gap of more than seven days restarts it. These are provisional display rules, not measured recovery times.</p>
       </div>
 
       <h3>How pattern labels are derived</h3>
@@ -1116,11 +1129,13 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
 
       <h3>How to set a canonical name</h3>
       <ol class="doc-list">
-        <li>Go to <strong>Patterns</strong></li>
+        <li>Open <strong>Menu → Patterns</strong></li>
         <li>Find the exercise and click <strong>Edit</strong></li>
         <li>Enter your preferred name in the <strong>Canonical Name</strong> field</li>
         <li>Save — Hevy Fatigue immediately updates all historical workout data for that exercise to the canonical name</li>
       </ol>
+
+      <p>When Hevy sends a different name for an exercise you already have, it appears under <strong>Exercise Names — Needs Review</strong> at the top of <strong>Menu → Exercises</strong> (the Exercises entry shows a badge). From there you can set a canonical name to lock it, dismiss the change, or use <strong>Add Override</strong> to name any exercise.</p>
 
       <h3>What happens on sync</h3>
       <p>Every time Hevy Fatigue syncs with Hevy, incoming exercise titles are checked against the canonical table by exercise ID. If a canonical name exists, it overwrites whatever title Hevy sent — so the canonical name always wins.</p>
@@ -1146,7 +1161,7 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         <h2>Exercise metrics</h2>
       </div>
 
-      <p>The new <strong>Exercises</strong> tab is a per-exercise performance browser. The older pattern-assignment tab is now labeled <strong>Patterns</strong> in the main app nav; the metrics browser lives in its own tab so the two workflows stay separate.</p>
+      <p><strong>Menu → Exercises</strong> is a per-exercise performance browser. Pattern assignment lives separately under <strong>Menu → Patterns</strong>, so the two workflows stay apart.</p>
 
       <ul class="doc-list">
         <li>Exercises are sorted by recency, with the most recently trained exercise first.</li>
@@ -1183,25 +1198,25 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         <h2>Vol-Fatigue correlation</h2>
       </div>
 
-      <p>The Vol-Fatigue chart surfaces the relationship between daily training volume and readiness over a selected block window. It is a reading tool - it shows the correlation between work done and how the body responded, without computing thresholds or prescribing adjustments.</p>
+      <p>The <strong>Volume · Fatigue</strong> card on the dashboard shows daily training volume next to how fatigued you reported feeling, over a selected block window. It is a reading tool - it shows the relationship between work done and how the body responded, without computing thresholds or prescribing adjustments.</p>
 
       <h3>Signal toggle</h3>
       <p>Three signals are available via toggle:</p>
       <ul>
         <li><strong>Tonnage</strong> (default) - sum of <code>weight_lbs × reps</code> across all sets for the day. Zero on rest days.</li>
-        <li><strong>RPE Load</strong> - RPE-weighted tonnage stress score for the day. Zero on rest days.</li>
-        <li><strong>Set Count</strong> - total working sets logged for the day. Zero on rest days.</li>
+        <li><strong>RPE Load</strong> - the day's session stress (central + peripheral, see §04), which depends on RPE and reps rather than weight. Zero on rest days.</li>
+        <li><strong>Sets</strong> - total sets logged for the day. Zero on rest days.</li>
       </ul>
 
       <h3>Chart format</h3>
-      <p>The selected volume signal renders as vertical bars. Rest days appear as zero-height bars - they are honest gaps in training, not interpolated values. Rolling readiness (7-day average from <code>daily_readiness</code>) overlays as a dashed line on the right Y-axis (0-10 scale).</p>
+      <p>The selected volume signal renders as vertical bars. Rest days appear as zero-height bars - they are honest gaps in training, not interpolated values. A dashed <strong>Fatigue</strong> line on the right Y-axis (0–20, higher = more fatigued) shows the 7-day average of your subjective check-in score. It is left blank until a 7-day window holds at least three check-ins.</p>
 
       <h3>Block window</h3>
       <p>The date range is user-selectable: 4 weeks, 8 weeks, 12 weeks, or a custom date range. Changing the window re-fetches from <code>GET /api/volfatigue/summary</code>.</p>
 
       <div class="info-card callout-amber">
         <div class="callout-label">Interpretation note</div>
-        <p>Readiness dipping after a high-volume period is expected and correct - fatigue accumulation lags peak training stress by 1-3 days due to the rolling average smoothing. This lag pattern is the signal you are looking for: consistent readiness drops after high-volume periods identify your personal stress ceiling over time.</p>
+        <p>Fatigue rising after a high-volume period is expected - the 7-day average makes the line lag peak training by a few days. That lag is the signal you are looking for: fatigue that consistently climbs after high-volume periods shows your personal stress ceiling over time.</p>
       </div>
     </section>
 
@@ -1306,7 +1321,7 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
 
       <div class="info-card callout-amber">
         <div class="callout-label">Display note</div>
-        <p>TSB is computed internally and drives the pattern stress signals and readiness model, but is not directly displayed on the dashboard. Athletes who want to inspect raw ATL/CTL/TSB values can access them via the Diagnostics page. The dashboard surfaces the combined readiness score - an 80/20 blend of subjective check-in and objective load - as the primary daily signal.</p>
+        <p>TSB is computed internally and drives the pattern stress signals and readiness model, but is not directly displayed on the dashboard. Athletes who want to inspect raw ATL/CTL/TSB values can access them via the Diagnostics page. The dashboard's primary daily signal is the fatigue score instead - an 80/20 blend of your subjective check-in and recent tonnage (see §08b).</p>
       </div>
     </section>
 
@@ -1319,25 +1334,25 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         <h2>Fatigue score display</h2>
       </div>
 
-      <p>The readiness score is displayed in the format <strong>X / 10</strong>, where higher is more recovered and lower is more fatigued. This keeps the dashboard framed as readiness, not raw fatigue.</p>
+      <p>The Readiness card shows the fatigue score as <strong>X / 20</strong>, where <strong>higher means more fatigued</strong>. The big number is the smoothed fatigue trend; underneath it, the <strong>Subjective</strong>, <strong>Objective</strong> and <strong>Combined</strong> scores show today's raw parts. The big number shows <code>—</code> until monitoring is established.</p>
 
       <h3>Objective load score</h3>
-      <p>The objective component compares recent training volume against the athlete's long-term baseline using an Acute:Chronic Workload Ratio (ACWR) expressed on a 0–10 scale:</p>
+      <p>The objective component compares the last seven completed days of tonnage against your 180-day weekly average, on the same 0–20 scale. Today's training is left out, so this morning's check-in is read against the work that came before it.</p>
 
       <div class="formula-block">
-        <span class="comment">// Acute load: total tonnage (weight_lbs × reps) over last 7 days</span><br>
-        <span class="comment">// Chronic load: total tonnage over last 6 months ÷ 26 weeks → weekly average</span><br>
-        <span class="var">ratio</span> <span class="op">=</span> <span class="var">acute_tonnage</span> <span class="op">/</span> <span class="var">chronic_weekly_avg</span><br><br>
-        <span class="comment">// Scale to 0–10: ratio of 1.0 (normal week) → score of 5.0</span><br>
-        <span class="var">objective_score</span> <span class="op">=</span> clamp(<span class="var">ratio</span> <span class="op">×</span> <span class="val">5</span>, <span class="val">0</span>, <span class="val">10</span>)
+        <span class="comment">// Recent: tonnage (weight_lbs × reps) over the 7 completed days before today</span><br>
+        <span class="comment">// Baseline: tonnage over the 180 days before today ÷ 26 weeks</span><br>
+        <span class="var">ratio</span> <span class="op">=</span> <span class="var">recent_tonnage</span> <span class="op">/</span> <span class="var">baseline_weekly_avg</span><br><br>
+        <span class="comment">// Scale to 0–20: ratio of 1.0 (normal week) → 10.0</span><br>
+        <span class="var">objective_score</span> <span class="op">=</span> min(<span class="var">ratio</span> <span class="op">×</span> <span class="val">10</span>, <span class="val">20</span>)
       </div>
 
       <table class="ref-table">
         <thead><tr><th>Ratio</th><th>Objective score</th><th>Meaning</th></tr></thead>
         <tbody>
-          <tr><td>0.0</td><td>0.0</td><td>No training this week</td></tr>
-          <tr><td>1.0</td><td>5.0</td><td>Training exactly at historical average</td></tr>
-          <tr><td>2.0</td><td>10.0 (capped)</td><td>Double historical average</td></tr>
+          <tr><td>0.0</td><td>0.0</td><td>No training in the last seven days</td></tr>
+          <tr><td>1.0</td><td>10.0</td><td>Training exactly at your usual weekly volume</td></tr>
+          <tr><td>2.0 or more</td><td>20.0 (capped)</td><td>Double your usual weekly volume</td></tr>
         </tbody>
       </table>
 
@@ -1351,8 +1366,8 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         <p>The objective score deliberately uses raw tonnage (weight × reps) rather than the session stress scores that feed ATL/CTL/TSB. This is by design: the long-term purpose of this signal is to build the longitudinal volume record needed for MRV/MEV analysis. Session stress scores are appropriate for acute fatigue modeling; tonnage is appropriate for volume tracking and eventual volume threshold work. The two systems serve different purposes and operate on different foundations intentionally.</p>
       </div>
 
-      <h3>Combined readiness score</h3>
-      <p>The subjective and objective scores are blended into a single combined score with an 80/20 weighting that keeps the subjective signal firmly in control:</p>
+      <h3>Combined score</h3>
+      <p>The subjective and objective scores are blended with an 80/20 weighting that keeps the subjective signal firmly in control:</p>
 
       <div class="formula-block">
         <span class="var">combined_score</span> <span class="op">=</span> (<span class="val">0.80</span> <span class="op">×</span> <span class="var">subjective_score</span>) <span class="op">+</span> (<span class="val">0.20</span> <span class="op">×</span> <span class="var">objective_score</span>)
@@ -1363,47 +1378,57 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         <p>The 80/20 split is a practitioner-selected design decision, not statistically derived from individual data. It reflects the documented principle that subjective wellness measures are often more predictive of performance decrements than objective load metrics alone — a finding supported directionally in the athlete monitoring literature (McLean et al., 2010 [11]). Weights are assumed, not validated; full psychometric validation would require structured longitudinal criterion data that is not feasible in a personal tool. Face validity and longitudinal self-comparison are the appropriate standards here.</p>
       </div>
 
-      <h3>Daily load modifier</h3>
-      <p>On training days, the combined score is further nudged by a small load modifier before display. The Vol-Fatigue endpoint uses <code>subj * 10.0</code> as the subjective scale basis (not <code>subj * 20.0</code>).</p>
+      <h3>Fatigue trend (smoothing)</h3>
+      <p>The headline number smooths the combined score so one good morning doesn't swing the recommendation. Worse days count in full straight away; better days pull the trend down gradually.</p>
 
       <div class="formula-block">
-        <span class="comment">// Load modifier: how hard was today's session relative to baseline?</span><br>
-        <span class="var">load_modifier</span> <span class="op">=</span> clamp(<span class="var">relative_delta</span> <span class="op">×</span> <span class="val">1.2</span>, <span class="val">-1.5</span>, <span class="val">1.5</span>)<br><br>
-        <span class="comment">// Bounds in main.py: −1.5 to +1.5 points</span><br>
-        <span class="comment">// Final displayed score (clamped 0-10)</span><br>
-        <span class="var">adjusted_readiness</span> <span class="op">=</span> clamp(<span class="var">combined_score</span> <span class="op">+</span> <span class="var">load_modifier</span>, <span class="val">0</span>, <span class="val">10</span>)
+        <span class="comment">// Rises immediately, recovers 35% of the way each day</span><br>
+        <span class="var">trend_today</span> <span class="op">=</span> max(<span class="var">combined</span>, <span class="val">0.35</span> <span class="op">×</span> <span class="var">combined</span> <span class="op">+</span> <span class="val">0.65</span> <span class="op">×</span> <span class="var">trend_yesterday</span>)<br><br>
+        <span class="comment">// A gap of more than 7 days restarts the trend from that day's score</span>
       </div>
 
-      <p>The modifier is intentionally small — it nudges the score after an unusually hard session but never overrides the subjective signal. Maximum possible shift is ±1.5 points.</p>
+      <h3>Recommendation bands</h3>
+      <table class="ref-table">
+        <thead><tr><th>Fatigue trend</th><th>Recommendation</th></tr></thead>
+        <tbody>
+          <tr><td>6 or below</td><td>Large Increase — low fatigue, push hard and increase training load</td></tr>
+          <tr><td>above 6 to 8</td><td>Increase — below baseline, good time to add volume or intensity</td></tr>
+          <tr><td>above 8 to 13</td><td>Continue — training load well managed</td></tr>
+          <tr><td>above 13 to 14</td><td>Decrease — fatigue elevated, reduce volume or intensity today</td></tr>
+          <tr><td>above 14</td><td>Large Decrease — high fatigue, rest or very light activity only</td></tr>
+        </tbody>
+      </table>
+
+      <p>A worse band takes effect immediately. Moving to a better band needs two consecutive check-ins that sit at least 0.5 below the band edge, and it moves one band at a time. Until monitoring is established — three consecutive complete check-ins, and at least three training dates spanning 28 days in the last 180 — the card shows <em>Continue Training as Normal</em> with the reason.</p>
     </section>
 
     <!-- ═══════════════════════════════════════════ -->
-    <!-- 08c. 7-day Readiness Trend -->
+    <!-- 08c. Fatigue Trend chart -->
     <!-- ═══════════════════════════════════════════ -->
     <section class="doc-section" id="readiness-trend">
       <div class="section-header">
         <span class="section-num">08c</span>
-        <h2>7-day Readiness Trend</h2>
+        <h2>Fatigue Trend chart</h2>
       </div>
 
-      <p>The Dashboard includes a Chart.js line chart showing the <strong>combined readiness score</strong> for the past 7 days. The x-axis uses short weekday labels and the y-axis runs from 0-10.</p>
+      <p>The dashboard's <strong>Fatigue Trend</strong> chart covers the past 7 days, with short weekday labels and a 0–20 y-axis (higher = more fatigued).</p>
 
-      <p>Days without a check-in render as null gaps, so the line breaks instead of connecting across missing data.</p>
+      <ul class="doc-list">
+        <li><strong>Solid line</strong> — the smoothed fatigue trend (the headline number from §08b).</li>
+        <li><strong>Dashed line</strong> — the raw combined score for each day.</li>
+        <li><strong>Shading</strong> — your usual range: the 10th–90th percentile of your own trend over the prior 84 days.</li>
+      </ul>
 
-      <table class="ref-table">
-        <thead><tr><th>Band</th><th>Range</th><th>Color</th></tr></thead>
-        <tbody>
-          <tr><td>Fresh / low load</td><td>0–6</td><td>Dark teal band</td></tr>
-          <tr><td>Light readiness band</td><td>6–8</td><td>Light cyan band</td></tr>
-          <tr><td>Productive range</td><td>8–13</td><td>Green band</td></tr>
-          <tr><td>Transition / caution</td><td>13–14</td><td>Amber band</td></tr>
-          <tr><td>High fatigue</td><td>14–20</td><td>Red band</td></tr>
-        </tbody>
-      </table>
+      <p>Days without a check-in are gaps; the line breaks instead of joining across missing data. Hovering a day shows its combined, objective and subjective scores and where it sat against your usual range.</p>
+
+      <div class="info-card callout-blue">
+        <div class="callout-label">Usual range</div>
+        <p>The shading appears once there are at least 14 valid days spanning 28 days. Until then the chart says the personal range is still collecting. Each day's range uses only earlier days. It describes what is normal for you; it is not a target or an optimal recovery zone, and it never changes the score or the recommendation.</p>
+      </div>
 
       <div class="info-card callout-blue">
         <div class="callout-label">Data source</div>
-        <p>The chart is populated from <code>GET /api/readiness/combined-history</code> and uses the same 80/20 subjective/objective combined score that powers the Dashboard summary.</p>
+        <p>The chart is populated from <code>GET /api/readiness/combined-history</code>, the same model that powers the Readiness card.</p>
       </div>
     </section>
 
@@ -1416,30 +1441,25 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         <h2>Dashboard layout</h2>
       </div>
 
-      <p>The Dashboard is the primary landing surface. It is organized into two columns on desktop and a single stacked column on mobile.</p>
+      <p>The Dashboard is the landing page. Cards are arranged in a grid on wide screens and stack in a single column on a phone, in this order:</p>
 
-      <h3>Sidebar</h3>
-      <p>The left sidebar (or top section on mobile) contains three persistent cards:</p>
       <ul>
-        <li><strong>Readiness</strong> - combined score (0-10), TSB-derived state label, and today's recommendation text</li>
-        <li><strong>Pattern Stress</strong> - four horizontal gauge rows (Knee, Hip, Push, Pull) showing current stress level per movement pattern via fill length and color</li>
-        <li><strong>Recent Sessions</strong> - last three synced sessions with modality, title, duration, and sRPE</li>
+        <li><strong>Weekly review notice</strong> — appears only when a planned week (microcycle) is finished, with a link to review it in AI Coach.</li>
+        <li><strong>Readiness</strong> — the fatigue score out of 20 with its Subjective / Objective / Combined breakdown, a <strong>Log Workout</strong> button, the check-in banner when today has no check-in, and the AI coach's daily recommendation when one is available.</li>
+        <li><strong>Pattern stress</strong> — Load, Soreness and Trend for Knee, Hip, Push and Pull (see §06).</li>
+        <li><strong>Fatigue Trend</strong> — the 7-day chart described in §08c.</li>
+        <li><strong>Volume · Fatigue</strong> — daily Tonnage / RPE Load / Sets bars with the 7-day fatigue line; 4 / 8 / 12 weeks or a custom range (see §06d).</li>
+        <li><strong>Per-Pattern Fatigue Trend</strong> — four lines (Knee, Hip, Push, Pull) over the last 30 days. Toggle between ATL (stress-weighted load) and Tonnage, with 7 / 14 / 30-day smoothing.</li>
+        <li><strong>Recent sessions</strong> — up to seven recent sessions with type, title, date, duration and sRPE. Tapping one opens it in Workouts.</li>
+        <li><strong>Joint Advisory</strong> — appears only when a joint rating triggers an advisory (see §09).</li>
       </ul>
 
-      <h3>Main chart stack</h3>
-      <p>The right column (or below the sidebar on mobile) contains full-width charts:</p>
-      <ul>
-        <li><strong>Volume · Fatigue</strong> - daily training signal (Tonnage / RPE Load / Set Count, toggle-selectable) as bars, with rolling readiness as a dashed overlay line. Rest days render as zero bars. Block window selector: 4 / 8 / 12 weeks or custom date range.</li>
-        <li><strong>Per-Pattern Fatigue Trend</strong> - four lines (Knee, Hip, Push, Pull) over a fixed 30-day window. Toggle between ATL signal (EWMA decay of pattern stress) and Tonnage signal (EWMA of lbs lifted per pattern). Smoothing term selector: 7 / 14 / 30 days.</li>
-        <li><strong>7-day Readiness Trend</strong> - combined readiness score for the past 7 days with colored bands.</li>
-      </ul>
-
-      <h3>Check-in modal</h3>
-      <p>If no check-in exists for today, a prompt banner appears at the top of the Dashboard. Tapping it opens a bottom-sheet modal with the full check-in form. After successful submission the modal closes and the dashboard cards re-render with updated scores.</p>
+      <h3>Check-in</h3>
+      <p>If no check-in exists for today, the Readiness card shows a banner with a <strong>Check in</strong> button. It opens the check-in form; after you submit, the app syncs with Hevy and the dashboard cards refresh with the new scores.</p>
 
       <div class="info-card callout-blue">
-        <div class="callout-label">Mobile behavior</div>
-        <p>On mobile the two-column layout collapses to a single vertical stack: sidebar cards first, then the chart stack below. Navigation uses a fixed bottom nav bar with five items (Dashboard, Exercises, Workouts, AI Coach, More). The More button opens a bottom sheet containing Log, Settings, Patterns, and Docs.</p>
+        <div class="callout-label">Navigation</div>
+        <p>Every page is reached from the <strong>Menu</strong> button at the top right, on desktop and phone alike. It is grouped into <strong>Overview</strong> (Dashboard, AI Coach), <strong>Training</strong> (Log Workout, Plans, Recent, Progress, Stress, RPE Charts), <strong>Monitoring</strong> (Exercises, Workouts, Check-in History, Patterns) and <strong>Tools</strong> (Docs, Settings). The Light / Dark / Auto theme switch sits next to it.</p>
       </div>
     </section>
 
@@ -1483,7 +1503,7 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       <ul>
         <li>Imported sessions seem missing, duplicated, or incorrectly classified</li>
         <li>ATL/CTL/TSB values shift unexpectedly after sync</li>
-        <li>A workout appears in Hevy but not in the verification queue</li>
+        <li>A workout appears in Hevy but not in the app</li>
         <li>You changed session-processing settings and want to verify impact</li>
       </ul>
 
@@ -1491,24 +1511,26 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       <table class="ref-table">
         <thead><tr><th>Panel</th><th>What it shows</th><th>Why it matters</th></tr></thead>
         <tbody>
-          <tr><td>Session volume</td><td>Imported workout/session counts and recent ingest activity</td><td>Confirms sync actually pulled data</td></tr>
-          <tr><td>7-day summary</td><td>Short-window distribution of sessions and stress inputs</td><td>Explains sudden acute-load behavior</td></tr>
-          <tr><td>28-day summary</td><td>Medium-window aggregate trends</td><td>Context for CTL and trend direction</td></tr>
-          <tr><td>Raw session data</td><td>Per-session fields used by classifier and stress pathways</td><td>Pinpoints bad source fields or parsing issues</td></tr>
+          <tr><td>Score breakdown</td><td>Today's recommendation, fatigue trend and the subjective, objective and combined score formulas with their numbers filled in</td><td>Shows exactly how today's score was reached</td></tr>
+          <tr><td>Check-in inputs</td><td>Today's tiredness, recovery and soreness ratings and how much each one contributes</td><td>Confirms the check-in was read as you entered it</td></tr>
+          <tr><td>Volume baseline</td><td>7-day load volume, your 6-month weekly average and the ratio between them</td><td>Explains the objective score and sudden acute-load changes</td></tr>
+          <tr><td>Training load</td><td>ATL, CTL and TSB, plus the TSB thresholds used for the labels</td><td>Context when load labels shift after a sync</td></tr>
+          <tr><td>Joint advisory</td><td>Today's upper and lower joint ratings and the resulting advisory state</td><td>Confirms why a joint note did or didn't appear</td></tr>
+          <tr><td>Last 10 sessions</td><td>Each session's modality, classifier confidence, sRPE and verification status</td><td>Pinpoints misclassified sessions or bad source fields</td></tr>
         </tbody>
       </table>
 
       <h3>Recommended debugging flow</h3>
       <div class="formula-block">
-        <span class="comment">// 1) Verify the session exists in diagnostics raw data</span><br>
+        <span class="comment">// 1) Verify the session appears in Last 10 Sessions</span><br>
         <span class="comment">// 2) Confirm modality/sRPE fields match expected title parsing</span><br>
         <span class="comment">// 3) Reclassify sessions if rules/settings changed</span><br>
-        <span class="comment">// 4) Re-check 7-day/28-day summaries for downstream impact</span>
+        <span class="comment">// 4) Re-check the volume baseline and training load for downstream impact</span>
       </div>
 
       <div class="info-card callout-blue">
         <div class="callout-label">Practical note</div>
-        <p>Diagnostics is observational by design: it helps you verify and trace what happened, while corrections are made through session verification, title updates, and reclassification controls in the main app.</p>
+        <p>Diagnostics is mostly observational: it helps you verify and trace what happened. Its only actions are the session-processing settings and the Reclassify buttons; other corrections are made through session verification in Workouts and title updates in Hevy.</p>
       </div>
     </section>
 
@@ -1521,16 +1543,18 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
         <h2>AI Coach</h2>
       </div>
 
-      <p>The AI Coach tab provides a chat interface for training-context questions. It is a backend-proxied OpenRouter client: the user's API key is stored encrypted server-side and is never exposed to the browser.</p>
+      <p><strong>Menu → AI Coach</strong> is a chat for training questions. It is a backend-proxied OpenRouter client: your API key is stored encrypted server-side and is never exposed to the browser.</p>
 
-      <p>The model picker offers preset OpenRouter models plus a custom model input. The current selection persists across sessions via <code>localStorage</code> under <code>ai_preferred_model</code>.</p>
+      <ul class="doc-list">
+        <li><strong>Review my training</strong> starts a review of the last six months of training. Saved reviews can be reopened from the drop-down next to it.</li>
+        <li><strong>Available equipment</strong> lists what you can train with, plus notes on limits. The coach only proposes movements you have checked; anything left unset makes it ask rather than assume.</li>
+        <li><strong>show context</strong> previews the training context that is sent to the model with your message.</li>
+        <li>Any program change the coach suggests is a proposal only; nothing changes until you accept it.</li>
+      </ul>
 
-      <p>Assistant responses are rendered with <code>marked.js</code>, so markdown formatting is preserved in the chat output.</p>
+      <p>The coach also appears on the Dashboard: a short daily recommendation on the Readiness card after you check in, and a weekly review notice when a planned week is finished.</p>
 
-      <div class="info-card callout-blue">
-        <div class="callout-label">System context</div>
-        <p>The system prompt is built from the current fatigue state, ATL / CTL / TSB, the latest check-in scores, and the last 3 sessions with per-exercise volume detail. The assistant is context-aware but not prescriptive — it informs, it does not instruct.</p>
-      </div>
+      <p>The model picker offers preset OpenRouter models plus a custom model input; your choice is remembered in this browser. Replies are rendered with <code>marked.js</code>, so markdown formatting is preserved.</p>
 
       <div class="info-card callout-amber">
         <div class="callout-label">Requirement</div>
