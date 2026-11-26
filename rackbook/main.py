@@ -2650,12 +2650,34 @@ def get_exercises():
     with get_db() as conn:
         rows = conn.execute(
             """
-            SELECT id, title, primary_muscle, cached_at
-            FROM hevy_exercise_cache
-            ORDER BY title COLLATE NOCASE ASC
+            SELECT c.id, c.title, c.primary_muscle, c.cached_at, l.id AS local_id
+            FROM hevy_exercise_cache c
+            LEFT JOIN local_exercises l ON l.hevy_id = c.id
+            ORDER BY c.title COLLATE NOCASE ASC
             """
         ).fetchall()
     return [dict(row) for row in rows]
+
+
+@app.get("/exercises/local")
+def get_local_exercises():
+    """The app's own exercise catalog. hevy_id is null while an exercise is not yet in Hevy."""
+    with get_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT l.*, c.state AS creation_state
+            FROM local_exercises l LEFT JOIN exercise_creations c ON c.id = l.id
+            ORDER BY l.title COLLATE NOCASE ASC
+            """
+        ).fetchall()
+    out = []
+    for row in rows:
+        item = dict(row)
+        item["other_muscles"] = json.loads(item["other_muscles"] or "[]")
+        item["is_custom"] = None if item["is_custom"] is None else bool(item["is_custom"])
+        item["in_hevy"] = item["hevy_id"] is not None
+        out.append(item)
+    return out
 
 
 @app.post("/exercises/sync")

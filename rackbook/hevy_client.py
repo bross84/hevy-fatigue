@@ -2,6 +2,7 @@ import os
 
 import httpx
 from .database import get_db
+from .local_exercises import mirror_hevy
 
 _BASE_URL = "https://api.hevyapp.com/v1"
 from credentials import get_api_key, save_api_key
@@ -53,7 +54,7 @@ class HevyClient:
             return str(identity)
 
     def sync_exercise_cache(self) -> int:
-        """Fetch all exercise templates from Hevy and upsert into hevy_exercise_cache."""
+        """Fetch all exercise templates from Hevy into hevy_exercise_cache and the local catalog."""
         exercises: list[dict] = []
         page = 1
         with httpx.Client(timeout=30) as client:
@@ -85,6 +86,8 @@ class HevyClient:
                     for e in exercises
                 ],
             )
+            # Keep the app's own full copy of the catalog (local IDs, Hevy ID as a link).
+            mirror_hevy(conn, exercises)
 
         return len(exercises)
 

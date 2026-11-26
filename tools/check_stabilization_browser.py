@@ -96,7 +96,7 @@ def run():
                 page.evaluate('restStop()')
                 # Preview blocks create before a POST; status/recovery never silently reposts.
                 page.evaluate("ExerciseCreate.open({catalog:[]})")
-                expect(page.get_by_role('button',name='Create in Hevy')).to_be_disabled()
+                expect(page.get_by_role('button',name='Save and add to Hevy')).to_be_disabled()
                 page.locator('.exercise-create').get_by_role('button',name='Close',exact=True).click()
                 options={'enabled':True,'types':['weight_reps'],'equipment':['barbell'],'muscles':['chest','triceps']}
                 page.route('**/training/exercise-creation/options',lambda r:r.fulfill(json=options))
@@ -110,7 +110,7 @@ def run():
                 form=page.locator('.exercise-create')
                 expect(form.get_by_role('heading',name='Duplicate exercise',exact=True)).to_be_visible()
                 form.get_by_label('Exercise name').fill('Unselected duplicate')
-                form.get_by_role('button',name='Create in Hevy').click()
+                form.get_by_role('button',name='Save and add to Hevy').click()
                 assert not calls, 'Duplicate requires a selected source'
                 form.get_by_label('Start from').fill('no such exercise')
                 expect(form).to_contain_text('No matching exercises.')
@@ -130,13 +130,13 @@ def run():
                 page.evaluate("ExerciseCreate.open({catalog:[{id:'sq',title:'Bench Press'}],duplicate:true})")
                 expect(form.get_by_label('Exercise name')).to_have_value('Bench Press (copy)')
                 form.get_by_label('Exercise name').fill('Low Pin Bench')
-                form.get_by_role('button',name='Create in Hevy').click()
+                form.get_by_role('button',name='Save and add to Hevy').click()
                 expect(form.get_by_role('status')).to_contain_text('uncertain')
-                expect(form.get_by_role('button',name='Create in Hevy')).to_be_disabled()
+                expect(form.get_by_role('button',name='Save and add to Hevy')).to_be_disabled()
                 form.get_by_role('button',name='Close',exact=True).click()
                 page.reload()
                 page.evaluate('ExerciseCreate.open({catalog:[]})')
-                expect(page.get_by_role('button',name='Create in Hevy')).to_be_disabled()
+                expect(page.get_by_role('button',name='Save and add to Hevy')).to_be_disabled()
                 expect(page.get_by_label('Exercise name')).to_have_value('Low Pin Bench')
                 expect(page.get_by_role('heading',name='Duplicate exercise',exact=True)).to_be_visible()
                 page.route('**/training/exercise-creation/*/reconcile',lambda r:r.fulfill(json={'state':'complete','exercise_id':'new','title':'Low Pin Bench'}))
@@ -162,7 +162,7 @@ def run():
                 page.route('**/training/exercises',lambda r:r.fulfill(json=[{'id':'sq','title':'Squat (Barbell)'},{'id':'new','title':'New accessory'}]))
                 page.screenshot(path=str(OUT/'phone-create.png'))
                 before=page.evaluate('session().exercises.length')
-                form.get_by_role('button',name='Create in Hevy').click()
+                form.get_by_role('button',name='Save and add to Hevy').click()
                 expect(form).to_have_count(0)
                 assert page.evaluate('session().exercises.length')==before,'Creation must not automatically modify a plan'
                 page.get_by_role('button',name='New accessory',exact=True).click()

@@ -1614,3 +1614,24 @@ palette, one button shape and one close button.
   "Create exercise"/"Duplicate exercise" titles and behaviour.
 
 No data, saving, credential, monitoring, trial or Hevy-write behaviour changed.
+
+## Local exercise catalog (2026-11-25, local; #168)
+
+- New `local_exercises` table in the logging database (RACKBOOK_DB_PATH). Every exercise has a
+  local ID; `hevy_id` only links it to the Hevy copy. `origin` is `app` (created here) or `hevy`
+  (copied from the Hevy catalog).
+- **Create/Duplicate exercise** commits the local record in the same transaction as the
+  `sending` journal row, before Hevy is contacted. Hevy's ID is stored on the local record only
+  after Hevy confirms it (or a full-match reconciliation finds it). A rejected or uncertain attempt
+  keeps the local record with no Hevy link.
+- After a rejection, **Edit and try again** now keeps the same creation ID, so the app's copy is
+  updated and resent on the athlete's tap instead of leaving a second copy. Sending/uncertain
+  attempts are still never resent automatically.
+- **Exercise sync** (`POST /training/exercises/sync`) copies the whole Hevy catalog into
+  `local_exercises`, with type, equipment and muscles, matched on Hevy ID; local IDs never change.
+  Startup gives existing cached and previously created exercises local records.
+- `GET /training/exercises/local` lists the local catalog (`in_hevy`, `creation_state`);
+  `GET /training/exercises` also returns `local_id`.
+- Unchanged: workouts, plans, references and history still use Hevy exercise IDs; the picker still
+  lists exercises from the Hevy cache; HEVY_WRITES_ENABLED=0 still blocks creation. Moving
+  workouts to local IDs is #145.

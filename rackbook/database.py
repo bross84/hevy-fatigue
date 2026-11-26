@@ -37,6 +37,17 @@ def init_db() -> None:
                 state TEXT NOT NULL, remote_id TEXT, before_ids TEXT NOT NULL,
                 preferences TEXT NOT NULL, created_at REAL NOT NULL
             );
+            -- The app's own exercise catalog. Every exercise has a local ID; hevy_id is only
+            -- a link to the Hevy copy (NULL until Hevy confirms it). origin: 'app' = created
+            -- here, 'hevy' = copied from the Hevy catalog.
+            CREATE TABLE IF NOT EXISTS local_exercises (
+                id TEXT PRIMARY KEY, title TEXT NOT NULL, exercise_type TEXT,
+                equipment TEXT, primary_muscle TEXT, other_muscles TEXT NOT NULL DEFAULT '[]',
+                is_custom INTEGER, origin TEXT NOT NULL CHECK(origin IN ('app','hevy')),
+                source_id TEXT, hevy_id TEXT,
+                created_at REAL NOT NULL, updated_at REAL NOT NULL
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS local_exercises_hevy_id ON local_exercises(hevy_id);
             CREATE TABLE IF NOT EXISTS session_checkins (
                 session_id TEXT PRIMARY KEY, workout_start TEXT NOT NULL,
                 plan_id TEXT, plan_session_id TEXT, motivation TEXT NOT NULL,
@@ -419,6 +430,29 @@ def init_db() -> None:
         except Exception:
             pass  # column already exists or table didn't exist yet
 
+        # Exercises created before the local catalog existed get their local record,
+        # keyed by their creation ID, with the Hevy link when Hevy confirmed it.
+        conn.execute("""
+            INSERT OR IGNORE INTO local_exercises(id,title,exercise_type,equipment,primary_muscle,
+                other_muscles,is_custom,origin,source_id,hevy_id,created_at,updated_at)
+            SELECT id, json_extract(payload,'$.title'), json_extract(payload,'$.exercise_type'),
+                json_extract(payload,'$.equipment_category'), json_extract(payload,'$.muscle_group'),
+                COALESCE(json_extract(payload,'$.other_muscles'),'[]'), 1, 'app',
+                json_extract(payload,'$.source_id'), CASE WHEN state='complete' THEN remote_id END,
+                created_at, created_at
+            FROM exercise_creations
+            WHERE remote_id IS NULL OR state != 'complete'
+               OR remote_id NOT IN (SELECT hevy_id FROM local_exercises WHERE hevy_id IS NOT NULL)
+        """)
+        # Exercises already copied from Hevy get a local record too; the next catalog sync
+        # fills in type, equipment and secondary muscles.
+        conn.execute("""
+            INSERT INTO local_exercises(id,title,primary_muscle,origin,hevy_id,created_at,updated_at)
+            SELECT lower(hex(randomblob(16))), title, primary_muscle, 'hevy', id,
+                   CAST(strftime('%s','now') AS REAL), CAST(strftime('%s','now') AS REAL)
+            FROM hevy_exercise_cache
+            WHERE id NOT IN (SELECT hevy_id FROM local_exercises WHERE hevy_id IS NOT NULL)
+        """)
         _seed_rpe_chart(conn)
         from .rpe_assignments import migrate_legacy
         migrate_legacy(conn)

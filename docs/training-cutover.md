@@ -927,3 +927,13 @@ under each set; a tablet still shows the Previous column. In exercise search,
 No migration or data change. Rollback to the prior reviewed image restores the
 old colours and labels; databases and keys are untouched. Local Docker
 build/startup passed (isolated, no network). This does not authorize deployment.
+
+## Local exercise catalog release checks (2026-11-25, pending; #168)
+
+- Automated: `rackbook.tests.test_exercise_creation` (local record before Hevy, link after, rejected
+  resend with the same ID, sync copy and fold-in, startup backfill, routes); full Python and JS
+  suites; `tools/check_stabilization_browser.py` (mocked).
+- Startup adds `local_exercises` and backfills it; no existing table changes. Rollback: the old
+  build ignores the new table. Keep the pre-release database copy as usual.
+- After deploy: run Exercise sync once, then check `/training/exercises/local` lists the catalog with
+  `in_hevy: true`. Not yet checked on a phone or against deployed data.

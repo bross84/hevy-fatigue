@@ -24,7 +24,7 @@ const ExerciseCreate = (() => {
     close.type='button'; close.addEventListener('click',closeDialog);
     const message=node('p'); message.setAttribute('role','status');
     head.append(title,close);
-    form.append(head,node('p','Creates an exercise in Hevy. New movements start with their own history and strength reference.'));
+    form.append(head,node('p','Saves the exercise in this app first, then adds a copy to Hevy. New movements start with their own history and strength reference.'));
     const fields={};
     function field(key,label,values) {
       const wrap=node('label',label), input=node(values?'select':'input'); input.name=key;
@@ -59,7 +59,7 @@ const ExerciseCreate = (() => {
         results.append(button);
       }
     }
-    const submit=node('button','Create in Hevy'); submit.type='submit';submit.disabled=true;
+    const submit=node('button','Save and add to Hevy'); submit.type='submit';submit.disabled=true;
     const check=node('button','Check creation status');check.type='button';check.hidden=true;
     const reset=node('button','Edit and try again');reset.type='button';reset.hidden=true;
     dialog.append(form);document.body.append(dialog);dialog.showModal();
@@ -107,7 +107,7 @@ const ExerciseCreate = (() => {
         }
         check.hidden=false;lock(true);submit.disabled=true;
         reset.hidden=result.state!=='rejected';
-        message.textContent=result.state==='rejected'?'Hevy did not accept the exercise. Check your key, account limits and exercise details before retrying.'
+        message.textContent=result.state==='rejected'?'The exercise is saved in this app, but Hevy did not accept it. Check your key, account limits and exercise details, then edit and try again.'
           :'Creation is '+result.state+'. Check status to look for the matching exercise; nothing will be posted again.';
       }
       form.addEventListener('submit',async e=>{
@@ -126,7 +126,8 @@ const ExerciseCreate = (() => {
         catch(e){message.textContent=e.message;if(e.status===404){saved.sent=false;persist();lock(false);submit.disabled=!enabled;message.textContent='No attempt was recorded. You can submit again using the same creation ID.';}}
         finally{busy=false;check.disabled=false;}
       });
-      reset.addEventListener('click',()=>{saved.sent=false;saved.body.request_id=trainingUUID();persist();lock(false);submit.disabled=!enabled;check.hidden=reset.hidden=true;});
+      reset.addEventListener('click',()=>{// Same ID: the app's saved copy is updated and resent, not duplicated.
+        saved.sent=false;persist();lock(false);submit.disabled=!enabled;check.hidden=reset.hidden=true;});
     }catch(e){form.append(message);message.textContent=e.message;}
   }
   return {open};

@@ -866,3 +866,13 @@ logger-layout.css v15, exercise-create.js/.css v3. The phone-only
 `.previous-summary` line replaces the per-set `.previous-inline` element; set
 rows and swipe-to-delete are unchanged. No routes, storage or service-worker
 scope changed.
+
+## Local exercise catalog (2026-11-25, local; #168)
+
+`rackbook/local_exercises.py` owns the `local_exercises` table (logging database only). Exercise
+creation writes the local record with the `sending` journal row, before remote I/O, then links the
+confirmed Hevy ID; `HevyClient.sync_exercise_cache` mirrors every Hevy template into it by Hevy
+ID. A sync copy of an exercise that a pending creation later confirms is folded into the app
+record. `init_db` backfills from `exercise_creations` and `hevy_exercise_cache`. Workouts, plans
+and references keep Hevy IDs (#145). Routes: `GET /exercises/local`; `GET /exercises` adds
+`local_id`.
