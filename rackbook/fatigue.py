@@ -10,7 +10,7 @@ from statistics import median
 from .database import get_db
 from .fatigue_context import build_context
 from . import fatigue_relationships
-MODEL_VERSION = "ts-trends-v3"
+MODEL_VERSION = "ts-trends-v4"
 BASELINE_SESSIONS = 12
 WINDOW_SESSIONS = 6
 MIN_PAIRED_PER_WINDOW = 5
@@ -86,11 +86,10 @@ def analyze(ts_rows, set_rows, observations, measurements, *, pattern=None, now=
     stale = bool(active and (now - _time(active[-1]["start_time"])).total_seconds() >= GAP_DAYS * 86400)
     if stale:
         active = []
-    comparable = []
+    # v4: every marked TS counts. Its e1RM already converts reps and RPE with the chart,
+    # so changing top sets (1@7, 3@7, 2@8.5) stay comparable instead of restarting the count.
     latest_ts = next((p for p in reversed(active) if p["e1rm_lb"] is not None), None)
-    if latest_ts:
-        comparable = [p for p in active if p["e1rm_lb"] is not None and p["ts_reps"] == latest_ts["ts_reps"]
-                      and abs(p["ts_rpe"] - latest_ts["ts_rpe"]) <= 1]
+    comparable = [p for p in active if p["e1rm_lb"] is not None]
     def complete(point):
         return point["bodyweight_kg"] is not None and point["soreness"] is not None and point["dose_complete"]
 
@@ -111,7 +110,7 @@ def analyze(ts_rows, set_rows, observations, measurements, *, pattern=None, now=
         baseline_start=active[0]["start_time"] if active else None, gap_reset=baseline_start > 0 or stale,
         comparable_sessions=len(comparable), needed_sessions=BASELINE_SESSIONS, collection=collection,
         status="building_baseline", action="collect",
-        message="Collecting your baseline. Charts show your recorded history; interpretations start after 12 comparable marked-TS sessions with enough BW, soreness and set data.",
+        message="Collecting your baseline. Charts show your recorded history; interpretations start after 12 marked-TS sessions with enough BW, soreness and set data.",
         reasons=[], e1rm_change_pct=None, bw_change_pct=None, relative_change_pct=None,
         sets_change=None, recent_sets=None, recent_soreness=None, points=points)
     result["context"] = build_context(points, previous, recent, latest_ts,
@@ -130,7 +129,7 @@ def analyze(ts_rows, set_rows, observations, measurements, *, pattern=None, now=
         return result
     if not ready:
         if len(comparable) >= BASELINE_SESSIONS:
-            result["message"] = "You have 12 comparable TS sessions. Keep collecting matched BW, soreness and set data before interpretations begin."
+            result["message"] = "You have 12 marked TS sessions. Keep collecting matched BW, soreness and set data before interpretations begin."
         return result
     # All comparisons use the same matched observations (at least five in each group of six).
     base = median(p["e1rm_lb"] for p in previous)
@@ -138,7 +137,7 @@ def analyze(ts_rows, set_rows, observations, measurements, *, pattern=None, now=
     decline = delta <= -CHANGE_PCT and all(p["e1rm_lb"] < base for p in recent[-3:])
     result.update(status="declining" if decline else "improving" if delta >= CHANGE_PCT else "stable",
                   action="hold", message="Keep the current sets while monitoring the next sessions.", e1rm_change_pct=delta)
-    result["reasons"].append("Provisional interpretation: matched medians from the latest six versus previous six comparable TS sessions. More observations do not guarantee accuracy.")
+    result["reasons"].append("Provisional interpretation: matched medians from the latest six versus previous six marked TS sessions (e1RM from each TS, any reps or RPE). More observations do not guarantee accuracy.")
     comparison_points = previous + recent
     result["bw_change_pct"] = _change(median(p["bodyweight_kg"] for p in previous), median(p["bodyweight_kg"] for p in recent))
     result["relative_change_pct"] = _change(median(p["relative_e1rm"] for p in previous), median(p["relative_e1rm"] for p in recent))
@@ -171,7 +170,7 @@ def analyze(ts_rows, set_rows, observations, measurements, *, pattern=None, now=
                       and median(p["e1rm_lb"] for p in previous) <= median(p["e1rm_lb"] for p in earlier) * .97)
         changed_reps = median(p["median_reps"] for p in recent if p["median_reps"] is not None) != median(p["median_reps"] for p in previous if p["median_reps"] is not None)
         if persistent and (result["sets_change"] <= -1 or changed_reps):
-            result.update(action="consider_block", message="The decline spans 18 comparable TS sessions, with fewer sets or changed reps in the latest group. Consider a new block with a different exercise; start a separate TS baseline for it.")
+            result.update(action="consider_block", message="The decline spans 18 marked TS sessions, with fewer sets or changed reps in the latest group. Consider a new block with a different exercise; start a separate TS baseline for it.")
         else:
             result.update(action="review_reps", message="Review the rep prescription and effort rather than adding sets during a TS decline. Change one variable, then reassess; consider a new block if the decline persists after adjustments.")
     elif (result["status"] == "stable" and low and abs(result["bw_change_pct"]) < BW_CHANGE_PCT
@@ -180,7 +179,7 @@ def analyze(ts_rows, set_rows, observations, measurements, *, pattern=None, now=
           and cadence(recent) >= cadence(previous)
           and all(p["median_rpe"] is not None for p in comparison_points)
           and median(p["median_rpe"] for p in recent) <= median(p["median_rpe"] for p in previous) + .5):
-        result.update(action="try_set", message="If more progress is the goal, consider one extra back-off set at one weekly exposure. Keep other variables consistent and reassess after three comparable TS sessions.")
+        result.update(action="try_set", message="If more progress is the goal, consider one extra back-off set at one weekly exposure. Keep other variables consistent and reassess after three marked TS sessions.")
     elif high:
         result["message"] = "Soreness is repeatedly moderate or severe. Hold volume and monitor performance before adding sets."
     if result["action"] == "try_set":

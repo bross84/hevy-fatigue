@@ -99,13 +99,23 @@ class FatigueRulesCase(unittest.TestCase):
         self.assertTrue(result["gap_reset"])
         self.assertEqual(result["comparable_sessions"],0)
 
-    def test_changed_ts_rep_range_not_pooled(self):
+    def test_changed_ts_rep_range_still_counts(self):
         args = data([300]*12); args[0][-1]["reps"] = 3
-        self.assertEqual(self.assess(args)["comparable_sessions"],1)
+        self.assertEqual(self.assess(args)["comparable_sessions"],12)
 
-    def test_changed_ts_effort_not_pooled(self):
+    def test_changed_ts_effort_still_counts(self):
         args = data([300]*12); args[0][-1]["rpe"] = 6
-        self.assertEqual(self.assess(args)["comparable_sessions"],1)
+        self.assertEqual(self.assess(args)["comparable_sessions"],12)
+
+    def test_varied_top_sets_all_count_and_compare_by_e1rm(self):
+        # Waves of 1@7, 1@8, 3@7, 2@8.5 used to restart the count at every change.
+        shapes = [(1, 7), (1, 8), (3, 7), (2, 8.5)] * 3
+        args = data([300]*6+[285]*6, soreness=2)
+        for row, (reps, rpe) in zip(args[0], shapes):
+            row.update(reps=reps, rpe=rpe)
+        result = self.assess(args)
+        self.assertEqual(result["comparable_sessions"], 12)
+        self.assertEqual((result["status"], result["action"]), ("declining", "reduce_set"))
 
     def test_persistent_decline_after_set_reduction_can_flag_block(self):
         result = self.assess(data([320]*6+[300]*6+[280]*6, sets=[5]*12+[4]*6))

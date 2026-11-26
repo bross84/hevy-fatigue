@@ -316,7 +316,7 @@
     const collection=data.collection;
     card.append(el("h3",null,trendNames[data.status] || data.status),el("p",null,data.message));
     if(!collection.ready) {
-      const count=collection.sessions+" / "+collection.required_sessions+" comparable TS sessions";
+      const count=collection.sessions+" / "+collection.required_sessions+" marked TS sessions";
       card.append(el("p",null,count));
       const progress=el("progress","collection-progress"); progress.max=collection.required_sessions; progress.value=Math.min(collection.sessions,collection.required_sessions);
       progress.setAttribute("aria-label",count); card.append(progress);
@@ -340,7 +340,7 @@
     for(const [key,title] of [["e1rm_lb","Marked TS e1RM (lb)"],["bodyweight_kg","Bodyweight · 7-day mean (kg)"],["working_sets","Working sets per session"],["soreness","Pre-session soreness"]])charts.append(observationChart(data.points,key,title,data.baseline_start));
     card.append(charts,el("p","note","Recorded history is visible from the first session. These are observations, not fitted trend lines or predictions. Blank data stays blank; ! marks a reported pain/injury flag. The History selector applies to stress history below."));
     for(const reason of data.reasons)card.append(el("p","note",reason));
-    const help=el("details"); help.append(el("summary",null,"When interpretations begin"),el("p","note","First collect 12 comparable marked-TS sessions for this movement: the same TS reps and RPE within one point of the latest. At least five sessions in each group of six need BW, soreness and complete sets/reps/RPE, plus soreness at the last three movement sessions. There is no waiting period in weeks."),
+    const help=el("details"); help.append(el("summary",null,"When interpretations begin"),el("p","note","First collect 12 marked-TS sessions for this movement, at any reps or RPE. At least five sessions in each group of six need BW, soreness and complete sets/reps/RPE, plus soreness at the last three movement sessions. There is no waiting period in weeks."),
       el("p","note","After collection, comparisons use matched medians from the latest six and previous six sessions. The initial flags are a 3% e1RM change and a 1% BW change. Interpretations and set-change suggestions remain provisional; reaching the count does not establish accuracy. Plans are never changed automatically."));
     const source=el("a",null,"Training-load monitoring consensus"); source.href="https://pubmed.ncbi.nlm.nih.gov/28463642/";
     help.append(source,el("p","note","The collection threshold and suggestion rules are Rackbook heuristics; this source does not validate this algorithm. BW provides context and does not establish why strength changed.")); card.append(help);
@@ -367,11 +367,11 @@
     const collecting=!data.collection.ready;
     const summary=el("div","dashboard-summary");
     summary.append(el("strong",null,data.status==="pain_flag"?"Pain/injury recorded":collecting?"Collecting baseline":trendNames[data.status]));
-    summary.append(el("span","note",data.collection.sessions+" / "+data.collection.required_sessions+" comparable TS sessions"));
+    summary.append(el("span","note",data.collection.sessions+" / "+data.collection.required_sessions+" marked TS sessions"));
     card.append(summary);
     if(collecting) {
       const progress=el("progress","collection-progress"); progress.max=data.collection.required_sessions; progress.value=Math.min(data.collection.sessions,data.collection.required_sessions);
-      progress.setAttribute("aria-label","Baseline collection: "+data.collection.sessions+" of "+data.collection.required_sessions+" comparable sessions"); card.append(progress);
+      progress.setAttribute("aria-label","Baseline collection: "+data.collection.sessions+" of "+data.collection.required_sessions+" marked TS sessions"); card.append(progress);
     }
     if(data.status==="pain_flag")card.append(el("p","error",data.message));
     else if(!collecting)card.append(el("p","note",data.action==="hold"?"Current sets held · see details for the comparison.":data.action==="collect"?"More matched observations needed.":data.message));

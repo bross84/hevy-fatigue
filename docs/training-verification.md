@@ -1830,3 +1830,18 @@ Docker and physical-device limitations remain unchanged. No deployment.
   `/training/legacy` to `/#settings`. It answered after a restart and logged no errors. The
   container and image were removed.
 - No real Hevy account, real database or physical device used.
+
+## TS trend tracker v4 release evidence (2026-11-26, pending)
+
+- Python: 260 host tests and 659 rackbook tests passed (1 expected failure, as before). Every
+  listed and rackbook `.cjs` check passed.
+- New/changed unit tests: changed TS reps or RPE still count (12 of 12); a 1@7/1@8/3@7/2@8.5
+  wave counts all twelve and a 5% drop with soreness 2 still gives `declining`/`reduce_set`.
+  Route test expects `ts-trends-v4`.
+- Mocked preview seeded with twelve wave top sets: the Stress page shows 12 / 12 and one
+  connected TS e1RM line; the status stays collecting because the mock has no BW/soreness.
+- Docker: the image built and started; `/training/health` returned ok and `/training/stress`
+  returned 200. Container and image removed.
+- No real Hevy account or real database used. Read-only checks of the live app (squat history,
+  RPE fit, check-in history) informed the change; nothing was written except Brian's requested
+  trial switch-off in Settings.

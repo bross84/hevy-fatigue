@@ -22,7 +22,7 @@ assert.match(text(box),/-5.0%/);
 assert.equal(nodes(box).filter(n=>n.tag==='canvas').length,4,'All four observed histories are visual');
 assert.equal(chartCalls.at(-1).rows[0].soreness,0,'Zero soreness reaches the shared chart renderer');
 context.renderFatigue({...sample,collection:{...collection,ready:false,sessions:6,previous_paired:0},status:'building_baseline',message:'Collecting your baseline.',e1rm_change_pct:null,bw_change_pct:null,relative_change_pct:null,reasons:[]});
-assert.match(text(box),/6 \/ 12 comparable TS sessions/);
+assert.match(text(box),/6 \/ 12 marked TS sessions/);
 assert.match(text(box),/No minimum number of weeks/);
 assert.doesNotMatch(text(box),/-5.0%|Consider one fewer|Provisional: declining/);
 assert.equal(nodes(box).filter(n=>n.tag==='canvas').length,4,'Charts remain visible during collection');
