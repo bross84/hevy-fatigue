@@ -39,12 +39,14 @@
     .chart-card { min-width:0; padding:16px; border-radius:12px; margin:0; }
     .chart-header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px; }
     .range-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:10px; }
-    .segmented { display:inline-flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
-    .segmented button { border:0; border-right:1px solid var(--line); padding:4px 10px; min-height:28px; font-size:11px; color:var(--muted); background:var(--card); white-space:nowrap; }
-    .segmented button:last-child { border-right:0; }
-    .segmented button[aria-pressed="true"] { background:var(--accent); color:var(--card); }
-    .zoom-actions { display:flex; gap:3px; margin-left:auto; }
-    .zoom-actions button,.session-step { min-height:30px; min-width:30px; padding:3px 8px; border:1px solid var(--line); border-radius:5px; background:var(--card); color:var(--muted); font-size:12px; }
+    /* Range and zoom groups: a grey track with the selected option as a white chip (matches the dashboard, #133). */
+    .segmented,.zoom-actions { display:inline-flex; gap:2px; padding:3px; border-radius:10px; background:var(--chip); }
+    .segmented button,.zoom-actions button { flex:none; min-height:28px; height:28px; min-width:32px; padding:0 10px; border:0; border-radius:7px; font-size:13px; font-weight:500; color:var(--muted); background:transparent; white-space:nowrap; }
+    .segmented button[aria-pressed="true"] { background:var(--card); color:var(--accent); font-weight:600; box-shadow:0 0 0 1px var(--line); }
+    .zoom-actions { margin-left:auto; }
+    .zoom-actions button[data-action="Reset zoom"] { color:var(--accent); }
+    .zoom-actions button[hidden] { display:none; }
+    .session-step { min-height:30px; min-width:30px; padding:3px 8px; border:1px solid var(--line); border-radius:5px; background:var(--card); color:var(--muted); font-size:12px; }
     button:disabled { opacity:.4; cursor:default; }
     .period { display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px 12px; font-size:11px; color:var(--muted); margin-bottom:8px; font-variant-numeric:tabular-nums; }
     .custom-range { display:flex; flex-wrap:wrap; gap:8px; align-items:end; margin-bottom:12px; }
@@ -90,9 +92,10 @@
       .plot-wrap { height:220px; }
       .range-row { gap:8px 4px; }
       .segmented { flex:1; }
-      .segmented button { flex:1; padding:6px 7px; min-height:36px; }
-      .zoom-actions { width:100%; justify-content:flex-end; }
-      .zoom-actions button,.session-step { min-height:36px; min-width:36px; }
+      .segmented button { flex:1; padding:0 6px; min-height:36px; height:36px; }
+      .zoom-actions { margin-left:auto; }
+      .zoom-actions button { min-height:36px; height:36px; min-width:40px; }
+      .session-step { min-height:36px; min-width:36px; }
       .stat .d { font-size:10px; }
       .stat .v { font-size:22px; }
       .custom-range label { flex:1; }
@@ -101,12 +104,10 @@
     }
     @media(max-width:350px) {
       .segmented { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); flex-basis:100%; }
-      .segmented button:nth-child(-n+3) { border-bottom:1px solid var(--line); }
-      .segmented button:nth-child(3) { border-right:0; }
       .stat .v { font-size:18px; white-space:nowrap; }
       .stat .v.unavailable { font-size:13px; white-space:normal; }
     }
-    @media(pointer:coarse) { .segmented button,.zoom-actions button,.session-step,#sessionSelect { min-height:44px; } }
+    @media(pointer:coarse) { .segmented button,.zoom-actions button { min-height:40px; height:40px; } .session-step,#sessionSelect { min-height:44px; } }
   </style>
   <script src="/training/static/app-menu.js?v=3"></script>
 </head>
@@ -138,7 +139,7 @@
         </form>
         <div class="period"><span id="periodLabel"></span><span id="sessionCount"></span></div>
         <div class="plot-wrap" id="strengthWrap"><canvas id="strengthCanvas" tabindex="0" role="img" aria-label="e1RM and bodyweight over time" aria-describedby="chartHelp selectedSource"></canvas><div class="chart-tooltip" id="strengthTooltip" hidden></div><div class="empty-overlay" id="strengthEmpty" hidden></div></div>
-        <p class="chart-note" id="chartHelp">Drag to zoom · Shift-drag to pan · Ctrl + wheel or pinch to zoom. Zoom buttons work with touch and keyboard.</p>
+        <p class="chart-note" id="chartHelp">Drag to zoom.<span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)"> Shift-drag to pan, Ctrl + wheel or pinch to zoom. The zoom buttons and the + and − keys also work.</span></p>
       </section>
       <section class="card chart-card" aria-labelledby="scoreTitle">
         <div class="chart-header"><h2 id="scoreTitle">Strength score</h2><span class="note">DOTS-style · this lift</span></div>
@@ -212,8 +213,9 @@
     const shift = Math.max(DAY, (windowEnd - windowStart) / 2) * direction;
     setWindow(windowStart + shift, windowEnd + shift);
   }
-  function rangeButton(label, days) {
+  function rangeButton(label, days, name) {
     const b = el("button", null, label); b.type = "button"; b.dataset.days = String(days);
+    b.setAttribute("aria-label", name); b.title = name;
     b.addEventListener("click", () => {
       $("customRange").hidden = true;
       $("customButton").setAttribute("aria-expanded","false");
@@ -222,7 +224,7 @@
     return b;
   }
   function initControls() {
-    for (const [label, days] of [["4 Weeks",28],["8 Weeks",56],["12 Weeks",84],["1 Year",365],["All",0]]) $("ranges").append(rangeButton(label, days));
+    for (const [label, days, name] of [["4W",28,"4 weeks"],["8W",56,"8 weeks"],["12W",84,"12 weeks"],["1Y",365,"1 year"],["All",0,"All history"]]) $("ranges").append(rangeButton(label, days, name));
     const custom = el("button", null, "Custom"); custom.type = "button"; custom.id = "customButton";
     custom.addEventListener("click", () => {
       $("customRange").hidden = !$("customRange").hidden;
@@ -231,7 +233,7 @@
     });
     custom.setAttribute("aria-controls", "customRange"); custom.setAttribute("aria-expanded", "false");
     $("ranges").append(custom);
-    for (const [label, name, action] of [["←","Earlier",()=>pan(-1)],["+","Zoom in",()=>zoom(.5)],["−","Zoom out",()=>zoom(2)],["→","Later",()=>pan(1)],["Reset","Reset zoom",()=>setRange(0)]]) {
+    for (const [label, name, action] of [["←","Earlier",()=>pan(-1)],["−","Zoom out",()=>zoom(2)],["+","Zoom in",()=>zoom(.5)],["→","Later",()=>pan(1)],["Reset","Reset zoom",()=>setRange(0)]]) {
       const b = el("button", null, label); b.type = "button"; b.dataset.action = name;
       b.setAttribute("aria-label", name); b.title = name; b.addEventListener("click", action); $("zoomControls").append(b);
     }
@@ -413,6 +415,8 @@
     const [first,last]=domain(), all=windowStart<=first && windowEnd>=last;
     const disabled={Earlier:windowStart<=first,Later:windowEnd>=last,"Zoom in":windowEnd-windowStart<=DAY,"Zoom out":all,"Reset zoom":all};
     for(const button of $("zoomControls").children) button.disabled=disabled[button.dataset.action];
+    // Reset only appears after a zoom or pan has moved away from a range button's window.
+    {const kids=$("zoomControls").children; kids[kids.length-1].hidden=activeRange!==null || all;}
     $("dateFrom").value=isoDay(Math.ceil(windowStart/DAY)*DAY); $("dateTo").value=isoDay(Math.floor(windowEnd/DAY)*DAY);
     for(const id of ["dateFrom","dateTo"]) {$(id).min=data.series[0].date;$(id).max=data.series.at(-1).date;}
     $("sessionSelect").replaceChildren();
