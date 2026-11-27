@@ -2591,12 +2591,12 @@ body.ai-open main {
 [data-theme="dark"] {
   --bg:#111923; --card:#1a2533; --card-raised:#202d3d;
   --border:#344358; --border-mid:#4a5d78; --text:#e8eef8; --muted:#a5b4c9;
-  --accent:#95baff; --accent-light:#95baff; --accent-sub:#243b5b; --on-accent:#111923;
+  --accent:#95baff; --accent-light:#95baff; --accent-sub:#243b5b; --on-accent:#111923; --chip:#243246;
 }
 [data-theme="light"] {
   --bg:#f3f5f8; --card:#fff; --card-raised:#f7f9fc;
   --border:#dce3ec; --border-mid:#c3cedb; --text:#17243a; --muted:#59687c;
-  --accent:#2459b8; --accent-light:#2459b8; --accent-sub:#edf3ff; --on-accent:#fff;
+  --accent:#2459b8; --accent-light:#2459b8; --accent-sub:#edf3ff; --on-accent:#fff; --chip:#edf1f7;
 }
 .host-workspace { --text-secondary:var(--muted); }
 .host-workspace #host-topbar { display:flex; height:64px; padding:0 16px; gap:12px; }
@@ -2659,7 +2659,7 @@ body.ai-open main {
 .host-workspace .dashboard-card .today-chart-wrap { height:260px; }
 .host-workspace .dashboard-card .vf-chart-wrap { height:260px; }
 .host-workspace .vf-range-row { flex-wrap:wrap; }
-.host-workspace .vf-range-row .btn,.host-workspace #today-pattern-fatigue-card button { min-height:44px; padding:8px 12px; }
+.host-workspace #today-pattern-fatigue-card .card-title button { min-height:44px; padding:8px 12px; }
 /* A selected option is always the filled accent with its matching text, in light and dark. */
 .host-workspace .btn-secondary.active,.host-workspace .btn-group:not(.theme-group) button.active { background:var(--accent); color:var(--on-accent); border-color:transparent; }
 .host-workspace .today-chart-bands-legend { flex-wrap:wrap; gap:8px 12px; }
@@ -2674,8 +2674,14 @@ body.ai-open main {
 /* Buttons match the training pages: 44px to tap, 10px corners (rackbook/static/theme.css). */
 .host-workspace .btn { min-height:44px; border-radius:10px; font-size:14px; }
 .host-workspace .btn-sm { min-height:44px; padding:6px 12px; font-size:13px; }
-.host-workspace .trend-range, .host-workspace .vf-range-row { border-radius:10px; }
-.host-workspace .trend-range .btn-secondary { min-height:44px; padding:6px 12px; font-size:13px; border-radius:0; }
+/* Chart option groups: a grey track with the selected option as a white chip inside it (#174).
+   Slim on a computer; 40px to tap on a touch screen. */
+.host-workspace .chart-controls { display:flex; flex-wrap:wrap; align-items:center; gap:6px; align-self:stretch; margin:0 0 4px; }
+.host-workspace .trend-range, .host-workspace .vf-range-row { display:inline-flex; flex-wrap:nowrap; gap:2px; padding:3px; margin:0; border:0; border-radius:10px; background:var(--chip); overflow:visible; }
+.host-workspace .trend-range .btn-secondary, .host-workspace .vf-range-row .btn-secondary { flex:none; min-height:28px; height:28px; padding:0 10px; border:0; border-radius:7px; background:transparent; color:var(--muted); font-size:13px; font-weight:500; box-shadow:none; }
+.host-workspace .trend-range .btn-secondary:hover, .host-workspace .vf-range-row .btn-secondary:hover { background:transparent; color:var(--text); }
+.host-workspace .trend-range .btn-secondary.active, .host-workspace .vf-range-row .btn-secondary.active { background:var(--card); color:var(--accent); font-weight:600; box-shadow:0 0 0 1px var(--border); }
+@media (pointer:coarse) { .host-workspace .trend-range .btn-secondary, .host-workspace .vf-range-row .btn-secondary { min-height:40px; height:40px; padding:0 12px; } }
 .host-workspace .checkin-prompt-btn { min-height:44px; border-radius:10px; }
 /* Today's summary comes first. Fatigue Trend leads the analysis below it. */
 .dashboard-readiness-metrics { display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; }
@@ -6905,16 +6911,18 @@ async function renderDashboardVFCard() {
 
   card.innerHTML = `
     <div class="dashboard-card-title">Volume · Fatigue</div>
+    <div class="chart-controls">
     <div class="vf-range-row" id="dashboard-vf-signal-btns">
       <button class="btn btn-secondary${_dashboardVfSignal === 'tonnage' ? ' active' : ''}" data-dvf-signal="tonnage">Tonnage</button>
       <button class="btn btn-secondary${_dashboardVfSignal === 'rpe' ? ' active' : ''}" data-dvf-signal="rpe">RPE Load</button>
       <button class="btn btn-secondary${_dashboardVfSignal === 'sets' ? ' active' : ''}" data-dvf-signal="sets">Sets</button>
     </div>
-    <div class="vf-range-row" id="dashboard-vf-range-btns" style="margin-top:6px;">
-      <button class="btn btn-secondary${_dashboardVfActiveRange === 4 ? ' active' : ''}" data-dashboard-vf-range="4">4 Weeks</button>
-      <button class="btn btn-secondary${_dashboardVfActiveRange === 8 ? ' active' : ''}" data-dashboard-vf-range="8">8 Weeks</button>
-      <button class="btn btn-secondary${_dashboardVfActiveRange === 12 ? ' active' : ''}" data-dashboard-vf-range="12">12 Weeks</button>
+    <div class="vf-range-row" id="dashboard-vf-range-btns">
+      <button class="btn btn-secondary${_dashboardVfActiveRange === 4 ? ' active' : ''}" data-dashboard-vf-range="4" aria-label="4 weeks" title="4 weeks">4W</button>
+      <button class="btn btn-secondary${_dashboardVfActiveRange === 8 ? ' active' : ''}" data-dashboard-vf-range="8" aria-label="8 weeks" title="8 weeks">8W</button>
+      <button class="btn btn-secondary${_dashboardVfActiveRange === 12 ? ' active' : ''}" data-dashboard-vf-range="12" aria-label="12 weeks" title="12 weeks">12W</button>
       <button class="btn btn-secondary${_dashboardVfActiveRange === 'custom' ? ' active' : ''}" data-dashboard-vf-range="custom">Custom</button>
+    </div>
     </div>
     <div class="vf-custom-range" id="dashboard-vf-custom-range" style="display:${_dashboardVfActiveRange === 'custom' ? 'flex' : 'none'};">
       <input type="date" id="dashboard-vf-start-date" value="${_dashboardVfCustomStart || ''}">
@@ -7204,14 +7212,16 @@ async function renderTodayPatternFatigueCard() {
 
     card.innerHTML = `
       <div class="card-title">Per-Pattern Fatigue Trend<span style="position:relative;display:inline-flex;align-items:center;margin-left:6px;cursor:default;" onmouseenter="this.querySelector('.pf-tooltip').style.display='block'" onmouseleave="this.querySelector('.pf-tooltip').style.display='none'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);vertical-align:middle;" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><circle cx="12" cy="8" r="0.5" fill="currentColor"/></svg><span class="pf-tooltip" style="display:none;position:absolute;top:20px;right:0;width:260px;background:var(--card);border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text-secondary);z-index:100;line-height:1.5;">Shows the 7-day EWMA training load (ATL) per movement pattern across your full training history. The 7/14/30 day buttons control the smoothing window applied to the data - wider windows produce smoother lines. ATL shows stress-weighted load; Tonnage shows raw volume EWMA.</span></span></div>
+      <div class="chart-controls">
       <div class="trend-range" id="today-pattern-range">
         <button class="btn btn-secondary${_todayPatternRange === 7 ? ' active' : ''}" data-pattern-range="7">7 Day</button>
         <button class="btn btn-secondary${_todayPatternRange === 14 ? ' active' : ''}" data-pattern-range="14">14 Day</button>
         <button class="btn btn-secondary${_todayPatternRange === 30 ? ' active' : ''}" data-pattern-range="30">30 Day</button>
       </div>
-      <div class="trend-range" id="today-pattern-signal" style="margin-top:4px;">
+      <div class="trend-range" id="today-pattern-signal">
         <button class="btn btn-secondary${_todayPatternSignal === 'atl' ? ' active' : ''}" data-pattern-signal="atl">ATL</button>
         <button class="btn btn-secondary${_todayPatternSignal === 'tonnage' ? ' active' : ''}" data-pattern-signal="tonnage">Tonnage</button>
+      </div>
       </div>
       ${(!history.length || !hasPatternLoads)
         ? '<div class="today-chart-empty">Pattern data unavailable for this date range.</div>'
