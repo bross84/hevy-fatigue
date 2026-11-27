@@ -11,6 +11,7 @@
 <script src="/training/static/plan-proposal.js?v=5"></script>
 <script src="/training/static/plan-change.js?v=1"></script>
 <script src="/static/daily-coach.js?v=5"></script>
+<script src="/static/joint-call.js?v=1"></script>
 <link rel="icon" href="/resources/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/resources/apple-touch-icon.png">
 <style>
@@ -3005,6 +3006,27 @@ body.ai-open main {
 #weekly-review-notice h2 { font-size:18px; margin:0 0 6px; }
 #weekly-review-notice p { color:var(--muted); max-width:72ch; }
 #weekly-review-notice a { display:inline-flex; align-items:center; min-height:44px; margin-top:4px; color:var(--accent); text-underline-offset:3px; }
+#joint-call-notice { margin:0 0 16px; padding:16px; border-radius:12px; overflow-wrap:anywhere; }
+#joint-call-notice.joint-call-due { border:1px solid color-mix(in srgb, var(--warn) 45%, var(--border)); background:color-mix(in srgb, var(--warn) 10%, var(--card)); }
+#joint-call-notice.joint-call-quiet { border:1px solid var(--border); background:var(--card); padding:10px 16px; }
+#joint-call-notice h2 { font-size:18px; margin:0 0 6px; color:var(--warn); }
+#joint-call-notice p { margin:0 0 4px; max-width:72ch; }
+#joint-call-notice.joint-call-quiet p, .joint-call-muted { color:var(--muted); }
+#joint-call-notice a { display:inline-flex; align-items:center; min-height:44px; margin-top:4px; color:var(--accent); text-underline-offset:3px; }
+.joint-decision-card { margin:12px 0; padding:14px 16px; border:1px solid color-mix(in srgb, var(--warn) 45%, var(--border)); border-radius:12px; background:var(--card); }
+.joint-decision-card h3 { margin:0 0 6px; font-size:15px; }
+.joint-decision-buttons { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:8px; margin:10px 0; }
+.joint-decision-buttons button, .joint-decision-card button { min-height:44px; }
+.joint-decision-card label { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:0 0 8px; }
+.joint-call-error { color:var(--danger); }
+.joint-evidence-head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
+.joint-evidence-pill { font-size:12px; padding:2px 8px; border-radius:6px; background:var(--bg); color:var(--muted); white-space:nowrap; }
+.joint-evidence-region { margin:12px 0 0; color:var(--muted); font-size:13px; }
+.joint-evidence-table { width:100%; table-layout:fixed; border-collapse:collapse; font-size:13px; margin-top:6px; }
+.joint-evidence-table th { color:var(--muted); font-weight:400; font-size:12px; text-align:left; padding:6px 4px; }
+.joint-evidence-table td { text-align:left; padding:6px 4px; border-top:1px solid var(--border); overflow-wrap:anywhere; }
+.joint-evidence-table th:first-child { width:38%; }
+.joint-evidence-table .joint-evidence-pattern td:first-child, .joint-evidence-table .joint-evidence-collecting td { color:var(--muted); }
 .host-workspace .dashboard-wrap { display:grid; grid-template-columns:minmax(0,1fr); padding:0; gap:16px; align-items:stretch; }
 .host-workspace .dashboard-sidebar,.host-workspace .dashboard-main,.host-workspace .dashboard-secondary { display:contents; position:static; }
 .host-workspace .dashboard-card { min-width:0; padding:16px; border-radius:12px; box-shadow:none; box-sizing:border-box; margin:0; }
@@ -3225,6 +3247,7 @@ body.ai-open main {
   <div class="dashboard-heading"><h1 id="dashboard-title" tabindex="-1">Dashboard</h1><time id="dashboardDate"></time></div>
   <p class="dashboard-subtitle">Today’s check-in and recent training</p>
   <section id="weekly-review-notice" aria-live="polite" aria-label="Weekly training review" hidden></section>
+  <section id="joint-call-notice" aria-live="polite" aria-label="Joint coaching call" hidden></section>
 
   <div class="dashboard-wrap">
       <div class="dashboard-card" id="dashboard-readiness-card">
@@ -3392,6 +3415,7 @@ body.ai-open main {
 
 <!-- ══════════════ EXERCISES TAB ══════════════ -->
 <section id="tab-exercises" class="tab-content">
+  <div class="card" id="joint-evidence-card" aria-live="polite"></div>
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
       <div class="card-title" style="margin-bottom:0;">Exercise Movement Mappings</div>
@@ -3885,6 +3909,8 @@ let aiChatHistory = [];
 let aiConversation = null;
 let aiReviewLoading = false;
 let aiWeeklyHandled = false;
+let aiJointHandled = false;
+let jointCallError = null;
 let aiReadinessContext = null;
 let aiChatConfigured = false;
 let aiChatStreaming = false;
@@ -4035,7 +4061,7 @@ function activateTab(tabName) {
   if (tabName !== 'dashboard') closeCheckinModal();
   document.body.classList.toggle('ai-open', tabName === 'ai');
   if (tabName === 'dashboard') { loadTrainingLoadCard(); checkTodayReadiness(); }
-  if (tabName === 'exercises')                           { if (exercises.length === 0) loadExercises(); }
+  if (tabName === 'exercises')                           { if (exercises.length === 0) loadExercises(); JointCall.renderEvidence(document.getElementById('joint-evidence-card')); }
 if (tabName === 'exercise-metrics')                    { loadExerciseConflicts(); loadExerciseMetrics('all'); }
   if (tabName === 'workouts'  && !workoutsLoaded)        loadWorkouts();
   if (tabName === 'ai')                                   { loadAISettings().then(() => loadAIContext()); loadCoachEquipment(); }
@@ -4743,6 +4769,7 @@ function renderTrainingReview(view) {
       (typeof turn.failure === 'string' && turn.failure.trim() ? ' Reason: '+turn.failure.trim() : '')+
       ' This message will not be automatically resent.');
   }
+  if (JointCall.contextOf(view)) JointCall.mountDecision(document.getElementById('ai-chat-messages'), view);
   const e = view.evidence;
   document.getElementById('ai-evidence-date').textContent = 'Evidence captured '+new Date(e.captured_at).toLocaleString()+
     ' · '+e.coverage.sessions+' sessions · '+e.window.start+' to '+e.window.end+'. Start a new review to include newer training. AI proposals may contain errors; check the evidence and references.';
@@ -4773,6 +4800,16 @@ async function loadCoachingConversations() {
           history.replaceState(null,'',location.pathname+'?'+params.toString()+'#ai');
         });
     }
+    if(params.get('coaching_joint')&&!aiJointHandled){
+      aiJointHandled=true;
+      _setAIChatStatus('Preparing your joint coaching call…');
+      const view=await coachingJSON('/api/ai/joint-calls',{method:'POST'});
+      params.delete('coaching_joint');params.set('coaching_conversation',view.id);
+      history.replaceState(null,'',location.pathname+'?'+params.toString()+'#ai');
+      // The call and its decision card stay available even when the AI reply cannot be sent.
+      try { await AICoach.reviewPrepared(view,view.first_message,text=>_setAIChatStatus(text)); }
+      catch(e) { jointCallError=e.message; }
+    }
     const rows = await coachingJSON('/api/ai/conversations');
     const select = document.getElementById('ai-conversation-select');
     select.replaceChildren(new Option('Select a saved review', ''));
@@ -4781,6 +4818,7 @@ async function loadCoachingConversations() {
     const id = requested || (rows.some(r=>r.id===aiConversation?.id) ? aiConversation.id : rows[0]?.id);
     if(requested&&!rows.some(r=>r.id===requested))select.add(new Option('Saved coaching review',requested));
     if (id) { select.value = id; _setAIChatStatus(''); renderTrainingReview(await coachingJSON('/api/ai/conversations/'+encodeURIComponent(id))); }
+    if (jointCallError) { _setAIChatStatus(jointCallError, true); jointCallError = null; }
   } catch(e) { _setAIChatStatus(e.message, true); }
   finally { aiReviewLoading = false; _setAIChatStreaming(false); }
 }
@@ -7484,10 +7522,14 @@ async function loadWeeklyReviewNotice() {
   }
 }
 window.addEventListener('focus', () => {
-  if (document.getElementById('tab-dashboard').classList.contains('active')) loadWeeklyReviewNotice();
+  if (document.getElementById('tab-dashboard').classList.contains('active')) {
+    loadWeeklyReviewNotice();
+    JointCall.loadNotice(document.getElementById('joint-call-notice'));
+  }
 });
 async function loadTrainingLoadCard() {
   loadWeeklyReviewNotice();
+  JointCall.loadNotice(document.getElementById('joint-call-notice'));
   const dashboardWrap = document.querySelector('.dashboard-wrap');
   if (!dashboardWrap) return;
   try {
