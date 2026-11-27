@@ -12,8 +12,8 @@
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#111923" />
   <title>Model trial · Hevy-Fatigue</title>
   <style>
-    :root { --peripheral:#377a58; --central:#a76118; --error:#a32d2d; }
-    @media(prefers-color-scheme:dark) { :root { --peripheral:#7ec79b; --central:#e8a15c; --error:#f09595; } }
+    :root { --peripheral:#377a58; --central:#a76118; --error:var(--danger); }
+    @media(prefers-color-scheme:dark) { :root { --peripheral:#7ec79b; --central:#e8a15c; } }
     * { box-sizing:border-box; } [hidden] { display:none !important; }
     body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
     main { max-width:1100px; margin:auto; padding:16px; }
@@ -103,8 +103,8 @@
     }
 .legend {display:none;} .stress-chart { min-width:0; } .stress-chart .chart-selection {font-size:11px;color:var(--muted);margin-top:8px;min-height:34px} .stress-chart input {min-width:0;max-width:145px;font:inherit;font-size:16px;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:5px} .stress-chart .range-row {font-size:11px} .observation-grid figure {min-width:0;}
 </style>
-  <link rel="stylesheet" href="/training/static/theme.css?v=2" />
-  <script src="/training/static/app-menu.js?v=3"></script>
+  <link rel="stylesheet" href="/training/static/theme.css?v=3" />
+  <script src="/training/static/app-menu.js?v=4"></script>
 </head>
 <body>
 <main>

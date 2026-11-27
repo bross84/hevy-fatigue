@@ -1746,3 +1746,15 @@ Progress zoom buttons are one group (← − + →); Reset appears only after a 
 line is "Drag to zoom." (the full gesture help stays for screen readers). The Movement stress page
 was already reworked in #173. Log: RPE 9–10 and finish-screen drops use `--hard` (#b4530a light,
 #e0874a dark); swipe-delete, finish-dialog border and finish dots use theme colours.
+
+## Microcycles wording, Docs contents and shared status colours (2026-11-27, local; #134, #167)
+
+Owner approved on 2026-11-27. In the owner's terms a plan is a full (~6-week) block and a microcycle is
+one week, so the one-week page is now **Microcycles** in the shared menu, dashboard sidebar, page title,
+buttons and messages (routes, ids and API names are unchanged; a real block grouping is #187). On phones
+the editor's set rows share the width (`22px repeat(3,minmax(0,1fr)) 34px 32px`), the weight heading
+shortens to the unit, and TS and remove stay in view without sideways scrolling. Docs replaces its
+fixed contents sidebar and phone ☰ button with one sticky "On this page" dropdown; picking a section
+jumps there and closes it. The status colours (`--danger`, `--danger-bg`, `--ok`, `--ok-bg`, `--warn`,
+`--warn-bg`, `--hard`) now live in `rackbook/static/theme.css` instead of being repeated per page;
+values are unchanged. `theme.css` is v=3 and `app-menu.js` v=4.
