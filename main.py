@@ -580,13 +580,6 @@ def _extract_provider_error_message(response: httpx.Response) -> str:
     return text if text else f"HTTP {response.status_code}"
 
 
-def _safe_sse_chunk(delta: str) -> str:
-    clean = (delta or "").replace("\r", "")
-    if not clean:
-        return ""
-    return f"data: {clean}\n\n"
-
-
 def _openai_compatible_messages(system_prompt: str, history: list[AIChatMessage], message: str) -> list[dict]:
     out = [{"role": "system", "content": system_prompt}]
     for item in history:
@@ -668,24 +661,6 @@ def _get_conditioning_scaling_factor(db: Session) -> float:
         return v if v > 0 else _CONDITIONING_SCALING_DEFAULT
     except (TypeError, ValueError):
         return _CONDITIONING_SCALING_DEFAULT
-
-
-def _get_hypertrophy_scaling_factor(db: Session) -> float:
-    """
-    Read hypertrophy_stress_scaling_factor from app_settings.
-    Normalises (sRPE x duration_minutes) onto the same scale as
-    strength stress for HYP sessions where per-set RPEs are absent.
-    Default 29 - neutral prior, equal to conditioning scale.
-    Calibrate via Settings after running the calibration protocol.
-    """
-    raw = _get_setting_value(db, "hypertrophy_stress_scaling_factor")
-    if raw is None:
-        return _HYP_SCALING_DEFAULT
-    try:
-        v = float(raw)
-        return v if v > 0 else _HYP_SCALING_DEFAULT
-    except (TypeError, ValueError):
-        return _HYP_SCALING_DEFAULT
 
 
 def _get_auto_verify_confidence_threshold(db: Session) -> float:
@@ -806,39 +781,6 @@ def _get_v2_settings(db: Session) -> dict:
     _validate_auto_verify_threshold(cfg)
     return cfg
 
-def _validate_calibration_thresholds(cfg: dict) -> None:
-    if not (
-        cfg["threshold_large_decrease"] >= cfg["threshold_decrease"] >=
-        cfg["threshold_continue"] >= cfg["threshold_increase"] >= 0.0
-    ):
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                "Thresholds must be ordered: "
-                "large_decrease >= decrease >= continue >= increase >= 0"
-            ),
-        )
-
-    if not (1.0 >= cfg["v2_threshold_stressed"] >= cfg["v2_threshold_neutral"] >= 0.0):
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                "V2 thresholds must be ordered: "
-                "stressed >= neutral >= 0"
-            ),
-        )
-
-    if not (
-        cfg["tsb_threshold_underloaded"] >= cfg["tsb_threshold_slightly_fresh"] >=
-        cfg["tsb_threshold_balanced"] >= cfg["tsb_threshold_slightly_fatigued"]
-    ):
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                "TSB thresholds must be ordered: "
-                "underloaded >= slightly_fresh >= balanced >= slightly_fatigued"
-            ),
-        )
 
 def _get_calibration_settings(db: Session) -> dict:
     def _safe_float(raw: str | None, default: float) -> float:
@@ -1444,31 +1386,6 @@ def _training_modifier_for_index(stresses: list[float], idx: int) -> float:
     relative_delta = (recent_load - baseline_load) / baseline_load
     return round(_clamp(relative_delta * 1.2, -1.5, 1.5), 2)
 
-def _fatigue_recommendation(fatigue_score: float, thresholds: dict | None = None) -> str:
-    """Map 0-20 fatigue score (20 = worst) to recommendation buckets."""
-    cfg = thresholds or _CALIBRATION_DEFAULTS
-    ld = float(cfg.get("threshold_large_decrease", _CALIBRATION_DEFAULTS["threshold_large_decrease"]))
-    d = float(cfg.get("threshold_decrease", _CALIBRATION_DEFAULTS["threshold_decrease"]))
-    c = float(cfg.get("threshold_continue", _CALIBRATION_DEFAULTS["threshold_continue"]))
-    i = float(cfg.get("threshold_increase", _CALIBRATION_DEFAULTS["threshold_increase"]))
-
-    if fatigue_score >= ld:
-        return "large_decrease"
-    if fatigue_score >= d:
-        return "decrease"
-    if fatigue_score >= c:
-        return "continue"
-    if fatigue_score >= i:
-        return "increase"
-    return "large_increase"
-
-def _adjusted_recommendation(base_rec: str, subj: float) -> str:
-    level = _REC_LEVELS.index(base_rec)
-    if   subj >= 0.75: adj = -2
-    elif subj >= 0.50: adj = -1
-    elif subj <  0.15: adj = +1
-    else:              adj =  0
-    return _REC_LEVELS[max(0, min(4, level + adj))]
 
 def _percentile(values: list[float], p: float) -> float:
     """Linear-interpolated percentile for an unsorted list."""
@@ -1605,30 +1522,6 @@ def _resolve_tsb_state_thresholds(calibration: dict | None = None) -> dict:
     }
 
 
-def _resolve_training_state(tsb: float, tsb_thresholds: dict) -> tuple[str, str, str]:
-    ordered = [
-        ("underloaded", tsb_thresholds.get("underloaded"), "Underloaded", "Fitness is significantly outpacing recent training stress"),
-        ("slightly_fresh", tsb_thresholds.get("slightly_fresh"), "Slightly Fresh", "Fitness outpacing fatigue - recovery is ahead of training"),
-        ("balanced", tsb_thresholds.get("balanced"), "Balanced", "Fitness and fatigue well matched - normal training state"),
-        ("slightly_fatigued", tsb_thresholds.get("slightly_fatigued"), "Slightly Fatigued", "Fatigue outpacing fitness - accumulated stress present"),
-        ("fatigued", None, "Fatigued", "Fatigue significantly elevated - recovery is the priority"),
-    ]
-
-    for key, threshold, label, detail in ordered:
-        if threshold is None or tsb >= float(threshold):
-            return key, label, detail
-    return "fatigued", "Fatigued", "Fatigue significantly elevated - recovery is the priority"
-
-
-def _session_volume(session_id: str, db: Session) -> float:
-    logs = (
-        db.query(WorkoutLog)
-        .filter(WorkoutLog.workout_id == session_id)
-        .all()
-    )
-    return sum((log.weight_lbs or 0.0) * (log.reps or 0) for log in logs)
-
-
 def _recommendation_history(db: Session, end_date: date_type) -> list[dict]:
     entries = db.query(DailyReadiness).filter(DailyReadiness.date <= end_date).order_by(DailyReadiness.date).all()
     earliest = entries[0].date if entries else end_date
@@ -1644,10 +1537,6 @@ def _recommendation_history(db: Session, end_date: date_type) -> list[dict]:
     checkins = [dict(date=e.date, **{k: getattr(e, k) for k in RATING_FIELDS}) for e in entries]
     volumes = {d: float(volume or 0) for d, volume in volume_rows}
     return build_recommendation_history(checkins, volumes, end_date)
-
-
-def _objective_score_for_date(target_date: date_type, db: Session) -> float | None:
-    return _recommendation_history(db, target_date)[-1]["objective_score"]
 
 
 def _combined_recommendation(combined_score: float) -> tuple[str, str, str]:
@@ -1671,100 +1560,6 @@ def _resolve_fatigue_tier(fatigue_score: float) -> tuple[str, str]:
         if fatigue_score >= threshold:
             return label, detail
     return "Low", "Feeling recovered"
-
-
-def _dots_filled(combined_signal: float) -> int:
-    if combined_signal >= 0.90:
-        return 5
-    if combined_signal >= 0.75:
-        return 4
-    if combined_signal >= 0.55:
-        return 3
-    if combined_signal >= 0.35:
-        return 2
-    return 1
-
-
-def _stress_level_label(dots: int) -> str:
-    labels = {1: "Fresh", 2: "Min. Stress", 3: "Normal Stress", 4: "Moderate Stress", 5: "High Stress"}
-    return labels.get(dots, "Normal Stress")
-
-
-def _pattern_last_loaded_dates(
-    db: Session,
-    today: date_type,
-    stress_by_date: dict | None = None,
-    pattern_stress_by_date: dict | None = None,
-) -> dict:
-    floor_date = today - timedelta(days=330)
-    dates = (
-        db.query(WorkoutLog.date)
-        .filter(
-            WorkoutLog.date >= floor_date,
-            WorkoutLog.date <= today,
-        )
-        .distinct()
-        .order_by(WorkoutLog.date)
-        .all()
-    )
-
-    last = {p: None for p in _PATTERN_KEYS}
-    for row in dates:
-        if pattern_stress_by_date is not None and row.date in pattern_stress_by_date:
-            p_scores = pattern_stress_by_date[row.date]
-        else:
-            # Fallback: recompute if not provided (e.g. called outside get_training_load)
-            scores = calculate_stress_scores(row.date, db)
-            p_scores = {p: scores.get(p, 0.0) for p in _PATTERN_KEYS}
-        for p in _PATTERN_KEYS:
-            if float(p_scores.get(p, 0.0) or 0.0) > 0.0:
-                last[p] = row.date
-    return last
-
-
-def _days_since_loaded(pattern: str, last_loaded_dates: dict, today: date_type) -> int | None:
-    last = last_loaded_dates.get(pattern)
-    if last is None:
-        return None
-    return max(0, int((today - last).days))
-
-
-def _pattern_soreness_signals(checkin: DailyReadiness | None) -> dict:
-    if not checkin:
-        # Missing check-in defaults to neutral soreness (2/4 -> 0.5), not fresh.
-        return {p: 0.5 for p in _PATTERN_KEYS}
-    return {
-        "knee": round((checkin.sore_quad_dom or 0) / 4.0, 3),
-        "hip": round((checkin.sore_posterior or 0) / 4.0, 3),
-        "push": round((checkin.sore_upper_push or 0) / 4.0, 3),
-        "pull": round((checkin.sore_upper_pull or 0) / 4.0, 3),
-    }
-
-
-def _pattern_tsb_signal(tsb: float, ctl: float) -> float:
-    """
-    Convert per-pattern TSB into a 0..1 stress signal for dot display.
-
-    TSB = CTL - ATL. Negative TSB = more fatigue than fitness (stressed).
-    Positive TSB = more fitness than fatigue (fresh/underloaded).
-
-    Normalise by CTL so the signal is relative to the athlete's own
-    fitness baseline, not an arbitrary absolute scale.
-
-    Signal = 0 when TSB >= 0 (fresh or underloaded).
-    Signal approaches 1 when TSB ~= -CTL (ATL ~= 2x CTL, very high acute load).
-
-    Edge case - CTL is zero (no training history for this pattern yet):
-      return 0 regardless of TSB.
-    """
-    ctl = max(0.0, float(ctl or 0.0))
-    tsb = float(tsb or 0.0)
-
-    if ctl <= 0.0:
-        return 0.0
-
-    signal = _clamp(-tsb / ctl, 0.0, 1.0)
-    return round(signal, 3)
 
 
 def _state_from_signal(signal: float, thresholds: dict) -> str:
