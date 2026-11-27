@@ -1,6 +1,6 @@
 # Rackbook development workflow
 
-Read `rackbook-context.md`, then `backlog.md`, and the root `AGENTS.md` / `CLAUDE.md` before working. The coding assistant handles design, implementation, and validation directly; Brian reviews the result on his phone.
+Read `rackbook-context.md`, then the open GitHub issues, and the root `AGENTS.md` / `CLAUDE.md` before working. The coding assistant handles design, implementation, and validation directly; Brian reviews the result on his phone.
 
 ## Implementation
 

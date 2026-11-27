@@ -1,7 +1,7 @@
 # Rackbook — Project Context
 
 Source of truth for architecture, schema, domain terms, decisions and constraints.
-Read this file at the start of every task. Do not proceed if it is missing. What is done and what is next lives in [`backlog.md`](backlog.md); `plan.md` is only a history log of the original 5/3/1 build.
+Read this file at the start of every task. Do not proceed if it is missing. Open work lives in GitHub issues (bross84/hevy-fatigue); the old backlog and plan logs are history in `docs/archive/`.
 
 Last brought up to date: 2026-10-30.
 
@@ -56,9 +56,9 @@ Brian lifts 3 days a week and logs on his phone in the gym. He works up to a sin
 | Database | SQLite at `DB_PATH` (`/data/rackbook.db` inside Docker) — `sqlite3` stdlib, no ORM |
 | Frontend | Vanilla JS, one HTML file per page, no bundler/build step; Progress uses locally bundled Chart.js and zoom scripts |
 | HTTP client | `httpx` for Hevy API calls |
-| Deployment | Docker + docker-compose on CasaOS homelab, port 8126 (8125 is reserved by the sibling service `hevy-fatigue`) |
+| Deployment | Mounted at `/training` inside the Hevy Fatigue container on the CasaOS homelab (port 8125); the standalone container on 8126 is retired. See `docs/training-cutover.md` |
 | PWA | Desktop and mobile PWA (`static/manifest.webmanifest`, `static/sw.js`) |
-| Tests | `python -m unittest discover -s tests -t .` (pytest is not installed). Also run on GitHub for every push |
+| Tests | `python -X utf8 -m unittest discover -s rackbook/tests -t .` from the repo root, plus `rackbook/tests/*.cjs` (pytest is not installed) |
 
 ---
 
@@ -284,29 +284,20 @@ so rollback material is intact. `training_max.py` (TS and TM) is separate and un
 - **One feature at a time**: build it small, check it live (the user uses it on a phone), then the next. Do not change behaviour the user did not ask about; when a design has a real tradeoff, ask one question.
 - Add tests for non-trivial logic. The suite takes about 12 s; run all of it before pushing.
 - Windows checkout: files use CRLF in the working tree (git warns about LF→CRLF; harmless). Edit with tools that preserve line endings.
-- Dev servers (`.claude/launch.json`): `rackbook-dev` on port 8127 uses `.env` (`DB_PATH=./rackbook.db`, the local database). The `rackbook` config on 8126 fails if the local Docker container is already using that port. Test data written to the local database must be removed afterwards (use template ids starting `ZZ-`).
+- Previews: `python -X utf8 -m uvicorn tools.preview_app:app --host 127.0.0.1 --port 18127` from the repo root runs both apps on disposable data with Hevy mocked. Never point experiments at the real databases.
 - `index.html`'s `fetchJson` and the log page's `api()` read JSON bodies; `POST /settings/api-key` answers 204 with an empty body, which `fetchJson` must tolerate.
 
 ---
 
 ## Deployment
 
-```bash
-git pull && docker compose up -d --build     # in the repo folder on the server
-curl -s localhost:8126/health                # {"status":"ok"}
-```
-
-The database lives in the named volume `rackbook-data` at `/data/rackbook.db`, with the Hevy key's encryption key at `/data/app.key`; both survive rebuilds. Only `docker compose down -v` wipes them. Logs: `docker logs rackbook -f`.
-
-For HTTPS and phone access, `tailscale serve --bg 8126` (inside the Tailscale container if it runs as one, which is host-networked here, so `http://localhost:8126` works). The Hevy API key is entered once at `/legacy#settings`.
-
-Local Docker on Windows (Docker Desktop) also works with the same compose file; an old container named `531bbb` from before the rename may be holding port 8126 on the dev PC.
+The training app no longer has its own container. It runs inside the Hevy Fatigue container (`deploy/production.compose.yml`, port 8125) with its database at `RACKBOOK_DB_PATH=/training-data/rackbook.db` in the `hevy-fatigue_training-data` volume. Updates are `docker compose pull && docker compose up -d`; see `docs/training-cutover.md` for release and rollback. The Hevy key is managed in host Settings (`/#settings`).
 
 ---
 
 ## Development workflow
 
-The coding assistant handles architecture, implementation, debugging, and validation directly; Brian reviews and checks the result on his phone. Read this file, `CLAUDE.md` / `AGENTS.md`, `backlog.md`, and [`development.md`](development.md).
+The coding assistant handles architecture, implementation, debugging, and validation directly; Brian reviews and checks the result on his phone. Read this file, `CLAUDE.md` / `AGENTS.md`, the open GitHub issues, and [`development.md`](development.md).
 
 Microcycle conversion (2026-10-17): startup atomically converts existing multiweek plans, retaining their original JSON in `mesocycle_week_backups`. Empty extra weeks are removed from the active document; populated or previously completed future weeks become separate one-week microcycles. Completion links move with their sessions. `mesocycle_session_aliases` resolves old URLs and in-flight log drafts, including idempotent save retries, to their new plan ids. Unsaved multiweek editor drafts are recovered as separate one-week drafts on the device. This feature does not use the legacy planner’s `microcycles` table.
 

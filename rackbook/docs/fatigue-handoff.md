@@ -124,7 +124,7 @@ fresh probe succeeds.
 Pull both repositories (or clone them into sibling folders) and read these files
 before changing anything:
 
-1. Rackbook `AGENTS.md`, `docs/rackbook-context.md`, `docs/backlog.md`, this guide,
+1. Rackbook `AGENTS.md`, `docs/rackbook-context.md`, the open GitHub issues, this guide,
    and `docs/fatigue-trial.md`.
 2. Hevy Fatigue `CLAUDE.md`, `docs/hevy-context.md`, `README.md`, and
    `docs/recommendation-replay.md`.
