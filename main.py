@@ -21,6 +21,10 @@ import coaching_equipment
 import coaching_stream
 import weekly_coaching
 import daily_coaching
+import database as host_database
+import joint_baseline
+import joint_coaching
+from rackbook.local_day import local_today
 from readiness_context import historical_ranges
 
 from recommendations import build_history as build_recommendation_history, RATING_FIELDS
@@ -2560,7 +2564,9 @@ def coach_equipment_put(data: CoachEquipmentInput, db: Session = Depends(get_db)
 @app.get('/api/ai/conversations')
 def coaching_list(db: Session = Depends(get_db)):
     rows = db.query(CoachingConversation).order_by(CoachingConversation.created_at.desc()).limit(50).all()
-    return [dict(id=r.id,created_at=r.created_at,label=(coaching.parsed(r.evidence,{}).get('week_context') or coaching.parsed(r.evidence,{}).get('daily_context') or {}).get('label')) for r in rows]
+    def label(evidence):
+        return (evidence.get('week_context') or evidence.get('daily_context') or evidence.get('joint_context') or {}).get('label')
+    return [dict(id=r.id,created_at=r.created_at,label=label(coaching.parsed(r.evidence,{}))) for r in rows]
 
 
 @app.post('/api/ai/daily-reviews')
@@ -2586,9 +2592,43 @@ def coaching_week_review(data: weekly_coaching.WeekReviewInput,db: Session = Dep
     try:
         snapshot=_build_diagnostics_snapshot(db)
         monitoring={k:snapshot[k] for k in ('date','score_source','recommendation_v2','combined_score','training_load','joint_advisory')}
+        if data.kind=='call':
+            # A joint call due at the same time is folded into the weekly call (#154).
+            monitoring['joint_call']=joint_baseline.call_context(db,host_database,local_today())
         return weekly_coaching.prepare(db,data,monitoring)
     except ValueError as exc:
         raise HTTPException(422,str(exc)) from exc
+
+
+# ── Joint baseline (#154) ─────────────────────────────────────────────────────
+
+@app.get('/api/joint/status')
+def joint_status(db: Session = Depends(get_db)):
+    return joint_baseline.current_status(db, host_database, local_today())
+
+
+@app.get('/api/joint/evidence')
+def joint_evidence(db: Session = Depends(get_db)):
+    return joint_baseline.current_evidence(db, host_database, local_today())
+
+
+@app.post('/api/joint/decisions')
+def joint_decide(data: joint_baseline.DecisionInput, db: Session = Depends(get_db)):
+    try:
+        return joint_baseline.record_decision(db, host_database, data, local_today())
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@app.post('/api/ai/joint-calls')
+def coaching_joint_call(db: Session = Depends(get_db)):
+    try:
+        snapshot = _build_diagnostics_snapshot(db)
+        monitoring = {k:snapshot[k] for k in ('date','score_source','recommendation_v2','combined_score','training_load','joint_advisory')}
+        view = joint_coaching.prepare(db, monitoring, local_today())
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return dict(view, first_message=joint_coaching.first_message(view))
 
 
 @app.post('/api/ai/conversations')

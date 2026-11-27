@@ -8,7 +8,8 @@
   <script src="/training/static/draft-transfer.js?v=1"></script>
   <script src="/training/static/week-text.js?v=1"></script>
   <script src="/training/static/session-review.js?v=1"></script>
-  <script src="/training/static/session-advice.js?v=1"></script>
+  <script src="/training/static/joint-hold.js?v=1"></script>
+  <script src="/training/static/session-advice.js?v=2"></script>
   <script src="/training/static/session-motivation.js?v=4"></script>
   <script src="/training/static/plan-proposal.js?v=5"></script>
   <script src="/training/static/plan-change.js?v=1"></script>
@@ -355,7 +356,7 @@
     .workout-log.typing main { padding-bottom: 60vh; }
     .workout-log.keypad-open main { padding-bottom: calc(var(--keypad-height, 250px) + 32px); }
   </style>
-  <link rel="stylesheet" href="/training/static/logger-layout.css?v=15" />
+  <link rel="stylesheet" href="/training/static/logger-layout.css?v=16" />
 </head>
 <body class="workout-log">
 <button id="loggerNavScrim" type="button" aria-label="Close navigation" hidden></button>
@@ -2102,6 +2103,8 @@
     card.insertBefore(referenceNotice(ex), left);
     if (ex.swappedFrom) card.insertBefore(el("p", "swap-note", "Swapped in for " + ex.swappedFrom), chips);
     if (ex.notes) card.insertBefore(el("p", "ex-note", ex.notes), chips);
+    const jointHold = typeof JointHold !== "undefined" ? JointHold.noteFor(ex.title) : null;
+    if (jointHold) card.insertBefore(el("p", "joint-hold-note", jointHold), chips);
     const chip = el("button", "chip", "Round to " + trim(stepOf(ex.ref)) + " " + unit + " ▾");
     chip.type = "button"; chip.setAttribute("aria-label", "Round planned weights to this many " + unit);
     chip.addEventListener("click", () => {
@@ -2913,6 +2916,7 @@
     (v) => { restSecs = Number(v); restSave(); restRender(); if (draft && !$("workout").hidden) renderWorkout(); }   // redraw so each exercise's chip shows the new default
   ));
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { keepAwake(); restLoop(); } });
+  document.addEventListener("jointhold", () => { if (draft) renderWorkout(); });
   restRender();
   if (restEnd !== null) restTimer = setInterval(restLoop, 250);
 

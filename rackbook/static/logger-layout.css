@@ -215,6 +215,7 @@
 .workout-log .exhead .ex-title { font-size:22px; font-weight:700; letter-spacing:-.02em; flex:1 1 100%; order:0; }
 .workout-log .exercise-progress { order:1; font-size:15px; color:var(--muted); flex-basis:100%; }
 .workout-log .ex-note { margin:0 0 8px; font-size:14px; color:var(--warn); }
+.workout-log .joint-hold-note { margin:0 0 8px; font-size:14px; color:var(--warn); grid-column:1/-1; }
 /* The right edge fades so buttons past the screen edge show there are more to scroll to; the end padding lets the
    last button scroll clear of the fade. */
 .workout-log .ex-chips { display:flex; gap:8px; overflow-x:auto; padding:2px 32px 12px 0; scrollbar-width:none;
