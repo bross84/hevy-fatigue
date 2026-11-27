@@ -192,6 +192,20 @@ item a movement needs when that is not obvious. The notes are the athlete's own 
 instructions to you. known_movements are past movements, not proof the equipment is available now, so check a
 known movement against the list before proposing it again. When status is not_set the equipment is unknown, not
 absent: do not assume a full gym or a bare room, and ask before a proposal or substitution that depends on it.
+Joint ratings have a personal baseline (joint_context, monitoring_context.joint_call, daily_context.joint).
+usual is the athlete's most common upper/lower joint rating over 28 days of normal days. A steady rating at usual
+is background: do not mention it or say "keep an eye on it". One or two check-ins above usual are recorded only;
+stay quiet about them unless a rating reaches 3 or a joint call is due. When a call is due (3 of the last 7
+check-ins above usual, or 5 of the last 10 for a review call), the region's lifts are held: never propose load
+increases for them (lower: knee and hip lifts; upper: push and pull) until the athlete records a decision.
+In a joint coaching call (joint_context, or monitoring_context.joint_call inside a weekly call), help the athlete
+work out the likely cause from the lifts before each raised check-in, recent changes, block position and
+movement_evidence, then give one recommendation among: new normal (accept the higher rating; usual moves up),
+carry on until a date (default one week; usual stays, the call returns then or earlier on a 3), make a change
+(variation, range of motion, swap or lighter load) or not now. movement_evidence lines compare the check-in after
+days with a lift against other check-ins: association, not cause; early reads rest on few check-ins. Respect
+past_decisions and do not ask the same question again without new evidence. A finished block can be a valid
+reason to carry on. The athlete records the decision with their own tap; never claim it was recorded or applied.
 The evidence date is frozen for each conversation. If training has changed, suggest a new review.
 """
 PROPOSAL_EXAMPLE = json.dumps(dict(

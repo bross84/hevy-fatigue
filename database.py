@@ -112,6 +112,22 @@ class CoachingTurn(Base):
     failure: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     __table_args__ = (UniqueConstraint('conversation_id', 'sequence'),)
 
+
+class JointCallDecision(Base):
+    """The athlete's own decision at the end of a joint coaching call (#154). One row per region."""
+    __tablename__ = 'joint_call_decisions'
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    request_id: Mapped[str] = mapped_column(String, index=True)
+    region: Mapped[str] = mapped_column(String)                          # upper | lower
+    decided_on: Mapped[date_type] = mapped_column(Date)
+    outcome: Mapped[str] = mapped_column(String)                         # new_normal | carry_on | change | not_now
+    until: Mapped[Optional[date_type]] = mapped_column(Date, nullable=True)   # carry_on only
+    level: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)      # new_normal only: accepted usual
+    note: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    conversation_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    evidence: Mapped[str] = mapped_column(String)                        # state at the time, JSON
+    created_at: Mapped[str] = mapped_column(String)
+
 # --- TABLE 5: Exercise Movement Pattern Mapping ---
 class ExerciseMapping(Base):
     __tablename__ = "exercise_mappings"

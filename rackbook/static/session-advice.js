@@ -30,6 +30,8 @@ const SessionAdvice = (() => {
       const details=node('details');details.open=row.action!=='hold'&&!row.suppressed&&!['dismiss','not_now'].includes(decision?.action);
       details.style.cssText='margin:10px 0;overflow-wrap:anywhere';
       details.append(node('summary','Provisional session advice'+(decision?' · '+decision.action.replaceAll('_',' '):'')));
+      const jointHold=typeof JointHold!=='undefined'&&row.action==='optional_set'?JointHold.noteFor(ex.title):null;
+      if(jointHold)details.append(node('p',jointHold+' Leave the added set until the call.'));
       details.append(node('p',row.message),node('p','Suggested working sets: '+row.proposed.working_sets+'. No workout or program edits are applied.'));
       details.append(node('p','Evidence is frozen when this suggestion is captured; later workout/check-in edits are not a fresh assessment.'));
       if(decision)details.append(node('p','Recorded decision: '+decision.action.replaceAll('_',' ')+(decision.reason?' — '+decision.reason:'')));

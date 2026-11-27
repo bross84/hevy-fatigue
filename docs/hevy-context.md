@@ -1688,3 +1688,28 @@ Owner approved the mockup on 2026-11-26.
   parked in `docs/trial-v1-plan.md`, pending a read-only look-back in 6–8 weeks.
 - Not deployed. Stress page wording updated with Brian's approval: the counter reads "N / 12 marked
   TS sessions" and the help text says "12 marked-TS sessions ..., at any reps or RPE".
+
+## Joint baseline and coaching calls (local, 2026-11-26, #154)
+
+`joint_baseline.py` (host, monitoring-owned) gives each joint region a usual rating:
+the most common check-in rating over the previous 28 days, from at least 7 normal-day
+check-ins, ties to the lower rating. Above-usual check-ins inside a flagged stretch are
+excluded from usual, so a lasting flare cannot become the baseline. Usual rises only on
+a recorded "new normal" decision (older days are floored at the accepted level) and
+falls on its own. A session is a check-in: 3 of the last 7 check-ins within 14 days
+above usual is a notice (call due, region lifts held); 5 of the last 10 within 21 days is
+a review call. New normal and make a change restart the count; carry on covers the call
+until its date (default 7 days) unless a rating reaches 3; not now keeps the banner and
+hold. Decisions are stored in host table `joint_call_decisions` (one row per region,
+idempotent request ID, frozen evidence). Routes: `GET /api/joint/status`,
+`GET /api/joint/evidence`, `POST /api/joint/decisions`, `POST /api/ai/joint-calls`
+(`joint_coaching.py`, frozen conversation with `joint_context`). A due joint call is also
+folded into the weekly coaching call as `monitoring_context.joint_call`. The daily coach
+receives `daily_context.joint` and the BRIEF treats a steady usual rating as background.
+The logger reads host status in `rackbook/static/joint-hold.js` to show a hold note and to
+flag added-set advice; planned weights, TM, TS pinning and server advice records are
+unchanged. Movement evidence compares the first check-in after days with a lift
+(imported `workout_logs` plus logger `logged_sets`, read-only) with other check-ins over
+84 days; lines need 3 after-lift check-ins and are early reads below 6. The 3–4 Joint
+Advisory and the fatigue trial's own joint rule are unchanged. Mocked preview:
+`python -X utf8 -m uvicorn tools.joint_preview:app --host 127.0.0.1 --port 18154`.

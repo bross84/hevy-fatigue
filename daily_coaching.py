@@ -3,8 +3,10 @@ from datetime import date, timedelta
 from hashlib import sha256
 from uuid import NAMESPACE_URL, uuid5
 from pydantic import BaseModel
+import database
 from database import DailyReadiness, CoachingConversation
 import coaching
+import joint_baseline
 from rackbook.local_day import local_today
 
 
@@ -39,6 +41,15 @@ def current(db, day):
     return None
 
 
+def joint_summary(db, day):
+    """Usual joint levels for the daily coach, so a steady usual rating is treated as background (#154)."""
+    state = joint_baseline.current_status(db, database, day)
+    return dict(call_due=bool(state['call']), held_patterns=state['held_patterns'], regions={
+        key: dict(usual=r['usual'], baseline_status=r['baseline_status'], today_above_usual=bool(r['today'] and r['today']['above']),
+                  level=r['level'], above_usual_in_last_7=r['notice_count'], carry_on_until=r['carry_on_until'])
+        for key, r in state['regions'].items()})
+
+
 def prepare(db, day, history):
     if day > local_today():
         raise ValueError('Future check-ins cannot receive a daily interpretation.')
@@ -63,7 +74,7 @@ def prepare(db, day, history):
                  url='https://pmc.ncbi.nlm.nih.gov/articles/PMC4789708/',year=2016,
                  principle='Repeated subjective monitoring can track athlete well-being; individual baselines help interpret changes.',
                  limitation='Does not validate this app score, the 84-day window, percentile range or individual programming decisions.')],
-        daily_context=dict(label='Daily check-in · '+str(day),observation=observed,
+        daily_context=dict(label='Daily check-in · '+str(day),observation=observed,joint=joint_summary(db,day),
                            scores=daily, recent_daily_scores=history[-14:],
                            training_cutoff=str(day),training_cutoff_exclusive=True),
         recent_sessions=report['recent_sessions'][-4:],exercises=recent_exercises,
