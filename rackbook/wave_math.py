@@ -1,3 +1,4 @@
+"""Joker set math kept for the planned Joker set type (#185): Epley e1RM, Joker weight and qualification."""
 JOKER_BAND = 0.05
 ROUND_TO_KG = 2.5
 
@@ -18,16 +19,6 @@ def epley(weight_kg: float, reps: int) -> float:
 
 def joker_qualifies(joker_e1rm: float, amrap_e1rm: float) -> bool:
     return abs(joker_e1rm - amrap_e1rm) / amrap_e1rm <= JOKER_BAND
-
-
-def working_weight(training_max_kg: float, week_number: int, wave_params: dict) -> float:
-    pct = wave_params["percentages"][week_number - 1]
-    return _round_weight(training_max_kg * pct)
-
-
-def bbb_weight(e1rm_kg: float, week_number: int, wave_params: dict) -> float:
-    pct = wave_params["bbb_percentages"][week_number - 1]
-    return _round_weight(e1rm_kg * pct)
 
 
 def joker_weight(previous_weight_kg: float, jump_pct: float) -> float:
