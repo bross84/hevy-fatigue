@@ -42,6 +42,34 @@ _FULL_SYNC_ERROR_SETTING_KEY = "sync_full_error_state"
 _AUTO_VERIFY_CONFIDENCE_THRESHOLD_DEFAULT = 0.87
 
 
+def logged_session_rpe(workout_id):
+    """The whole-session RPE saved from the Log page's Finish box (#199), read-only, or None.
+
+    Read from the training app's own database; a missing table or file means none.
+    """
+    if not workout_id:
+        return None
+    import sqlite3
+    from contextlib import closing
+    from rackbook.config import database_path
+    try:
+        with closing(sqlite3.connect(database_path().as_uri() + '?mode=ro', uri=True, timeout=2)) as conn:
+            row = conn.execute('SELECT rpe FROM session_rpe WHERE hevy_workout_id=?', (workout_id,)).fetchone()
+    except (sqlite3.Error, OSError):
+        return None
+    return float(row[0]) if row else None
+
+
+def _fill_srpe_from_log(db, workout_id):
+    """Give a session the Log's session RPE only when it has no sRPE; a dashboard value wins."""
+    row = db.query(WorkoutSession).filter(WorkoutSession.hevy_workout_id == workout_id).first()
+    if row is None or row.srpe is not None:
+        return
+    value = logged_session_rpe(workout_id)
+    if value is not None:
+        row.srpe = value
+
+
 def _extract_srpe_from_title(workout_title):
     """Extract first valid sRPE tag (@N or @N.N, 0..10) from title."""
     if not workout_title:
@@ -484,11 +512,12 @@ def _process_workout(db, workout, canonical_map):
                 "modality_note": modality_note,
                 "verification_status": verification_status,
                 "verified_at": verified_at,
-                "srpe": srpe_from_title,
+                "srpe": existing_session.srpe if existing_session and existing_session.srpe is not None else srpe_from_title,
                 "updated_at": datetime.utcnow(),
             },
         )
     db.execute(session_stmt)
+    _fill_srpe_from_log(db, workout_id)
     db.query(WorkoutLog).filter(WorkoutLog.workout_id == workout_id).delete(
         synchronize_session=False
     )

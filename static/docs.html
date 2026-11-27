@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Hevy Fatigue — Methodology & Reference</title>
 <link rel="icon" href="/resources/favicon.png" type="image/png">
-<script src="/training/static/app-menu.js?v=3"></script>
+<script src="/training/static/app-menu.js?v=4"></script>
 <link rel="apple-touch-icon" href="/resources/apple-touch-icon.png">
 <style>
 /* ══════════════════════════════════════════════════════
@@ -124,7 +124,7 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
   /* ── Sections ─────────────────────────────────────── */
   .doc-section {
     margin-bottom: 4rem;
-    scroll-margin-top: 2rem;
+    scroll-margin-top: 120px;
   }
 
   .section-header {
@@ -402,42 +402,6 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
     min-height: calc(100vh - 54px);
   }
 
-  .sidebar {
-    width: 250px;
-    flex-shrink: 0;
-    background: var(--bg-surface);
-    border-right: 1px solid var(--border);
-    position: fixed;
-    top: 54px;
-    left: 0;
-    bottom: 0;
-    overflow-y: auto;
-    padding: 1.25rem 0 2.5rem;
-    z-index: 90;
-  }
-
-  .sidebar-logo {
-    padding: 0 1.25rem 1rem;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 1rem;
-  }
-
-  .sidebar-logo .app-name {
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--accent);
-  }
-
-  .sidebar-logo .doc-title {
-    font-size: 10px;
-    color: var(--muted);
-    margin-top: 2px;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-  }
-
   .nav-section {
     padding: 0 0.8rem;
     margin-bottom: 0.9rem;
@@ -452,7 +416,7 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
     padding: 0.45rem 0.35rem 0.35rem;
   }
 
-  .sidebar .nav-link {
+  .docs-toc .nav-link {
     display: block;
     font-size: 13px;
     color: var(--muted);
@@ -463,73 +427,31 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
     transition: color 0.15s, background 0.15s;
   }
 
-  .sidebar .nav-link:hover {
+  .docs-toc .nav-link:hover {
     color: var(--text);
     background: color-mix(in srgb, var(--card) 80%, white 20%);
   }
 
-  .sidebar .nav-link.active {
+  .docs-toc .nav-link.active {
     color: var(--accent);
     background: var(--accent-sub);
   }
 
+  /* Contents: one "On this page" dropdown above the article that stays in reach while you scroll (#167). */
+  .docs-toc { position: sticky; top: 62px; z-index: 50; margin: 0 0 1.5rem; }
+  .docs-toc > summary { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; list-style: none; }
+  .docs-toc > summary::-webkit-details-marker { display: none; }
+  .docs-toc > summary::after { content: "▾"; color: var(--muted); }
+  .docs-toc[open] > summary::after { content: "▴"; }
+  .docs-toc-list { position: absolute; top: calc(100% + 6px); left: 0; width: min(560px, calc(100vw - 32px)); max-height: 65vh; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0 8px; padding: 10px 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); box-shadow: 0 10px 28px rgba(0,0,0,.25); }
   .docs-main {
-    margin-left: 250px;
+    margin-left: 0;
     flex: 1;
     max-width: 860px;
     padding: 2.5rem 3rem 5rem;
   }
 
-  .mobile-menu-btn {
-    display: none;
-    width: 42px;
-    height: 42px;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--border);
-    background: var(--card);
-    color: var(--text);
-    border-radius: 8px;
-    font-size: 20px;
-    line-height: 1;
-    cursor: pointer;
-  }
-
-  .mobile-nav-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.45);
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.18s ease;
-    z-index: 400;
-  }
-
   @media (max-width: 900px) {
-    .mobile-menu-btn {
-      display: inline-flex;
-    }
-
-    .sidebar {
-      top: 54px;
-      width: min(78vw, 300px);
-      transform: translateX(-100%);
-      transition: transform 0.18s ease;
-      z-index: 410;
-      border-right: 1px solid var(--border);
-      pointer-events: none;
-    }
-
-    body.mobile-nav-open .sidebar {
-      transform: translateX(0);
-      pointer-events: auto;
-    }
-
-    body.mobile-nav-open .mobile-nav-overlay {
-      opacity: 1;
-      visibility: visible;
-    }
-
     .docs-main {
       margin-left: 0;
       max-width: 100%;
@@ -546,8 +468,8 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
     .logo-icon-light { height: 28px; }
   }
 
-  /* The shared app menu: from 1100px it stays open down the left side, so the top bar,
-     the contents list and the article move right to make room. */
+  /* The shared app menu: from 1100px it stays open down the left side, so the top bar
+     and the article move right to make room. */
   .nav-right { display: flex; align-items: center; }
   /* A wide reference table scrolls inside itself instead of making the whole page scroll sideways. */
   @media (max-width: 900px) {
@@ -555,13 +477,11 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
   }
   @media (min-width: 1100px) {
     body.has-app-nav > nav { width: auto; margin-left: 224px; }
-    body.has-app-nav .sidebar { left: 224px; }
-    body.has-app-nav main.docs-main { margin-left: 474px; max-width: 860px; }
+    body.has-app-nav main.docs-main { margin-left: 224px; max-width: 860px; }
   }
   @media (min-width: 1900px) {
     body.has-app-nav > nav { margin-left: 240px; }
-    body.has-app-nav .sidebar { left: 240px; }
-    body.has-app-nav main.docs-main { margin-left: 490px; }
+    body.has-app-nav main.docs-main { margin-left: 240px; }
   }
 </style>
 </head>
@@ -569,7 +489,6 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
 
 <!-- ── Navbar ── -->
 <nav>
-  <button class="mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Open contents" aria-expanded="false" aria-controls="docs-sidebar">☰</button>
   <a class="logo" href="/" title="Today">
     <img class="logo-icon-dark" src="/resources/HF_LOGO_DARK.png" alt="Hevy Fatigue">
     <img class="logo-icon-light" src="/resources/HF_LOGO_LIGHT.png" alt="Hevy Fatigue">
@@ -579,56 +498,53 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
   </div>
 </nav>
 
-<div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
-
 <div class="page-layout">
-  <aside class="sidebar" id="docs-sidebar" aria-label="Documentation sections" aria-hidden="false">
-    <div class="sidebar-logo">
-      <div class="app-name">Hevy Fatigue</div>
-      <div class="doc-title">Methodology & Reference</div>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-section-label">Overview</div>
-      <a class="nav-link" href="#overview">Design philosophy</a>
-      <a class="nav-link" href="#checkin">Check-in model</a>
-      <a class="nav-link" href="#pending-state">No check-in state</a>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-section-label">Training load</div>
-      <a class="nav-link" href="#rpe">RPE & sRPE</a>
-      <a class="nav-link" href="#stress-calc">Stress calculation</a>
-      <a class="nav-link" href="#modalities">Session modalities</a>
-      <a class="nav-link" href="#title-tagging">Title tagging</a>
-      <a class="nav-link" href="#importer">Workout importer</a>
-      <a class="nav-link" href="#patterns">Movement patterns</a>
-      <a class="nav-link" href="#canonical">Canonical exercise names</a>
-      <a class="nav-link" href="#exercise-metrics">Exercise metrics</a>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-section-label">Metrics</div>
-      <a class="nav-link" href="#vol-fatigue">Vol-Fatigue correlation</a>
-      <a class="nav-link" href="#ewma">EWMA (ATL / CTL)</a>
-      <a class="nav-link" href="#tsb">TSB & training state</a>
-      <a class="nav-link" href="#fatigue-score">Fatigue score</a>
-      <a class="nav-link" href="#readiness-trend">Fatigue Trend chart</a>
-      <a class="nav-link" href="#dashboard-layout">Dashboard layout</a>
-      <a class="nav-link" href="#joint">Joint health advisory</a>
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-section-label">Notes</div>
-      <a class="nav-link" href="#ai-tab">AI Coach</a>
-      <a class="nav-link" href="#diagnostics">Diagnostics page</a>
-      <a class="nav-link" href="#limitations">Limitations</a>
-      <a class="nav-link" href="#references">References</a>
-    </div>
-  </aside>
 
 <!-- ── Main content ── -->
 <main class="docs-main">
+
+    <details class="docs-toc" id="docs-toc">
+      <summary>On this page</summary>
+      <div class="docs-toc-list" role="navigation" aria-label="Documentation sections">
+    <div class="nav-section">
+        <div class="nav-section-label">Overview</div>
+        <a class="nav-link" href="#overview">Design philosophy</a>
+        <a class="nav-link" href="#checkin">Check-in model</a>
+        <a class="nav-link" href="#pending-state">No check-in state</a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Training load</div>
+        <a class="nav-link" href="#rpe">RPE & sRPE</a>
+        <a class="nav-link" href="#stress-calc">Stress calculation</a>
+        <a class="nav-link" href="#modalities">Session modalities</a>
+        <a class="nav-link" href="#title-tagging">Title tagging</a>
+        <a class="nav-link" href="#importer">Workout importer</a>
+        <a class="nav-link" href="#patterns">Movement patterns</a>
+        <a class="nav-link" href="#canonical">Canonical exercise names</a>
+        <a class="nav-link" href="#exercise-metrics">Exercise metrics</a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Metrics</div>
+        <a class="nav-link" href="#vol-fatigue">Vol-Fatigue correlation</a>
+        <a class="nav-link" href="#ewma">EWMA (ATL / CTL)</a>
+        <a class="nav-link" href="#tsb">TSB & training state</a>
+        <a class="nav-link" href="#fatigue-score">Fatigue score</a>
+        <a class="nav-link" href="#readiness-trend">Fatigue Trend chart</a>
+        <a class="nav-link" href="#dashboard-layout">Dashboard layout</a>
+        <a class="nav-link" href="#joint">Joint health advisory</a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Notes</div>
+        <a class="nav-link" href="#ai-tab">AI Coach</a>
+        <a class="nav-link" href="#diagnostics">Diagnostics page</a>
+        <a class="nav-link" href="#limitations">Limitations</a>
+        <a class="nav-link" href="#references">References</a>
+      </div>
+      </div>
+    </details>
 
     <!-- Hero -->
     <div class="hero">
@@ -823,6 +739,9 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       </div>
 
       <p>In Hevy Fatigue, sRPE is encoded in session titles using the <code>@N</code> delimiter convention (e.g. <code>CON @7</code> = conditioning session at sRPE 7).</p>
+      <h3>Session RPE from the Log (feel check)</h3>
+      <p>When you finish a workout on the Log page, the Finish box asks an optional <strong>Session RPE</strong>: how hard the whole session was, on the same 4–10 half-step scale as your set RPEs. It is saved with the workout and fills that session's sRPE on the dashboard when it imports, unless you have already entered one there (a dashboard value always wins).</p>
+      <p>For sessions scored from your sets (not sessions currently scored as conditioning or cardio), it works as a small <strong>feel check</strong> on whole-body (central) stress only. The app compares the session RPE with the average RPE of that session's rated sets, and compares that gap with your usual gap over your last 10 rated sessions in 8 weeks (it needs 5 first). Each point harder than usual adds 5% to that session's whole-body stress, each point easier takes 5% off, never more than ±15%. Muscle (peripheral) and Knee/Hip/Push/Pull pattern stress are not changed, sRPE × minutes is not used, and it applies only to workouts from the day this version first ran. A session that was nudged shows a short note in its details, and the weekly coaching call sees how recent sessions felt against usual: consistently easier sessions with low fatigue can be a sign there is room to push.</p>
     </section>
 
     <!-- ═══════════════════════════════════════════ -->
@@ -984,7 +903,7 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       <p>Hevy Fatigue connects to the Hevy API to pull your workout history into the local database. It does not sync continuously in the background.</p>
 
       <h3>How sync works</h3>
-      <p>Submitting a daily check-in syncs automatically. To sync by hand, open <strong>Menu → Settings → Hevy Sync</strong> and press <strong>Sync Now</strong>. Each sync asks Hevy only for workouts added, changed or deleted since the last sync (the <code>workouts/events</code> endpoint) rather than re-fetching your entire history. The very first sync fetches your full history.</p>
+      <p>Submitting a daily check-in syncs automatically, and the dashboard also syncs quietly when you open it or switch back to it, at most once every five minutes; a small note beside Light/Dark/Auto shows when it last synced (or Sync failed · Retry). To sync by hand, open <strong>Menu → Settings → Hevy Sync</strong> and press <strong>Sync Now</strong>. Each sync asks Hevy only for workouts added, changed or deleted since the last sync (the <code>workouts/events</code> endpoint) rather than re-fetching your entire history. The very first sync fetches your full history.</p>
 
       <p>Only one sync runs at a time; while one is running, the sync buttons stay inactive.</p>
 
@@ -1672,11 +1591,9 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
 </div>
 
 <script>
-const navLinks = Array.from(document.querySelectorAll('.sidebar .nav-link'));
+const navLinks = Array.from(document.querySelectorAll('.docs-toc .nav-link'));
 const sections = Array.from(document.querySelectorAll('.doc-section'));
-const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-const mobileOverlay = document.getElementById('mobile-nav-overlay');
-const docsSidebar = document.getElementById('docs-sidebar');
+const toc = document.getElementById('docs-toc');
 
 function setActiveNav(sectionId) {
   navLinks.forEach((link) => {
@@ -1695,54 +1612,21 @@ const observer = new IntersectionObserver((entries) => {
 
 sections.forEach((section) => observer.observe(section));
 
-function closeMobileNav() {
-  document.body.classList.remove('mobile-nav-open');
-  mobileMenuBtn.setAttribute('aria-expanded', 'false');
-  docsSidebar.setAttribute('aria-hidden', window.innerWidth <= 900 ? 'true' : 'false');
-}
-
-function openMobileNav() {
-  document.body.classList.add('mobile-nav-open');
-  mobileMenuBtn.setAttribute('aria-expanded', 'true');
-  docsSidebar.setAttribute('aria-hidden', 'false');
-}
-
-function syncSidebarA11y() {
-  if (window.innerWidth > 900) {
-    document.body.classList.remove('mobile-nav-open');
-    mobileMenuBtn.setAttribute('aria-expanded', 'false');
-    docsSidebar.setAttribute('aria-hidden', 'false');
-  } else if (!document.body.classList.contains('mobile-nav-open')) {
-    docsSidebar.setAttribute('aria-hidden', 'true');
-  }
-}
-
-mobileMenuBtn.addEventListener('click', () => {
-  if (document.body.classList.contains('mobile-nav-open')) {
-    closeMobileNav();
-  } else {
-    openMobileNav();
-  }
-});
-
-mobileOverlay.addEventListener('click', closeMobileNav);
-
 navLinks.forEach((link) => {
   link.addEventListener('click', (e) => {
     e.preventDefault();
     const target = document.querySelector(link.getAttribute('href'));
     if (target) {
+      toc.open = false;
       target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       setActiveNav(target.id);
-      if (window.innerWidth <= 900) {
-        closeMobileNav();
-      }
     }
   });
 });
 
-window.addEventListener('resize', syncSidebarA11y);
-syncSidebarA11y();
+// Close the list when tapping outside it or pressing Escape.
+document.addEventListener('click', (e) => { if (toc.open && !toc.contains(e.target)) toc.open = false; });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && toc.open) { toc.open = false; toc.querySelector('summary').focus(); } });
 </script>
 
 </body>

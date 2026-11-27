@@ -48,6 +48,26 @@ class SaveRecoveryTests(unittest.TestCase):
             return tuple(db.execute('SELECT COUNT(*) FROM '+table).fetchone()[0]
                          for table in ('logged_sets','training_max_history','session_soreness','mesocycle_completions'))
 
+    def test_session_rpe_saved_once_with_workout_not_sent_to_hevy(self):
+        # #199: the Finish box's session RPE travels in the frozen save and is recorded locally.
+        self.data.session_rpe=8.5
+        with patch('rackbook.hevy_client.HevyClient',self.factory):
+            self.assertEqual(saves.save(self.data,self.factory)['state'],'complete')
+            self.assertEqual(saves.save(self.data,self.factory)['state'],'complete')
+        self.assertEqual(self.remote.create_workout.call_count,1)
+        self.assertNotIn('session_rpe',json.dumps(self.remote.create_workout.call_args.args[0]))
+        from rackbook import session_rpe
+        self.assertEqual(session_rpe.read('remote-1'),8.5)
+        self.assertIn('"session_rpe":8.5',saves.read(self.data.client_workout_id)['request_payload'])
+
+    def test_session_rpe_uses_the_set_rpe_values(self):
+        from pydantic import ValidationError
+        for bad in (3.5,10.5,8.25,0):
+            with self.assertRaises(ValidationError):
+                training.WorkoutEntry(**{**self.data.model_dump(mode='json'),'session_rpe':bad})
+        for good in (4,6.5,10):
+            training.WorkoutEntry(**{**self.data.model_dump(mode='json'),'session_rpe':good})
+
     def test_motivation_saved_once_with_workout_not_sent_to_hevy(self):
         from rackbook import motivation
         self.data.motivation=motivation.MotivationInput(level=3,reason='stale',note='Same movements since August',
@@ -270,6 +290,7 @@ class SaveRecoveryTests(unittest.TestCase):
         old_payload.pop('advisory_links')
         old_payload.pop('motivation')
         old_payload.pop('checkin_required')
+        old_payload.pop('session_rpe')  # #199: a blank session RPE is omitted from the frozen payload
         for ex in old_payload['exercises']:
             for s in ex['sets']:
                 s.pop('target_rpe')
@@ -630,15 +651,58 @@ with TestClient(main.app) as client, patch('rackbook.main.hevy_client.HevyClient
             try:self.assertEqual(training_integration.request_monitoring_refresh('saved'),'pending')
             finally:lock.release()
             thread.assert_not_called()
-        for last_result,exception,expected in [({'error':'mock failure'},None,'failed'), ({},HTTPException(409,'running'),'pending')]:
+        # Each case: this run's own outcome (or an exception), whether the save is visible, expected status.
+        # A stale failure left in _sync_status by an earlier run must never decide the result (#148).
+        cases=[({'status':'failed','error':'mock failure'},None,False,'failed'),
+               ({'status':'complete','result':{'error':'importer error'}},None,False,'failed'),
+               ({'status':'complete','result':{}},None,True,'complete'),
+               ({'status':'complete','result':{}},None,False,'pending'),
+               ({'status':'already_running'},None,True,'pending'),
+               (None,HTTPException(409,'running'),False,'pending')]
+        for outcome,exception,visible,expected in cases:
             with patch.object(training_integration,'_host_started',True), patch.object(main,'_sync_lock',threading.Lock()), \
-                 patch('training_integration.threading.Thread') as thread, patch.object(main,'trigger_sync',side_effect=exception), \
-                 patch.object(main,'_sync_status',{'last_result':last_result}), patch('database.SessionLocal') as session, \
+                 patch('training_integration.threading.Thread') as thread, \
+                 patch.object(main,'run_incremental_sync',return_value=outcome,side_effect=exception), \
+                 patch.object(main,'_sync_status',{'last_result':{'error':'stale earlier run'}}), patch('database.SessionLocal') as session, \
                  patch('rackbook.workout_saves.monitoring_status') as update:
-                session.return_value.__enter__.return_value.query.return_value.filter_by.return_value.first.return_value=None
+                session.return_value.__enter__.return_value.query.return_value.filter_by.return_value.first.return_value=object() if visible else None
                 training_integration.request_monitoring_refresh('saved')
                 thread.call_args.kwargs['target']()
                 update.assert_called_once_with('saved',expected)
+
+    def test_incremental_sync_reports_its_own_outcome(self):
+        import main
+        lock=threading.Lock()
+        with patch.object(main,'_sync_lock',lock), patch.object(main,'_sync_status',{'running':False,'last_result':{'error':'stale'},'last_run':None}):
+            lock.acquire()
+            try:self.assertEqual(main.run_incremental_sync(None),{'status':'already_running'})
+            finally:lock.release()
+            with patch.object(main,'_execute_sync_pipeline',side_effect=RuntimeError('mock outage')):
+                # The raw error stays in the server log; callers get a fixed message (CodeQL, PR #202).
+                failed=main.run_incremental_sync(None)
+                self.assertEqual(failed,{'status':'failed','error':main.SYNC_FAILED_MESSAGE})
+                self.assertNotIn('mock outage',json.dumps(main._sync_status['last_result']))
+                with self.assertRaises(HTTPException) as raised:main.trigger_sync(db=None)
+                self.assertEqual((raised.exception.status_code,raised.exception.detail),(500,main.SYNC_FAILED_MESSAGE))
+            def pipeline(db):
+                main._sync_status['last_result']={'imported':2}
+                return {'status':'complete','synced_at':'now'}
+            with patch.object(main,'_execute_sync_pipeline',side_effect=pipeline):
+                self.assertEqual(main.run_incremental_sync(None),{'status':'complete','synced_at':'now','result':{'imported':2}})
+                self.assertEqual(main.trigger_sync(db=None),{'status':'complete','synced_at':'now'})
+            def counted(db):
+                main._sync_status['last_result']={'new_sets':3,'skipped_workouts_missing_date':0}
+                return {'status':'complete','synced_at':'now'}
+            with patch.object(main,'_execute_sync_pipeline',side_effect=counted):
+                # The page's quiet auto-sync (#195) reads new_sets to decide whether to redraw.
+                self.assertEqual(main.trigger_sync(db=None),{'status':'complete','synced_at':'now','new_sets':3})
+            def unreachable(db):
+                main._sync_status['last_result']={'new_sets':0,'error':'secret connection detail'}
+                return {'status':'complete','synced_at':'now'}
+            with patch.object(main,'_execute_sync_pipeline',side_effect=unreachable):
+                self.assertEqual(main.trigger_sync(db=None),
+                                 {'status':'complete','synced_at':'now','new_sets':0,'error':main.HEVY_UNREACHABLE_MESSAGE})
+            self.assertFalse(lock.locked())
 
     def test_daily_and_pattern_fixture_matches_recorded_remote_baseline(self):
         with tempfile.TemporaryDirectory() as folder:

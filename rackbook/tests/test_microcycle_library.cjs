@@ -16,12 +16,12 @@ assert.equal(elements.get('completedPlans').hidden,false);
 assert.equal(elements.get('completedPlansSummary').textContent,'Completed microcycles (1)');
 assert.equal(elements.get('completedPlans').open,undefined,'Collapsed by default');
 const actions=elements.get('completedLibrary').children[0].children.at(-1).children;
-for(const label of ['Edit plan','Duplicate microcycle','Delete'])assert.ok(actions.some(a=>a.textContent===label));
+for(const label of ['Edit microcycle','Duplicate microcycle','Delete'])assert.ok(actions.some(a=>a.textContent===label));
 elements.get('completedPlans').open=true;context.renderLibrary();
 assert.equal(elements.get('completedPlans').open,true,'Keep expanded state across library refreshes');
 context.plans=[plan('current',[day])];context.renderLibrary();
 assert.equal(elements.get('completedPlans').hidden,true);assert.equal(elements.get('completedLibrary').children.length,0);
-context.plans=[];context.renderLibrary();assert.match(elements.get('library').children[0].textContent,/No plans yet/);
+context.plans=[];context.renderLibrary();assert.match(elements.get('library').children[0].textContent,/No microcycles yet/);
 // A plan the athlete changed by accepting an AI Coach suggestion says so and links back to that conversation.
 context.plans=[{...plan('changed',[day]),coach_change:{id:'x',conversation_id:'c 1',title:'Ease day 2',applied_at:'2026-11-08T10:00:00Z'}}];context.renderLibrary();
 const note=elements.get('library').children[0].children.find(n=>String(n.textContent).startsWith('Changed by AI Coach'));

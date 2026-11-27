@@ -26,6 +26,7 @@ from .database import get_db, get_rpe_percentage, init_db
 from . import soreness
 from . import exercise_creation
 from . import motivation
+from . import session_rpe
 from .motivation import MotivationInput
 from . import session_checkins
 from . import fatigue
@@ -368,6 +369,14 @@ class WorkoutEntry(BaseModel):
     planned_session: mesocycles.PlanLink | None = None
     prescription: session_review.Prescription | None = None
     advisory_links: list[session_advice.AdviceLink] | None = Field(default=None, max_length=100)
+    # Whole-session RPE from the Finish box (#199): optional, same values as a set RPE.
+    session_rpe: float | None = None
+
+    @model_validator(mode='after')
+    def session_rpe_values(self):
+        if self.session_rpe is not None and not session_rpe.valid(self.session_rpe):
+            raise ValueError('Session RPE must be 4 to 10 in steps of 0.5.')
+        return self
 
     @model_validator(mode='after')
     def review_identities(self):

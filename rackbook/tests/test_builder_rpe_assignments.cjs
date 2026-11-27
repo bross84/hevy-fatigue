@@ -20,7 +20,7 @@ assert.equal(context.rpeAssignmentField(context.plan.weeks[0].sessions[1].exerci
 select=context.rpeAssignmentField(movement).children[0];select.value='';select.events.change();
 assert.equal(context.plan.rpe_assignments.same.group,null);
 assert.match(label.children[1].text,/saved and future chart data/);
-assert.match(label.children[1].text,/Save plan to apply/);
+assert.match(label.children[1].text,/Save the microcycle to apply/);
 assert.equal(remembers,2);assert.equal(renders,2);
 assert.deepEqual(Object.keys(context.rpeAssignmentsForPlan()),['same'],'Removed movements are not sent as hidden assignment updates');
 const unassigned=context.rpeAssignmentField({exercise_template_id:'new',title:'New'}).children[0];

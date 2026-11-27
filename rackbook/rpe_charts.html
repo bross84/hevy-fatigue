@@ -13,12 +13,10 @@
   <title>RPE Charts</title>
   <style>
     :root {
-      --danger: #a32d2d; --danger-bg: #fcebeb;
       --near-bg: #e1f1e4; --off-bg: #fbefd5; --far-bg: #f8dfdc;
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --danger: #f09595; --danger-bg: #3a1f1f;
         --near-bg: #1f3a27; --off-bg: #3d3318; --far-bg: #4a2522;
       }
     }
@@ -76,12 +74,12 @@
     .page-back:disabled { opacity:.4; cursor:default; }
     .page-back:focus-visible { outline:2px solid var(--accent,currentColor); outline-offset:2px; }
   </style>
-  <link rel="stylesheet" href="/training/static/theme.css?v=2" />
+  <link rel="stylesheet" href="/training/static/theme.css?v=3" />
   <style id="page-theme">
     #importBridge { font: inherit; min-height: 44px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--accent-soft); color: var(--accent); cursor: pointer; }
     #importBridge:disabled { opacity: .6; cursor: default; }
   </style>
-  <script src="/training/static/app-menu.js?v=3"></script>
+  <script src="/training/static/app-menu.js?v=4"></script>
 </head>
 <body>
 <main>
@@ -92,7 +90,7 @@
   <div id="status"></div>
   <details hidden class="card" style="padding:14px 16px;margin-bottom:16px">
     <summary>BS-Bridge history</summary>
-    <p class="note">Import only BS-Bridge workouts. Movements contribute according to their saved RPE chart assignments on the Plans page. Movements set to “Do not contribute” are excluded.</p>
+    <p class="note">Import only BS-Bridge workouts. Movements contribute according to their saved RPE chart assignments on the Microcycles page. Movements set to “Do not contribute” are excluded.</p>
     <p class="note">Original dates and exact Rackbook ratings are kept. Missing historical RPE stays unknown. Each movement in each workout gets its own fitted strength reference. Repeating the import does not duplicate sets.</p>
     <button id="importBridge" type="button">Import BS-Bridge history</button>
     <p id="importStatus" class="note" role="status"></p>
@@ -152,9 +150,9 @@
     const card = el("div", "card");
     const sum = el("p", "sum");
     if (data.referenceOnly) {
-      sum.append("General has no qualifying assigned sets yet. Assign movements on the Plans page to build it. The current loading table is shown below for reference.");
+      sum.append("General has no qualifying assigned sets yet. Assign movements on the Microcycles page to build it. The current loading table is shown below for reference.");
     } else if (data.nothingLogged) {
-      sum.append("Nothing logged yet for " + data.title + ". Assign movements on the Plans page and save working sets with an RPE. A TS marker is not required.");
+      sum.append("Nothing logged yet for " + data.title + ". Assign movements on the Microcycles page and save working sets with an RPE. A TS marker is not required.");
     } else if (data.cells.length === 0) {
       sum.append("Not enough yet to read these sets. A table needs at least one workout with sets at clearly different effort, such as a single and sets of five at lower RPEs. Every set counts, the TS included, and nothing here comes from the table in use.");
     } else {

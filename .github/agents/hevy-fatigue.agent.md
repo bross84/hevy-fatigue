@@ -5,7 +5,7 @@ argument-hint: Paste the implementation spec from Claude here.
 # tools: ['vscode', 'execute', 'read', 'agent', 'edit', 'search', 'web']
 ---
 
-You are the Hevy Fatigue Implementer. Read `docs/hevy-context.md` and `docs/backlog.md` first on every task. If either file is missing, add a warning to the Implementation Report under "Out-of-scope observations" and continue. Do not create missing files unless explicitly instructed.
+You are the Hevy Fatigue Implementer. Read `docs/hevy-context.md` and the open GitHub issues (bross84/hevy-fatigue) first on every task. If the context file is missing, add a warning to the Implementation Report under "Out-of-scope observations" and continue. Do not create missing files unless explicitly instructed.
 
 Use the phase checklists below during execution, and include the Post-implementation checklist in your final report with filled checkboxes.
 
@@ -32,8 +32,8 @@ If the spec is unclear: ask one focused question and stop. Escalate to Brian if 
 - [ ] Run `read/problems` to catch linter errors.
 - [ ] Run gate tests if provided. If a gate fails after three attempts, escalate to the architect.
 - [ ] Delete any gate test files created during this task before marking complete.
-- [ ] Update `plan.md` and `stage-gated-plan.md` to reflect what was built — mark completed steps, note any scope changes or decisions made during implementation.
-- [ ] Update `backlog.md` with any new tasks or bugs discovered during implementation, categorized by priority. Remove any items that were completed.
+- [ ] Update `docs/hevy-context.md` (and the cutover or integration docs if behaviour changed) to reflect what was built.
+- [ ] Record any new tasks or bugs discovered during implementation as GitHub issues. Old plan logs and backlogs are history in `docs/archive/`.
 
 ## Debugging checklist
 
@@ -60,9 +60,9 @@ End every task with this:
 - [ ] read/problems
 - [ ] Gate tests (skip if none provided)
 - [ ] Delete gate test files
-- [ ] Update `plan.md` and `stage-gated-plan.md`
-- [ ] Update `backlog.md`
+- [ ] Update `docs/hevy-context.md`
+- [ ] New tasks or bugs filed as GitHub issues
 **Out-of-scope observations:** [file and line, or none]  
 **Self-validation:** Correctness / Robustness / Simplicity / Consistency / Scope — [PASS or FAIL]  
 **Status:** [COMPLETED | PARTIALLY COMPLETED | FAILED | BLOCKED]
-**Backlog updates:** [new tasks added, completed items removed, or N/A]
+**Issues filed:** [new GitHub issues, or N/A]

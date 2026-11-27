@@ -2591,15 +2591,22 @@ body.ai-open main {
 [data-theme="dark"] {
   --bg:#111923; --card:#1a2533; --card-raised:#202d3d;
   --border:#344358; --border-mid:#4a5d78; --text:#e8eef8; --muted:#a5b4c9;
-  --accent:#95baff; --accent-light:#95baff; --accent-sub:#243b5b; --on-accent:#111923;
+  --accent:#95baff; --accent-light:#95baff; --accent-sub:#243b5b; --on-accent:#111923; --chip:#243246;
 }
 [data-theme="light"] {
   --bg:#f3f5f8; --card:#fff; --card-raised:#f7f9fc;
   --border:#dce3ec; --border-mid:#c3cedb; --text:#17243a; --muted:#59687c;
-  --accent:#2459b8; --accent-light:#2459b8; --accent-sub:#edf3ff; --on-accent:#fff;
+  --accent:#2459b8; --accent-light:#2459b8; --accent-sub:#edf3ff; --on-accent:#fff; --chip:#edf1f7;
 }
 .host-workspace { --text-secondary:var(--muted); }
 .host-workspace #host-topbar { display:flex; height:64px; padding:0 16px; gap:12px; }
+/* Quiet auto-sync status beside Light/Dark/Auto (#195). */
+.host-workspace #host-topbar .nav-right { display:flex; align-items:center; }
+.sync-note { color:var(--muted); font-size:12px; white-space:nowrap; margin-right:10px; }
+.sync-note:empty { display:none; }
+.sync-note.fail { color:var(--danger, #a32d2d); }
+.sync-note button { border:0; background:none; padding:0 2px; min-height:0; color:inherit; font:inherit; text-decoration:underline; cursor:pointer; }
+@media (max-width:480px) { .sync-note { font-size:11px; margin-right:6px; } }
 .host-workspace #hostMenu { min-height:44px; padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); font:inherit; cursor:pointer; }
 .host-workspace .bottom-nav,.host-workspace .bottom-sheet,.host-workspace .bottom-sheet-scrim { display:none!important; }
 .host-workspace main { max-width:none; padding:88px 16px 24px; min-width:0; }
@@ -2659,7 +2666,7 @@ body.ai-open main {
 .host-workspace .dashboard-card .today-chart-wrap { height:260px; }
 .host-workspace .dashboard-card .vf-chart-wrap { height:260px; }
 .host-workspace .vf-range-row { flex-wrap:wrap; }
-.host-workspace .vf-range-row .btn,.host-workspace #today-pattern-fatigue-card button { min-height:44px; padding:8px 12px; }
+.host-workspace #today-pattern-fatigue-card .card-title button { min-height:44px; padding:8px 12px; }
 /* A selected option is always the filled accent with its matching text, in light and dark. */
 .host-workspace .btn-secondary.active,.host-workspace .btn-group:not(.theme-group) button.active { background:var(--accent); color:var(--on-accent); border-color:transparent; }
 .host-workspace .today-chart-bands-legend { flex-wrap:wrap; gap:8px 12px; }
@@ -2674,8 +2681,14 @@ body.ai-open main {
 /* Buttons match the training pages: 44px to tap, 10px corners (rackbook/static/theme.css). */
 .host-workspace .btn { min-height:44px; border-radius:10px; font-size:14px; }
 .host-workspace .btn-sm { min-height:44px; padding:6px 12px; font-size:13px; }
-.host-workspace .trend-range, .host-workspace .vf-range-row { border-radius:10px; }
-.host-workspace .trend-range .btn-secondary { min-height:44px; padding:6px 12px; font-size:13px; border-radius:0; }
+/* Chart option groups: a grey track with the selected option as a white chip inside it (#174).
+   Slim on a computer; 40px to tap on a touch screen. */
+.host-workspace .chart-controls { display:flex; flex-wrap:wrap; align-items:center; gap:6px; align-self:stretch; margin:0 0 4px; }
+.host-workspace .trend-range, .host-workspace .vf-range-row { display:inline-flex; flex-wrap:nowrap; gap:2px; padding:3px; margin:0; border:0; border-radius:10px; background:var(--chip); overflow:visible; }
+.host-workspace .trend-range .btn-secondary, .host-workspace .vf-range-row .btn-secondary { flex:none; min-height:28px; height:28px; padding:0 10px; border:0; border-radius:7px; background:transparent; color:var(--muted); font-size:13px; font-weight:500; box-shadow:none; }
+.host-workspace .trend-range .btn-secondary:hover, .host-workspace .vf-range-row .btn-secondary:hover { background:transparent; color:var(--text); }
+.host-workspace .trend-range .btn-secondary.active, .host-workspace .vf-range-row .btn-secondary.active { background:var(--card); color:var(--accent); font-weight:600; box-shadow:0 0 0 1px var(--border); }
+@media (pointer:coarse) { .host-workspace .trend-range .btn-secondary, .host-workspace .vf-range-row .btn-secondary { min-height:40px; height:40px; padding:0 12px; } }
 .host-workspace .checkin-prompt-btn { min-height:44px; border-radius:10px; }
 /* Today's summary comes first. Fatigue Trend leads the analysis below it. */
 .dashboard-readiness-metrics { display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; }
@@ -2769,7 +2782,7 @@ body.ai-open main {
     <button class="nav-tab" data-tab="ai">AI Coach</button>
     <span class="host-nav-group">Training</span>
     <a href="/training/log">Log Workout</a>
-    <a href="/training/microcycles">Plans</a>
+    <a href="/training/microcycles">Microcycles</a>
     <a href="/training/recent">Recent</a>
     <a href="/training/progress">Progress</a>
     <a href="/training/stress">Stress</a>
@@ -2790,6 +2803,7 @@ body.ai-open main {
     <img class="logo-icon-light" src="/resources/HF_LOGO_LIGHT.png" alt="Hevy Fatigue">
   </a>
   <div class="nav-right">
+    <span class="sync-note" id="sync-note" role="status" aria-live="polite"></span>
     <div class="btn-group theme-group" id="theme-toggle">
       <button data-theme-btn="light" title="Light mode">Light</button>
       <button data-theme-btn="dark"  title="Dark mode">Dark</button>
@@ -2835,7 +2849,7 @@ body.ai-open main {
   <div class="bottom-sheet-title">More</div>
   <div class="bottom-sheet-items">
     <a class="bottom-sheet-item" href="/training/log">Log Workout</a>
-    <a class="bottom-sheet-item" href="/training/microcycles">Plans</a>
+    <a class="bottom-sheet-item" href="/training/microcycles">Microcycles</a>
     <button class="bottom-sheet-item" data-tab="log">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       Check-in History
@@ -2932,43 +2946,6 @@ body.ai-open main {
     <div id="session-verify-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
   </div>
 
-  <div class="card" id="movement-trend-card">
-    <div class="card-title">Movement Trend</div>
-
-    <div class="mvt-search-wrap" id="mvt-search-wrap">
-      <input type="text" class="search-input" id="mvt-search-input" placeholder="Search movements..." autocomplete="off" style="width:100%;">
-      <button class="mvt-clear-btn" id="mvt-clear-btn" title="Clear" aria-label="Clear movement search">&times;</button>
-      <div class="mvt-dropdown" id="mvt-dropdown"></div>
-    </div>
-
-    <div class="mvt-controls-row">
-      <div class="mvt-toggle-group" id="mvt-metric-group">
-        <span class="mvt-toggle-label">Metric</span>
-        <div class="btn-group" id="mvt-metric-selector">
-          <button data-metric="e1rm" class="active">e1RM</button>
-          <button data-metric="top_set">Top Set</button>
-          <button data-metric="avg_weight">Avg Weight</button>
-          <button data-metric="volume">Volume</button>
-        </div>
-      </div>
-      <div class="mvt-toggle-group" id="mvt-window-group">
-        <span class="mvt-toggle-label">Window</span>
-        <div class="btn-group" id="mvt-window-selector">
-          <button data-window="8w">8W</button>
-          <button data-window="6m" class="active">6M</button>
-          <button data-window="1y">1Y</button>
-          <button data-window="all">All</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="mvt-placeholder" class="mvt-placeholder">Search for a movement to see its trend</div>
-    <div class="loading-wrap" id="mvt-loading" style="display:none;"><span class="spinner"></span></div>
-    <div class="trend-chart-wrap" id="mvt-chart-wrap" style="display:none;">
-      <canvas id="mvt-chart"></canvas>
-    </div>
-  </div>
-
   <div class="card">
     <div class="card-title">Session Log</div>
     <div id="session-log-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
@@ -3009,6 +2986,43 @@ body.ai-open main {
           <div id="ex-override-status" style="font-size:12px;min-height:18px;margin-top:8px;"></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="card" id="movement-trend-card">
+    <div class="card-title">Movement Trend</div>
+
+    <div class="mvt-search-wrap" id="mvt-search-wrap">
+      <input type="text" class="search-input" id="mvt-search-input" placeholder="Search movements..." autocomplete="off" style="width:100%;">
+      <button class="mvt-clear-btn" id="mvt-clear-btn" title="Clear" aria-label="Clear movement search">&times;</button>
+      <div class="mvt-dropdown" id="mvt-dropdown"></div>
+    </div>
+
+    <div class="mvt-controls-row">
+      <div class="mvt-toggle-group" id="mvt-metric-group">
+        <span class="mvt-toggle-label">Metric</span>
+        <div class="btn-group" id="mvt-metric-selector">
+          <button data-metric="e1rm" class="active">e1RM</button>
+          <button data-metric="top_set">Top Set</button>
+          <button data-metric="avg_weight">Avg Weight</button>
+          <button data-metric="volume">Volume</button>
+        </div>
+      </div>
+      <div class="mvt-toggle-group" id="mvt-window-group">
+        <span class="mvt-toggle-label">Window</span>
+        <div class="btn-group" id="mvt-window-selector">
+          <button data-window="8w">8W</button>
+          <button data-window="6m" class="active">6M</button>
+          <button data-window="1y">1Y</button>
+          <button data-window="all">All</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="mvt-placeholder" class="mvt-placeholder">Search for a movement to see its trend</div>
+    <div class="loading-wrap" id="mvt-loading" style="display:none;"><span class="spinner"></span></div>
+    <div class="trend-chart-wrap" id="mvt-chart-wrap" style="display:none;">
+      <canvas id="mvt-chart"></canvas>
     </div>
   </div>
   <div class="exm-header">
@@ -3451,7 +3465,7 @@ function applyTheme(pref) {
     if (document.getElementById('tab-dashboard')?.classList.contains('active')) {
       loadTrainingLoadCard();
     }
-    if (document.getElementById('tab-workouts')?.classList.contains('active') && mvtLastData) {
+    if (document.getElementById('tab-exercise-metrics')?.classList.contains('active') && mvtLastData) {
       _mvtRenderChart(mvtLastData);
     }
   });
@@ -3735,6 +3749,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadTrainingLoadCard();
   _updateWoPendingBadge();
   if (tabIds.has(location.hash.slice(1))) activateTab(location.hash.slice(1));
+  autoSync({ first: true });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') autoSync(); });
+  setInterval(() => { if (!_autoSyncBusy && !document.getElementById('sync-note')?.classList.contains('fail')) _showSyncNote(); }, 60000);
 });
 
 // Tooltips: hover works by CSS; click/tap toggles visibility for touch devices.
@@ -4959,6 +4976,75 @@ function _setSyncButtonsDisabled(disabled, syncText = null, fullSyncText = null)
   }
 }
 
+// ── Quiet auto-sync (#195) ──────────────────────────────────────────────────
+// When the dashboard opens or comes back into view, pull new Hevy workouts at most once
+// every five minutes, never while another sync runs and never blocking the page.
+const AUTO_SYNC_MS = 5 * 60 * 1000;
+let _autoSyncBusy = false;
+let _autoSyncKeyChecked = null;
+
+function _markSynced(iso) {
+  localStorage.setItem('hevy_last_sync_iso', iso || new Date().toISOString());
+  _showSyncNote();
+}
+
+function _syncAgeLabel() {
+  const last = Date.parse(localStorage.getItem('hevy_last_sync_iso') || '');
+  if (!last) return '';
+  const mins = Math.floor((Date.now() - last) / 60000);
+  if (mins < 1) return 'Synced just now';
+  if (mins < 60) return `Synced ${mins} min ago`;
+  return 'Synced ' + new Date(last).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+function _showSyncNote(state) {
+  const note = document.getElementById('sync-note');
+  if (!note) return;
+  note.classList.toggle('fail', state === 'fail');
+  if (state === 'syncing') { note.textContent = 'Syncing…'; return; }
+  if (state === 'fail') {
+    note.textContent = 'Sync failed · ';
+    const retry = document.createElement('button');
+    retry.type = 'button'; retry.textContent = 'Retry';
+    retry.addEventListener('click', () => autoSync({ force: true }));
+    note.append(retry);
+    return;
+  }
+  note.textContent = _syncAgeLabel();
+}
+
+async function autoSync({ force = false, first = false } = {}) {
+  if (_autoSyncBusy) return;
+  if (_autoSyncKeyChecked === null) {
+    try {
+      const s = await (await fetch('/api/settings')).json();
+      _autoSyncKeyChecked = !!s.api_key_set;
+    } catch (e) { return; }
+  }
+  if (!_autoSyncKeyChecked) return;           // no Hevy key yet: nothing to sync, say nothing
+  const last = Date.parse(localStorage.getItem('hevy_last_sync_iso') || '') || 0;
+  if (!force && Date.now() - last < AUTO_SYNC_MS) { _showSyncNote(); return; }
+  _autoSyncBusy = true;
+  _showSyncNote('syncing');
+  try {
+    const r = await fetch('/api/sync', { method: 'POST' });
+    const d = await r.json().catch(() => ({}));
+    if (d.status === 'already_running') { _showSyncNote(); return; }
+    if (!r.ok || d.error) { _showSyncNote('fail'); return; }
+    _markSynced(d.synced_at);
+    // Redraw only when something came in, or on the first sync after opening the page.
+    if (first || d.new_sets > 0) {
+      invalidateTodayCaches();
+      loadTrainingLoadCard();
+      if (workoutsLoaded) loadWorkouts();
+    }
+  } catch (e) {
+    _showSyncNote('fail');
+  } finally {
+    _autoSyncBusy = false;
+  }
+}
+
 async function runSync({ silent = false } = {}) {
   const statusEl = document.getElementById('sync-status');
 
@@ -4971,6 +5057,7 @@ async function runSync({ silent = false } = {}) {
     const url = silent ? '/api/sync?force=true' : '/api/sync';
     const r = await fetch(url, { method: 'POST' });
     const d = await r.json();
+    if (r.ok && d.status === 'complete' && !d.error) _markSynced(d.synced_at);
 
     if (!silent) {
       if (d.status === 'already_running') {
@@ -4984,7 +5071,6 @@ async function runSync({ silent = false } = {}) {
           : 'unknown time';
         const msg = `✓ Sync complete — ${syncedLabel}`;
         statusEl.innerHTML = `<div class="alert alert-success">${msg}</div>`;
-        localStorage.setItem('hevy_last_sync_iso', d.synced_at || new Date().toISOString());
         invalidateTodayCaches();
         // Refresh dashboard data surfaces
         loadTrainingLoadCard();
@@ -5763,7 +5849,9 @@ function _renderSessionDetail(detail) {
         ${_sessionDetailMetric('Central', _fmt1(stress?.central || 0))}
         ${_sessionDetailMetric('Peripheral', _fmt1(stress?.peripheral || 0))}
         ${_sessionDetailMetric('Exercises', summary.exercise_count || 0)}
+        ${session.srpe == null ? '' : _sessionDetailMetric('Session RPE', _fmt1(session.srpe))}
       </div>
+      ${detail.srpe_adjustment?.note ? `<div class="session-detail-note srpe-feel-note">${escHtml(detail.srpe_adjustment.note)}</div>` : ''}
       <div class="session-detail-note">Per-set stress is shown here using the same strength/hypertrophy pathway as the existing stress model.</div>
       <div class="session-detail-section">
         <div class="session-detail-section-title">Exercise Summary</div>
@@ -6905,16 +6993,18 @@ async function renderDashboardVFCard() {
 
   card.innerHTML = `
     <div class="dashboard-card-title">Volume · Fatigue</div>
+    <div class="chart-controls">
     <div class="vf-range-row" id="dashboard-vf-signal-btns">
       <button class="btn btn-secondary${_dashboardVfSignal === 'tonnage' ? ' active' : ''}" data-dvf-signal="tonnage">Tonnage</button>
       <button class="btn btn-secondary${_dashboardVfSignal === 'rpe' ? ' active' : ''}" data-dvf-signal="rpe">RPE Load</button>
       <button class="btn btn-secondary${_dashboardVfSignal === 'sets' ? ' active' : ''}" data-dvf-signal="sets">Sets</button>
     </div>
-    <div class="vf-range-row" id="dashboard-vf-range-btns" style="margin-top:6px;">
-      <button class="btn btn-secondary${_dashboardVfActiveRange === 4 ? ' active' : ''}" data-dashboard-vf-range="4">4 Weeks</button>
-      <button class="btn btn-secondary${_dashboardVfActiveRange === 8 ? ' active' : ''}" data-dashboard-vf-range="8">8 Weeks</button>
-      <button class="btn btn-secondary${_dashboardVfActiveRange === 12 ? ' active' : ''}" data-dashboard-vf-range="12">12 Weeks</button>
+    <div class="vf-range-row" id="dashboard-vf-range-btns">
+      <button class="btn btn-secondary${_dashboardVfActiveRange === 4 ? ' active' : ''}" data-dashboard-vf-range="4" aria-label="4 weeks" title="4 weeks">4W</button>
+      <button class="btn btn-secondary${_dashboardVfActiveRange === 8 ? ' active' : ''}" data-dashboard-vf-range="8" aria-label="8 weeks" title="8 weeks">8W</button>
+      <button class="btn btn-secondary${_dashboardVfActiveRange === 12 ? ' active' : ''}" data-dashboard-vf-range="12" aria-label="12 weeks" title="12 weeks">12W</button>
       <button class="btn btn-secondary${_dashboardVfActiveRange === 'custom' ? ' active' : ''}" data-dashboard-vf-range="custom">Custom</button>
+    </div>
     </div>
     <div class="vf-custom-range" id="dashboard-vf-custom-range" style="display:${_dashboardVfActiveRange === 'custom' ? 'flex' : 'none'};">
       <input type="date" id="dashboard-vf-start-date" value="${_dashboardVfCustomStart || ''}">
@@ -7204,14 +7294,16 @@ async function renderTodayPatternFatigueCard() {
 
     card.innerHTML = `
       <div class="card-title">Per-Pattern Fatigue Trend<span style="position:relative;display:inline-flex;align-items:center;margin-left:6px;cursor:default;" onmouseenter="this.querySelector('.pf-tooltip').style.display='block'" onmouseleave="this.querySelector('.pf-tooltip').style.display='none'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);vertical-align:middle;" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><circle cx="12" cy="8" r="0.5" fill="currentColor"/></svg><span class="pf-tooltip" style="display:none;position:absolute;top:20px;right:0;width:260px;background:var(--card);border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text-secondary);z-index:100;line-height:1.5;">Shows the 7-day EWMA training load (ATL) per movement pattern across your full training history. The 7/14/30 day buttons control the smoothing window applied to the data - wider windows produce smoother lines. ATL shows stress-weighted load; Tonnage shows raw volume EWMA.</span></span></div>
+      <div class="chart-controls">
       <div class="trend-range" id="today-pattern-range">
         <button class="btn btn-secondary${_todayPatternRange === 7 ? ' active' : ''}" data-pattern-range="7">7 Day</button>
         <button class="btn btn-secondary${_todayPatternRange === 14 ? ' active' : ''}" data-pattern-range="14">14 Day</button>
         <button class="btn btn-secondary${_todayPatternRange === 30 ? ' active' : ''}" data-pattern-range="30">30 Day</button>
       </div>
-      <div class="trend-range" id="today-pattern-signal" style="margin-top:4px;">
+      <div class="trend-range" id="today-pattern-signal">
         <button class="btn btn-secondary${_todayPatternSignal === 'atl' ? ' active' : ''}" data-pattern-signal="atl">ATL</button>
         <button class="btn btn-secondary${_todayPatternSignal === 'tonnage' ? ' active' : ''}" data-pattern-signal="tonnage">Tonnage</button>
+      </div>
       </div>
       ${(!history.length || !hasPatternLoads)
         ? '<div class="today-chart-empty">Pattern data unavailable for this date range.</div>'

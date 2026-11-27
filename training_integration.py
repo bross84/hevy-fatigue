@@ -31,10 +31,20 @@ def request_monitoring_refresh(workout_id):
     def refresh():
         with SessionLocal() as db:
             try:
-                main.trigger_sync(db=db)
-                failed = bool((main._sync_status.get('last_result') or {}).get('error'))
-                visible = db.query(WorkoutSession).filter_by(hevy_workout_id=workout_id).first()
+                # Use this run's own outcome (#148). If another sync grabbed the lock
+                # first, its result is not ours: stay pending for a later sync to settle.
+                outcome = main.run_incremental_sync(db)
                 from rackbook.workout_saves import monitoring_status
+                if outcome.get('status') == 'already_running':
+                    monitoring_status(workout_id, 'pending')
+                    return
+                failed = outcome.get('status') == 'failed' or bool((outcome.get('result') or {}).get('error'))
+                visible = db.query(WorkoutSession).filter_by(hevy_workout_id=workout_id).first()
+                if visible:
+                    # The session may have been imported before the save finished locally (#199).
+                    from importer import _fill_srpe_from_log
+                    _fill_srpe_from_log(db, workout_id)
+                    db.commit()
                 monitoring_status(workout_id, 'failed' if failed else 'complete' if visible else 'pending')
             except Exception as exc:
                 from rackbook.workout_saves import monitoring_status

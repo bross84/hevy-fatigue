@@ -967,3 +967,14 @@ showed 1 / 12 before) and the TS e1RM line joins all four top sets since 2026-10
 
 No migration or data change: the tracker recalculates on read. Rollback to the prior reviewed
 image restores v3 counting. This does not authorize deployment.
+
+## One app process only (2026-11-27, #148)
+
+The container must run a single uvicorn process (the Dockerfile `CMD` has no `--workers`). Two
+things depend on it: at startup `rackbook/workout_saves.initialize()` marks every save still in
+"sending" as uncertain, which is only correct when no other process could be mid-save; and the
+host's sync lock (`main._sync_lock`) lives in one process's memory, so a second worker could run a
+sync at the same time. Do not add `--workers` or run two copies against the same volumes. The
+post-save monitoring refresh now uses its own sync's outcome (`main.run_incremental_sync`), so a
+sync that was already running leaves the save's monitoring status pending instead of borrowing
+another run's result.

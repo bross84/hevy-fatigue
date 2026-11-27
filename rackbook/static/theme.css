@@ -6,6 +6,9 @@
   --bg: #f3f5f8; --card: #ffffff; --text: #17243a; --muted: #59687c;
   --line: #dce3ec; --accent: #2459b8; --chip: #edf1f7; --soft: #f7f9fc;
   --accent-soft: #edf3ff; --done: #edf7f1; --done-line: #28784b;
+  /* Status colours shared by every training page (#167). --hard marks RPE 9-10 and drops. */
+  --danger: #a32d2d; --danger-bg: #fcebeb; --ok: #1d6b2f; --ok-bg: #e4f2e4;
+  --warn: #7a5200; --warn-bg: #fbf0d9; --hard: #b4530a;
   --shadow: 0 2px 5px rgba(23,36,58,.025), 0 10px 28px rgba(23,36,58,.035);
 }
 @media (prefers-color-scheme: dark) {
@@ -14,6 +17,8 @@
     --bg: #111923; --card: #1a2533; --text: #e8eef8; --muted: #a5b4c9;
     --line: #344358; --accent: #95baff; --chip: #243246; --soft: #202d3d;
     --accent-soft: #243b5b; --done: #20392f; --done-line: #3f825f;
+    --danger: #f09595; --danger-bg: #3a1f1f; --ok: #8fd19e; --ok-bg: #1f3a24;
+    --warn: #e8c66a; --warn-bg: #3a3118; --hard: #e0874a;
     --shadow: 0 4px 20px rgba(0,0,0,.12);
   }
 }
