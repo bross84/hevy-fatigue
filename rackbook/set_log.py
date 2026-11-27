@@ -54,35 +54,6 @@ def record(rows: list[dict[str, Any]], connection=None) -> None:
         )
 
 
-def main_lifts(titles: dict[str, str]) -> list[dict[str, Any]]:
-    """
-    One entry per key of titles (e.g. squat -> its Hevy title), in that order: the movement logged under that title with
-    the most working sets that have an RPE. exercise_template_id is None while nothing is logged for it yet.
-    """
-    out = []
-    with get_db() as conn:
-        for key, title in titles.items():
-            row = conn.execute(
-                """
-                SELECT exercise_template_id, COUNT(*) AS sets, COUNT(DISTINCT workout_start) AS sessions
-                FROM logged_sets
-                WHERE exercise_title = ? AND set_type NOT IN ('warmup', 'dropset') AND rpe IS NOT NULL
-                GROUP BY exercise_template_id
-                ORDER BY sets DESC
-                LIMIT 1
-                """,
-                (title,),
-            ).fetchone()
-            out.append({
-                "key": key,
-                "title": title,
-                "exercise_template_id": row["exercise_template_id"] if row else None,
-                "sets": row["sets"] if row else 0,
-                "sessions": row["sessions"] if row else 0,
-            })
-    return out
-
-
 def for_exercise(exercise_template_id: str) -> list[dict[str, Any]]:
     """Every recorded set of one movement, oldest first."""
     with get_db() as conn:
