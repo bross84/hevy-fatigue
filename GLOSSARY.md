@@ -37,8 +37,12 @@ The dashboard card showing each movement pattern's decaying training load alongs
 _Avoid_: Stress index, pattern stress index
 
 **Microcycle**:
-One saved plan of training days, completed in order at the athlete's own pace. It is not a calendar week and has no fixed length in days.
-_Avoid_: Week, calendar week
+One week of training days, completed in order at the athlete's own pace; one of the weeks of a plan. It is not a calendar week and has no fixed length in days. The app's Microcycles page holds these.
+_Avoid_: Plan, calendar week
+
+**Plan**:
+A full training block, usually about six weeks, made of microcycles. The app does not group microcycles into plans yet (#187); until then a microcycle's Program, Cycle and Week numbers show which plan it belongs to.
+_Avoid_: Microcycle, program (for one week)
 
 **Skipped day**:
 A microcycle day the athlete chose not to train. It counts as finished for plan progress but not as trained, and it never creates or changes a Hevy workout.
@@ -87,3 +91,30 @@ _Avoid_: Import, spreadsheet, program parser
 **Callout**:
 A word in week text saying how a group of sets is run: TS, BO (back-off), + (AMRAP), DS / DS2 (drop sets), myo, DDP or TM90. For now the Log page shows callouts as a label and the athlete chooses the weights. Effort labels such as ME and RE are not callouts and are ignored.
 _Avoid_: Tag, set type, ME/RE label
+
+## Two apps in one repo
+
+The repo holds two applications served by one FastAPI host, and several file names repeat between them. The root file belongs to the host; the `rackbook/` file belongs to the training app.
+
+**Host app**:
+Hevy Fatigue monitoring at the repo root: daily check-ins, Hevy imports, the dashboard, the AI Coach and its settings. Its files are `main.py`, `database.py` (SQLAlchemy, `DB_PATH`) and `hevy_client.py`.
+_Avoid_: Backend, server (both apps run on the same server)
+
+**Training app**:
+The workout logger mounted at `/training` (historically called Rackbook): the Log, Microcycles, Recent, Progress, Stress and RPE Charts pages. Its files are `rackbook/main.py`, `rackbook/database.py` (stdlib sqlite3, `RACKBOOK_DB_PATH`) and `rackbook/hevy_client.py`. The two databases are never merged.
+_Avoid_: Logger backend, Rackbook container (it no longer runs on its own)
+
+## Words that mean different things
+
+**Daily fatigue**:
+The host's whole-body readiness picture from check-ins and imported training load: the dashboard's Fatigue Trend, training state and daily recommendation.
+_Avoid_: Fatigue (unqualified)
+
+**Movement fatigue observations**:
+The training app's per-movement trend rules in `rackbook/fatigue.py` (TS trend tracker), with comparability checks in `fatigue_context.py` and reviewed workload links in `fatigue_relationships.py`. Descriptive only; they never change prescriptions.
+_Avoid_: Fatigue score, daily fatigue
+
+**Model trial**:
+The optional blinded comparison of a shared performance model, in `rackbook/fatigue_trial.py` with its `_legacy`, `_replay` and `_smoother` helpers. Frozen trial records are never regenerated.
+_Avoid_: Fatigue model, daily fatigue
+
