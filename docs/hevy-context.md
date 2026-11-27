@@ -1733,8 +1733,8 @@ Owner decision on #140. Ten host routes that no page, test or tool called were r
 with their now-unused request models. Kept on purpose: `/api/workouts/recent` (the export feed
 for `tools/replay_recommendations.py`), `GET /api/stress/patterns/{date}` (called directly by
 `tools/verify_production_copy.py`) and `/api/ai/chat` (legacy compatible). Settings values,
-stored data and every screen are unchanged. Older entries in `plan.md` and
-`docs/stage-gated-plan.md` that describe adding these routes are historical.
+stored data and every screen are unchanged. Older entries in `docs/archive/plan-log.md` and
+`docs/archive/stage-gated-plan.md` that describe adding these routes are historical.
 
 ## Chart buttons and Log colours (2026-11-27, local; #174, #133, #131)
 
@@ -1758,3 +1758,47 @@ fixed contents sidebar and phone ☰ button with one sticky "On this page" dropd
 jumps there and closes it. The status colours (`--danger`, `--danger-bg`, `--ok`, `--ok-bg`, `--warn`,
 `--warn-bg`, `--hard`) now live in `rackbook/static/theme.css` instead of being repeated per page;
 values are unchanged. `theme.css` is v=3 and `app-menu.js` v=4.
+
+## Sync outcome service, glossary and archived plans (2026-11-27, local; #148, #150, #142)
+
+- **#148:** `main.run_incremental_sync(db)` runs one incremental sync and returns its own outcome
+  (`already_running`, `complete` with the importer result, or `failed`) without raising. `POST /api/sync`
+  wraps it with unchanged responses. The post-save monitoring refresh in `training_integration.py` uses
+  it, so a sync that was already running leaves the save pending instead of reading another run's
+  result. The one-process rule is recorded in `docs/training-cutover.md` and beside the Dockerfile CMD.
+- **#150:** `GLOSSARY.md` explains the host app vs training app (same-named `main.py`, `database.py`,
+  `hevy_client.py`) and the three meanings of "fatigue"; Microcycle/Plan follow the owner's terms.
+  Renames and the lifespan switch are deferred (#150 stays open).
+- **#142:** old plan logs and backlogs moved to `docs/archive/`; open work lives in GitHub issues (ideas
+  still wanted are #188 to #194). The parked hypertrophy design is `rackbook/docs/hypertrophy-design.md`.
+  `rackbook/docs/rackbook-context.md` no longer describes the retired standalone container on 8126.
+
+## Movement Trend on Exercises and quiet auto-sync (2026-11-27, local; #197, #195)
+
+Owner approved the mockups on 2026-11-27. The Movement Trend card moved from the Workouts tab to the
+Exercises tab (after Exercise Names — Needs Review); its search, metrics, window and chart are
+unchanged, and the theme redraw now follows it. The dashboard runs a quiet incremental sync when it
+opens and whenever it becomes visible again, at most once every five minutes (`hevy_last_sync_iso`
+in local storage, also set by Sync Now and the check-in sync), skipped without a Hevy key or while
+another sync runs. A small top-bar note shows Syncing… / Synced N min ago / Sync failed · Retry;
+cards redraw only on the first sync after opening or when new sets arrived. `POST /api/sync` now
+also returns the importer's `new_sets` and `error` when present (additive).
+
+## Session RPE at Finish and the feel check (2026-11-27, local; #199)
+
+Owner-agreed design (see #199). The Log page's Finish workout box has an optional **Session RPE** row using the
+set RPE values and buttons (4–10 in 0.5 steps; tap again to clear). The value is carried in the frozen save as
+`session_rpe` (omitted when blank so older saves keep their hash; a frozen retry shows its value read-only),
+validated by `WorkoutEntry`, never sent to Hevy, and recorded at finalize in the logging table `session_rpe`
+(`rackbook/session_rpe.py`). The host importer (`importer.logged_session_rpe`, read-only) and the post-save
+monitoring refresh fill `WorkoutSession.srpe` only when it is empty; a re-import no longer wipes an existing
+sRPE on an unverified session, so a dashboard value wins.
+`srpe_modifier.py` is the feel check inside `calculate_stress_scores`: for each set-scored session (not
+conditioning/cardio, not before app setting `srpe_modifier_start`, set at first startup to the local date),
+gap = sRPE − mean rated-set RPE (host-imported RPE, or 10 − RIR); with at least 5 earlier rated sessions, the
+usual gap is the mean of the last 10 within 56 days; central stress changes by 5% per point of difference,
+capped at ±15%. Peripheral and pattern stress are unchanged and sRPE × minutes is not used. Session details
+return `srpe_adjustment` (note shown when the difference is at least half a point and the adjusted central),
+coach session lines carry the note, and the weekly call gets `monitoring_context.session_rpe`
+(`consistently_easier` = at least 3 recent rated sessions, three quarters easier than usual). Unrated sets
+behave as before. Frozen trial records and the daily/pattern fixture are unaffected (no sRPE in them).

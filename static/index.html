@@ -2600,6 +2600,13 @@ body.ai-open main {
 }
 .host-workspace { --text-secondary:var(--muted); }
 .host-workspace #host-topbar { display:flex; height:64px; padding:0 16px; gap:12px; }
+/* Quiet auto-sync status beside Light/Dark/Auto (#195). */
+.host-workspace #host-topbar .nav-right { display:flex; align-items:center; }
+.sync-note { color:var(--muted); font-size:12px; white-space:nowrap; margin-right:10px; }
+.sync-note:empty { display:none; }
+.sync-note.fail { color:var(--danger, #a32d2d); }
+.sync-note button { border:0; background:none; padding:0 2px; min-height:0; color:inherit; font:inherit; text-decoration:underline; cursor:pointer; }
+@media (max-width:480px) { .sync-note { font-size:11px; margin-right:6px; } }
 .host-workspace #hostMenu { min-height:44px; padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); font:inherit; cursor:pointer; }
 .host-workspace .bottom-nav,.host-workspace .bottom-sheet,.host-workspace .bottom-sheet-scrim { display:none!important; }
 .host-workspace main { max-width:none; padding:88px 16px 24px; min-width:0; }
@@ -2796,6 +2803,7 @@ body.ai-open main {
     <img class="logo-icon-light" src="/resources/HF_LOGO_LIGHT.png" alt="Hevy Fatigue">
   </a>
   <div class="nav-right">
+    <span class="sync-note" id="sync-note" role="status" aria-live="polite"></span>
     <div class="btn-group theme-group" id="theme-toggle">
       <button data-theme-btn="light" title="Light mode">Light</button>
       <button data-theme-btn="dark"  title="Dark mode">Dark</button>
@@ -2938,43 +2946,6 @@ body.ai-open main {
     <div id="session-verify-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
   </div>
 
-  <div class="card" id="movement-trend-card">
-    <div class="card-title">Movement Trend</div>
-
-    <div class="mvt-search-wrap" id="mvt-search-wrap">
-      <input type="text" class="search-input" id="mvt-search-input" placeholder="Search movements..." autocomplete="off" style="width:100%;">
-      <button class="mvt-clear-btn" id="mvt-clear-btn" title="Clear" aria-label="Clear movement search">&times;</button>
-      <div class="mvt-dropdown" id="mvt-dropdown"></div>
-    </div>
-
-    <div class="mvt-controls-row">
-      <div class="mvt-toggle-group" id="mvt-metric-group">
-        <span class="mvt-toggle-label">Metric</span>
-        <div class="btn-group" id="mvt-metric-selector">
-          <button data-metric="e1rm" class="active">e1RM</button>
-          <button data-metric="top_set">Top Set</button>
-          <button data-metric="avg_weight">Avg Weight</button>
-          <button data-metric="volume">Volume</button>
-        </div>
-      </div>
-      <div class="mvt-toggle-group" id="mvt-window-group">
-        <span class="mvt-toggle-label">Window</span>
-        <div class="btn-group" id="mvt-window-selector">
-          <button data-window="8w">8W</button>
-          <button data-window="6m" class="active">6M</button>
-          <button data-window="1y">1Y</button>
-          <button data-window="all">All</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="mvt-placeholder" class="mvt-placeholder">Search for a movement to see its trend</div>
-    <div class="loading-wrap" id="mvt-loading" style="display:none;"><span class="spinner"></span></div>
-    <div class="trend-chart-wrap" id="mvt-chart-wrap" style="display:none;">
-      <canvas id="mvt-chart"></canvas>
-    </div>
-  </div>
-
   <div class="card">
     <div class="card-title">Session Log</div>
     <div id="session-log-wrap"><div class="loading-wrap"><span class="spinner"></span></div></div>
@@ -3015,6 +2986,43 @@ body.ai-open main {
           <div id="ex-override-status" style="font-size:12px;min-height:18px;margin-top:8px;"></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="card" id="movement-trend-card">
+    <div class="card-title">Movement Trend</div>
+
+    <div class="mvt-search-wrap" id="mvt-search-wrap">
+      <input type="text" class="search-input" id="mvt-search-input" placeholder="Search movements..." autocomplete="off" style="width:100%;">
+      <button class="mvt-clear-btn" id="mvt-clear-btn" title="Clear" aria-label="Clear movement search">&times;</button>
+      <div class="mvt-dropdown" id="mvt-dropdown"></div>
+    </div>
+
+    <div class="mvt-controls-row">
+      <div class="mvt-toggle-group" id="mvt-metric-group">
+        <span class="mvt-toggle-label">Metric</span>
+        <div class="btn-group" id="mvt-metric-selector">
+          <button data-metric="e1rm" class="active">e1RM</button>
+          <button data-metric="top_set">Top Set</button>
+          <button data-metric="avg_weight">Avg Weight</button>
+          <button data-metric="volume">Volume</button>
+        </div>
+      </div>
+      <div class="mvt-toggle-group" id="mvt-window-group">
+        <span class="mvt-toggle-label">Window</span>
+        <div class="btn-group" id="mvt-window-selector">
+          <button data-window="8w">8W</button>
+          <button data-window="6m" class="active">6M</button>
+          <button data-window="1y">1Y</button>
+          <button data-window="all">All</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="mvt-placeholder" class="mvt-placeholder">Search for a movement to see its trend</div>
+    <div class="loading-wrap" id="mvt-loading" style="display:none;"><span class="spinner"></span></div>
+    <div class="trend-chart-wrap" id="mvt-chart-wrap" style="display:none;">
+      <canvas id="mvt-chart"></canvas>
     </div>
   </div>
   <div class="exm-header">
@@ -3457,7 +3465,7 @@ function applyTheme(pref) {
     if (document.getElementById('tab-dashboard')?.classList.contains('active')) {
       loadTrainingLoadCard();
     }
-    if (document.getElementById('tab-workouts')?.classList.contains('active') && mvtLastData) {
+    if (document.getElementById('tab-exercise-metrics')?.classList.contains('active') && mvtLastData) {
       _mvtRenderChart(mvtLastData);
     }
   });
@@ -3741,6 +3749,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadTrainingLoadCard();
   _updateWoPendingBadge();
   if (tabIds.has(location.hash.slice(1))) activateTab(location.hash.slice(1));
+  autoSync({ first: true });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') autoSync(); });
+  setInterval(() => { if (!_autoSyncBusy && !document.getElementById('sync-note')?.classList.contains('fail')) _showSyncNote(); }, 60000);
 });
 
 // Tooltips: hover works by CSS; click/tap toggles visibility for touch devices.
@@ -4965,6 +4976,75 @@ function _setSyncButtonsDisabled(disabled, syncText = null, fullSyncText = null)
   }
 }
 
+// ── Quiet auto-sync (#195) ──────────────────────────────────────────────────
+// When the dashboard opens or comes back into view, pull new Hevy workouts at most once
+// every five minutes, never while another sync runs and never blocking the page.
+const AUTO_SYNC_MS = 5 * 60 * 1000;
+let _autoSyncBusy = false;
+let _autoSyncKeyChecked = null;
+
+function _markSynced(iso) {
+  localStorage.setItem('hevy_last_sync_iso', iso || new Date().toISOString());
+  _showSyncNote();
+}
+
+function _syncAgeLabel() {
+  const last = Date.parse(localStorage.getItem('hevy_last_sync_iso') || '');
+  if (!last) return '';
+  const mins = Math.floor((Date.now() - last) / 60000);
+  if (mins < 1) return 'Synced just now';
+  if (mins < 60) return `Synced ${mins} min ago`;
+  return 'Synced ' + new Date(last).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+function _showSyncNote(state) {
+  const note = document.getElementById('sync-note');
+  if (!note) return;
+  note.classList.toggle('fail', state === 'fail');
+  if (state === 'syncing') { note.textContent = 'Syncing…'; return; }
+  if (state === 'fail') {
+    note.textContent = 'Sync failed · ';
+    const retry = document.createElement('button');
+    retry.type = 'button'; retry.textContent = 'Retry';
+    retry.addEventListener('click', () => autoSync({ force: true }));
+    note.append(retry);
+    return;
+  }
+  note.textContent = _syncAgeLabel();
+}
+
+async function autoSync({ force = false, first = false } = {}) {
+  if (_autoSyncBusy) return;
+  if (_autoSyncKeyChecked === null) {
+    try {
+      const s = await (await fetch('/api/settings')).json();
+      _autoSyncKeyChecked = !!s.api_key_set;
+    } catch (e) { return; }
+  }
+  if (!_autoSyncKeyChecked) return;           // no Hevy key yet: nothing to sync, say nothing
+  const last = Date.parse(localStorage.getItem('hevy_last_sync_iso') || '') || 0;
+  if (!force && Date.now() - last < AUTO_SYNC_MS) { _showSyncNote(); return; }
+  _autoSyncBusy = true;
+  _showSyncNote('syncing');
+  try {
+    const r = await fetch('/api/sync', { method: 'POST' });
+    const d = await r.json().catch(() => ({}));
+    if (d.status === 'already_running') { _showSyncNote(); return; }
+    if (!r.ok || d.error) { _showSyncNote('fail'); return; }
+    _markSynced(d.synced_at);
+    // Redraw only when something came in, or on the first sync after opening the page.
+    if (first || d.new_sets > 0) {
+      invalidateTodayCaches();
+      loadTrainingLoadCard();
+      if (workoutsLoaded) loadWorkouts();
+    }
+  } catch (e) {
+    _showSyncNote('fail');
+  } finally {
+    _autoSyncBusy = false;
+  }
+}
+
 async function runSync({ silent = false } = {}) {
   const statusEl = document.getElementById('sync-status');
 
@@ -4977,6 +5057,7 @@ async function runSync({ silent = false } = {}) {
     const url = silent ? '/api/sync?force=true' : '/api/sync';
     const r = await fetch(url, { method: 'POST' });
     const d = await r.json();
+    if (r.ok && d.status === 'complete' && !d.error) _markSynced(d.synced_at);
 
     if (!silent) {
       if (d.status === 'already_running') {
@@ -4990,7 +5071,6 @@ async function runSync({ silent = false } = {}) {
           : 'unknown time';
         const msg = `✓ Sync complete — ${syncedLabel}`;
         statusEl.innerHTML = `<div class="alert alert-success">${msg}</div>`;
-        localStorage.setItem('hevy_last_sync_iso', d.synced_at || new Date().toISOString());
         invalidateTodayCaches();
         // Refresh dashboard data surfaces
         loadTrainingLoadCard();
@@ -5769,7 +5849,9 @@ function _renderSessionDetail(detail) {
         ${_sessionDetailMetric('Central', _fmt1(stress?.central || 0))}
         ${_sessionDetailMetric('Peripheral', _fmt1(stress?.peripheral || 0))}
         ${_sessionDetailMetric('Exercises', summary.exercise_count || 0)}
+        ${session.srpe == null ? '' : _sessionDetailMetric('Session RPE', _fmt1(session.srpe))}
       </div>
+      ${detail.srpe_adjustment?.note ? `<div class="session-detail-note srpe-feel-note">${escHtml(detail.srpe_adjustment.note)}</div>` : ''}
       <div class="session-detail-note">Per-set stress is shown here using the same strength/hypertrophy pathway as the existing stress model.</div>
       <div class="session-detail-section">
         <div class="session-detail-section-title">Exercise Summary</div>

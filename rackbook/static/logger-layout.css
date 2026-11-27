@@ -386,6 +386,16 @@ body.panel-open { overflow:hidden; }
 #saveConfirmation .finish-thead > span:not(:first-child) { text-align:right; }
 #saveConfirmation .up { color:var(--accent,#95baff); }
 #saveConfirmation .down { color:var(--hard,#b4530a); }
+/* Session RPE row (#199): the set RPE buttons, wrapping so a phone needs no scrolling. */
+#saveConfirmation .session-rpe { border:0; padding:0; margin:12px 0 4px; }
+#saveConfirmation .session-rpe legend { padding:0; font-weight:600; }
+#saveConfirmation .session-rpe p { margin:2px 0 6px; font-size:13px; }
+#saveConfirmation .session-rpe-picks { display:flex; flex-wrap:wrap; gap:6px; }
+#saveConfirmation .session-rpe-picks .rpe-pick { flex:0 0 auto; min-width:44px; min-height:40px; height:40px; padding:0 10px; border-radius:20px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--accent); background:transparent; border:2px solid var(--line); }
+#saveConfirmation .session-rpe-picks .rpe-pick.mid { color:var(--warn); }
+#saveConfirmation .session-rpe-picks .rpe-pick.hard { color:var(--hard,#b4530a); }
+#saveConfirmation .session-rpe-picks .rpe-pick.on { background:var(--accent); border-color:var(--accent); color:var(--card); }
+#saveConfirmation .session-rpe-picks .rpe-pick:disabled:not(.on) { opacity:.45; }
 #saveConfirmation .finish-discard { display:block; width:100%; margin-top:12px; border-color:transparent; background:transparent; color:var(--danger,#f09595); }
 @media (min-width:1900px) { #exStrip { grid-column:1; } }
 /* The older phone rule hid the 4th and 9th headings (the second unit and stress); here they are Kg and Done. */

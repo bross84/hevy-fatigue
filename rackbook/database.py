@@ -53,6 +53,12 @@ def init_db() -> None:
                 plan_id TEXT, plan_session_id TEXT, motivation TEXT NOT NULL,
                 recorded_at TEXT NOT NULL, linked_workout_id TEXT
             );
+            CREATE TABLE IF NOT EXISTS session_rpe (
+                hevy_workout_id TEXT PRIMARY KEY,
+                workout_start TEXT NOT NULL,
+                rpe REAL NOT NULL CHECK(rpe >= 4 AND rpe <= 10),
+                saved_at TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS session_motivation (
                 hevy_workout_id TEXT PRIMARY KEY,
                 workout_start TEXT NOT NULL,

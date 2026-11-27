@@ -349,7 +349,7 @@
     .workout-log.typing main { padding-bottom: 60vh; }
     .workout-log.keypad-open main { padding-bottom: calc(var(--keypad-height, 250px) + 32px); }
   </style>
-  <link rel="stylesheet" href="/training/static/logger-layout.css?v=17" />
+  <link rel="stylesheet" href="/training/static/logger-layout.css?v=18" />
 </head>
 <body class="workout-log">
 <button id="loggerNavScrim" type="button" aria-label="Close navigation" hidden></button>
@@ -2613,6 +2613,7 @@
       ...(draft.prescription ? { prescription:draft.prescription } : {}),
       ...(draft.advisory_links?.length ? {advisory_links:draft.advisory_links} : {}),
       ...(draft.motivation != null ? {motivation:draft.motivation} : {}),
+      ...(draft.sessionRpe != null ? {session_rpe:draft.sessionRpe} : {}),
       checkin_required:true,
       ...(draft.planned_session ? { planned_session: draft.planned_session } : {}) };
   }
@@ -2637,11 +2638,41 @@
     '<div id="saveStats" class="finish-stats"></div><div id="saveSummary" class="finish-rows"></div>' +
     '<button id="saveMore" type="button" class="finish-more" aria-expanded="false">See more ▾</button><div id="saveMoreBox" class="finish-compare" hidden></div>' +
     '<p id="saveSetCount"></p><p id="saveExcludedCount"></p><ul id="saveExcludedSets"></ul>' +
+    '<fieldset id="saveSessionRpe" class="session-rpe"><legend>Session RPE <span class="muted">· optional</span></legend>' +
+    '<p class="muted">How hard was the whole session?</p><div class="session-rpe-picks" role="group" aria-label="Session RPE"></div></fieldset>' +
     '<div style="display:flex;flex-wrap:wrap;gap:12px"><button id="keepTraining" type="button" autofocus>Keep training</button><button id="confirmSave" type="button" class="primary">Save to Hevy</button></div>' +
     '<button id="saveDiscard" type="button" class="finish-discard">Discard workout</button>';
   document.body.append(saveDialog);
   let pendingSaveEntry = null;
   $("keepTraining").addEventListener("click", () => saveDialog.close());
+  // Session RPE (#199): the set RPE buttons and values. Tap again to clear. A frozen save
+  // already holds its value, so the row only shows it.
+  const SESSION_RPES = [4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];   // the set RPE values
+  function paintSessionRpe() {
+    const frozen = !!draft?.frozenSave;
+    const current = frozen ? draft.frozenSave.session_rpe : draft?.sessionRpe;
+    const row = saveDialog.querySelector(".session-rpe-picks");
+    row.replaceChildren(...SESSION_RPES.map((v) => {
+      const on = current != null && Number(current) === v;
+      const b = document.createElement("button");
+      b.className = "rpe-pick" + (on ? " on" : "") + (v >= 9 ? " hard" : v >= 8 ? " mid" : "");
+      b.textContent = String(v);
+      b.type = "button"; b.setAttribute("data-session-rpe", String(v)); b.disabled = frozen;
+      b.setAttribute("aria-label", "Session RPE " + v); b.setAttribute("aria-pressed", String(on));
+      return b;
+    }));
+  }
+  saveDialog.querySelector(".session-rpe-picks").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-session-rpe]");
+    if (!b || !draft || draft.frozenSave) return;
+    const v = Number(b.dataset.sessionRpe);
+    draft.sessionRpe = draft.sessionRpe === v ? null : v;
+    if (pendingSaveEntry) {
+      if (draft.sessionRpe == null) delete pendingSaveEntry.session_rpe; else pendingSaveEntry.session_rpe = draft.sessionRpe;
+    }
+    if (typeof storeDraft === "function") storeDraft();
+    paintSessionRpe();
+  });
   saveDialog.addEventListener("close", () => { pendingSaveEntry = null; });
   $("finish").addEventListener("click", () => {
     if (saving || saveDialog.open) return;
@@ -2654,6 +2685,7 @@
     $("saveExcludedCount").textContent = excluded.length + " unticked working sets will be excluded.";
     $("saveExcludedSets").replaceChildren(...excluded.map(text => { const li = document.createElement("li"); li.textContent = text; return li; }));
     pendingSaveEntry = entry;
+    paintSessionRpe();
     if (typeof paintFinishSummary === "function") paintFinishSummary();
     saveDialog.showModal();
     $("keepTraining").focus();

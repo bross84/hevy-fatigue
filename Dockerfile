@@ -43,4 +43,5 @@ ENV HEVY_WRITES_ENABLED=0
 EXPOSE 8000
 
 # Run the app
+# One process only: save recovery and the sync lock assume it (docs/training-cutover.md, #148).
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

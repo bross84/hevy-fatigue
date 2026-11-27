@@ -739,6 +739,9 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       </div>
 
       <p>In Hevy Fatigue, sRPE is encoded in session titles using the <code>@N</code> delimiter convention (e.g. <code>CON @7</code> = conditioning session at sRPE 7).</p>
+      <h3>Session RPE from the Log (feel check)</h3>
+      <p>When you finish a workout on the Log page, the Finish box asks an optional <strong>Session RPE</strong>: how hard the whole session was, on the same 4–10 half-step scale as your set RPEs. It is saved with the workout and fills that session's sRPE on the dashboard when it imports, unless you have already entered one there (a dashboard value always wins).</p>
+      <p>For sessions scored from your sets (not sessions currently scored as conditioning or cardio), it works as a small <strong>feel check</strong> on whole-body (central) stress only. The app compares the session RPE with the average RPE of that session's rated sets, and compares that gap with your usual gap over your last 10 rated sessions in 8 weeks (it needs 5 first). Each point harder than usual adds 5% to that session's whole-body stress, each point easier takes 5% off, never more than ±15%. Muscle (peripheral) and Knee/Hip/Push/Pull pattern stress are not changed, sRPE × minutes is not used, and it applies only to workouts from the day this version first ran. A session that was nudged shows a short note in its details, and the weekly coaching call sees how recent sessions felt against usual: consistently easier sessions with low fatigue can be a sign there is room to push.</p>
     </section>
 
     <!-- ═══════════════════════════════════════════ -->
@@ -900,7 +903,7 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       <p>Hevy Fatigue connects to the Hevy API to pull your workout history into the local database. It does not sync continuously in the background.</p>
 
       <h3>How sync works</h3>
-      <p>Submitting a daily check-in syncs automatically. To sync by hand, open <strong>Menu → Settings → Hevy Sync</strong> and press <strong>Sync Now</strong>. Each sync asks Hevy only for workouts added, changed or deleted since the last sync (the <code>workouts/events</code> endpoint) rather than re-fetching your entire history. The very first sync fetches your full history.</p>
+      <p>Submitting a daily check-in syncs automatically, and the dashboard also syncs quietly when you open it or switch back to it, at most once every five minutes; a small note beside Light/Dark/Auto shows when it last synced (or Sync failed · Retry). To sync by hand, open <strong>Menu → Settings → Hevy Sync</strong> and press <strong>Sync Now</strong>. Each sync asks Hevy only for workouts added, changed or deleted since the last sync (the <code>workouts/events</code> endpoint) rather than re-fetching your entire history. The very first sync fetches your full history.</p>
 
       <p>Only one sync runs at a time; while one is running, the sync buttons stay inactive.</p>
 

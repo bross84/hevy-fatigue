@@ -23,6 +23,7 @@ import weekly_coaching
 import daily_coaching
 import database as host_database
 import joint_baseline
+import srpe_modifier
 import joint_coaching
 from rackbook.local_day import local_today
 from readiness_context import historical_ranges
@@ -295,6 +296,7 @@ def calculate_stress_scores(
 
     central = peripheral = 0.0
     knee = hip = push = pull = 0.0
+    central_by_session: dict = {}
 
     for s in working_sets:
         if s.workout_id in hyp_fallback_ids:
@@ -303,6 +305,7 @@ def calculate_stress_scores(
         p = get_set_peripheral_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
         central    += c
         peripheral += p
+        central_by_session[s.workout_id] = central_by_session.get(s.workout_id, 0.0) + c
         m = pct_map.get(s.exercise_title)
         if m:
             ss = c + p
@@ -310,6 +313,19 @@ def calculate_stress_scores(
             hip  += ss * (m.pct_posterior   or 0.0)
             push += ss * (m.pct_upper_push  or 0.0)
             pull += ss * (m.pct_upper_pull  or 0.0)
+
+    # Session RPE feel check (#199): nudge each set-scored session's whole-body stress by at
+    # most ±15% when it felt harder or easier than usual. Patterns and peripheral are untouched.
+    if central_by_session:
+        import database as _models
+        rated = (db.query(WorkoutSession)
+                 .filter(WorkoutSession.hevy_workout_id.in_(list(central_by_session)),
+                         WorkoutSession.srpe.isnot(None))
+                 .all())
+        for session in rated:
+            adjustment = srpe_modifier.session_adjustment(db, _models, session)
+            if adjustment:
+                central += central_by_session[session.hevy_workout_id] * adjustment['pct']
 
     # ── Pathways 2 & 3: Conditioning / Cardio ────────────────────────────────
     scaling_factor = conditioning_scale if conditioning_scale > 0.0 else 29.0
@@ -450,6 +466,9 @@ def startup():
     try:
         seed_rpe_table(db)
         _seed_and_migrate_session_processing_settings(db)
+        # The session RPE feel check applies from the day this version first starts (#199).
+        if _get_setting_value(db, srpe_modifier.START_SETTING) is None:
+            _set_setting_value(db, srpe_modifier.START_SETTING, local_today().isoformat())
         db.commit()
     finally:
         db.close()
@@ -847,24 +866,45 @@ def serve_frontend():
         return FileResponse(index, headers={"Cache-Control": "no-cache"})
     return {"message": "Hevy Fatigue API — place index.html in the static/ folder"}
 
-@app.post("/api/sync")
-def trigger_sync(force: bool = False, db: Session = Depends(get_db)):
+def run_incremental_sync(db: Session) -> dict:
     """
-    Incremental sync: pull latest workouts from Hevy API since last sync.
-    Rejects if a sync is already running.
+    Incremental sync as a service that reports its own outcome (#148), so callers
+    never read another run's result from `_sync_status`:
+      {"status": "already_running"}                      another sync holds the lock
+      {"status": "complete", "synced_at": ..., "result": <importer result>}
+      {"status": "failed", "error": <message>}
+    A sync failure is returned, not raised.
     """
     if not _sync_lock.acquire(blocking=False):
         return {"status": "already_running"}
 
     try:
         _sync_status["running"] = True
-        return _execute_sync_pipeline(db)
+        payload = _execute_sync_pipeline(db)
+        # Still holding the lock, so this is this run's own result.
+        return {**payload, "result": _sync_status["last_result"]}
     except Exception as e:
         _sync_status["last_result"] = {"error": str(e)}
-        raise HTTPException(status_code=500, detail=f"Sync failed: {e}")
+        return {"status": "failed", "error": str(e)}
     finally:
         _sync_status["running"] = False
         _sync_lock.release()
+
+
+@app.post("/api/sync")
+def trigger_sync(force: bool = False, db: Session = Depends(get_db)):
+    """
+    Incremental sync: pull latest workouts from Hevy API since last sync.
+    Rejects if a sync is already running.
+    """
+    outcome = run_incremental_sync(db)
+    if outcome["status"] == "failed":
+        raise HTTPException(status_code=500, detail=f"Sync failed: {outcome['error']}")
+    result = outcome.pop("result", None) or {}
+    for key in ("new_sets", "error"):
+        if key in result:
+            outcome[key] = result[key]
+    return outcome
 
 @app.post("/api/sync/full")
 def trigger_sync_full(db: Session = Depends(get_db)):
@@ -2176,12 +2216,14 @@ def _build_ai_system_prompt(db: Session) -> str:
                 else "N/A"
             )
 
+            feel = srpe_modifier.session_adjustment(db, host_database, session)
             lines.append(
                 f"- {_fmt_text(session.workout_date)} | "
                 f"{_fmt_text(session.workout_title)} | "
                 f"{modality_display} | "
                 f"{duration_display} | "
                 f"sRPE: {_fmt_num(session.srpe, 1)}"
+                + (f" | {feel['note']}" if feel and feel.get('note') else "")
             )
 
             exercise_rows = (
@@ -2292,6 +2334,8 @@ def coaching_week_review(data: weekly_coaching.WeekReviewInput,db: Session = Dep
         if data.kind=='call':
             # A joint call due at the same time is folded into the weekly call (#154).
             monitoring['joint_call']=joint_baseline.call_context(db,host_database,local_today())
+            # How recent sessions felt against the athlete's usual session RPE (#199).
+            monitoring['session_rpe']=srpe_modifier.recent_summary(db,host_database,local_today())
         return weekly_coaching.prepare(db,data,monitoring)
     except ValueError as exc:
         raise HTTPException(422,str(exc)) from exc
@@ -2855,10 +2899,13 @@ def get_workout_session_detail(hevy_workout_id: str, db: Session = Depends(get_d
             get_set_peripheral_stress(s.weight_lbs, s.reps, s.rpe, s.rir, s.exercise_title, db)
             for s in workout_sets
         )
+        feel = srpe_modifier.session_adjustment(db, host_database, session_row)
         response["stress"] = {
-            "central": round(central, 3),
+            "central": round(central * (1 + (feel['pct'] if feel else 0.0)), 3),
             "peripheral": round(peripheral, 3),
         }
+        # Session RPE feel check (#199): what changed whole-body stress, for the session note.
+        response["srpe_adjustment"] = feel
         response["sets"] = set_rows
 
     elif detail_type == "conditioning":

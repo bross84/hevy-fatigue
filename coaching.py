@@ -207,6 +207,11 @@ days with a lift against other check-ins: association, not cause; early reads re
 past_decisions and do not ask the same question again without new evidence. A finished block can be a valid
 reason to carry on. The athlete records the decision with their own tap; never claim it was recorded or applied.
 The evidence date is frozen for each conversation. If training has changed, suggest a new review.
+Session RPE (monitoring_context.session_rpe, and the note on a session line) uses the same 4-10 scale as set RPE.
+It is compared with the athlete's usual gap between session and set RPE and only nudges whole-body stress by at
+most 15%. When consistently_easier is true and the rest of the monitoring shows low fatigue, you may suggest there
+is room to push (for example another set or a heavier top set) as an option the athlete chooses; it never
+overrides held joint regions or other cautions. Sessions that felt harder than usual are context, not alarms.
 """
 PROPOSAL_EXAMPLE = json.dumps(dict(
     version=plan_proposals.FENCE, title='Week title', rationale='One to three sentences citing report fields.',
