@@ -866,6 +866,10 @@ def serve_frontend():
         return FileResponse(index, headers={"Cache-Control": "no-cache"})
     return {"message": "Hevy Fatigue API — place index.html in the static/ folder"}
 
+SYNC_FAILED_MESSAGE = "Check the server log for details."
+HEVY_UNREACHABLE_MESSAGE = "Could not reach Hevy. Check the API key in Settings."
+
+
 def run_incremental_sync(db: Session) -> dict:
     """
     Incremental sync as a service that reports its own outcome (#148), so callers
@@ -883,9 +887,11 @@ def run_incremental_sync(db: Session) -> dict:
         payload = _execute_sync_pipeline(db)
         # Still holding the lock, so this is this run's own result.
         return {**payload, "result": _sync_status["last_result"]}
-    except Exception as e:
-        _sync_status["last_result"] = {"error": str(e)}
-        return {"status": "failed", "error": str(e)}
+    except Exception:
+        # Details stay in the server log; callers only learn that this sync failed.
+        logging.getLogger(__name__).exception("Incremental sync failed")
+        _sync_status["last_result"] = {"error": SYNC_FAILED_MESSAGE}
+        return {"status": "failed", "error": SYNC_FAILED_MESSAGE}
     finally:
         _sync_status["running"] = False
         _sync_lock.release()
@@ -899,11 +905,13 @@ def trigger_sync(force: bool = False, db: Session = Depends(get_db)):
     """
     outcome = run_incremental_sync(db)
     if outcome["status"] == "failed":
-        raise HTTPException(status_code=500, detail=f"Sync failed: {outcome['error']}")
+        raise HTTPException(status_code=500, detail=SYNC_FAILED_MESSAGE)
     result = outcome.pop("result", None) or {}
-    for key in ("new_sets", "error"):
-        if key in result:
-            outcome[key] = result[key]
+    if isinstance(result.get("new_sets"), int):
+        outcome["new_sets"] = result["new_sets"]
+    if result.get("error"):
+        # The importer reports an unreachable Hevy as an error result, not an exception.
+        outcome["error"] = HEVY_UNREACHABLE_MESSAGE
     return outcome
 
 @app.post("/api/sync/full")

@@ -678,9 +678,12 @@ with TestClient(main.app) as client, patch('rackbook.main.hevy_client.HevyClient
             try:self.assertEqual(main.run_incremental_sync(None),{'status':'already_running'})
             finally:lock.release()
             with patch.object(main,'_execute_sync_pipeline',side_effect=RuntimeError('mock outage')):
-                self.assertEqual(main.run_incremental_sync(None),{'status':'failed','error':'mock outage'})
+                # The raw error stays in the server log; callers get a fixed message (CodeQL, PR #202).
+                failed=main.run_incremental_sync(None)
+                self.assertEqual(failed,{'status':'failed','error':main.SYNC_FAILED_MESSAGE})
+                self.assertNotIn('mock outage',json.dumps(main._sync_status['last_result']))
                 with self.assertRaises(HTTPException) as raised:main.trigger_sync(db=None)
-                self.assertEqual(raised.exception.status_code,500)
+                self.assertEqual((raised.exception.status_code,raised.exception.detail),(500,main.SYNC_FAILED_MESSAGE))
             def pipeline(db):
                 main._sync_status['last_result']={'imported':2}
                 return {'status':'complete','synced_at':'now'}
@@ -693,6 +696,12 @@ with TestClient(main.app) as client, patch('rackbook.main.hevy_client.HevyClient
             with patch.object(main,'_execute_sync_pipeline',side_effect=counted):
                 # The page's quiet auto-sync (#195) reads new_sets to decide whether to redraw.
                 self.assertEqual(main.trigger_sync(db=None),{'status':'complete','synced_at':'now','new_sets':3})
+            def unreachable(db):
+                main._sync_status['last_result']={'new_sets':0,'error':'secret connection detail'}
+                return {'status':'complete','synced_at':'now'}
+            with patch.object(main,'_execute_sync_pipeline',side_effect=unreachable):
+                self.assertEqual(main.trigger_sync(db=None),
+                                 {'status':'complete','synced_at':'now','new_sets':0,'error':main.HEVY_UNREACHABLE_MESSAGE})
             self.assertFalse(lock.locked())
 
     def test_daily_and_pattern_fixture_matches_recorded_remote_baseline(self):
