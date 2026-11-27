@@ -946,7 +946,7 @@ existed can still be edited. Tests: `rackbook/tests/test_week_text.py`, `test_we
 `test_week_text_ui.cjs`. Follow-ups (not built): DDP starting weight from last week's best DDP set
 converted to this week's reps and RPE, the myo-reps flow, AMRAP/BO/drop behaviour on the Log page,
 showing a saved week back as text (also for AI Coach), and rep ranges outside myo. The old
-`program_parser.py` (5/3/1 notation) is unrelated and unchanged.
+`program_parser.py` (5/3/1 notation) was unrelated; it was removed with the old designer (#136).
 
 ## AI week proposals in the AI Coach (local, 2026-11-07)
 
@@ -1713,6 +1713,15 @@ unchanged. Movement evidence compares the first check-in after days with a lift
 84 days; lines need 3 after-lift check-ins and are early reads below 6. The 3–4 Joint
 Advisory and the fatigue trial's own joint rule are unchanged. Mocked preview:
 `python -X utf8 -m uvicorn tools.joint_preview:app --host 127.0.0.1 --port 18154`.
+
+## Old 5/3/1 designer backend removed (2026-11-27, local; #136)
+
+Owner decision on #136. The Rackbook routes behind the retired 5/3/1 designer (programs, tiers,
+cycles, days, slots, active blocks, `/settings/tm`, `/settings/wm-pct` and
+`/exercises/{id}/e1rm`), `rackbook/program_parser.py`, `working_weight`/`bbb_weight` and their
+tests are gone; `docs/training-routes.txt` is updated. Kept: `rackbook/training_max.py` (TS/TM
+behaviour unchanged), the old planner tables and rows (rollback material), and the Joker math in
+`rackbook/wave_math.py` for the planned Joker set type (#185). No page called any of it.
 
 ## Unused host API routes removed (2026-11-27, local; #140)
 

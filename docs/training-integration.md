@@ -75,7 +75,8 @@ repository as its working directory, without import-path manipulation.
 ## Retained inventory
 
 All source backend routes remain under `/training` with their suffixes and
-models, except additive save-recovery fields. `training-routes.txt` lists them.
+models, except additive save-recovery fields and the retired 5/3/1 designer routes
+(removed 2026-11-27, #136). `training-routes.txt` lists them.
 
 | Pages | Assets/services |
 | --- | --- |

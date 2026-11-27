@@ -30,7 +30,7 @@ commands, cross-PC continuation, and next steps.
 
 ## What this is now
 
-Rackbook is a personal workout logger and strength tracker that saves to [Hevy](https://hevyapp.com). It started as a 5/3/1 BBB planner and has moved away from that: the main thing now is the **log page** (`/log`), which plans each set's weight from an RPE table and a per-movement base number, saves the finished workout to Hevy, and keeps its own record of every set. On top of that it builds **RPE tables for squat, bench and deadlift from the user's own sets** (`/rpe-charts`). The original 5/3/1 program designer still works at `/legacy` but is no longer developed.
+Rackbook is a personal workout logger and strength tracker that saves to [Hevy](https://hevyapp.com). It started as a 5/3/1 BBB planner and has moved away from that: the main thing now is the **log page** (`/log`), which plans each set's weight from an RPE table and a per-movement base number, saves the finished workout to Hevy, and keeps its own record of every set. On top of that it builds **RPE tables for squat, bench and deadlift from the user's own sets** (`/rpe-charts`). The original 5/3/1 program designer was retired: its pages went on 2026-10-19 and its backend on 2026-11-27 (#136).
 
 One user (Brian), one Hevy account. The app has no login; it is meant to sit on a private network (Docker on a CasaOS homelab, reached over Tailscale with `tailscale serve`). It can write permanent workouts to the user's Hevy account, so treat every real save as irreversible.
 
@@ -75,10 +75,10 @@ The six main pages share an inline `rackbook-theme` style block for the blue/sla
 | `/stress` | `stress.html` | Main three movement overview, selector, stress components, rolling totals, and retrospective session history |
 | `/trial` | `trial.html` | Model trial observations, expected/actual performance history, collection progress and unsaved snapshots |
 | `/rpe-charts` | `rpe_charts.html` | RPE tables built from the user's own sets (Squat, Bench, Deadlift, General tabs) |
-| `/legacy` | `index.html` | Settings only: Hevy API key, exercise cache sync, unit preference (the old 5/3/1 Workout and Program tabs were removed 2026-10-19; their backend routes remain) |
+| `/legacy` | `index.html` | Settings only: Hevy API key, exercise cache sync, unit preference (the old 5/3/1 Workout and Program tabs were removed 2026-10-19; their backend routes were removed 2026-11-27) |
 | `/health` | | `{"status":"ok"}` |
 
-Routes used by the log, RPE and progress pages (the legacy planner has many more, see `main.py`):
+Routes used by the log, RPE and progress pages:
 
 | Route | Purpose |
 |---|---|
@@ -127,7 +127,7 @@ Routes used by the log, RPE and progress pages (the legacy planner has many more
 | `mesocycles.py`, `mesocycles.html` | Typed plan models, local storage/completion services, and self-contained mesocycle editor |
 | `rpe_charts.html`, `progress.html`, `recent.html` | The other pages |
 | `data/rpe_chart.csv`, `data/rpe_chart_user.csv` | The RPE table. The user's file wins when present; the table is loaded into `rpe_chart` at startup and reloaded when the file changes. Baked into the Docker image, so changing it means redeploying |
-| `wave_math.py`, `program_parser.py`, `index.html` | The legacy 5/3/1 planner |
+| `wave_math.py` | Joker set math kept for the planned Joker set type (#185) |
 | `docker-compose.yml`, `Dockerfile` | Deployment |
 | `requirements.txt` | Must stay in sync with all imports in `.py` files |
 
@@ -234,7 +234,7 @@ body_measurements      date PK, weight_kg, lean_mass_kg, fat_percent, synced_at
 app_settings           key PK, value (Hevy API key encrypted, RPE table source hash, ...)
 ```
 
-### Legacy 5/3/1 planner tables
+### Legacy 5/3/1 planner tables (data kept, no code reads them)
 
 ```
 programs → tiers, blocks (cycles) → days → exercise_slots   (template layer)
@@ -245,11 +245,17 @@ microcycles                                                  (older cycle table)
 
 ---
 
-## Legacy 5/3/1 planner (backend only; its page was removed 2026-10-19)
+## Legacy 5/3/1 planner (retired)
 
-Programs are program-agnostic: tiers (behaviours `percentage`, `fixed`, `progression`, `free`), wave structure per exercise slot (`wave_params` JSON), microcycles numbered and user-labelled. All percentages derive from RPE (`target_rpe` and `actual_rpe` per set). `test_session_route.py` pins its current session and e1RM behaviour; `expectedFailure` tests there mark known bugs.
+Its page was removed 2026-10-19 and its backend on 2026-11-27 (#136): the program, tier,
+cycle, day, slot, active-block, TM/work-max setting and exercise e1RM routes, `program_parser.py`
+and `test_session_route.py`. The tables above and their rows stay in the database untouched,
+so rollback material is intact. `training_max.py` (TS and TM) is separate and unchanged.
 
-`wave_math.py` is pure (no DB, no HTTP): Epley e1RM (`weight × (1 + reps/30)`, a single is the weight), Joker qualification within `JOKER_BAND = 0.05` of the AMRAP e1RM, `session_e1rm` (mean of the AMRAP e1RM and qualifying Joker e1RMs), `working_weight` and `bbb_weight` (3-element percentage lists indexed by week − 1), rounding to 2.5 kg. Jokers with no RPE are excluded before the filter.
+`wave_math.py` keeps only the pure Joker math for the planned Joker set type (#185): Epley e1RM
+(`weight × (1 + reps/30)`, a single is the weight), Joker qualification within
+`JOKER_BAND = 0.05`, `joker_weight` (previous weight × (1 + jump), rounded to 2.5 kg) and
+`session_e1rm` (mean of the anchor e1RM and qualifying Joker e1RMs).
 
 ---
 

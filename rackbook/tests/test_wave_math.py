@@ -4,13 +4,11 @@ import sys
 import unittest
 
 from rackbook.wave_math import (
-    bbb_weight,
     epley,
     joker_qualifies,
     joker_weight,
     round_weight,
     session_e1rm,
-    working_weight,
 )
 
 
@@ -54,20 +52,6 @@ class TestJoker(unittest.TestCase):
     def test_session_e1rm_averages_qualifying_jokers_only(self):
         # amrap 100; joker 1x102 qualifies (2%); joker 1x120 does not (20%).
         self.assertAlmostEqual(101.0, session_e1rm(100.0, [(102.0, 1), (120.0, 1)]))
-
-
-class TestWaveWeights(unittest.TestCase):
-
-    def test_working_weight_uses_week_index(self):
-        wp = {"percentages": [0.75, 0.80, 0.85]}
-        self.assertEqual(135.0, working_weight(180.0, 1, wp))
-        self.assertEqual(145.0, working_weight(180.0, 2, wp))
-        self.assertEqual(152.5, working_weight(180.0, 3, wp))
-
-    def test_bbb_weight_uses_week_index(self):
-        wp = {"bbb_percentages": [0.65, 0.70, 0.75]}
-        self.assertEqual(117.5, bbb_weight(180.0, 1, wp))
-        self.assertEqual(125.0, bbb_weight(180.0, 2, wp))
 
 
 if __name__ == "__main__":
