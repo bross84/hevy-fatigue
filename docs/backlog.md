@@ -29,7 +29,7 @@ The previously transferred image is superseded and must not be deployed.
 Movement Trend (exercise search + metric toggle + time window chart) currently lives on the Workouts tab. It is an exercise-level metric, not a session-level one. Workouts tab should own session-level views only. Exercises tab should own all per-exercise views: metrics browser, naming/canonical review, and movement trend. Keep this item open until the card is actually moved out of the Workouts tab.
 
 ### `02JUN2026` — Dead Code Audit
-Review `index.html` and `main.py` for dead code — unreachable JS functions, orphaned DOM sections, unused endpoints, and stale CSS classes. Known candidate: `tab-trend` section may still exist in DOM but be inaccessible from nav. Audit before any major feature work to reduce noise for Copilot.
+Review `index.html` and `main.py` for dead code — unreachable JS functions, orphaned DOM sections, unused endpoints, and stale CSS classes. The hidden `tab-trend` section was removed on 26NOV2026 (#137). Audit before any major feature work to reduce noise for Copilot.
 
 ---
 

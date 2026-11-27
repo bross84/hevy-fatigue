@@ -4,7 +4,7 @@
 Items that are known bugs or missing features that would affect any user.
 
 - [x] Fixed 30OCT2026: HYP sRPE fallback double-counting in `calculate_stress_scores()`. Verified HYP sessions with sRPE, duration, and >=50% missing RPE now use Pathway 4 exclusively; their sets are excluded from Pathway 1. Existing fallback scaling and pattern distribution are preserved. Regression tests: `tests/test_hypertrophy_stress.py`.
-- [ ] Resolve dead code: tab-trend section still exists in DOM but is inaccessible from nav - remove section HTML and associated JS (renderVolFatigueView, activateTrendTab, _vfChartRpe/Tonnage/Sets, _vfRenderCharts).
+- [x] Fixed 26NOV2026 (#137): removed the hidden tab-trend section, its CSS and its JS (renderVolFatigueView, activateTrendTab, _vfChartRpe/Tonnage/Sets, _vfRenderCharts, the old main-trend chart helpers). The dashboard Volume · Fatigue card and `/api/volfatigue/summary` are unchanged.
 - [ ] Complete README and FAQ documentation for public-facing release use.
 
 ## 🟡 Bookmarked (flagged for future work)
