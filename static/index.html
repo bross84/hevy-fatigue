@@ -6931,6 +6931,12 @@ async function renderDashboardVFCard() {
   `;
 
   const { start, end } = _dashboardVfDateRange();
+  if (!start || !end) {
+    // Custom chosen but no dates applied yet (e.g. a signal button was pressed).
+    if (_dashboardVfChart) { _dashboardVfChart.destroy(); _dashboardVfChart = null; }
+    card.querySelector('.vf-chart-wrap').innerHTML = '<div class="today-chart-empty">Choose a start and end date, then press Apply.</div>';
+    return;
+  }
   try {
     const response = await fetch(`/api/volfatigue/summary?start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}`);
     if (!response.ok) throw new Error(`API error: ${response.status}`);
@@ -6999,6 +7005,13 @@ document.addEventListener('click', function _dvfRangeHandler(e) {
   const val = btn.dataset.dashboardVfRange;
   if (val === 'custom') {
     _dashboardVfActiveRange = 'custom';
+    if (!_dashboardVfCustomStart || !_dashboardVfCustomEnd) {
+      // No dates yet: show the pickers and keep the current chart until Apply.
+      document.querySelectorAll('#dashboard-vf-range-btns button').forEach(b => b.classList.toggle('active', b === btn));
+      const cr = document.getElementById('dashboard-vf-custom-range');
+      if (cr) cr.style.display = 'flex';
+      return;
+    }
     renderDashboardVFCard();
   } else {
     _dashboardVfActiveRange = parseInt(val, 10);
