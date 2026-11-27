@@ -6,7 +6,7 @@ const AppMenu = (() => {
     {name: 'Overview', items: [{label: 'Dashboard', href: '/'}, {label: 'AI Coach', href: '/#ai'}]},
     {name: 'Training', items: [
       {label: 'Log Workout', href: '/training/log'},
-      {label: 'Plans', href: '/training/microcycles', also: ['/training/mesocycles']},
+      {label: 'Microcycles', href: '/training/microcycles', also: ['/training/mesocycles']},
       {label: 'Recent', href: '/training/recent'},
       {label: 'Progress', href: '/training/progress'},
       {label: 'Stress', href: '/training/stress'},

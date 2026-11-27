@@ -98,7 +98,7 @@ vm.runInContext(log.slice(log.indexOf('  function buildEntry()'),log.indexOf('  
  assert.equal(saveContext.dirty,true);assert.equal(saveControls.savePlan.disabled,false);
  failSave=false;assert.equal(await saveContext.save(),true);
  assert.equal(saveControls.editor.hidden,true,'Successful save must close the editor');
- assert.equal(saveContext.dirty,false);assert.equal(saveMessage,'Plan saved.');
+ assert.equal(saveContext.dirty,false);assert.equal(saveMessage,'Microcycle saved.');
  assert.equal(saveContext.plan.id,'p','Keep the saved plan available for Use this microcycle');
  assert.equal(saveControls.savePlan.disabled,false);
  let deletionCalls=[],cleared=0,allowDelete=false,failDelete=false;const editorState={hidden:false};
