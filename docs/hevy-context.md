@@ -1735,3 +1735,14 @@ for `tools/replay_recommendations.py`), `GET /api/stress/patterns/{date}` (calle
 `tools/verify_production_copy.py`) and `/api/ai/chat` (legacy compatible). Settings values,
 stored data and every screen are unchanged. Older entries in `plan.md` and
 `docs/stage-gated-plan.md` that describe adding these routes are historical.
+
+## Chart buttons and Log colours (2026-11-27, local; #174, #133, #131)
+
+Owner approved the mockups on 2026-11-27. Chart option groups on the dashboard (Volume · Fatigue,
+Per-pattern) and on Progress share one style: a grey track (`--chip`) with the selected option as a
+white chip, 34px on a computer and 40px on touch screens. Each card's groups sit on one row
+(`.chart-controls`). Range labels are short (4W, 8W, 12W, 1Y) with full names as labels/tooltips.
+Progress zoom buttons are one group (← − + →); Reset appears only after a zoom or pan, and the help
+line is "Drag to zoom." (the full gesture help stays for screen readers). The Movement stress page
+was already reworked in #173. Log: RPE 9–10 and finish-screen drops use `--hard` (#b4530a light,
+#e0874a dark); swipe-delete, finish-dialog border and finish dots use theme colours.

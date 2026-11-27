@@ -26,11 +26,11 @@
   <title>Log Workout</title>
   <style>
     :root {
-      --danger: #a32d2d; --danger-bg: #fcebeb; --ok: #1d6b2f; --ok-bg: #e4f2e4; --warn-bg: #fbf0d9; --warn: #7a5200;
+      --danger: #a32d2d; --danger-bg: #fcebeb; --ok: #1d6b2f; --ok-bg: #e4f2e4; --warn-bg: #fbf0d9; --warn: #7a5200; --hard: #b4530a;
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --danger: #f09595; --danger-bg: #3a1f1f; --ok: #8fd19e; --ok-bg: #1f3a24; --warn-bg: #3a3118; --warn: #e8c66a;
+        --danger: #f09595; --danger-bg: #3a1f1f; --ok: #8fd19e; --ok-bg: #1f3a24; --warn-bg: #3a3118; --warn: #e8c66a; --hard: #e0874a;
       }
     }
     * { box-sizing: border-box; }
@@ -160,7 +160,7 @@
     .setwrap .set { margin: 0; position: relative; touch-action: pan-y; transition: transform .18s ease; }
     .setwrap .set:not(.done) { background: var(--card); }
     .setwrap.dragging .set { transition: none; }
-    .delbtn { position: absolute; top: 0; bottom: 0; right: 0; width: 76px; min-height: 0; padding: 0; border: 0; border-radius: 8px; background: #c0392b; color: #fff; font-size: 14px; font-weight: 500; opacity: 0; pointer-events: none; }
+    .delbtn { position: absolute; top: 0; bottom: 0; right: 0; width: 76px; min-height: 0; padding: 0; border: 0; border-radius: 8px; background: var(--danger); color: var(--card); font-size: 14px; font-weight: 500; opacity: 0; pointer-events: none; }
     .setwrap.dragging .delbtn, .setwrap.open .delbtn { opacity: 1; pointer-events: auto; }
     /* the plate loader */
     .loader { margin-top: 8px; padding: 8px 10px 10px; border: 1px solid var(--line); border-radius: 10px; }
@@ -356,7 +356,7 @@
     .workout-log.typing main { padding-bottom: 60vh; }
     .workout-log.keypad-open main { padding-bottom: calc(var(--keypad-height, 250px) + 32px); }
   </style>
-  <link rel="stylesheet" href="/training/static/logger-layout.css?v=16" />
+  <link rel="stylesheet" href="/training/static/logger-layout.css?v=17" />
 </head>
 <body class="workout-log">
 <button id="loggerNavScrim" type="button" aria-label="Close navigation" hidden></button>
@@ -2639,7 +2639,7 @@
   const saveDialog = document.createElement("dialog");
   saveDialog.id = "saveConfirmation";
   saveDialog.setAttribute("aria-labelledby", "saveConfirmationTitle");
-  saveDialog.style.cssText = "box-sizing:border-box;width:calc(100% - 32px);max-width:480px;max-height:80dvh;overflow:auto;border:1px solid #64748b;border-radius:16px;padding:20px;color:inherit;background:var(--bg, Canvas)";
+  saveDialog.style.cssText = "box-sizing:border-box;width:calc(100% - 32px);max-width:480px;max-height:80dvh;overflow:auto;border:1px solid var(--line);border-radius:16px;padding:20px;color:inherit;background:var(--bg, Canvas)";
   saveDialog.innerHTML = '<h2 id="saveConfirmationTitle">Finish workout</h2><p id="saveWorkoutName" class="muted"></p>' +
     '<div id="saveStats" class="finish-stats"></div><div id="saveSummary" class="finish-rows"></div>' +
     '<button id="saveMore" type="button" class="finish-more" aria-expanded="false">See more ▾</button><div id="saveMoreBox" class="finish-compare" hidden></div>' +
