@@ -123,13 +123,6 @@ class CoachEquipmentInput(BaseModel):
     notes: str = Field('', max_length=coaching_equipment.MAX_NOTES * 2)
 
 
-class TrainingStateThresholdsInput(BaseModel):
-    tsb_threshold_underloaded: float = Field(8.0, ge=-50.0, le=50.0)
-    tsb_threshold_slightly_fresh: float = Field(3.0, ge=-50.0, le=50.0)
-    tsb_threshold_balanced: float = Field(-5.0, ge=-50.0, le=50.0)
-    tsb_threshold_slightly_fatigued: float = Field(-10.0, ge=-50.0, le=50.0)
-
-
 class PatternSensitivityInput(BaseModel):
     v2_threshold_stressed: float = Field(0.75, ge=0.0, le=1.0)
     v2_threshold_neutral: float = Field(0.50, ge=0.0, le=1.0)
@@ -167,11 +160,6 @@ class SessionStatusUpdate(BaseModel):
     modality: Optional[str] = None
     duration_minutes: Optional[int] = Field(None, ge=1, le=480)
     srpe: Optional[float] = Field(None, ge=0.0, le=10.0)
-
-
-class ExerciseRenameInput(BaseModel):
-    old_title: str
-    new_title: str
 
 
 class ExerciseCanonicalInput(BaseModel):
@@ -948,11 +936,6 @@ def sync_status():
     return {"running": _sync_status["running"], "last_result": _sync_status["last_result"]}
 
 
-@app.get("/api/sync/last-sync")
-def get_last_sync(db: Session = Depends(get_db)):
-    last_sync = _get_setting_value(db, "last_sync")
-    return {"last_sync": last_sync}
-
 # ── Settings ──────────────────────────────────────────────────────────────────
 
 @app.get("/api/settings")
@@ -1032,29 +1015,6 @@ def get_v2_settings(db: Session = Depends(get_db)):
     return _get_v2_settings(db)
 
 
-@app.get("/api/settings/calibration")
-def get_calibration_settings(db: Session = Depends(get_db)):
-    """Back-compat alias for v2 settings payload."""
-    return _get_v2_settings(db)
-
-
-@app.put("/api/settings/v2/training-state")
-def save_training_state_thresholds(data: TrainingStateThresholdsInput, db: Session = Depends(get_db)):
-    cfg = {
-        "tsb_threshold_underloaded": round(float(data.tsb_threshold_underloaded), 2),
-        "tsb_threshold_slightly_fresh": round(float(data.tsb_threshold_slightly_fresh), 2),
-        "tsb_threshold_balanced": round(float(data.tsb_threshold_balanced), 2),
-        "tsb_threshold_slightly_fatigued": round(float(data.tsb_threshold_slightly_fatigued), 2),
-    }
-    _validate_tsb_thresholds(cfg)
-    _set_setting_value(db, "tsb_threshold_underloaded", str(cfg["tsb_threshold_underloaded"]))
-    _set_setting_value(db, "tsb_threshold_slightly_fresh", str(cfg["tsb_threshold_slightly_fresh"]))
-    _set_setting_value(db, "tsb_threshold_balanced", str(cfg["tsb_threshold_balanced"]))
-    _set_setting_value(db, "tsb_threshold_slightly_fatigued", str(cfg["tsb_threshold_slightly_fatigued"]))
-    db.commit()
-    return {"message": "Training state thresholds saved.", **cfg}
-
-
 @app.put("/api/settings/v2/pattern-sensitivity")
 def save_pattern_sensitivity(data: PatternSensitivityInput, db: Session = Depends(get_db)):
     cfg = {
@@ -1085,12 +1045,6 @@ def save_session_processing(data: SessionProcessingInput, db: Session = Depends(
     return {"message": "Session processing settings saved.", **cfg}
 
 
-@app.put("/api/settings/v2/conditioning-scale")
-def save_conditioning_load_scale(data: SessionProcessingInput, db: Session = Depends(get_db)):
-    """Back-compat alias that now updates the full session-processing settings payload."""
-    return save_session_processing(data, db)
-
-
 @app.post("/api/settings/v2/reclassify-sessions")
 def reclassify_sessions(data: SessionReclassificationInput, db: Session = Depends(get_db)):
     result = reclassify_existing_sessions(db=db, force_all=bool(data.force_all))
@@ -1102,58 +1056,6 @@ def reclassify_sessions(data: SessionReclassificationInput, db: Session = Depend
         **result,
     }
 
-
-@app.post("/api/admin/backfill-sessions")
-def backfill_sessions_from_logs(db: Session = Depends(get_db)):
-    """Backfill missing WorkoutSession rows from WorkoutLog data."""
-    backfilled = 0
-
-    missing_workout_ids = [
-        row[0]
-        for row in (
-            db.query(WorkoutLog.workout_id)
-            .outerjoin(WorkoutSession, WorkoutSession.hevy_workout_id == WorkoutLog.workout_id)
-            .filter(WorkoutSession.hevy_workout_id.is_(None))
-            .filter(func.trim(WorkoutLog.workout_id) != "")
-            .distinct()
-            .order_by(WorkoutLog.workout_id.asc())
-            .all()
-        )
-    ]
-
-    try:
-        for workout_id in missing_workout_ids:
-            earliest_log = (
-                db.query(WorkoutLog)
-                .filter(WorkoutLog.workout_id == workout_id)
-                .order_by(WorkoutLog.date.asc(), WorkoutLog.id.asc())
-                .first()
-            )
-            if not earliest_log or not earliest_log.date:
-                continue
-
-            db.add(
-                WorkoutSession(
-                    hevy_workout_id=workout_id,
-                    workout_date=earliest_log.date,
-                    workout_title=earliest_log.workout_title,
-                    start_time=None,
-                    end_time=None,
-                    duration_minutes=None,
-                    modality="strength",
-                    modality_confidence=0.0,
-                    verification_status="verified",
-                    verified_at=datetime.utcnow(),
-                    srpe=None,
-                )
-            )
-            backfilled += 1
-
-        db.commit()
-        return {"backfilled": backfilled}
-    except Exception:
-        db.rollback()
-        raise
 
 # ── Training Load (ATL / CTL / TSB) ──────────────────────────────────────────
 
@@ -2478,33 +2380,6 @@ def coaching_send(conversation_id: UUID, data: CoachingMessage, db: Session = De
 
 # ── Readiness history ─────────────────────────────────────────────────────────
 
-@app.get("/api/readiness/history")
-def get_readiness_history(days: int = 30, db: Session = Depends(get_db)):
-    """
-    Return daily check-in scores for the recovery trend chart.
-    recovery_score = tiredness + perceived_recovery (0–8, lower = more recovered)
-    """
-    from_date = date_type.today() - timedelta(days=days - 1)
-    rows = (
-        db.query(DailyReadiness)
-        .filter(DailyReadiness.date >= from_date)
-        .order_by(DailyReadiness.date)
-        .all()
-    )
-    return [
-        {
-            "date":             str(r.date),
-            "recovery_score":   (r.tiredness or 0) + (r.perceived_recovery or 0),
-            "tiredness":        r.tiredness,
-            "perceived_recovery": r.perceived_recovery,
-            "soreness":         (r.sore_quad_dom or 0) + (r.sore_posterior or 0)
-                                + (r.sore_upper_push or 0) + (r.sore_upper_pull or 0),
-            "joint":            (r.joint_upper or 0) + (r.joint_lower or 0),
-        }
-        for r in rows
-    ]
-
-
 @app.get("/api/readiness/combined-history")
 def get_readiness_combined_history(days: int = 7, db: Session = Depends(get_db)):
     """Return fixed daily combined-readiness history for the Today trend chart."""
@@ -2514,31 +2389,6 @@ def get_readiness_combined_history(days: int = 7, db: Session = Depends(get_db))
 
     return [row for row in historical_ranges(_recommendation_history(db, today)) if row["date"] >= str(from_date)]
 
-
-# NOTE: /api/stress/history must be defined BEFORE /api/stress/{target_date}
-# so FastAPI matches the literal path first.
-
-@app.get("/api/stress/history")
-def get_stress_history(days: int = 60, db: Session = Depends(get_db)):
-    """Return central and peripheral stress for each workout day in the past N days."""
-    since = date_type.today() - timedelta(days=days)
-    workout_dates = (
-        db.query(WorkoutLog.date)
-        .filter(WorkoutLog.date >= since)
-        .distinct()
-        .order_by(WorkoutLog.date)
-        .all()
-    )
-    return [
-        {"date": row.date, **calculate_stress_scores(row.date, db)}
-        for row in workout_dates
-    ]
-
-@app.get("/api/stress/{target_date}")
-def get_stress(target_date: date_type, db: Session = Depends(get_db)):
-    """Return central and peripheral stress scores for a given date."""
-    scores = calculate_stress_scores(target_date, db)
-    return {"date": target_date, **scores}
 
 @app.get("/api/stress/patterns/{target_date}")
 def get_pattern_stress(target_date: date_type, db: Session = Depends(get_db)):
@@ -3158,29 +3008,6 @@ def update_workout_session_status(
     }
 
 
-@app.get("/api/workouts/summary")
-def get_workout_summary(days: int = 30, db: Session = Depends(get_db)):
-    """Return daily training volume, set count, and avg RPE for the past N days."""
-    since = date_type.today() - timedelta(days=days)
-    rows = db.query(
-        WorkoutLog.date,
-        func.sum(WorkoutLog.weight_lbs * WorkoutLog.reps).label('total_volume'),
-        func.count(WorkoutLog.id).label('total_sets'),
-        func.avg(WorkoutLog.rpe).label('avg_rpe')
-    ).filter(
-        WorkoutLog.date >= since
-    ).group_by(WorkoutLog.date).order_by(WorkoutLog.date).all()
-
-    return [
-        {
-            "date": row.date,
-            "total_volume": round(row.total_volume or 0, 2),
-            "total_sets": row.total_sets,
-            "avg_rpe": round(row.avg_rpe, 1) if row.avg_rpe else None
-        }
-        for row in rows
-    ]
-
 def _derive_pattern(pct_quad, pct_post, pct_push, pct_pull, is_cond):
     """Return a human-readable pattern label from exercise_mappings pct columns."""
     if is_cond:
@@ -3685,52 +3512,6 @@ def update_exercise_mapping(
         "source": response_mapping.source,
         "is_reviewed": response_mapping.is_reviewed,
     }
-
-
-@app.post("/api/exercises/rename")
-def rename_exercise_title(data: ExerciseRenameInput, db: Session = Depends(get_db)):
-    """Rename an exercise across WorkoutLog rows and ExerciseMapping in one transaction."""
-    old_title = data.old_title.strip()
-    new_title = data.new_title.strip()
-
-    if not old_title or not new_title:
-        raise HTTPException(status_code=400, detail="old_title and new_title are required.")
-    if old_title.lower() == new_title.lower():
-        raise HTTPException(status_code=400, detail="old_title and new_title must be different.")
-
-    old_title_lc = old_title.lower()
-
-    try:
-        updated_sets = (
-            db.query(WorkoutLog)
-            .filter(func.lower(WorkoutLog.exercise_title) == old_title_lc)
-            .update({WorkoutLog.exercise_title: new_title}, synchronize_session=False)
-        )
-
-        if updated_sets == 0:
-            db.rollback()
-            raise HTTPException(status_code=404, detail="No sets found matching that title.")
-
-        mapping_updated = False
-        mapping_row = (
-            db.query(ExerciseMapping)
-            .filter(func.lower(ExerciseMapping.exercise_title) == old_title_lc)
-            .first()
-        )
-        if mapping_row:
-            mapping_row.exercise_title = new_title
-            mapping_updated = True
-
-        db.commit()
-        return {
-            "updated_sets": updated_sets,
-            "mapping_updated": mapping_updated,
-        }
-    except HTTPException:
-        raise
-    except Exception:
-        db.rollback()
-        raise
 
 
 @app.get("/api/exercises/canonical")

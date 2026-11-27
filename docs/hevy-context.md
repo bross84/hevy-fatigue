@@ -1713,3 +1713,16 @@ unchanged. Movement evidence compares the first check-in after days with a lift
 84 days; lines need 3 after-lift check-ins and are early reads below 6. The 3–4 Joint
 Advisory and the fatigue trial's own joint rule are unchanged. Mocked preview:
 `python -X utf8 -m uvicorn tools.joint_preview:app --host 127.0.0.1 --port 18154`.
+
+## Unused host API routes removed (2026-11-27, local; #140)
+
+Owner decision on #140. Ten host routes that no page, test or tool called were removed from
+`main.py`: `GET /api/sync/last-sync`, `GET /api/settings/calibration`,
+`PUT /api/settings/v2/training-state`, `PUT /api/settings/v2/conditioning-scale`,
+`POST /api/admin/backfill-sessions`, `GET /api/readiness/history`, `GET /api/stress/history`,
+`GET /api/stress/{date}`, `GET /api/workouts/summary` and `POST /api/exercises/rename`, along
+with their now-unused request models. Kept on purpose: `/api/workouts/recent` (the export feed
+for `tools/replay_recommendations.py`), `GET /api/stress/patterns/{date}` (called directly by
+`tools/verify_production_copy.py`) and `/api/ai/chat` (legacy compatible). Settings values,
+stored data and every screen are unchanged. Older entries in `plan.md` and
+`docs/stage-gated-plan.md` that describe adding these routes are historical.
