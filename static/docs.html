@@ -1445,6 +1445,7 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
 
       <ul>
         <li><strong>Weekly review notice</strong> — appears only when a planned week (microcycle) is finished, with a link to review it in AI Coach.</li>
+        <li><strong>Coaching call banner</strong> — appears only when a joint rating has been above your usual for 3 of your last 7 check-ins, with a link to the call; after a "carry on" decision it shrinks to one quiet line (see §09).</li>
         <li><strong>Readiness</strong> — the fatigue score out of 20 with its Subjective / Objective / Combined breakdown, a <strong>Log Workout</strong> button, the check-in banner when today has no check-in, and the AI coach's daily recommendation when one is available.</li>
         <li><strong>Pattern stress</strong> — Load, Soreness and Trend for Knee, Hip, Push and Pull (see §06).</li>
         <li><strong>Fatigue Trend</strong> — the 7-day chart described in §08c.</li>
@@ -1486,6 +1487,29 @@ main { max-width: 900px; margin: 0 auto; padding: 20px 24px; }
       </table>
 
       <p>The advisory is informational only. The system makes no assumptions about which joints are affected or which exercises should be modified — that judgment belongs to the athlete.</p>
+
+      <h3>Your usual level and coaching calls</h3>
+      <p>Each region also has a <strong>usual</strong> rating: the rating you gave most often over the last 28 days, from at least 7 check-ins. A tie goes to the lower rating. Check-ins from a flare-up never count toward usual, so a lasting rise can't quietly become your normal. Usual moves up only when you choose <em>This is my new normal</em> in a coaching call; it moves down on its own.</p>
+      <table class="ref-table">
+        <thead><tr><th>Check-ins above usual</th><th>What happens</th></tr></thead>
+        <tbody>
+          <tr><td>1–2</td><td>Recorded only. The daily coach stays quiet.</td></tr>
+          <tr><td>3 of your last 7 (within 14 days)</td><td>A <strong>Coaching call needed</strong> banner appears on the Dashboard. Loads are held on that region's lifts (lower: knee and hip; upper: push and pull): the Log page shows a hold note and suggests no increases. Planned weights are not changed.</td></tr>
+          <tr><td>5 of your last 10 (within 21 days)</td><td>The call focuses on reviewing the movement.</td></tr>
+          <tr><td>Any rating of 3 or 4</td><td>The advisory above, straight away, as before.</td></tr>
+        </tbody>
+      </table>
+      <p>The call opens in AI Coach (or inside your weekly coaching call when both are due). The coach helps you work out the likely cause; you record the decision on the card under the call:</p>
+      <ul class="doc-list">
+        <li><strong>This is my new normal</strong> — usual moves up to the raised level and the count restarts.</li>
+        <li><strong>Carry on until…</strong> — defaults to one week. Usual stays put and the hold lifts; the call comes back on that date, or earlier if a rating reaches 3.</li>
+        <li><strong>Make a change</strong> — note what you changed (variation, range of motion, swap or lighter load). The count restarts from that day.</li>
+        <li><strong>Not now</strong> — the banner and the hold stay.</li>
+      </ul>
+      <p>The notice clears on its own once the count drops below these levels.</p>
+
+      <h3>Joint evidence (Patterns page)</h3>
+      <p>The Patterns page compares your joint rating at the first check-in after days that included a lift with all your other check-ins over the last 12 weeks, for each lift and, when two or more lifts share a pattern, for the pattern overall. Lifts from the app's own logger and from Hevy both count. A line needs at least 3 check-ins after the lift; below 6 it's marked <em>early read</em>. It shows what tends to go together, not proof of cause. The fatigue trial keeps its own joint rule.</p>
     </section>
 
     <!-- ═══════════════════════════════════════════ -->
